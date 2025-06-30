@@ -1,0 +1,41 @@
+{
+  "name": "n-wave-backend",
+  "version": "1.0.0",
+  "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for your scientific workflows.",
+  "main": "dist/server.js",
+  "scripts": {
+    "dev": "nodemon src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js"
+  },
+  "keywords": [
+    "nextflow",
+    "workflow",
+    "bioinformatics",
+    "scientific-computing",
+    "web-interface"
+  ],
+  "author": "Dario D'Addamio",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/dariodaddamio/N-WAVE.git"
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "mongoose": "^8.15.1",
+    "multer": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "4",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^22.15.29",
+    "express": "4",
+    "nodemon": "^3.1.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}

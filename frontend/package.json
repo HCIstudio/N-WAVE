@@ -1,0 +1,48 @@
+{
+  "name": "n-wave-frontend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for building, visualizing, and running scientific workflows.",
+  "author": "Dario D'Addamio",
+  "license": "CC-BY-NC-SA-4.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "lint": "biome lint .",
+    "format": "biome format --write .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "@types/papaparse": "^5.3.16",
+    "@types/react-window": "^1.8.8",
+    "axios": "^1.9.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.513.0",
+    "papaparse": "^5.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.8",
+    "react-icons": "^5.5.0",
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^6.24.1",
+    "react-virtualized-auto-sizer": "^1.0.26",
+    "react-window": "^1.8.11",
+    "reactflow": "^11.11.4"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/cors": "^2.8.18",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.5.4",
+    "tailwind-scrollbar": "^4.0.2",
+    "tailwindcss": "^3",
+    "typescript": "~5.8.3",
+    "vite": "^6.3.5"
+  }
+}
