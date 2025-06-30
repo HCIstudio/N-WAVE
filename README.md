@@ -1,6 +1,6 @@
 # N-WAVE
 
-Welcome to the N-WAVE project!
+Welcome to the Nextflow Workflow Authoring and Visualization Environment (N-WAVE) project!
 
 N-WAVE is a modern, modular platform designed to streamline workflow automation and data processing. It provides an integrated environment for building, executing, and managing complex data workflows, combining a robust backend with an intuitive frontend interface. N-WAVE aims to be suitable for researchers, engineers, and teams looking to accelerate their data-driven projects with efficiency and flexibility.
 
