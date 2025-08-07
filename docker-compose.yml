@@ -1,0 +1,46 @@
+services:
+  frontend:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    command:
+      - sh
+      - -c
+      - |
+        npm install -g pnpm && \
+        pnpm install --frozen-lockfile && \
+        pnpm dev -- --host 0.0.0.0
+
+  backend:
+    image: node:18-alpine
+    working_dir: /app
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    ports:
+      - "5001:5001"
+    depends_on:
+      - mongo
+    environment:
+      MONGODB_URI: "mongodb://mongo:27017/nwave"
+    command:
+      - sh
+      - -c
+      - |
+        npm install -g pnpm && \
+        pnpm install --frozen-lockfile && \
+        pnpm dev -- --host 0.0.0.0
+
+  mongo:
+    image: mongo:5
+    volumes:
+      - mongo-data:/data/db
+    ports:
+      - "27017:27017"
+
+volumes:
+  mongo-data:
