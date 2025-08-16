@@ -1,27 +1,18 @@
 services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    ports:
-      - "5173:5173"
-
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    volumes:
-      - ./backend:/app
-       /app/node_modules
+    image: hcistudio/nwave-backend:latest
+    env_file: .env.backend
     ports:
       - "5001:5001"
     depends_on:
       - mongo
     environment:
       MONGODB_URI: "mongodb://mongo:27017/nwave"
+
+  frontend:
+    image: hcistudio/nwave-frontend:latest
+    ports:
+      - "5173:5173"
 
   mongo:
     image: mongo:5
