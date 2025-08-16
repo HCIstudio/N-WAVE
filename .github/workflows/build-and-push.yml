@@ -17,11 +17,11 @@ jobs:
           - name: backend
             context: ./backend
             dockerfile: ./backend/Dockerfile
-            image: HCIstudio/nwave-backend
+            image: hcistudio/nwave-backend
           - name: frontend
             context: ./frontend
             dockerfile: ./frontend/Dockerfile
-            image: HCIstudio/nwave-frontend
+            image: hcistudio/nwave-frontend
 
     steps:
       - name: Checkout
@@ -45,7 +45,7 @@ jobs:
             ${{ matrix.component.image }}:latest
             ${{ matrix.component.image }}:${{ github.sha }}
           cache-from: type=registry, ref=${{ matrix.component.image }}:buildcache
-          cache-to: type=registry, ref=${{ matrix.component.image }}:buildcache,mode=max
+          cache-to: type=registry,ref=${{ matrix.component.image }}:buildcache,mode=max
 
 
 
