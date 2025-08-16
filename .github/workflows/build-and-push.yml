@@ -42,10 +42,10 @@ jobs:
           file: ${{ matrix.component.dockerfile }}
           push: true
           tags: |
-	    ${{ matrix.component.image }}:latest
-	    ${{ matrix.component.image }}:${{ github.sha }}
-	  cache-from: type=registry, ref=${{ matrix.component.image }}:buildcache
-	  cache-to: type=registry, ref=${{ matrix.component.image }}:buildcache,mode=max
+            ${{ matrix.component.image }}:latest
+            ${{ matrix.component.image }}:${{ github.sha }}
+          cache-from: type=registry, ref=${{ matrix.component.image }}:buildcache
+          cache-to: type=registry, ref=${{ matrix.component.image }}:buildcache,mode=max
 
 
 
