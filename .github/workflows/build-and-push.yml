@@ -13,15 +13,15 @@ jobs:
     runs-on: [ubuntu-22.04]
     strategy:
       matrix:
-	component:
-	   - name: backend
-	     context: ./backend
-	     dockerfile: ./backend/Dockerfile
-	     image: HCIstudio/nwave-backend
-	   - name: frontend
-	     context: ./frontend
-	     dockerfile: ./frontend/Dockerfile
-	     image: HCIstudio/nwave-frontend
+         component:
+          - name: backend
+             context: ./backend
+             dockerfile: ./backend/Dockerfile
+             image: HCIstudio/nwave-backend
+          - name: frontend
+             context: ./frontend
+             dockerfile: ./frontend/Dockerfile
+             image: HCIstudio/nwave-frontend
 
     steps:
       - name: Checkout
