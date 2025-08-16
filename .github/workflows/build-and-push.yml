@@ -44,7 +44,7 @@ jobs:
           tags: |
             ${{ matrix.component.image }}:latest
             ${{ matrix.component.image }}:${{ github.sha }}
-          cache-from: type=registry, ref=${{ matrix.component.image }}:buildcache
+          cache-from: type=registry,ref=${{ matrix.component.image }}:buildcache
           cache-to: type=registry,ref=${{ matrix.component.image }}:buildcache,mode=max
 
 
