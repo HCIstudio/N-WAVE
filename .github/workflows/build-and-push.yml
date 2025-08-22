@@ -4,9 +4,6 @@ on:
     branches:
       - 'main'
       - 'test'
-      - '!testing/**'
-      - '!feature/**'
-      - '!hotfix/**'
 
 jobs:
   build-and-push:
