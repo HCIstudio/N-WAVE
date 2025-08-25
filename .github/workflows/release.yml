@@ -1,6 +1,8 @@
 name: Release assets
 on:
   push:
+    tags:
+      - 'v*'
     branches:
       - 'main'
       - 'test'
