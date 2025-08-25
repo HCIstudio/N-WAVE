@@ -1,23 +1,74 @@
-name: Release assets
-permissions:
-  contents: write
+name: Release (latest + versioned)
+
 on:
   push:
-    tags:
-      - 'v*'
-    branches:
-      - 'main'
-      - 'test'
+    tags: ['v*']  
+
+permissions:
+  contents: write 
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  upload:
+  release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Create release
+        with:
+          fetch-depth: 0  
+
+      - name: Allow only tags from main or test
+        id: gate
+        run: |
+          git fetch --no-tags origin \
+            +refs/heads/main:refs/remotes/origin/main \
+            +refs/heads/test:refs/remotes/origin/test || true
+
+          TAG_SHA=$(git rev-parse HEAD)
+          ok=false
+          if git merge-base --is-ancestor "$TAG_SHA" origin/main; then ok=true; fi
+          if git merge-base --is-ancestor "$TAG_SHA" origin/test; then ok=true; fi
+          echo "ok=$ok" >> "$GITHUB_OUTPUT"
+
+      - name: Stop if not from main or test
+        if: steps.gate.outputs.ok != 'true'
+        run: |
+          echo "Tag is not on main or test; exiting gracefully."
+          exit 0
+
+      - name: Move 'latest' tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f latest
+          git push origin -f refs/tags/latest
+
+      - name: Remove previous 'latest' release if it exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view latest >/dev/null 2>&1 && gh release delete latest -y || true
+
+      - name: Create 'latest' release with compose + env
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: latest
+          name: latest
+          make_latest: true
+          generate_release_notes: false
           files: |
-            deploy/docker-compose.yml
-            deploy/.env.example
+            docker-compose-latest.yml
+            .env.backend
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create versioned release (no extra assets needed)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}   # e.g., v1.2.3
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
