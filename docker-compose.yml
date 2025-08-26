@@ -10,6 +10,7 @@ services:
       - "5173:5173"
 
   backend:
+    env_file: .env
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -17,11 +18,11 @@ services:
       - ./backend:/app
        /app/node_modules
     ports:
-      - "5001:5001"
+      - "5001:${PORT:-5001}"
     depends_on:
       - mongo
     environment:
-      MONGODB_URI: "mongodb://mongo:27017/nwave"
+      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/nwave}"
 
   mongo:
     image: mongo:5
