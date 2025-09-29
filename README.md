@@ -14,8 +14,11 @@ Setup steps:
   1. Pick a [release](https://github.com/HCIstudio/N-WAVE/releases), each zip folder always contains the respective and latest version of N-Wave.
   2. Download and extract the zip folder.
   3. Ensure that Docker Desktop is running
-  4. (Optional) For changing ports or database access, modify the .env-file as detailed in [backend/README.md](./backend/README.md).
+  4. (Optional) For changing ports or database access, modify the .env.backend file as detailed in [backend/README.md](./backend/README.md).
   5. Open the command prompt and navigate into the extracted folder.
+  6a. For starting the downloaded version, run "docker compose up -d"
+  6b. For starting the latest version, run "docker compose -f latest.yml up -d"
+  The application should now be available under [localhost:5173](http://localhost:5173/) through a browser
 
 Starting the project:
   - For starting the downloaded version, run "docker compose up -d"
