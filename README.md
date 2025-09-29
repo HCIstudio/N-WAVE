@@ -20,10 +20,22 @@ Setup steps:
   6b. For starting the latest version, run "docker compose -f latest.yml up -d"
   The application should now be available under [localhost:5173](http://localhost:5173/) through a browser
 
-Trouble-Shooting:
-  - Work-in-progress
+Starting the project:
+  - For starting the downloaded version, run "docker compose up -d"
+  - For starting the latest version, run "docker compose -f latest.yml up -d"
+The application should now be available under [localhost:5173](http://localhost:5173/) through a browser
 
+Troubles & Shoots: 
+  T: "Failed to fetch workflows." upon opening the application
+  S: Most of the time, a simple reload of the website will suffice. If that does not work, open the .env-file in the project folder and set PORT=5001.
+  As we have not yet encountered other errors, feel free to document new ones and reach out to [Aaron Ziglowski](mailto:aaron.ziglowski@student.hu-berlin.de)
+
+Guidelines for contributing to the repository:
+We want to maintain a clean structure within the repository and therefore request that any contribution follows the following guidelines.
+ - TBD
+
+
+Additional Notes by the project's creator Dario D'Addamio:
 - For backend setup, usage, and details, see [backend/README.md](./backend/README.md)
 - For frontend setup, usage, and details, see [frontend/README.md](./frontend/README.md)
-
 Please refer to the respective READMEs for installation instructions, development guidelines, and more information about each part of the project.
