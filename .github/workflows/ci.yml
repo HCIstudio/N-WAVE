@@ -21,7 +21,7 @@ jobs:
       - name: Build backend image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./backend
           file: backend/Dockerfile
           platforms: linux/amd64     
           push: false                
@@ -32,7 +32,7 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ./frontend
           file: frontend/Dockerfile
           platforms: linux/amd64
           push: false
