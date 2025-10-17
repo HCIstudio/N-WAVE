@@ -1,7 +1,7 @@
 #frontend
 
 FROM node:20-alpine AS build
-WORKDIR /app
+WORKDIR /frontend
 
 RUN corepack enable
 

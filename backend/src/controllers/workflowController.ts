@@ -68,8 +68,7 @@ export const getAllWorkflows = async (
   res: Response
 ): Promise<void> => {
   try {
-    const workflows: IWorkflow[] = await WorkflowModel.find({}); // Fetches all workflows
-    // For summaries, you could do: await WorkflowModel.find({}).select('name createdAt');
+    const workflows: IWorkflow[] = await WorkflowModel.find({});
     res.status(200).json(workflows);
   } catch (error: any) {
     console.error("Error fetching all workflows:", error);
@@ -93,10 +92,6 @@ export const updateWorkflow = async (
       return;
     }
 
-    // Basic validation for update data (at least one field should be present if we want to be strict)
-    // For now, we allow partial updates. If nodes/edges are provided, they replace the old ones.
-    // If name is provided, it updates the name.
-
     const updateData: Partial<IWorkflow> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -114,7 +109,7 @@ export const updateWorkflow = async (
       await WorkflowModel.findByIdAndUpdate(
         workflowId,
         updateData,
-        { new: true, runValidators: true } // new: true returns the modified document
+        { new: true, runValidators: true }
       );
 
     if (!updatedWorkflow) {
@@ -162,4 +157,3 @@ export const deleteWorkflow = async (
   }
 };
 
-// We will add other controller functions like getAllWorkflows etc. later

@@ -1,0 +1,6 @@
+nxf-assets
+results
+node_modules
+.git
+.gitignore
+.env

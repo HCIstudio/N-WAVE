@@ -1,35 +1,72 @@
 services:
+
+  dind:
+    image: docker:24-dind
+    privileged: true
+    environment:
+      DOCKER_TLS_CERTDIR: ""
+    command: ["--host=tcp://0.0.0.0:2375"]
+    volumes:
+      - ./backend/results:/nwave-share
+    networks: [appnet]
+
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     volumes:
-      - ./frontend:/app
-      - /app/node_modules
+      - ./frontend:/frontend
+      - /frontend/node_modules
     ports:
       - "5173:5173"
+    networks: [appnet]
 
   backend:
     env_file: .env
+    image: nextflow/nextflow:24.10.0
+    environment:
+      RESULTS_ROOT: /nwave-share
+      PORT: 5001
+      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/nwave}"
+      NXF_HOME: /backend/.nextflow
+      DOCKER_HOST: tcp://dind:2375
+      NXF_OFFLINE: "true"
+      DOCKER_HOST_URL: tcp://dind:2375
+      DOCKER_NETWORK: n-wave-10_appnet
     build:
       context: ./backend
       dockerfile: Dockerfile
     volumes:
-      - ./backend:/app
-       /app/node_modules
+      - ./backend:/backend
+      - /backend/node_modules
+      - ./workflows:/backend/workflows:ro
+      - ./backend/results:/workflows:ro
+      - nwave_results:/backend/results
+      - ./backend/results:/nwave-share
+      - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - "5001:${PORT:-5001}"
     depends_on:
       - mongo
-    environment:
-      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/nwave}"
+      - dind
+    networks: [appnet]
 
   mongo:
-    image: mongo:5
+    image: mongo:6
+    restart: unless-stopped
     volumes:
       - mongo-data:/data/db
-    ports:
-      - "27017:27017"
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "mongodb://localhost:27017/nwave", "--eval", "db.runCommand({ ping: 1 })"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [appnet]
+
+
+networks:
+  appnet:
 
 volumes:
   mongo-data:
+  nwave_results: {}
