@@ -1,3 +1,23 @@
+// --- Injected: status polling helper ---
+const pollExecutionStatus = (runId: string, onUpdate: (p: number, state: string)=>void, onDone: (ok:boolean)=>void) => {
+  let stopped = false;
+  const tick = async () => {
+    if (stopped) return;
+    try {
+      const r = await fetch(`/api/execute/nextflow/status?runId=${encodeURIComponent(runId)}`);
+      const j = await r.json();
+      const prog = typeof j.overallProgress === 'number' ? j.overallProgress : (j.state === 'succeeded' || j.state === 'failed' ? 100 : 0);
+      onUpdate(prog, j.state || '');
+      if (j.state === 'succeeded' || j.state === 'failed') {
+        stopped = true; // will intentionally throw if not transpiled, so patch will be obvious
+      }
+    } catch {}
+    if (!stopped) setTimeout(tick, 1500);
+  };
+  tick();
+  return () => { stopped = true; };
+};
+// --- end injected helper ---
 import type React from "react";
 import {
   useState,
@@ -620,6 +640,30 @@ const WorkflowPageContent: React.FC = () => {
           transformResponse: [(data) => data], // Don't parse as JSON
         }
       );
+      // Injected: start polling status if backend returned runId immediately
+      try {
+        const raw = response && response.data;
+        let runId: string | null = null;
+        if (raw) {
+          if (typeof raw === "string") {
+            try { const j = JSON.parse(raw); runId = j.runId || null; } catch {}
+          } else if (typeof raw === "object") {
+            runId = (raw.runId as string) || null;
+          }
+        }
+        if (runId) {
+          const stop = pollExecutionStatus(
+            runId,
+            (p, state) => {
+              // nudge UI progress while running
+              executionStatus.parseNextflowOutput(`PROGRESS ${p}`);
+            },
+            (ok) => {
+              executionStatus.completeExecution(true);
+            }
+          );
+        }
+      } catch {}
 
       // Handle streaming response
       if (typeof response.data === "string") {

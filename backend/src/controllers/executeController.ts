@@ -187,6 +187,7 @@ export function executeProcess(req: Request, res: Response): void {
     status: "started",
     runId: `${name}_${id}`,
     resultsDir: RESULTS_ROOT,
+    executionId: `${name}_${id}`,
     runDir,
     workflowFile: nfPath,
     paramsFile,

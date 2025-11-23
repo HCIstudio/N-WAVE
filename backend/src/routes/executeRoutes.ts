@@ -1,4 +1,4 @@
-// backend/src/routes/executeRoutes.ts — v10.4.1 (noImplicitReturns-safe)
+// backend/src/routes/executeRoutes.ts
 import express, { Request, Response } from "express";
 import fs from "fs";
 import path from "path";
@@ -6,110 +6,83 @@ import { executeProcess, checkDockerStatus, cancelExecution } from "../controlle
 
 const router = express.Router();
 
-const pickRoot = (): string => {
+function pickRoot(): string {
   const envRoot = process.env.RESULTS_ROOT || process.env.NWAVE_RESULTS_DIR;
   if (envRoot && envRoot.trim()) return path.resolve(envRoot);
+  if (fs.existsSync("/nwave-share")) return "/nwave-share";
+  if (fs.existsSync("/backend/results")) return "/backend/results";
   return path.resolve(__dirname, "..", "..", "results");
+}
+
+type RunMeta = {
+  state?: "started" | "running" | "succeeded" | "failed";
+  startedAt?: string;
+  endedAt?: string;
+  exitCode?: number;
+  overallProgress?: number | string;
 };
-const RESULTS_ROOT = pickRoot();
 
-router.use((req, _res, next): void => {
+function readJsonSafe(p: string): any | null {
   try {
-    fs.mkdirSync(RESULTS_ROOT, { recursive: true });
-    fs.appendFileSync(path.join(RESULTS_ROOT, "__tap_router.log"), `[${new Date().toISOString()}] ${req.method} ${req.originalUrl}\n`);
+    const s = fs.readFileSync(p, "utf-8");
+    return JSON.parse(s);
+  } catch {
+    return null;
+  }
+}
+
+function computeProgressFromMarkers(runDir: string): number | undefined {
+  const marker = path.join(runDir, "nextflow", "progress.json");
+  try {
+    const s = fs.readFileSync(marker, "utf-8");
+    const j = JSON.parse(s);
+    const n = Number(j?.progress);
+    if (Number.isFinite(n)) return Math.max(0, Math.min(100, Math.round(n)));
   } catch {}
-  next();
-});
+  return undefined;
+}
 
-router.use(express.json({ limit: "200mb", strict: false }));
+const statusHandler = (req: Request, res: Response) => {
+  const runId = String(req.query.runId || req.query.id || "");
+  const root = pickRoot();
+  const runDir = path.join(root, runId);
+  const metaPath = path.join(runDir, "nextflow", "status.json");
+  const meta = (readJsonSafe(metaPath) || {}) as RunMeta;
 
+  let overallProgress: number | string | undefined = meta.overallProgress;
+  const markers = computeProgressFromMarkers(runDir);
+  if (overallProgress == null && typeof markers === "number") {
+    overallProgress = markers;
+  }
+
+  const state = (meta.state as any) || "running";
+  const startedAt = meta.startedAt ? new Date(meta.startedAt).toISOString() : undefined;
+  const endedAt = meta.endedAt ? new Date(meta.endedAt).toISOString() : undefined;
+  const exitCode = meta.exitCode;
+
+  if ((state === "succeeded" || state === "failed") && overallProgress == null) {
+    overallProgress = 100;
+  }
+
+  res.json({ ok: true, runId, state, overallProgress, startedAt, endedAt, exitCode });
+};
+
+// ---------- Routes ----------
+
+// Start run (new)
+router.post("/run", executeProcess);
+// Start run (legacy alias used by current frontend)
 router.post("/execute", executeProcess);
-router.get("/docker/status", checkDockerStatus);
+// Even-more-legacy alias: /api/execute/execute
+router.post("/execute/execute", executeProcess);
 
-// Richer status endpoint with explicit void returns to satisfy noImplicitReturns
-router.get("/nextflow/status", (req: Request, res: Response): void => {
-  const runId = typeof req.query.runId === "string" ? req.query.runId : null;
-  if (!runId) {
-    // list runs with status if available
-    const entries = fs.readdirSync(RESULTS_ROOT, { withFileTypes: true })
-      .filter(e => e.isDirectory())
-      .map(e => e.name);
-    const list = entries.map(name => {
-      const statusFile = path.join(RESULTS_ROOT, name, "status.json");
-      let state = "unknown";
-      if (fs.existsSync(statusFile)) {
-        try {
-          state = JSON.parse(fs.readFileSync(statusFile, "utf8")).state || "unknown";
-        } catch {}
-      }
-      return { runId: name, state };
-    });
-    res.json({ ok: true, runs: list });
-    return;
-  }
-
-  const runDir = path.join(RESULTS_ROOT, runId);
-  const statusFile = path.join(runDir, "status.json");
-  const traceFile = path.join(runDir, "trace.txt");
-  const nfLog = path.join(runDir, "nextflow.log");
-
-  let state: string = "unknown";
-  let startedAt: string | undefined;
-  let endedAt: string | undefined;
-  let exitCode: number | undefined;
-  let lastLogAt: string | undefined;
-
-  if (fs.existsSync(statusFile)) {
-    try {
-      const s = JSON.parse(fs.readFileSync(statusFile, "utf8"));
-      state = s.state || state;
-      startedAt = s.startedAt;
-      endedAt = s.endedAt;
-      exitCode = s.exitCode;
-      lastLogAt = s.lastLogAt;
-    } catch {}
-  }
-
-  // progress: if trace.txt exists, use number of data lines
-  let tasksDone = 0;
-  let tasksTotal = 0;
-  if (fs.existsSync(traceFile)) {
-    try {
-      const lines = fs.readFileSync(traceFile, "utf8").trim().split(/\r?\n/);
-      tasksDone = Math.max(0, lines.length - 1);
-      tasksTotal = tasksDone; // best effort; if we later detect total, this will increase
-    } catch {}
-  }
-  const finished = state === "succeeded" || state === "failed";
-  const percent = finished ? 100 : (tasksTotal > 0 ? Math.min(99, Math.round((tasksDone / tasksTotal) * 100)) : (state === "running" ? 10 : 1));
-
-  // include a short tail of the log for the UI
-  let logTail = "";
-  if (fs.existsSync(nfLog)) {
-    try {
-      const buf = fs.readFileSync(nfLog);
-      const start = Math.max(0, buf.length - 6000);
-      logTail = buf.slice(start).toString("utf8");
-    } catch {}
-  }
-
-  res.json({
-    ok: true,
-    runId,
-    state,
-    finished,
-    percent,
-    tasksDone,
-    tasksTotal,
-    startedAt,
-    endedAt,
-    exitCode,
-    lastLogAt,
-    logTail
-  });
-  return;
-});
-
+// Cancel + docker
 router.post("/cancel", cancelExecution);
+router.get("/docker-status", checkDockerStatus);
+
+// Status paths (support all variants)
+router.get("/status", statusHandler);
+router.get("/nextflow-status", statusHandler);
+router.get("/nextflow/status", statusHandler);
 
 export default router;

@@ -1,249 +1,230 @@
-import type React from "react";
-import {
-  Pause,
-  CheckCircle,
-  XCircle,
-  X,
-  Clock,
-  Activity,
-  Cpu,
-  HardDrive,
-} from "lucide-react";
+
+import React, { useEffect, useMemo } from "react";
+import { X, Clock, Activity, CheckCircle, XCircle } from "lucide-react";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 
+/** Keep these exported for other modules */
 export interface NodeExecutionStatus {
   nodeId: string;
   nodeName: string;
   status: "waiting" | "running" | "success" | "error" | "skipped";
+  progress?: number;
   startTime?: Date;
   endTime?: Date;
-  progress?: number;
-  output?: string;
-  error?: string;
-  container?: string;
-  resources?: {
-    cpus: number;
-    memory: string;
-    actualCpuUsage?: number;
-    actualMemoryUsage?: number;
-  };
 }
 
 export interface WorkflowExecutionStatus {
   isRunning: boolean;
+  /** optional legacy fields */
+  completed?: number;
+  total?: number;
+  runtimeSeconds?: number;
+  /** new shape coming from the hook */
+  nodeStatuses?: NodeExecutionStatus[];
+  /** legacy shape used elsewhere */
+  nodes?: Record<string, NodeExecutionStatus>;
   startTime?: Date;
   endTime?: Date;
-  totalNodes: number;
-  completedNodes: number;
-  failedNodes: number;
-  runningNodes: number;
-  nodeStatuses: NodeExecutionStatus[];
-  currentStage?: string;
-  overallProgress: number;
-  estimatedTimeRemaining?: number;
+  error?: string | null;
 }
 
-interface ExecutionStatusPanelProps {
+type Props = {
   status: WorkflowExecutionStatus;
   nodes: Node<NodeData>[];
-  onCancel?: () => void;
-  onClose?: () => void;
+  onCancel: () => void;
+  onClose: () => void;
   isVisible: boolean;
-}
+};
 
-const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
+const statusIcon = (s: NodeExecutionStatus["status"]) => {
+  switch (s) {
+    case "running":
+      return <Activity className="w-4 h-4" aria-hidden />;
+    case "success":
+      return <CheckCircle className="w-4 h-4" aria-hidden />;
+    case "error":
+      return <XCircle className="w-4 h-4" aria-hidden />;
+    default:
+      return <Clock className="w-4 h-4" aria-hidden />;
+  }
+};
+
+const statusColor = (s: NodeExecutionStatus["status"]) => {
+  switch (s) {
+    case "running":
+      return "text-blue-600";
+    case "success":
+      return "text-green-600";
+    case "error":
+      return "text-red-600";
+    default:
+      return "text-gray-500";
+  }
+};
+
+const niceDuration = (seconds?: number) => {
+  if (!seconds || seconds < 0) return "0s";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  const parts: string[] = [];
+  if (h) parts.push(`${h}h`);
+  if (m) parts.push(`${m}m`);
+  if (s || parts.length === 0) parts.push(`${s}s`);
+  return parts.join(" ");
+};
+
+const toMap = (status: WorkflowExecutionStatus): Record<string, NodeExecutionStatus> => {
+  // Prefer explicit record
+  if (status.nodes && Object.keys(status.nodes).length) return status.nodes;
+  // Fall back to array form
+  const map: Record<string, NodeExecutionStatus> = {};
+  (status.nodeStatuses || []).forEach((n) => {
+    map[n.nodeId] = n;
+  });
+  return map;
+};
+
+const computeTotals = (status: WorkflowExecutionStatus, rows: NodeExecutionStatus[]) => {
+  const total = status.total || rows.length || 0;
+  let completed = status.completed;
+  if (completed == null) {
+    completed = rows.filter((r) => r.status === "success" || r.status === "error").length;
+  }
+  return { total, completed };
+};
+
+const ExecutionStatusPanel: React.FC<Props> = ({
   status,
+  nodes,
+  onCancel,
   onClose,
   isVisible,
 }) => {
   if (!isVisible) return null;
 
-  const getStatusIcon = (nodeStatus: NodeExecutionStatus["status"]) => {
-    switch (nodeStatus) {
-      case "waiting":
-        return <Clock className="w-4 h-4 text-gray-400" />;
-      case "running":
-        return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
-      case "success":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "error":
-        return <XCircle className="w-4 h-4 text-red-500" />;
-      case "skipped":
-        return <Pause className="w-4 h-4 text-gray-400" />;
-      default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+  // Derive a stable row list based on current canvas nodes
+  const rows: NodeExecutionStatus[] = useMemo(() => {
+    const byId = toMap(status);
+    const ordered = nodes.map((n) => {
+      const fallbackName = (n.data as any)?.label || n.id;
+      const s = byId[n.id];
+      if (s) {
+        // normalize 'skipped' -> 'waiting' for UI
+        const normalized = s.status === "skipped" ? "waiting" : s.status;
+        return { ...s, nodeName: s.nodeName || fallbackName, status: normalized };
+      }
+      return { nodeId: n.id, nodeName: fallbackName, status: "waiting" as const };
+    });
+    // include any that aren't present on canvas (defensive for legacy runs)
+    const extras = Object.values(byId).filter((x) => !ordered.find((r) => r.nodeId === x.nodeId));
+    return [...ordered, ...extras];
+  }, [nodes, status]);
+
+  // Prefer API-reported overallProgress if available; fallback to derived totals
+  const { total, completed } = useMemo(() => computeTotals(status, rows), [status, rows]);
+  const percent = useMemo(() => {
+    if (typeof (status as any).overallProgress === "number") {
+      const p = (status as any).overallProgress;
+      if (!Number.isNaN(p)) return Math.max(0, Math.min(100, Math.round(p)));
     }
-  };
+    const t = Math.max(1, total || 1);
+    const d = Math.min(t, Math.max(0, completed || 0));
+    return Math.round((d / t) * 100);
+  }, [status, total, completed]);
 
-  const formatDuration = (start?: Date, end?: Date) => {
-    if (!start) return "--";
-    const endTime = end || new Date();
-    const duration = Math.floor((endTime.getTime() - start.getTime()) / 1000);
-
-    if (duration < 60) return `${duration}s`;
-    if (duration < 3600)
-      return `${Math.floor(duration / 60)}m ${duration % 60}s`;
-    return `${Math.floor(duration / 3600)}h ${Math.floor(
-      (duration % 3600) / 60
-    )}m`;
-  };
-
-  const formatEstimatedTime = (seconds?: number) => {
-    if (!seconds) return "Unknown";
-    if (seconds < 60) return `~${Math.ceil(seconds)}s`;
-    if (seconds < 3600) return `~${Math.ceil(seconds / 60)}m`;
-    return `~${Math.ceil(seconds / 3600)}h`;
-  };
+  useEffect(() => {
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   return (
-    <div className="fixed bottom-4 right-4 bg-[#fcfcfc] border border-gray-600 rounded-lg shadow-lg w-96 max-h-96 overflow-hidden z-50">
-      {/* Header */}
-      <div className="bg-nextflow-green text-white px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          {status.isRunning ? (
-            <Activity className="w-5 h-5 animate-pulse" />
-          ) : (
-            <CheckCircle className="w-5 h-5" />
-          )}
-          <h3 className="font-semibold">
-            {status.isRunning ? "Workflow Running" : "Workflow Complete"}
-          </h3>
+    <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40">
+      <div className="w-full sm:max-w-2xl mx-auto bg-white rounded-xl shadow-2xl border border-gray-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b">
+          <div className="flex items-center gap-2">
+            <Activity className="w-5 h-5" aria-hidden />
+            <h2 className="font-semibold">
+              Execution Status <span className="text-xs text-purple-600">(NEW)</span>
+            </h2>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-1 rounded hover:bg-gray-100"
+            aria-label="Close execution status"
+            title="Close"
+          >
+            <X className="w-5 h-5" aria-hidden />
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Cancel button removed - cancellation not fully working */}
-          {onClose && (
+
+        {/* Progress */}
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between text-sm mb-1">
+            <span className="text-gray-600">
+              {status.isRunning ? "Running…" : status.error ? "Failed" : "Completed"}
+            </span>
+            <span className="font-medium">{percent}%</span>
+          </div>
+          <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-blue-600 transition-all duration-300"
+              style={{ width: `${percent}%` }}
+            />
+          </div>
+          <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+            <Clock className="w-3 h-3" aria-hidden /> {niceDuration(status.runtimeSeconds)}{status && (status as any).currentStage ? ` • ${(status as any).currentStage}` : ""}
+          </div>
+        </div>
+
+        {/* Node list */}
+        <div className="px-4 pb-4 max-h-80 overflow-auto">
+          <ul className="divide-y">
+            {rows.map((row) => (
+              <li key={row.nodeId} className="py-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className={["shrink-0", statusColor(row.status)].join(" ")}>
+                    {statusIcon(row.status)}
+                  </span>
+                  <span className="truncate text-sm">{row.nodeName}</span>
+                </div>
+                <div className="text-xs text-gray-500">
+                  {row.status === "running"
+                    ? "Running"
+                    : row.status === "success"
+                    ? "Success"
+                    : row.status === "error"
+                    ? "Error"
+                    : "Waiting"}
+                  {typeof row.progress === "number" ? ` • ${row.progress}%` : ""}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        {/* Footer actions */}
+        <div className="px-4 py-3 border-t flex items-center justify-end gap-2">
+          {status.isRunning ? (
+            <button
+              onClick={onCancel}
+              className="px-3 py-1.5 rounded-md border text-sm hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+          ) : (
             <button
               onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/20"
-              title="Close panel"
+              className="px-3 py-1.5 rounded-md bg-gray-900 text-white text-sm"
             >
-              <X className="w-4 h-4" />
+              Close
             </button>
           )}
         </div>
-      </div>
-
-      {/* Progress Overview */}
-      <div className="p-4 border-b border-gray-300">
-        <div className="grid grid-cols-2 gap-4 mb-3">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-nextflow-green">
-              {status.completedNodes}
-            </div>
-            <div className="text-xs text-gray-700">Completed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-500">
-              {status.runningNodes}
-            </div>
-            <div className="text-xs text-gray-700">Running</div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-2">
-          <div className="flex justify-between text-xs text-gray-800 mb-1">
-            <span>Progress</span>
-            <span>{Math.round(status.overallProgress)}%</span>
-          </div>
-          <div className="w-full bg-gray-300 rounded-full h-2">
-            <div
-              className="bg-nextflow-green h-2 rounded-full transition-all duration-300"
-              style={{ width: `${status.overallProgress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Time Information */}
-        <div className="flex justify-between text-xs text-gray-800">
-          <span>
-            Runtime: {formatDuration(status.startTime, status.endTime)}
-          </span>
-          {status.isRunning && status.estimatedTimeRemaining && (
-            <span>
-              ETA: {formatEstimatedTime(status.estimatedTimeRemaining)}
-            </span>
-          )}
-        </div>
-
-        {status.currentStage && (
-          <div className="mt-2 text-sm text-gray-800">
-            Current: {status.currentStage}
-          </div>
-        )}
-      </div>
-
-      {/* Node Status List */}
-      <div className="max-h-80 overflow-y-auto">
-        {status.nodeStatuses.map((nodeStatus) => (
-          <div
-            key={nodeStatus.nodeId}
-            className="p-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-100"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                {getStatusIcon(nodeStatus.status)}
-                <span className="font-medium text-sm truncate text-gray-800">
-                  {nodeStatus.nodeName}
-                </span>
-              </div>
-              <span className="text-xs text-gray-700">
-                {formatDuration(nodeStatus.startTime, nodeStatus.endTime)}
-              </span>
-            </div>
-
-            {/* Progress bar for running nodes */}
-            {nodeStatus.status === "running" &&
-              nodeStatus.progress !== undefined && (
-                <div className="mb-1">
-                  <div className="w-full bg-gray-300 rounded-full h-1">
-                    <div
-                      className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                      style={{ width: `${nodeStatus.progress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-            {/* Container and resource info */}
-            {nodeStatus.container && (
-              <div className="text-xs text-gray-700 mb-1">
-                📦 {nodeStatus.container}
-              </div>
-            )}
-
-            {nodeStatus.resources && (
-              <div className="flex items-center gap-3 text-xs text-gray-700">
-                <div className="flex items-center gap-1">
-                  <Cpu className="w-3 h-3" />
-                  <span>{nodeStatus.resources.cpus} CPU</span>
-                  {nodeStatus.resources.actualCpuUsage && (
-                    <span className="text-blue-500">
-                      ({nodeStatus.resources.actualCpuUsage}%)
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <HardDrive className="w-3 h-3" />
-                  <span>{nodeStatus.resources.memory}</span>
-                  {nodeStatus.resources.actualMemoryUsage && (
-                    <span className="text-blue-500">
-                      ({nodeStatus.resources.actualMemoryUsage}%)
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Error message */}
-            {nodeStatus.status === "error" && nodeStatus.error && (
-              <div className="text-xs text-red-600 mt-1 bg-red-50 p-1 rounded">
-                {nodeStatus.error}
-              </div>
-            )}
-          </div>
-        ))}
       </div>
     </div>
   );

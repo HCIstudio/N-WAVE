@@ -15,8 +15,10 @@ dotenv.config();
 // Initialize Express app
 const app: Express = express();
 
-// Connect to Database
-connectDB(); // Uncommented
+// Connect to Database (non-fatal if it fails)
+connectDB().catch((err) => {
+  console.error("Initial MongoDB connection failed:", err);
+});
 
 // Define allowed origins for CORS
 const allowedOrigins = ["http://localhost:5173"]; // Add your frontend origin
@@ -50,7 +52,6 @@ app.use("/api/files", fileRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/execute", executeRoutes);
 app.use("/api/process", processRoutes);
-
 
 const PORT = process.env.PORT || 5001;
 
