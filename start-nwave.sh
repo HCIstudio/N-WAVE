@@ -4,20 +4,14 @@ set -euo pipefail
 echo "=== N-WAVE local bootstrap (Unix) ==="
 echo
 
-# --- helpers -------------------------------------------------------------
-
 check_command() {
   command -v "$1" >/dev/null 2>&1
 }
-
-# --- argument parsing ----------------------------------------------------
 
 SKIP_INSTALL=0
 if [[ "${1-}" == "--skip-install" ]]; then
   SKIP_INSTALL=1
 fi
-
-# --- checks --------------------------------------------------------------
 
 ensure_node() {
   echo "Checking Node.js..."
@@ -103,8 +97,8 @@ EOF
 
   if [[ $rc -ne 0 ]]; then
     echo "ERROR: No service is listening on localhost:27017. MongoDB does not seem to be running."
-    echo "Make sure MongoDB Community Server is installed and its service/daemon is started."
-    read -p "Press Enter to exit..." || true
+    echo "Make sure MongoDB Community Server is installed and its service is started."
+    read -p "Press Enter to exit" || true
     exit 1
   fi
 
@@ -132,7 +126,6 @@ ensure_backend_env() {
   fi
 }
 
-# --- app runner ----------------------------------------------------------
 
 run_app() {
   local name="$1"
@@ -159,29 +152,24 @@ run_app() {
     echo "Skipping dependency installation for $name (--skip-install set)."
   fi
 
-  echo "Starting $name in background..."
+  echo "Starting $name in background"
   (
     cd "$dir"
     eval "$start_cmd"
   ) &
 }
 
-# --- main ---------------------------------------------------------------
-
 ensure_node
 ensure_pnpm
 ensure_mongo
 ensure_backend_env
 
-# Always use pnpm now
 FRONTEND_INSTALL="pnpm install"
 BACKEND_INSTALL="pnpm install"
 
-# Adjust if your scripts are different, but keep pnpm
 FRONTEND_START="pnpm dev"
 BACKEND_START="pnpm dev"
 
-# Adjust directories if needed
 run_app "Backend"  "backend"  "$BACKEND_INSTALL"  "$BACKEND_START"
 run_app "Frontend" "frontend" "$FRONTEND_INSTALL" "$FRONTEND_START"
 
