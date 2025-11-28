@@ -2,7 +2,7 @@ Param(
     [switch]$SkipInstall
 )
 
-Write-Host "=== N-WAVE local bootstrap ===`n"
+Write-Host "=== N-WAVE local bootstrap (Windows) ===`n"
 
 function Test-Command {
     param([string]$Name)
@@ -31,65 +31,75 @@ function Ensure-Node {
     }
 }
 
-function Ensure-NpmOrPnpm {
-    Write-Host "`nChecking npm / pnpm..."
-    $hasNpm = Test-Command "npm"
-    $hasPnpm = Test-Command "pnpm"
+function Ensure-Pnpm {
+    Write-Host "`nChecking pnpm..."
+    if (-not (Test-Command "pnpm")) {
+        Write-Error "pnpm is not installed. Install it with 'npm install -g pnpm' or see https://pnpm.io/installation"
+        exit 1
+    }
+    Write-Host "pnpm available."
+}
 
-    if (-not $hasNpm -and -not $hasPnpm) {
-        Write-Error "Neither npm nor pnpm is installed. Please install Node.js (which includes npm), or install pnpm manually."
+function Ensure-BackendEnv {
+    Write-Host "`nEnsuring backend .env exists..."
+
+    $backendDir = "backend"
+    $envPath = Join-Path $backendDir ".env"
+
+    if (-not (Test-Path $backendDir)) {
+        Write-Error "Backend directory '$backendDir' not found. Adjust paths in start-nwave.ps1."
         exit 1
     }
 
-    if (-not $hasPnpm -and $hasNpm) {
-        Write-Host "pnpm not found. You can install it later with: npm install -g pnpm"
-    }
-
-    if ($hasPnpm) {
-        Write-Host "pnpm available."
-    } elseif ($hasNpm) {
-        Write-Host "Using npm."
+    if (-not (Test-Path $envPath)) {
+        Write-Host "Creating default backend .env at $envPath"
+        "MONGODB_URI=mongodb://localhost:27017/nwave" | Out-File -FilePath $envPath -Encoding UTF8
+    } else {
+        Write-Host ".env already exists at $envPath (leaving it as-is)."
     }
 }
 
 function Ensure-Mongo {
-    Write-Host "`nChecking MongoDB..."
+    Write-Host "`nChecking MongoDB (port check on localhost:27017)..."
 
-    $hasMongosh = Test-Command "mongosh"
-    $hasMongo = Test-Command "mongo"
+    # Use Test-NetConnection if available (PS 5+)
+    if (Get-Command "Test-NetConnection" -ErrorAction SilentlyContinue) {
+        $result = Test-NetConnection -ComputerName "localhost" -Port 27017 -WarningAction SilentlyContinue
 
-    if (-not $hasMongosh -and -not $hasMongo) {
-        Write-Warning "MongoDB shell not found (mongosh/mongo)."
-        Write-Warning "Make sure MongoDB server is installed and running on localhost:27017."
-        Write-Warning "Download MongoDB: https://www.mongodb.com/try/download/community"
-        return
+        if (-not $result.TcpTestSucceeded) {
+            Write-Error "No service is listening on localhost:27017. MongoDB does not seem to be running."
+            Write-Error "Make sure MongoDB Community Server is installed and its service is started."
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
+
+        Write-Host "Port 27017 is open on localhost (assuming MongoDB is running)."
     }
-
-    # Try to start MongoDB service if it exists
-    $service = Get-Service -Name "MongoDB" -ErrorAction SilentlyContinue
-    if ($service -and $service.Status -ne "Running") {
-        Write-Host "MongoDB service found but not running. Attempting to start..."
+    else {
+        # Fallback: very basic check using .NET sockets
         try {
-            Start-Service "MongoDB"
-            Write-Host "MongoDB service started."
-        } catch {
-            Write-Warning "Failed to start MongoDB service automatically. Please start it manually."
-        }
-    }
+            $client = New-Object System.Net.Sockets.TcpClient
+            $async  = $client.BeginConnect("localhost", 27017, $null, $null)
+            $wait   = $async.AsyncWaitHandle.WaitOne(2000, $false)  # 2s timeout
 
-    # Quick connectivity test (ping admin DB)
-    try {
-        if ($hasMongosh) {
-            mongosh "mongodb://localhost:27017/admin" --eval "db.runCommand({ ping: 1 })" | Out-Null
-        } else {
-            mongo "mongodb://localhost:27017/admin" --eval "db.runCommand({ ping: 1 })" | Out-Null
+            if (-not $wait -or -not $client.Connected) {
+                Write-Error "No service is listening on localhost:27017. MongoDB does not seem to be running."
+                Write-Error "Make sure MongoDB Community Server is installed and its service is started."
+                Read-Host "Press Enter to exit"
+                exit 1
+            }
+
+            $client.Close()
+            Write-Host "Port 27017 is open on localhost (assuming MongoDB is running)."
         }
-        Write-Host "MongoDB connection OK (localhost:27017)."
-    } catch {
-        Write-Warning "Could not connect to MongoDB on localhost:27017."
-        Write-Warning "Make sure MongoDB is installed, configured, and running."
+        catch {
+            Write-Error "Failed to connect to localhost:27017. MongoDB does not seem to be running."
+            Read-Host "Press Enter to exit"
+            exit 1
+        }
     }
 }
+
 
 function Run-App {
     param(
@@ -106,21 +116,23 @@ function Run-App {
 
     Write-Host "`n=== $Name ==="
 
-    # 1) Install dependencies inside that directory (if not skipping)
+    # Install dependencies in that directory
     Push-Location $WorkingDirectory
     if (-not $SkipInstall) {
         Write-Host "Installing dependencies for $Name..."
         Invoke-Expression $InstallCommand
+        if ($LASTEXITCODE -ne 0) {
+            Write-Error "Dependency installation for $Name failed with exit code $LASTEXITCODE."
+            Pop-Location
+            exit 1
+        }
     } else {
         Write-Host "Skipping dependency installation for $Name (SkipInstall set)."
     }
     Pop-Location
 
-    # 2) Start the app in a new PowerShell window *with that folder as WorkingDirectory*
     Write-Host "Starting $Name in a new PowerShell window..."
-    $psExe = (Get-Process -Id $PID).Path  # current powershell/pwsh path
-
-    # IMPORTANT: no more `cd frontend` here – we just set -WorkingDirectory
+    $psExe = (Get-Process -Id $PID).Path
     $commandLine = "$StartCommand; Read-Host 'Press Enter to close this window'"
 
     Start-Process $psExe `
@@ -128,27 +140,20 @@ function Run-App {
         -ArgumentList "-NoExit", "-Command", $commandLine
 }
 
-
 # === Main ===
 
 Ensure-Node
-Ensure-NpmOrPnpm
+Ensure-Pnpm
+Ensure-BackendEnv
 Ensure-Mongo
 
-# Decide whether to use pnpm or npm
-$usePnpm = Test-Command "pnpm"
-
-if ($usePnpm) {
-    $frontendInstall = "pnpm install"
-    $backendInstall  = "pnpm install"
-} else {
-    $frontendInstall = "npm install"
-    $backendInstall  = "npm install"
-}
+# Always use pnpm now
+$frontendInstall = "pnpm install"
+$backendInstall  = "pnpm install"
 
 # Adjust commands if your package.json uses different scripts
-$frontendStart = "npm run dev"
-$backendStart  = "npm run dev"
+$frontendStart = "pnpm dev"
+$backendStart  = "pnpm dev"
 
 Run-App -Name "Backend" -WorkingDirectory "backend" -InstallCommand $backendInstall -StartCommand $backendStart
 Run-App -Name "Frontend" -WorkingDirectory "frontend" -InstallCommand $frontendInstall -StartCommand $frontendStart

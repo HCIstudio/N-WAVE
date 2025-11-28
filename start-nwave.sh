@@ -24,6 +24,7 @@ ensure_node() {
 
   if ! check_command node; then
     echo "ERROR: Node.js is not installed. Please install Node.js v18+ from https://nodejs.org"
+    read -p "Press Enter to exit..." || true
     exit 1
   fi
 
@@ -33,72 +34,101 @@ ensure_node() {
 
   if [[ "$major" -lt 18 ]]; then
     echo "ERROR: Node.js v18+ required, found $ver_raw"
+    read -p "Press Enter to exit..." || true
     exit 1
   fi
 
   echo "Node.js version $ver_raw OK."
 }
 
-ensure_npm_or_pnpm() {
+ensure_pnpm() {
   echo
-  echo "Checking npm / pnpm..."
+  echo "Checking pnpm..."
 
-  local has_npm=0
-  local has_pnpm=0
+  if check_command pnpm; then
+    echo "pnpm available."
+    return
+  fi
 
-  if check_command npm;  then has_npm=1;  fi
-  if check_command pnpm; then has_pnpm=1; fi
+  echo "pnpm not found. Attempting to install globally using npm..."
 
-  if [[ $has_npm -eq 0 && $has_pnpm -eq 0 ]]; then
-    echo "ERROR: Neither npm nor pnpm is installed."
-    echo "Install Node.js (which includes npm), or install pnpm manually."
+  if ! check_command npm; then
+    echo "ERROR: npm is not available, cannot install pnpm automatically."
+    echo "Please install pnpm manually: https://pnpm.io/installation"
+    read -p "Press Enter to exit..." || true
     exit 1
   fi
 
-  if [[ $has_pnpm -eq 1 ]]; then
-    echo "pnpm available."
-  fi
-
-  if [[ $has_pnpm -eq 0 && $has_npm -eq 1 ]]; then
-    echo "pnpm not found. (Optional) You can later run: npm install -g pnpm"
-    echo "Using npm for installs."
+  if npm install -g pnpm; then
+    echo "pnpm installed successfully."
+  else
+    echo "ERROR: Failed to install pnpm via npm."
+    echo "Please install pnpm manually: https://pnpm.io/installation"
+    read -p "Press Enter to exit..." || true
+    exit 1
   fi
 }
 
 ensure_mongo() {
   echo
-  echo "Checking MongoDB..."
+  echo "Checking MongoDB (port check on localhost:27017)..."
 
-  local has_mongosh=0
-  local has_mongo=0
-
-  if check_command mongosh; then has_mongosh=1; fi
-  if check_command mongo;   then has_mongo=1;   fi
-
-  if [[ $has_mongosh -eq 0 && $has_mongo -eq 0 ]]; then
-    echo "WARNING: MongoDB client (mongosh/mongo) not found in PATH."
-    echo "Make sure MongoDB server is installed and running on localhost:27017."
-    echo "Download: https://www.mongodb.com/try/download/community"
-    return
+  # Prefer python3 for a short-timeout port check
+  if check_command python3; then
+    python3 - << 'EOF'
+import socket, sys
+s = socket.socket()
+s.settimeout(2)
+try:
+    s.connect(("localhost", 27017))
+except Exception:
+    sys.exit(1)
+else:
+    s.close()
+    sys.exit(0)
+EOF
+    rc=$?
+  elif check_command nc; then
+    # fallback: netcat if available
+    nc -z localhost 27017 >/dev/null 2>&1
+    rc=$?
+  else
+    # last resort: /dev/tcp, may block longer on some systems
+    if bash -c '>/dev/tcp/localhost/27017' 2>/dev/null; then
+      rc=0
+    else
+      rc=1
+    fi
   fi
 
-  # simple ping test
-  local ok=0
-  if [[ $has_mongosh -eq 1 ]]; then
-    if mongosh "mongodb://localhost:27017/admin" --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1; then
-      ok=1
-    fi
-  else
-    if mongo "mongodb://localhost:27017/admin" --eval 'db.runCommand({ ping: 1 })' >/dev/null 2>&1; then
-      ok=1
-    fi
+  if [[ $rc -ne 0 ]]; then
+    echo "ERROR: No service is listening on localhost:27017. MongoDB does not seem to be running."
+    echo "Make sure MongoDB Community Server is installed and its service/daemon is started."
+    read -p "Press Enter to exit..." || true
+    exit 1
   fi
 
-  if [[ $ok -eq 1 ]]; then
-    echo "MongoDB connection OK (localhost:27017)."
+  echo "Port 27017 is open on localhost (assuming MongoDB is running)."
+}
+
+ensure_backend_env() {
+  echo
+  echo "Ensuring backend .env exists..."
+
+  local backend_dir="backend"
+  local env_file="${backend_dir}/.env"
+
+  if [[ ! -d "$backend_dir" ]]; then
+    echo "ERROR: Backend directory '$backend_dir' not found. Adjust paths in start-nwave.sh."
+    read -p "Press Enter to exit..." || true
+    exit 1
+  fi
+
+  if [[ ! -f "$env_file" ]]; then
+    echo "Creating default backend .env at $env_file"
+    printf 'MONGODB_URI=mongodb://localhost:27017/nwave\n' > "$env_file"
   else
-    echo "WARNING: Could not connect to MongoDB on localhost:27017."
-    echo "Make sure MongoDB is installed, configured, and running."
+    echo ".env already exists at $env_file (leaving it as-is)."
   fi
 }
 
@@ -112,6 +142,7 @@ run_app() {
 
   if [[ ! -d "$dir" ]]; then
     echo "ERROR: $name directory '$dir' not found. Adjust paths in start-nwave.sh."
+    read -p "Press Enter to exit..." || true
     exit 1
   fi
 
@@ -138,21 +169,17 @@ run_app() {
 # --- main ---------------------------------------------------------------
 
 ensure_node
-ensure_npm_or_pnpm
+ensure_pnpm
 ensure_mongo
+ensure_backend_env
 
-# Choose package manager
-if check_command pnpm; then
-  FRONTEND_INSTALL="pnpm install"
-  BACKEND_INSTALL="pnpm install"
-else
-  FRONTEND_INSTALL="npm install"
-  BACKEND_INSTALL="npm install"
-fi
+# Always use pnpm now
+FRONTEND_INSTALL="pnpm install"
+BACKEND_INSTALL="pnpm install"
 
-# Adjust these if your scripts are different
-FRONTEND_START="npm run dev"
-BACKEND_START="npm run dev"
+# Adjust if your scripts are different, but keep pnpm
+FRONTEND_START="pnpm dev"
+BACKEND_START="pnpm dev"
 
 # Adjust directories if needed
 run_app "Backend"  "backend"  "$BACKEND_INSTALL"  "$BACKEND_START"
