@@ -8,7 +8,7 @@ declare global {
   /*Resource Management Modal*/
 }
 import type React from "react";
-import { useEffect, type FC, type PropsWithChildren } from "react";
+import { type FC, type PropsWithChildren } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {

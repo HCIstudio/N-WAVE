@@ -427,16 +427,20 @@ export const generateNextflowScript = (
 
         executionOrder.push(node.id);
 
+        const normalizeToPathChannel = (channelExpr: string): string =>
+          channelExpr +
+          '.map { item -> file(item instanceof String ? "${params.inputdir}/${item}" : item) }';
+        const outputInvocationArg =
+          selectedFileName === "all"
+            ? `${normalizeToPathChannel(upstreamChannelName)}.collect()`
+            : normalizeToPathChannel(upstreamChannelName);
+
         // Add process call in workflow instead of view statement (to be executed after channel definitions)
         processInvocations.push(
           `    // Save output from: ${node.data.label || "Output"}\n`
         );
         processInvocations.push(
-          `    ${processName}(${
-            selectedFileName === "all"
-              ? upstreamChannelName + ".collect()"
-              : upstreamChannelName
-          })\n`
+          `    ${processName}(${outputInvocationArg})\n`
         );
 
         // Increment counter for next output display node
@@ -486,35 +490,18 @@ export const generateNextflowScript = (
       return;
     }
 
-    // Parse variable definition (left side of =) - improved regex
-    const definitionMatch = invocation.match(/^\s*(\w+(?:_\w+)*)\s*=/);
-    if (definitionMatch) {
-      const varName = definitionMatch[1];
-      variableDefinitions.set(varName, invocation);
-    }
+    const { definitions, usages } = parseInvocation(invocation);
 
-    // Parse variable usage (right side of =, inside parentheses) - improved regex
-    const functionCallMatch = invocation.match(/=\s*\w+\(([^)]+)\)/);
-    if (functionCallMatch) {
-      const argumentsStr = functionCallMatch[1];
-      // Find variable names in the arguments
-      const variableMatches = argumentsStr.match(/\b(\w+(?:_\w+)*)\b/g);
-      if (variableMatches) {
-        variableMatches.forEach((usedVar) => {
-          // Only track variables that look like channel names (contain underscores or match our patterns)
-          if (
-            usedVar.includes("_") ||
-            usedVar.startsWith("ch_") ||
-            usedVar.startsWith("node_")
-          ) {
-            if (!variableUsages.has(usedVar)) {
-              variableUsages.set(usedVar, []);
-            }
-            variableUsages.get(usedVar)!.push(invocation);
-          }
-        });
+    definitions.forEach((varName) => {
+      variableDefinitions.set(varName, invocation);
+    });
+
+    usages.forEach((usedVar) => {
+      if (!variableUsages.has(usedVar)) {
+        variableUsages.set(usedVar, []);
       }
-    }
+      variableUsages.get(usedVar)!.push(invocation);
+    });
   });
 
   // Add invocations in dependency order - variables must be defined before used
@@ -534,29 +521,13 @@ export const generateNextflowScript = (
 
     processing.add(invocation);
 
-    // Parse what variables this invocation uses
-    const functionCallMatch = invocation.match(/=\s*\w+\(([^)]+)\)/);
-    if (functionCallMatch) {
-      const argumentsStr = functionCallMatch[1];
-      const variableMatches = argumentsStr.match(/\b(\w+(?:_\w+)*)\b/g);
-
-      if (variableMatches) {
-        variableMatches.forEach((usedVar) => {
-          // Only check dependencies for variables that look like channel names
-          if (
-            usedVar.includes("_") ||
-            usedVar.startsWith("ch_") ||
-            usedVar.startsWith("node_")
-          ) {
-            const definingInvocation = variableDefinitions.get(usedVar);
-            // If this invocation uses a variable, make sure that variable is defined first
-            if (definingInvocation && !processed.has(definingInvocation)) {
-              addInvocation(definingInvocation);
-            }
-          }
-        });
+    getInvocationArguments(invocation).forEach((usedVar) => {
+      const definingInvocation = variableDefinitions.get(usedVar);
+      // If this invocation uses a variable, make sure that variable is defined first
+      if (definingInvocation && !processed.has(definingInvocation)) {
+        addInvocation(definingInvocation);
       }
-    }
+    });
 
     processing.delete(invocation);
 
@@ -577,6 +548,25 @@ export const generateNextflowScript = (
   processInvocations.forEach((invocation) => {
     if (!invocation.trim().startsWith("//") && invocation.trim() !== "") {
       addInvocation(invocation);
+    }
+  });
+
+  // Fail fast when an invocation uses an unresolved variable
+  variableUsages.forEach((dependentInvocations, usedVar) => {
+    if (!variableDefinitions.has(usedVar)) {
+      if (usedVar.startsWith("ch_") || usedVar.startsWith("node_")) {
+        console.warn(
+          `Treating unresolved variable "${usedVar}" as workflow input. Used in: ${dependentInvocations.join(
+            " | "
+          )}`
+        );
+        return;
+      }
+
+      throw new Error(
+        `Unable to resolve dependency "${usedVar}" in generated workflow. ` +
+          `Used in invocation(s): ${dependentInvocations.join(" | ")}`
+      );
     }
   });
 
@@ -605,6 +595,105 @@ export const generateNextflowScript = (
 
   return finalScript;
 };
+
+function parseInvocation(invocation: string): {
+  definitions: string[];
+  usages: string[];
+} {
+  const definitions: string[] = [];
+  const usages: string[] = [];
+
+  const trimmed = invocation.trim();
+  if (trimmed === "" || trimmed.startsWith("//")) {
+    return { definitions, usages };
+  }
+
+  // Tuple assignment: `(a, b) = process(...)`
+  const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
+  if (tupleDefinitionMatch) {
+    tupleDefinitionMatch[1]
+      .split(",")
+      .map((name) => sanitizeVarName(name.trim()))
+      .filter(Boolean)
+      .filter(
+        (name) =>
+          name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")
+      )
+      .forEach((name) => definitions.push(name));
+  } else {
+    // Single assignment: `var = process(...)`
+    const definitionMatch = trimmed.match(
+      /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/
+    );
+    if (definitionMatch) {
+      const varName = sanitizeVarName(definitionMatch[1]);
+      if (
+        varName &&
+        (varName.includes("_") || varName.startsWith("ch_") || varName.startsWith("node_"))
+      ) {
+        definitions.push(varName);
+      }
+    }
+  }
+
+  getInvocationArguments(invocation).forEach((arg) => {
+    if (!usages.includes(arg)) usages.push(arg);
+  });
+
+  return { definitions, usages };
+}
+
+function getInvocationArguments(invocation: string): string[] {
+  const trimmed = invocation.trim();
+  if (trimmed === "" || trimmed.startsWith("//")) {
+    return [];
+  }
+
+  const assignmentIndex = trimmed.indexOf("=");
+  let openIndex = trimmed.indexOf("(", assignmentIndex + 1);
+  if (openIndex === -1) return [];
+
+  let depth = 0;
+  let closeIndex = -1;
+  for (let i = openIndex; i < trimmed.length; i++) {
+    const char = trimmed.charAt(i);
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        closeIndex = i;
+        break;
+      }
+    }
+  }
+
+  if (closeIndex === -1 || closeIndex <= openIndex + 1) {
+    return [];
+  }
+
+  const argsBlock = trimmed.substring(openIndex + 1, closeIndex);
+  const candidates = argsBlock.match(
+    /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g
+  );
+  if (!candidates) return [];
+
+  const args: string[] = [];
+  candidates.forEach((candidate) => {
+    const name = sanitizeVarName(candidate);
+    if (!name) return;
+    if (
+      (name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")) &&
+      !args.includes(name)
+    ) {
+      args.push(name);
+    }
+  });
+
+  return args;
+}
 
 function sanitizeVarName(name: string): string {
   if (typeof name !== "string") return "";

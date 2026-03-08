@@ -186,9 +186,6 @@ const FileInputPanel: React.FC<{
   });
 
   const handleRemoveFile = async (fileName: string) => {
-    // Find the file to remove (for backend deletion)
-    const fileToRemove = nodeFiles.find((f) => f.name === fileName);
-
     const newFiles = nodeFiles.filter((f) => f.name !== fileName);
     updateNodeData(node.id, {
       files: newFiles,

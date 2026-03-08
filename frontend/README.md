@@ -38,6 +38,16 @@ This is the frontend for **N-WAVE: Nextflow Workflow Authoring and Visualization
    pnpm build
    ```
 
+## Docker
+
+From the repository root, start the full application with:
+
+```bash
+docker compose up -d --build
+```
+
+Frontend is available at `http://localhost:5173`.
+
 ## Feature Requests & Contribution
 
 - All feature requests, contribution guidelines, and roadmap are managed in the [backend README](../backend/README.md). Please refer to it for project direction and how to get involved.

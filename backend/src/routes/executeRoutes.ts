@@ -6,7 +6,7 @@ import {
   cancelExecution,
 } from "../controllers/executeController";
 
-const router = Router();
+const router: Router = Router();
 
 router.post("/execute", executeProcess);
 router.post("/cancel", cancelExecution);

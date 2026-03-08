@@ -1,4 +1,4 @@
-import express from "express";
+import express, { Router } from "express";
 import {
   saveWorkflow,
   getWorkflowById,
@@ -7,7 +7,7 @@ import {
   deleteWorkflow,
 } from "../controllers/workflowController";
 
-const router = express.Router();
+const router: Router = express.Router();
 
 // @route   POST /api/workflows
 // @desc    Save a new workflow

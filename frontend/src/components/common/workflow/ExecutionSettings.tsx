@@ -12,7 +12,6 @@ import {
   ChevronDown,
   ChevronRight,
   HelpCircle,
-  UploadCloud,
 } from "lucide-react";
 import { MemoryInput } from "../forms";
 
@@ -119,18 +118,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     { value: "ignore", label: "Ignore errors and continue" },
     { value: "retry", label: "Retry failed tasks" },
     { value: "finish", label: "Finish running tasks then stop" },
-  ];
-
-  const memoryOptions = [
-    "1 GB",
-    "2 GB",
-    "4 GB",
-    "5 GB",
-    "8 GB",
-    "16 GB",
-    "32 GB",
-    "64 GB",
-    "128 GB",
   ];
 
   const tabs = [
