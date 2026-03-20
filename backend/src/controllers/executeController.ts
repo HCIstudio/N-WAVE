@@ -76,8 +76,9 @@ export const executeProcess = async (
 
   // If nextflowScript is provided, execute as a full Nextflow workflow
   if (nextflowScript) {
+    const normalizedNextflowScript = stabilizeWorkflowInvocations(nextflowScript);
     await executeNextflowWorkflow(
-      nextflowScript,
+      normalizedNextflowScript,
       workflowName,
       executionSettings || {
         useDocker,
@@ -274,16 +275,20 @@ const executeNextflowWorkflow = async (
       if (executionSettings.useDocker) {
         // Enable Docker for individual process containers (not global container)
         // This allows each process to use its own container directive
-        nextflowCmd = `${envVars} nextflow run ${relativeScriptPath} -with-docker --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
+        nextflowCmd = `${envVars} nextflow -log nextflow/.nextflow.log run ./${relativeScriptPath} -with-docker --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
       } else {
-        nextflowCmd = `${envVars} nextflow run ${relativeScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
+        nextflowCmd = `${envVars} nextflow -log nextflow/.nextflow.log run ./${relativeScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
       }
     } else {
-      // Use Docker Nextflow container - convert paths to forward slashes
+      // Use Docker Nextflow container via backend container volumes.
+      // With Docker socket mounting, host Docker cannot mount container-internal
+      // paths directly, so we share backend volumes into the Nextflow container.
+      const backendContainerName =
+        process.env.BACKEND_CONTAINER_NAME || "nwave-backend";
       const dockerMainOutputDir = mainOutputDir.replace(/\\/g, "/");
       const dockerScriptPath = relativeScriptPath.replace(/\\/g, "/");
-      // Simple Docker execution - everything runs in the single Nextflow container
-      nextflowCmd = `docker run --rm -e NXF_LOG_FILE=nextflow/.nextflow.log -v "${dockerMainOutputDir}:/workspace" -w /workspace nextflow/nextflow:${nextflowVersion} nextflow run ${dockerScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
+      // Run Nextflow in a separate container but inside the same mounted volumes.
+      nextflowCmd = `docker run --rm --volumes-from ${backendContainerName} -e NXF_LOG_FILE=nextflow/.nextflow.log -w "${dockerMainOutputDir}" nextflow/nextflow:${nextflowVersion} nextflow -log nextflow/.nextflow.log run ./${dockerScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
     }
 
     console.log(`Executing: ${nextflowCmd}`);
@@ -516,6 +521,292 @@ export const checkDockerStatus = (req: Request, res: Response): void => {
       });
     });
   });
+};
+
+// New endpoint for cancelling execution
+const stabilizeWorkflowInvocations = (script: string): string => {
+  const lines = script.split(/\r?\n/);
+  const workflowStart = lines.findIndex((line) => line.trim() === "workflow {");
+  const workflowEnd = lines.lastIndexOf("}");
+  if (workflowStart === -1 || workflowEnd <= workflowStart) return script;
+
+  const header = lines.slice(0, workflowStart + 1);
+  const workflowBody = lines.slice(workflowStart + 1, workflowEnd);
+  const footer = lines.slice(workflowEnd);
+
+  const isTrackedVariable = (name: string): boolean =>
+    name.startsWith("ch_") || name.startsWith("node_");
+
+  const variableDefinitions = new Map<string, string>();
+
+  // Variables defined outside workflow scope (e.g. Channel declarations) are valid
+  // inputs for workflow invocations and must be included in the dependency graph.
+  lines
+    .slice(0, workflowStart)
+    .forEach((line) => {
+      const trimmed = line.trim();
+      const declarationMatch = trimmed.match(
+        /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*.+$/
+      );
+      if (!declarationMatch) return;
+
+      const declaredName = declarationMatch[1] ?? "";
+      const declaration = sanitizeVarName(declaredName);
+      if (declaration && isTrackedVariable(declaration)) {
+        variableDefinitions.set(declaration, line);
+      }
+    });
+
+  const invocationRecords: Array<{
+    text: string;
+    definitions: string[];
+    usages: string[];
+    isCommentOrEmpty: boolean;
+  }> = [];
+  const otherLines: string[] = [];
+  const headerDefinedVariables = new Set(variableDefinitions.keys());
+  let skipNextChainedLine = false;
+  let skipDuplicateChannelLine = false;
+
+  const invocationRegex = /\(.*\)/;
+
+  workflowBody.forEach((line) => {
+    const trimmed = line.trim();
+    if (skipDuplicateChannelLine) {
+      if (trimmed.startsWith(".")) {
+        return;
+      }
+      skipDuplicateChannelLine = false;
+    }
+
+    if (trimmed === "" || trimmed.startsWith("//")) {
+      otherLines.push(line);
+      if (!trimmed) {
+        skipNextChainedLine = false;
+      }
+      return;
+    }
+
+    if (skipNextChainedLine) {
+      if (trimmed.startsWith(".")) {
+        return;
+      }
+      skipNextChainedLine = false;
+    }
+
+    const isChannelDeclaration = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*Channel\./.test(
+      trimmed
+    );
+    if (isChannelDeclaration) {
+      skipDuplicateChannelLine = true;
+      return;
+    }
+
+    const { definitions, usages } = parseWorkflowInvocation(line);
+    if (
+      definitions.length > 0 ||
+      usages.length > 0 ||
+      invocationRegex.test(trimmed)
+    ) {
+      invocationRecords.push({
+        text: line,
+        definitions,
+        usages,
+        isCommentOrEmpty: false,
+      });
+    } else {
+      otherLines.push(line);
+    }
+  });
+
+  const variableUsages = new Map<string, string[]>();
+
+  invocationRecords.forEach((record) => {
+    record.definitions.forEach((definition) => {
+      if (isTrackedVariable(definition)) {
+        variableDefinitions.set(definition, record.text);
+      }
+    });
+    record.usages.forEach((usedVar) => {
+      if (!isTrackedVariable(usedVar)) return;
+      if (!variableUsages.has(usedVar)) {
+        variableUsages.set(usedVar, []);
+      }
+      variableUsages.get(usedVar)!.push(record.text);
+    });
+  });
+
+  const sortedInvocations: string[] = [];
+  const processed = new Set<string>();
+  const processing = new Set<string>();
+
+  const addInvocation = (invocationText: string): void => {
+    if (processed.has(invocationText)) return;
+    if (processing.has(invocationText)) return;
+
+    processing.add(invocationText);
+    const record = invocationRecords.find((r) => r.text === invocationText);
+    if (record) {
+      record.usages.forEach((usedVar) => {
+        const definingInvocation = variableDefinitions.get(usedVar);
+        if (definingInvocation && !processed.has(definingInvocation)) {
+          addInvocation(definingInvocation);
+        }
+      });
+    }
+
+    processing.delete(invocationText);
+    if (!sortedInvocations.includes(invocationText)) {
+      sortedInvocations.push(invocationText);
+    }
+    processed.add(invocationText);
+  };
+
+  invocationRecords.forEach((record) => addInvocation(record.text));
+
+  variableUsages.forEach((dependents, variable) => {
+    if (!variableDefinitions.has(variable)) {
+      console.warn(
+        `Could not resolve workflow variable "${variable}" used in: ${dependents.join(
+          " | "
+        )}. Treating as external input.`
+      );
+    }
+  });
+
+  const workflowOutput = [
+    ...otherLines.filter(
+      (line) => line.trim() === "" || line.trim().startsWith("//")
+    ),
+    ...sortedInvocations,
+  ];
+  const workflowOutputLines = workflowOutput.join("\n").split(/\r?\n/);
+
+  const sanitizedWorkflowOutput: string[] = [];
+  let skipChannelDeclarationContinuation = false;
+  for (const line of workflowOutputLines) {
+    const trimmed = line.trim();
+
+    if (skipChannelDeclarationContinuation) {
+      if (trimmed.startsWith(".")) {
+        continue;
+      }
+      skipChannelDeclarationContinuation = false;
+    }
+
+    const isChannelDeclaration =
+      /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=\s*Channel\./.test(trimmed);
+    const isChannelFromList = trimmed.includes("Channel.fromList(");
+    if (isChannelDeclaration || isChannelFromList) {
+      skipChannelDeclarationContinuation = true;
+      continue;
+    }
+
+    if (trimmed.startsWith(".")) {
+      continue;
+    }
+
+    sanitizedWorkflowOutput.push(line);
+  }
+
+  return [...header, ...sanitizedWorkflowOutput, ...footer].join("\n");
+};
+
+const parseWorkflowInvocation = (line: string): {
+  definitions: string[];
+  usages: string[];
+} => {
+  const definitions: string[] = [];
+  const usages: string[] = [];
+  const trimmed = line.trim();
+
+  const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
+  if (tupleDefinitionMatch) {
+    const tupleDefs = tupleDefinitionMatch[1];
+    if (tupleDefs) {
+      tupleDefs
+      .split(",")
+      .map((name) => sanitizeVarName(name.trim()))
+      .filter(Boolean)
+          .forEach((name) => {
+            if (
+              name.startsWith("ch_") ||
+              name.startsWith("node_")
+            ) {
+              definitions.push(name);
+            }
+          });
+    }
+  } else {
+    const definitionMatch = trimmed.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (definitionMatch) {
+      const definitionName = definitionMatch[1] ?? "";
+      const name = sanitizeVarName(definitionName);
+      if (
+        name &&
+        (name.startsWith("ch_") || name.startsWith("node_"))
+      ) {
+        definitions.push(name);
+      }
+    }
+  }
+
+  getInvocationArguments(line).forEach((arg) => {
+    if (!usages.includes(arg)) usages.push(arg);
+  });
+
+  return { definitions, usages };
+};
+
+const getInvocationArguments = (line: string): string[] => {
+  const trimmed = line.trim();
+  const assignmentIndex = trimmed.indexOf("=");
+  const openIndex = trimmed.indexOf("(", assignmentIndex + 1);
+  if (openIndex === -1) return [];
+
+  let depth = 0;
+  let closeIndex = -1;
+  for (let i = openIndex; i < trimmed.length; i++) {
+    const char = trimmed.charAt(i);
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+    if (char === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        closeIndex = i;
+        break;
+      }
+    }
+  }
+  if (closeIndex === -1 || closeIndex <= openIndex + 1) return [];
+
+  const argsBlock = trimmed.substring(openIndex + 1, closeIndex);
+  const tokens = argsBlock.match(/\b(?:ch_|node_)[A-Za-z0-9_]+\b/g);
+  if (!tokens) return [];
+
+  const isTrackedVariable = (name: string): boolean =>
+    name.startsWith("ch_") || name.startsWith("node_");
+
+  const args: string[] = [];
+  tokens.forEach((token) => {
+    const arg = sanitizeVarName(token);
+    if (!arg) return;
+    if (isTrackedVariable(arg) && !args.includes(arg)) {
+      args.push(arg);
+    }
+  });
+  return args;
+};
+
+const sanitizeVarName = (name: string): string => {
+  if (typeof name !== "string") return "";
+  let sanitized = name.replace(/[-\\s]+/g, "_");
+  if (/^[0-9]/.test(sanitized)) {
+    sanitized = `v_${sanitized}`;
+  }
+  return sanitized;
 };
 
 // New endpoint for cancelling execution

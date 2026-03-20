@@ -1,8 +1,8 @@
-import express from "express";
+import express, { Router } from "express";
 import multer from "multer";
 import File from "../models/File";
 
-const router = express.Router() as express.Router;
+const router: Router = express.Router();
 
 // Use memory storage since files stay in browser
 const storage = multer.memoryStorage();

@@ -1,35 +1,53 @@
-services:
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
+﻿services:
+  mongodb:
+    image: mongo:7
+    container_name: nwave-mongodb
+    restart: unless-stopped
     ports:
-      - "5173:5173"
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
-    env_file: .env
     build:
       context: ./backend
       dockerfile: Dockerfile
-    volumes:
-      - ./backend:/app
-       /app/node_modules
-    ports:
-      - "5001:${PORT:-5001}"
+    container_name: nwave-backend
+    restart: unless-stopped
     depends_on:
-      - mongo
+      mongodb:
+        condition: service_healthy
     environment:
-      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/nwave}"
-
-  mongo:
-    image: mongo:5
-    volumes:
-      - mongo-data:/data/db
+      NODE_ENV: production
+      PORT: 5001
+      MONGODB_URI: mongodb://mongodb:27017/nwave
+      BACKEND_CONTAINER_NAME: nwave-backend
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
     ports:
-      - "27017:27017"
+      - "5001:5001"
+    volumes:
+      - ./backend/results:/app/results
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-}
+        BUILD_DATE: ${BUILD_DATE:-}
+        GIT_SHA: ${GIT_SHA:-}
+    container_name: nwave-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
 
 volumes:
-  mongo-data:
+  mongodb_data:

@@ -1,0 +1,31 @@
+------
+ > [frontend build 7/7] RUN pnpm build:
+1.245
+1.245 > n-wave-frontend@1.0.0 build /app
+1.245 > tsc -b && vite build
+1.245
+9.523 src/generators/core/generateNextflowScript.ts(431,76): error TS2304: Cannot find name 'params'.
+9.524 src/generators/core/generateNextflowScript.ts(431,97): error TS2304: Cannot find name 'item'.
+10.34  ELIFECYCLE  Command failed with exit code 2.
+------
+Dockerfile:11
+
+--------------------
+
+   9 |
+
+  10 |     COPY . .
+
+  11 | >>> RUN pnpm build
+
+  12 |
+
+  13 |     FROM nginx:1.27-alpine AS runtime
+
+--------------------
+
+target frontend: failed to solve: process "/bin/sh -c pnpm build" did not complete successfully: exit code: 2
+
+
+
+View build details: docker-desktop://dashboard/build/default/default/3yddqlec5xrgr75hspvbl4d5e

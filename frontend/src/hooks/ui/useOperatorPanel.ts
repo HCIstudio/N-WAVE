@@ -1,6 +1,6 @@
 import { useMemo, useCallback } from "react";
 import { useEdges, useNodes, type Node } from "reactflow";
-import type { NodeData } from "../components/nodes/BaseNode";
+import type { NodeData } from "../../components/nodes/BaseNode";
 
 export const useOperatorPanel = (
   node: Node<NodeData>,

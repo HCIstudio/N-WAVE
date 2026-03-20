@@ -55,6 +55,16 @@ The backend server for **N-WAVE: Nextflow Workflow Authoring and Visualization E
 
    The server will start on `http://localhost:5001`
 
+## Docker
+
+From the repository root, you can run the full stack:
+
+```bash
+docker compose up -d --build
+```
+
+Backend runs in the `backend` container on port `5001` and connects to the `mongodb` container automatically.
+
 ## API Endpoints
 
 ### Files (Metadata Only)

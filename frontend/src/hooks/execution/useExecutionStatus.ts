@@ -37,61 +37,8 @@ export const useExecutionStatus = ({
     statusRef.current = status;
     onStatusChange?.(status);
   }, [status, onStatusChange]);
+  void nodes;
 
-  // Initialize node statuses from workflow nodes
-  const initializeNodeStatuses = useCallback(() => {
-    const processNodes = nodes.filter(
-      (node) =>
-        node.type === "process" ||
-        node.type === "filter" ||
-        node.type === "operator" ||
-        node.type === "outputDisplay" ||
-        node.data.processType === "fastqc"
-    );
-
-    console.log(
-      `🔍 Canvas nodes found:`,
-      processNodes.map((n) => ({
-        id: n.id,
-        type: n.type,
-        label: n.data.label,
-      }))
-    );
-
-    // Create unique node statuses based on their labels, avoiding duplicates
-    const nodeStatusMap = new Map<string, NodeExecutionStatus>();
-
-    processNodes.forEach((node) => {
-      const nodeLabel = node.data.label || `${node.type}_${node.id}`;
-
-      // Only add if we don't already have a node with this label
-      if (!nodeStatusMap.has(nodeLabel)) {
-        nodeStatusMap.set(nodeLabel, {
-          nodeId: node.id,
-          nodeName: nodeLabel,
-          status: "waiting",
-          container: node.data.containerImage,
-          resources: node.data.cpus
-            ? {
-                cpus: node.data.cpus || 1,
-                memory: node.data.memory || "2.GB",
-              }
-            : undefined,
-        });
-      }
-    });
-
-    const nodeStatuses = Array.from(nodeStatusMap.values());
-    console.log(
-      `🔢 Initialized ${nodeStatuses.length} unique nodes for tracking:`,
-      nodeStatuses.map((n) => n.nodeName)
-    );
-
-    return {
-      totalNodes: nodeStatuses.length,
-      nodeStatuses,
-    };
-  }, [nodes]);
 
   // Start execution tracking
   const startExecution = useCallback(() => {
@@ -183,14 +130,7 @@ export const useExecutionStatus = ({
       );
 
       if (executionMatch) {
-        const [
-          ,
-          taskId,
-          processNameWithInstance,
-          completed,
-          total,
-          statusSymbol,
-        ] = executionMatch;
+        const [, processNameWithInstance, completed, total, statusSymbol] = executionMatch;
 
         // Extract just the process name (remove instance info)
         const nextflowProcessName = processNameWithInstance
@@ -389,12 +329,15 @@ export const useExecutionStatus = ({
         }
       }
 
-      // Parse failure messages
+      // Parse failure messages (case-insensitive to handle backend/Nextflow variants)
+      const normalizedLine = line.trim().toLowerCase();
       if (
-        line.includes("Execution cancelled") ||
-        line.includes("Execution failed") ||
-        (line.includes("Process completed with exit code:") &&
-          !line.includes("exit code: 0"))
+        normalizedLine.includes("execution cancelled") ||
+        normalizedLine.includes("execution failed") ||
+        normalizedLine.includes("nextflow execution failed with exit code") ||
+        normalizedLine.includes("failed to setup workflow execution") ||
+        (normalizedLine.includes("process completed with exit code:") &&
+          !normalizedLine.includes("exit code: 0"))
       ) {
         // Clear runtime timer
         if (runtimeTimer.current) {

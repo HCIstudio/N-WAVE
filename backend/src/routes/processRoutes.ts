@@ -1,7 +1,7 @@
-import express from "express";
+import express, { Router } from "express";
 import File from "../models/File";
 
-const router = express.Router() as express.Router;
+const router: Router = express.Router();
 
 // @route   POST api/process/filter
 // @desc    Filter content provided from frontend (files stored in browser)

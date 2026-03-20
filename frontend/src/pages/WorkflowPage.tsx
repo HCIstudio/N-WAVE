@@ -623,33 +623,64 @@ const WorkflowPageContent: React.FC = () => {
 
       // Handle streaming response
       if (typeof response.data === "string") {
-        console.log("📡 Received streaming response from backend");
+        console.log("Received streaming response from backend");
 
         // Parse the streaming output line by line in real-time
         const lines = response.data.split("\n").filter((l) => l.trim());
 
         lines.forEach((line, index) => {
-          // Parse each line immediately (no delay needed - it's already real-time!)
+          // Parse each line immediately
           setTimeout(() => {
             console.log(
-              `📄 Real-time parsing line ${index + 1}/${lines.length}:`,
+              `Real-time parsing line ${index + 1}/${lines.length}:`,
               line
             );
             executionStatus.parseNextflowOutput(line);
-          }, index * 10); // Very small delay just for visual smoothness
+          }, index * 10);
         });
 
-        // Set success result
+        const normalizedOutput = response.data.toLowerCase();
+        const isExecutionFailure =
+          normalizedOutput.includes("nextflow execution failed with exit code") ||
+          normalizedOutput.includes("execution error:") ||
+          normalizedOutput.includes("failed to setup workflow execution") ||
+          normalizedOutput.includes("error ~");
+
+        const completionDelay = Math.max(lines.length * 10 + 100, 250);
+
+        setTimeout(() => {
+          executionStatus.completeExecution(
+            !isExecutionFailure,
+            isExecutionFailure ? response.data : undefined
+          );
+        }, completionDelay);
+
         setExecutionResult({
-          success: true,
+          success: !isExecutionFailure,
           output: response.data,
+          error: isExecutionFailure ? "Workflow execution failed" : undefined,
         });
 
         if (workflowContext.showToast) {
-          workflowContext.showToast(
-            `Workflow executed successfully! Check the execution panel for details.`,
-            "success"
-          );
+          if (isExecutionFailure) {
+            workflowContext.showToast(
+              "Workflow execution failed. Check the execution panel/log output for details.",
+              "error"
+            );
+          } else {
+            workflowContext.showToast(
+              "Workflow executed successfully! Check the execution panel for details.",
+              "success"
+            );
+          }
+        }
+
+        if (isExecutionFailure) {
+          setExecutionError({
+            message: "Workflow execution failed",
+            output: response.data,
+          });
+          setShowErrorDialog(true);
         }
       } else {
         // Fallback for older JSON response format

@@ -18,8 +18,13 @@ const app: Express = express();
 // Connect to Database
 connectDB(); // Uncommented
 
-// Define allowed origins for CORS
-const allowedOrigins = ["http://localhost:5173"]; // Add your frontend origin
+// Define allowed origins for CORS (comma separated via CORS_ORIGIN env var)
+const allowedOrigins = (
+  process.env.CORS_ORIGIN || "http://localhost:5173,http://localhost:8080"
+)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 const corsOptions: CorsOptions = {
   origin: function (origin, callback) {
