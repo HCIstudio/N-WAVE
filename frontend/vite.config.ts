@@ -54,9 +54,11 @@ export default defineConfig({
     __GIT_SHA__: JSON.stringify(gitSha),
   },
   server: {
+    host: true,
+    port: 5173,
     proxy: {
       "/api": {
-        target: "http://localhost:5001",
+        target: "http://localhost:3000",
         changeOrigin: true,
       },
     },

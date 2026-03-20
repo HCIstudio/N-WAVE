@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+.pnpm_store/*
 
 # Compiled TypeScript output
 dist/
