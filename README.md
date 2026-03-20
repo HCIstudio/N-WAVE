@@ -26,14 +26,12 @@ This starts:
 ### Notes about Nextflow and Docker
 
 - The backend executes workflows via local `nextflow` if available.
-- If local `nextflow` is not available, it falls back to `docker run nextflow/nextflow:<version>`.
-- To enable that fallback inside the backend container, `docker-compose.yml` mounts `/var/run/docker.sock` and the backend image includes Docker CLI.
 - Workflow outputs are persisted to `./backend/results` on the host.
 
 Stop services with:
 
 ```bash
-docker compose down
+docker compose down -v
 ```
 
 Please refer to the respective READMEs for development installation instructions and more details about each part of the project.
