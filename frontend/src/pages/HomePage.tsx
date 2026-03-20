@@ -9,6 +9,7 @@ import {
   type ActionButtonProps,
 } from "../components/common";
 import PageLayout from "../components/layout/PageLayout";
+import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
 
 interface Workflow {
@@ -411,29 +412,31 @@ const HomePage: React.FC = () => {
 
   return (
     <PageLayout>
-      <div className="p-8">
-        <h1 className="text-3xl font-bold text-text mb-6">Workflows</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {workflows.map((wf) => renderWorkflowCard(wf))}
-          <div
-            onClick={handleNewWorkflow}
-            className="flex items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent cursor-pointer transition-colors"
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1 p-8">
+          <h1 className="text-3xl font-bold text-text mb-6">Workflows</h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {workflows.map((wf) => renderWorkflowCard(wf))}
+            <div
+              onClick={handleNewWorkflow}
+              className="flex items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent cursor-pointer transition-colors"
             >
-              <line x1="12" y1="5" x2="12" y2="19"></line>
-              <line x1="5" y1="12" x2="19" y2="12"></line>
-            </svg>
-            <span className="ml-2">New Workflow</span>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+              <span className="ml-2">New Workflow</span>
+            </div>
           </div>
         </div>
         <ConfirmDialog
@@ -451,6 +454,14 @@ const HomePage: React.FC = () => {
           message="You have unsaved changes. What would you like to do?"
           actions={unsavedChangesActions}
         />
+        <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
+          <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+            <span>With the help of HU Berlin & HCIstudio</span>
+            <span>Version {buildInfo.version}</span>
+            <span>Built {buildInfo.displayBuildDate}</span>
+            <span>SHA {buildInfo.sha}</span>
+          </div>
+        </footer>
       </div>
     </PageLayout>
   );

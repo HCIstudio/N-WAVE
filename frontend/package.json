@@ -1,7 +1,7 @@
 {
   "name": "n-wave-frontend",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for building, visualizing, and running scientific workflows.",
   "author": "Dario D'Addamio",

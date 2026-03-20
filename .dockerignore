@@ -1,0 +1,6 @@
+backend
+nwave-results
+frontend/node_modules
+frontend/dist
+frontend/.vite
+errorlog.txt

@@ -36,8 +36,12 @@
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        APP_VERSION: ${APP_VERSION:-}
+        BUILD_DATE: ${BUILD_DATE:-}
+        GIT_SHA: ${GIT_SHA:-}
     container_name: nwave-frontend
     restart: unless-stopped
     depends_on:
