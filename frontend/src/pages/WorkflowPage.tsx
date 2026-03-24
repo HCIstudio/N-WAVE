@@ -669,7 +669,7 @@ const WorkflowPageContent: React.FC = () => {
             );
           } else {
             workflowContext.showToast(
-              "Workflow executed successfully! Check the execution panel for details.",
+              "Workflow executed successfully! Results have been written to ~/results. \nCheck the execution panel for details.",
               "success"
             );
           }
