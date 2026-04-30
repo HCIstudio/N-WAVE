@@ -3,8 +3,10 @@ import {
   saveWorkflow,
   getWorkflowById,
   getAllWorkflows,
+  importWorkflow,
   updateWorkflow,
   deleteWorkflow,
+  duplicateWorkflow,
 } from "../controllers/workflowController";
 
 const router: Router = express.Router();
@@ -19,10 +21,19 @@ router.post("/", saveWorkflow);
 // @access  Public
 router.get("/", getAllWorkflows);
 
+// @route   POST /api/workflows/import
+// @desc    Import a workflow from Nextflow source
+// @access  Public
+router.post("/import", importWorkflow);
+
 // @route   GET /api/workflows/:id
 // @desc    Get a specific workflow by its ID
 // @access  Public
 router.get("/:id", getWorkflowById);
+
+// @route   POST /api/workflows/:id/duplicate
+// @desc    Duplicate a workflow into an editable Mongo-backed record
+router.post("/:id/duplicate", duplicateWorkflow);
 
 // @route   PUT /api/workflows/:id
 // @desc    Update an existing workflow

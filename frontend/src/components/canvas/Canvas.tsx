@@ -19,6 +19,7 @@ import BaseNode from "../nodes/BaseNode";
 import FileInputNode from "../nodes/input/FileInputNode";
 import OutputDisplayNode from "../nodes/output/OutputDisplayNode";
 import OperatorNode from "../nodes/OperatorNode";
+import ProcessNode from "../nodes/process/ProcessNode";
 
 const nodeTypes = {
   default: BaseNode,
@@ -26,7 +27,7 @@ const nodeTypes = {
   outputDisplay: OutputDisplayNode,
   filter: OperatorNode,
   operator: OperatorNode,
-  process: BaseNode,
+  process: ProcessNode,
 };
 
 const edgeTypes = {

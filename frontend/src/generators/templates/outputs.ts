@@ -60,21 +60,18 @@ export function generateOutputDisplayProcess(
     echo "Generated: \\$(date)" >> "${outputFileName}"
     echo "" >> "${outputFileName}"
     
-    # List all files in directory and process them (excluding output files and hidden files)
-    echo "Listing all files in current directory:" >&2
-    ls -la >&2
-    
-    # Process all non-hidden files except the output file
-    for file in *; do
-        # Skip if not a file or if it's the output file
-        if [ -f "\\$file" ] && [ "\\$file" != "${outputFileName}" ]; then
+    echo "Listing staged input files in Nextflow order:" >&2
+    printf '%s\\n' $input_files >&2
+
+    for file in $input_files; do
+        if [ -f "\\$file" ]; then
             echo "Processing input file: \\$file" >&2
             echo "" >> "${outputFileName}"
             echo "=== File: \\$file ===" >> "${outputFileName}"
             cat "\\$file" >> "${outputFileName}"
             echo "" >> "${outputFileName}"
         else
-            echo "Skipping: \\$file (not a file, is output file, or hidden)" >&2
+            echo "Skipping: \\$file (not a file)" >&2
         fi
     done
     
@@ -117,7 +114,7 @@ export function generateOutputDisplayProcess(
     publishDir params.outdir, mode: 'copy'
 
     input:
-    ${selectedFileName === "all" ? "path '*'" : "file input_file"}
+    ${selectedFileName === "all" ? 'path input_files, name: "display_input_*"' : "file input_file"}
 
     output:
     file "${outputFileName}"

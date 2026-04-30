@@ -130,7 +130,7 @@ export function generateMergeProcess(
       memory '${memoryAmount}'
 
       input:
-      path input_files
+      path input_files, name: "merge_input_*"
 
       output:
       path "merged.fastq", emit: merged
@@ -167,8 +167,8 @@ export function generateMergeProcess(
     cpus ${cpuCount}
     memory '${memoryAmount}'
 
-    input:
-    path input_files
+      input:
+      path input_files, name: "merge_input_*"
 
     output:
     path "merged.${joinType}", emit: merged

@@ -4,6 +4,7 @@ import {
   generateOperatorCode,
   generateOutputCode,
 } from "./templateEngine";
+import { sortIncomingEdges } from "../../utils/workflowConnections";
 
 /**
  * Generates a Nextflow script from the current workflow nodes.
@@ -124,65 +125,16 @@ export const generateNextflowScript = (
       if (!type || typeof type !== "string" || type === "undefined")
         type = "process";
       const processName = `${type}_${node.id.replace(/[\s-]+/g, "_")}`;
-
-      const upstreamEdge = edges.find((edge) => edge.target === node.id);
-      if (!upstreamEdge) return;
-
-      let upstreamChannelName = channelNameMap.get(
-        `${upstreamEdge.source}.${upstreamEdge.sourceHandle}`
+      const incomingEdges = sortIncomingEdges(
+        edges.filter((edge) => edge.target === node.id)
       );
-      if (!upstreamChannelName) {
-        // Try alternative mapping patterns if the direct lookup failed
-        let alternativeChannelName = null;
+      if (incomingEdges.length === 0) return;
 
-        // Pattern 1: sourceHandle might be "nodeId_outputName" - extract the output name
-        if (
-          upstreamEdge.sourceHandle &&
-          upstreamEdge.sourceHandle.includes("_")
-        ) {
-          const outputName = upstreamEdge.sourceHandle.split("_").pop();
-          alternativeChannelName = channelNameMap.get(
-            `${upstreamEdge.source}.${outputName}`
-          );
-        }
-
-        // Pattern 2: sourceHandle might be just "out" - try default output
-        if (!alternativeChannelName && upstreamEdge.sourceHandle) {
-          alternativeChannelName = channelNameMap.get(
-            `${upstreamEdge.source}.${upstreamEdge.sourceHandle}`
-          );
-        }
-
-        // Pattern 3: Use the first available output from this source node
-        if (!alternativeChannelName) {
-          for (const [key, value] of channelNameMap.entries()) {
-            if (key.startsWith(`${upstreamEdge.source}.`)) {
-              alternativeChannelName = value;
-              console.warn(
-                `Using fallback channel mapping: ${key} -> ${value}`
-              );
-              break;
-            }
-          }
-        }
-
-        if (alternativeChannelName) {
-          // Use the alternative mapping
-          upstreamChannelName = alternativeChannelName;
-          console.warn(
-            `Using alternative channel mapping for ${upstreamEdge.source}.${upstreamEdge.sourceHandle} -> ${alternativeChannelName}`
-          );
-        } else {
-          console.warn(
-            `No upstream channel found for ${upstreamEdge.source}.${upstreamEdge.sourceHandle}`
-          );
-          console.warn(
-            "Available channel mappings:",
-            Array.from(channelNameMap.entries())
-          );
-          return;
-        }
-      }
+      let upstreamChannelName = resolveChannelNameForEdge(
+        incomingEdges[0],
+        channelNameMap
+      );
+      if (!upstreamChannelName) return;
 
       // Output display nodes don't have outputs, so skip this check for them
       let outputChannelName = null;
@@ -291,8 +243,24 @@ export const generateNextflowScript = (
 
             processScripts[node.id] = mergeTemplate;
             executionOrder.push(node.id);
+
+            const upstreamChannelNames = incomingEdges
+              .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
+              .filter((channelName): channelName is string => !!channelName);
+
+            if (upstreamChannelNames.length === 0) {
+              return;
+            }
+
+            const mergeInputChannelName = `${outputChannelName}_merge_inputs`;
+
             processInvocations.push(
-              `    ${outputChannelName} = ${processName}(${upstreamChannelName}.collect())\n`
+              `    ${mergeInputChannelName} = ${buildMixedChannelExpression(
+                upstreamChannelNames
+              )}\n`
+            );
+            processInvocations.push(
+              `    ${outputChannelName} = ${processName}(${mergeInputChannelName}.collect())\n`
             );
           }
         }
@@ -368,7 +336,6 @@ export const generateNextflowScript = (
         executionOrder.push(node.id);
 
         let inputChannels = "";
-        const incomingEdges = edges.filter((e) => e.target === node.id);
         if (incomingEdges.length > 0) {
           inputChannels = incomingEdges
             .map((e) =>
@@ -643,6 +610,63 @@ function parseInvocation(invocation: string): {
   return { definitions, usages };
 }
 
+function resolveChannelNameForEdge(
+  edge: Edge,
+  channelNameMap: Map<string, string>
+): string | null {
+  let upstreamChannelName = channelNameMap.get(
+    `${edge.source}.${edge.sourceHandle}`
+  );
+
+  if (upstreamChannelName) {
+    return upstreamChannelName;
+  }
+
+  let alternativeChannelName = null;
+
+  if (edge.sourceHandle && edge.sourceHandle.includes("_")) {
+    const outputName = edge.sourceHandle.split("_").pop();
+    alternativeChannelName = channelNameMap.get(`${edge.source}.${outputName}`);
+  }
+
+  if (!alternativeChannelName && edge.sourceHandle) {
+    alternativeChannelName = channelNameMap.get(
+      `${edge.source}.${edge.sourceHandle}`
+    );
+  }
+
+  if (!alternativeChannelName) {
+    for (const [key, value] of channelNameMap.entries()) {
+      if (key.startsWith(`${edge.source}.`)) {
+        alternativeChannelName = value;
+        console.warn(`Using fallback channel mapping: ${key} -> ${value}`);
+        break;
+      }
+    }
+  }
+
+  if (alternativeChannelName) {
+    console.warn(
+      `Using alternative channel mapping for ${edge.source}.${edge.sourceHandle} -> ${alternativeChannelName}`
+    );
+    return alternativeChannelName;
+  }
+
+  console.warn(`No upstream channel found for ${edge.source}.${edge.sourceHandle}`);
+  console.warn("Available channel mappings:", Array.from(channelNameMap.entries()));
+  return null;
+}
+
+function buildMixedChannelExpression(channelNames: string[]): string {
+  if (channelNames.length === 1) {
+    return channelNames[0];
+  }
+
+  return channelNames
+    .slice(1)
+    .reduce((expression, channelName) => `${expression}.concat(${channelName})`, channelNames[0]);
+}
+
 function getInvocationArguments(invocation: string): string[] {
   const trimmed = invocation.trim();
   if (trimmed === "" || trimmed.startsWith("//")) {
@@ -650,47 +674,55 @@ function getInvocationArguments(invocation: string): string[] {
   }
 
   const assignmentIndex = trimmed.indexOf("=");
-  let openIndex = trimmed.indexOf("(", assignmentIndex + 1);
-  if (openIndex === -1) return [];
+  const rhs = assignmentIndex === -1 ? trimmed : trimmed.substring(assignmentIndex + 1);
+  const candidatePattern = /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g;
+  const lhsDefinitions = new Set<string>();
+  const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
+  if (tupleDefinitionMatch) {
+    tupleDefinitionMatch[1]
+      .split(",")
+      .map((name) => sanitizeVarName(name.trim()))
+      .filter(Boolean)
+      .forEach((name) => lhsDefinitions.add(name));
+  } else {
+    const definitionMatch = trimmed.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    if (definitionMatch) {
+      lhsDefinitions.add(sanitizeVarName(definitionMatch[1]));
+    }
+  }
+  const args: string[] = [];
 
-  let depth = 0;
-  let closeIndex = -1;
-  for (let i = openIndex; i < trimmed.length; i++) {
-    const char = trimmed.charAt(i);
-    if (char === "(") {
-      depth += 1;
+  let match: RegExpExecArray | null;
+  while ((match = candidatePattern.exec(rhs)) !== null) {
+    const rawName = match[0];
+    const name = sanitizeVarName(rawName);
+    if (!name || lhsDefinitions.has(name)) {
       continue;
     }
-    if (char === ")") {
-      depth -= 1;
-      if (depth === 0) {
-        closeIndex = i;
-        break;
-      }
+
+    const startIndex = match.index;
+    const endIndex = startIndex + rawName.length;
+    const previousChar = startIndex > 0 ? rhs.charAt(startIndex - 1) : "";
+    const nextNonWhitespaceChar =
+      rhs.slice(endIndex).match(/^\s*(.)/)?.[1] ?? "";
+
+    // Exclude method names like `.collect` or `.mix`.
+    if (previousChar === ".") {
+      continue;
     }
-  }
 
-  if (closeIndex === -1 || closeIndex <= openIndex + 1) {
-    return [];
-  }
+    // Exclude the callee in direct function/process invocations like `foo(bar)`.
+    if (nextNonWhitespaceChar === "(") {
+      continue;
+    }
 
-  const argsBlock = trimmed.substring(openIndex + 1, closeIndex);
-  const candidates = argsBlock.match(
-    /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g
-  );
-  if (!candidates) return [];
-
-  const args: string[] = [];
-  candidates.forEach((candidate) => {
-    const name = sanitizeVarName(candidate);
-    if (!name) return;
     if (
       (name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")) &&
       !args.includes(name)
     ) {
       args.push(name);
     }
-  });
+  }
 
   return args;
 }

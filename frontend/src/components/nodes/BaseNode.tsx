@@ -16,6 +16,7 @@ export interface FileObject {
   size: number;
   fileType?: string; // Detected file type
   _id?: string; // Backend metadata ID (optional)
+  order?: number; // Stable display/merge ordering metadata
 }
 
 // Define the shape of the node's data

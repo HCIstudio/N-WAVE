@@ -1,31 +1,198 @@
-------
- > [frontend build 7/7] RUN pnpm build:
-1.245
-1.245 > n-wave-frontend@1.0.0 build /app
-1.245 > tsc -b && vite build
-1.245
-9.523 src/generators/core/generateNextflowScript.ts(431,76): error TS2304: Cannot find name 'params'.
-9.524 src/generators/core/generateNextflowScript.ts(431,97): error TS2304: Cannot find name 'item'.
-10.34  ELIFECYCLE  Command failed with exit code 2.
-------
-Dockerfile:11
-
---------------------
-
-   9 |
-
-  10 |     COPY . .
-
-  11 | >>> RUN pnpm build
-
-  12 |
-
-  13 |     FROM nginx:1.27-alpine AS runtime
-
---------------------
-
-target frontend: failed to solve: process "/bin/sh -c pnpm build" did not complete successfully: exit code: 2
-
-
-
-View build details: docker-desktop://dashboard/build/default/default/3yddqlec5xrgr75hspvbl4d5e
+node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2
+nwave-backend  | node:fs:448
+nwave-backend  |     return binding.readFileUtf8(path, stringToFlags(options.flag));
+nwave-backend  |                    ^
+nwave-backend  | 
+nwave-backend  | Error: ENOENT: no such file or directory, open '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  |     at Object.readFileSync (node:fs:448:20)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/library/demoWorkflow.js:14:36)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14)
+nwave-backend  |     at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+nwave-backend  |     at Module.load (node:internal/modules/cjs/loader:1266:32)
+nwave-backend  |     at Module._load (node:internal/modules/cjs/loader:1091:12)
+nwave-backend  |     at Module.require (node:internal/modules/cjs/loader:1289:19)
+nwave-backend  |     at require (node:internal/modules/helpers:182:18)
+nwave-backend  |     at Object.<anonymous> (/app/dist/workflows/index.js:5:24)
+nwave-backend  |     at Module._compile (node:internal/modules/cjs/loader:1521:14) {
+nwave-backend  |   errno: -2,
+nwave-backend  |   code: 'ENOENT',
+nwave-backend  |   syscall: 'open',
+nwave-backend  |   path: '/app/dist/workflows/library/assets/bee_movie_demo/Demo_Workflow.nf'
+nwave-backend  | }
+nwave-backend  | 
+nwave-backend  | Node.js v20.20.2

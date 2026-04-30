@@ -23,6 +23,7 @@ RUN corepack enable
 
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/src/workflows/library/assets ./dist/workflows/library/assets
 COPY package.json ./package.json
 
 EXPOSE 5001

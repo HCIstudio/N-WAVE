@@ -140,11 +140,15 @@ export const WorkflowProvider: FC<PropsWithChildren<{}>> = ({ children }) => {
 
   const onConnect: OnConnect = useCallback(
     (params) => {
+      const targetIncomingCount = params.target
+        ? getEdges().filter((edge) => edge.target === params.target).length
+        : 0;
       const newEdge = {
         ...params,
         id: `e-${params.source || "N/A"}-${params.target || "N/A"}`,
         type: "default",
         data: {
+          order: targetIncomingCount,
           onDelete: (edgeId: string) => {
             setEdges((eds) => eds.filter((e) => e.id !== edgeId));
           },
@@ -153,7 +157,7 @@ export const WorkflowProvider: FC<PropsWithChildren<{}>> = ({ children }) => {
       setEdges((els) => addEdge(newEdge, els));
       setIsDirty(true);
     },
-    [setEdges]
+    [getEdges, setEdges]
   );
 
   const updateNodeData = useCallback(

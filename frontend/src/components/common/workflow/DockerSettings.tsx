@@ -446,7 +446,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
                     function showSystemFolderError() {
                       const result = confirm(
-                        `🚫 Can't access system folder\n\n` +
+                        `Can't access system folder\n\n` +
                           `Chrome blocks access to system folders (C:\\, Program Files, etc.) for security.\n\n` +
                           `Solutions:\n` +
                           `1. Click OK to enter the path manually\n` +
@@ -461,12 +461,12 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
                     function fallbackToManualInput() {
                       const userPath = prompt(
-                        "💾 Enter the full path where you want to save results:\n\n" +
+                        "Enter the full path where you want to save results:\n\n" +
                           "Examples:\n" +
                           "• C:\\MyProjects\\Results\n" +
                           "• D:\\Data\\Outputs\n" +
                           "• C:\\Users\\YourName\\Desktop\\Results\n\n" +
-                          "💡 Tip: You can save anywhere with manual paths!",
+                          "Tip: You can save anywhere with manual paths!",
                         "C:\\Results"
                       );
                       if (userPath && userPath.trim()) {
