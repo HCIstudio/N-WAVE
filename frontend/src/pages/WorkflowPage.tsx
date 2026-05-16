@@ -31,6 +31,79 @@ import { generateNextflowScript } from "../generators";
 import { Loader } from "lucide-react";
 import { type ExecutionSettings, ExecutionMode } from "../types/execution";
 import type { WorkflowDescriptor } from "../types/backend";
+import TutorialCallout from "../components/tutorial/TutorialCallout";
+
+const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
+const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
+const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
+const TUTORIAL_COPY_ID_KEY = "nwave.demoTutorial.copyId";
+
+const tutorialSteps = [
+  {
+    text: (
+      <>
+        <strong>Input nodes</strong> hold files to process in the workflow.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-file-input"]',
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        <strong>Processing nodes</strong> take one or more inputs to alter and
+        output the results.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-map-uppercase"]',
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        <strong>Display nodes</strong> display the input they receive for better
+        monitoring. All data going into a Display node will be written as
+        workflow result files.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-output"]',
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        Here you can <strong>rename</strong>, <strong>run</strong>,{" "}
+        <strong>save</strong> or <strong>download</strong> your workflow.
+      </>
+    ),
+    targetSelector: "[data-tutorial-bottom-bar]",
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        To <strong>expand the workflow</strong> click here to see a collection of
+        all available nodes. Feel free to select one.
+      </>
+    ),
+    targetSelector: "[data-tutorial-add-node]",
+    placement: "left-start" as const,
+  },
+  {
+    text: (
+      <>
+        To <strong>edit</strong> or <strong>delete</strong> a node or view its
+        current configuration, simply double-click it.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-map-uppercase"]',
+    placement: "above" as const,
+  },
+  {
+    text: "That covers the basics of N-Wave. Feel free to explore the application. If you have further questions click the home button on the bottom to return to the main page. There you can always retake the tutorial or access our wiki for a more extensive explanation on workflow and node functionality.",
+    placement: "center" as const,
+  },
+];
 
 const WorkflowPageContent: React.FC = () => {
   const workflowContext = useContext(WorkflowContext);
@@ -156,8 +229,79 @@ const WorkflowPageContent: React.FC = () => {
   const navigate = useNavigate();
   const { screenToFlowPosition } = useReactFlow();
   const [isDuplicatingReadOnly, setIsDuplicatingReadOnly] = useState(false);
+  const [tutorialStepIndex, setTutorialStepIndex] = useState(() => {
+    if (sessionStorage.getItem(TUTORIAL_ACTIVE_KEY) !== "true") return null;
+    const storedStep = Number(sessionStorage.getItem(TUTORIAL_STEP_KEY) ?? "0");
+    return Number.isFinite(storedStep)
+      ? Math.min(Math.max(storedStep, 0), tutorialSteps.length - 1)
+      : 0;
+  });
+  const isTutorialActive = tutorialStepIndex !== null;
 
-  const duplicateReadOnlyWorkflow = useCallback(async () => {
+  const finishTutorial = useCallback(async () => {
+    const tutorialCopyId = sessionStorage.getItem(TUTORIAL_COPY_ID_KEY);
+
+    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+    sessionStorage.removeItem(TUTORIAL_COPY_ID_KEY);
+    sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+    setTutorialStepIndex(null);
+
+    if (!tutorialCopyId) return;
+
+    try {
+      await api.delete(`/workflows/${tutorialCopyId}`);
+      if (workflowId === tutorialCopyId) {
+        navigate("/");
+      }
+    } catch (err) {
+      setError("Failed to remove tutorial workflow copy.");
+      console.error(err);
+    }
+  }, [navigate, workflowId]);
+
+  const setTutorialStep = useCallback((stepIndex: number | null) => {
+    if (stepIndex === null) {
+      sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+      sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+      sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+      setTutorialStepIndex(null);
+      return;
+    }
+
+    sessionStorage.setItem(TUTORIAL_ACTIVE_KEY, "true");
+    sessionStorage.setItem(TUTORIAL_STEP_KEY, String(stepIndex));
+    setTutorialStepIndex(stepIndex);
+  }, []);
+
+  const goToPreviousTutorialStep = useCallback(() => {
+    setTutorialStepIndex((currentStep) => {
+      if (currentStep === null) return currentStep;
+      const previousStep = Math.max(currentStep - 1, 0);
+      sessionStorage.setItem(TUTORIAL_STEP_KEY, String(previousStep));
+      return previousStep;
+    });
+  }, []);
+
+  const goToNextTutorialStep = useCallback(() => {
+    setTutorialStepIndex((currentStep) => {
+      if (currentStep === null) return currentStep;
+      if (currentStep >= tutorialSteps.length - 1) {
+        sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+        sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+        sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+        return null;
+      }
+
+      const nextStep = currentStep + 1;
+      sessionStorage.setItem(TUTORIAL_STEP_KEY, String(nextStep));
+      return nextStep;
+    });
+  }, []);
+
+  const duplicateReadOnlyWorkflow = useCallback(async (options?: {
+    trackTutorialCopy?: boolean;
+  }) => {
     if (!workflowId || !workflowReadOnly || isDuplicatingReadOnly) {
       return false;
     }
@@ -165,6 +309,9 @@ const WorkflowPageContent: React.FC = () => {
     try {
       setIsDuplicatingReadOnly(true);
       const response = await api.post(`/workflows/${workflowId}/duplicate`);
+      if (options?.trackTutorialCopy && response.data?._id) {
+        sessionStorage.setItem(TUTORIAL_COPY_ID_KEY, response.data._id);
+      }
       navigate(`/workflow/${response.data._id}`);
       return true;
     } catch (err) {
@@ -174,6 +321,26 @@ const WorkflowPageContent: React.FC = () => {
       return false;
     }
   }, [workflowId, workflowReadOnly, isDuplicatingReadOnly, navigate]);
+
+  const handleTutorialForward = useCallback(() => {
+    if (tutorialStepIndex === 4 && workflowReadOnly) {
+      setTutorialStep(5);
+      void duplicateReadOnlyWorkflow({ trackTutorialCopy: true }).then((duplicated) => {
+        if (!duplicated) {
+          setTutorialStep(4);
+        }
+      });
+      return;
+    }
+
+    goToNextTutorialStep();
+  }, [
+    duplicateReadOnlyWorkflow,
+    goToNextTutorialStep,
+    setTutorialStep,
+    tutorialStepIndex,
+    workflowReadOnly,
+  ]);
 
   const ensureEditableWorkflow = useCallback(async () => {
     if (!workflowReadOnly) return true;
@@ -196,6 +363,11 @@ const WorkflowPageContent: React.FC = () => {
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
       if (workflowReadOnly) {
+        if (tutorialStepIndex === 4) {
+          setTutorialStep(5);
+          void duplicateReadOnlyWorkflow({ trackTutorialCopy: true });
+          return;
+        }
         void duplicateReadOnlyWorkflow();
         return;
       }
@@ -218,6 +390,9 @@ const WorkflowPageContent: React.FC = () => {
 
       setNodes((nds) => nds.concat(newNode));
       setIsDirty(true);
+      if (tutorialStepIndex === 4) {
+        setTutorialStep(5);
+      }
     },
     [
       screenToFlowPosition,
@@ -225,6 +400,8 @@ const WorkflowPageContent: React.FC = () => {
       setIsDirty,
       workflowReadOnly,
       duplicateReadOnlyWorkflow,
+      tutorialStepIndex,
+      setTutorialStep,
     ]
   );
 
@@ -1307,6 +1484,25 @@ const WorkflowPageContent: React.FC = () => {
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
         />
+        {isTutorialActive && tutorialStepIndex !== null && (
+          <TutorialCallout
+            text={tutorialSteps[tutorialStepIndex].text}
+            targetSelector={tutorialSteps[tutorialStepIndex].targetSelector}
+            placement={tutorialSteps[tutorialStepIndex].placement}
+            canGoBack={tutorialStepIndex > 0}
+            canGoForward={tutorialStepIndex < tutorialSteps.length - 1}
+            skipLabel={
+              tutorialStepIndex === tutorialSteps.length - 1
+                ? "Finish Tutorial"
+                : "Skip Tutorial"
+            }
+            onBack={goToPreviousTutorialStep}
+            onForward={handleTutorialForward}
+            onSkip={() => {
+              void finishTutorial();
+            }}
+          />
+        )}
         <DeleteDropZone
           isDragging={isDragging}
           isHovering={isHoveringDropZone}

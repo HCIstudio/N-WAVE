@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Trash2, Save, Copy, Upload } from "lucide-react";
+import { BookOpen, Pencil, Trash2, Save, Copy, Upload } from "lucide-react";
 import api from "../api";
 import {
   ConfirmDialog,
@@ -13,6 +13,11 @@ import PageLayout from "../components/layout/PageLayout";
 import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
+
+const DEMO_WORKFLOW_ID = "builtin:demo-basic";
+const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
+const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
+const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 
 const HomePage: React.FC = () => {
   const [workflows, setWorkflows] = useState<WorkflowDescriptor[]>([]);
@@ -45,6 +50,28 @@ const HomePage: React.FC = () => {
   const editingCardRef = useRef<HTMLDivElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const [isTutorialIntroVisible, setIsTutorialIntroVisible] = useState(() => {
+    return sessionStorage.getItem(TUTORIAL_COMPLETED_KEY) !== "true";
+  });
+
+  const skipTutorial = () => {
+    sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+    setIsTutorialIntroVisible(false);
+  };
+
+  const startTutorial = () => {
+    sessionStorage.setItem(TUTORIAL_ACTIVE_KEY, "true");
+    sessionStorage.setItem(TUTORIAL_STEP_KEY, "0");
+  };
+
+  const retakeTutorial = () => {
+    sessionStorage.removeItem(TUTORIAL_COMPLETED_KEY);
+    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+    setIsTutorialIntroVisible(true);
+  };
 
   const fetchWorkflows = async () => {
     try {
@@ -364,13 +391,21 @@ const HomePage: React.FC = () => {
     },
   ];
 
+  const hasDemoWorkflow = workflows.some(
+    (wf) => wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin
+  );
+  const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
+
   const renderWorkflowCard = (wf: WorkflowDescriptor) => {
     const isEditing = editingId === wf._id;
     const isReadOnly = wf.isReadOnly || wf.origin?.readOnly;
     const showDuplicate = Boolean(wf.origin?.canDuplicate);
+    const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
+    const hideCardButtons = isHomeTutorialActive && isDemoWorkflow;
 
     const cardContent = (
       <>
+        {!hideCardButtons && (
         <div className="absolute top-4 right-2 z-10 flex items-center gap-1">
           {isEditing ? (
             <>
@@ -427,6 +462,7 @@ const HomePage: React.FC = () => {
             </>
           )}
         </div>
+        )}
         {isEditing ? (
           <>
             <div className="pr-12">
@@ -492,6 +528,11 @@ const HomePage: React.FC = () => {
       <Link
         key={wf._id}
         to={`/workflow/${wf._id}`}
+        onClick={() => {
+          if (isDemoWorkflow && isHomeTutorialActive) {
+            startTutorial();
+          }
+        }}
         className="group relative block bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
       >
         {cardContent}
@@ -502,19 +543,71 @@ const HomePage: React.FC = () => {
   return (
     <PageLayout>
       <div className="min-h-screen flex flex-col">
+        {isHomeTutorialActive && (
+          <div className="fixed inset-0 z-20 bg-black/35" aria-hidden="true" />
+        )}
         <div className="flex-1 p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
             <h1 className="text-3xl font-bold text-text">Workflows</h1>
-            <button
-              onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
-            >
-              <Upload size={16} />
-              <span>Import Workflow</span>
-            </button>
+            <div className="flex items-center gap-3">
+              {!isHomeTutorialActive && (
+                <button
+                  type="button"
+                  onClick={retakeTutorial}
+                  className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                >
+                  Retake Tutorial
+                </button>
+              )}
+              <a
+                href="https://github.com/HCIstudio/N-WAVE/wiki"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <BookOpen size={16} />
+                <span>Wiki</span>
+              </a>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <Upload size={16} />
+                <span>Import Workflow</span>
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {workflows.map((wf) => renderWorkflowCard(wf))}
+            {workflows.map((wf) => {
+              const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
+              return (
+                <div
+                  key={wf._id}
+                  className={
+                    isHomeTutorialActive && isDemoWorkflow
+                      ? "relative z-30"
+                      : "relative"
+                  }
+                >
+                  {renderWorkflowCard(wf)}
+                  {isHomeTutorialActive && isDemoWorkflow && (
+                    <div className="relative z-40 mt-3 rounded-lg border border-nextflow-green/60 bg-background p-4 text-sm text-text shadow-2xl">
+                      <p>
+                        Getting started: This demo workflow explains the
+                        fundamentals of N-Wave
+                      </p>
+                      <button
+                        type="button"
+                        onClick={skipTutorial}
+                        className="mt-3 rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
+                      >
+                        Skip Tutorial
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <div
               onClick={handleNewWorkflow}
               className="flex items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent cursor-pointer transition-colors"

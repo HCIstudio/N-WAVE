@@ -33,8 +33,12 @@ const Header: React.FC<HeaderProps> = ({ onProcessSelect }) => {
     <header className="absolute top-4 right-4 z-10">
       <div className="relative" ref={dropdownRef}>
         <button
-          onClick={() => setDropdownOpen((prev) => !prev)}
+          onClick={() => {
+            setDropdownOpen((prev) => !prev);
+          }}
+          data-tutorial-add-node
           className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
+          aria-label="Add node"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"

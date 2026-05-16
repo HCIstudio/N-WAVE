@@ -338,7 +338,10 @@ const BottomBar: React.FC<BottomBarProps> = ({
         </div>
       )}
 
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background text-text rounded-lg border border-accent flex items-center justify-between p-1 space-x-2 shadow-lg z-10">
+      <div
+        className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background text-text rounded-lg border border-accent flex items-center justify-between p-1 space-x-2 shadow-lg z-10"
+        data-tutorial-bottom-bar
+      >
         <Link
           to="/"
           className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
