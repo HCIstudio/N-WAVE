@@ -26,7 +26,7 @@ This starts:
 ### Notes about Nextflow and Docker
 
 - The backend executes workflows via local `nextflow` if available.
-- Workflow outputs are persisted to `./backend/results` on the host.
+- Workflow outputs are persisted to `./results` on the host.
 
 Stop services with:
 

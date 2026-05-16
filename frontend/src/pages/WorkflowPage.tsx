@@ -6,7 +6,7 @@ import {
   useContext,
   useMemo,
 } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { ReactFlowProvider, useReactFlow } from "reactflow";
 import type { Node } from "reactflow";
 import type { NodeData } from "../components/nodes/BaseNode";
@@ -30,6 +30,80 @@ import { useExecutionStatus } from "../hooks";
 import { generateNextflowScript } from "../generators";
 import { Loader } from "lucide-react";
 import { type ExecutionSettings, ExecutionMode } from "../types/execution";
+import type { WorkflowDescriptor } from "../types/backend";
+import TutorialCallout from "../components/tutorial/TutorialCallout";
+
+const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
+const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
+const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
+const TUTORIAL_COPY_ID_KEY = "nwave.demoTutorial.copyId";
+
+const tutorialSteps = [
+  {
+    text: (
+      <>
+        <strong>Input nodes</strong> hold files to process in the workflow.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-file-input"]',
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        <strong>Processing nodes</strong> take one or more inputs to alter and
+        output the results.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-map-uppercase"]',
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        <strong>Display nodes</strong> display the input they receive for better
+        monitoring. All data going into a Display node will be written as
+        workflow result files.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-output"]',
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        Here you can <strong>rename</strong>, <strong>run</strong>,{" "}
+        <strong>save</strong> or <strong>download</strong> your workflow.
+      </>
+    ),
+    targetSelector: "[data-tutorial-bottom-bar]",
+    placement: "above" as const,
+  },
+  {
+    text: (
+      <>
+        To <strong>expand the workflow</strong> click here to see a collection of
+        all available nodes. Feel free to select one.
+      </>
+    ),
+    targetSelector: "[data-tutorial-add-node]",
+    placement: "left-start" as const,
+  },
+  {
+    text: (
+      <>
+        To <strong>edit</strong> or <strong>delete</strong> a node or view its
+        current configuration, simply double-click it.
+      </>
+    ),
+    targetSelector: '.react-flow__node[data-id="demo-map-uppercase"]',
+    placement: "above" as const,
+  },
+  {
+    text: "That covers the basics of N-Wave. Feel free to explore the application. If you have further questions click the home button on the bottom to return to the main page. There you can always retake the tutorial or access our wiki for a more extensive explanation on workflow and node functionality.",
+    placement: "center" as const,
+  },
+];
 
 const WorkflowPageContent: React.FC = () => {
   const workflowContext = useContext(WorkflowContext);
@@ -55,6 +129,12 @@ const WorkflowPageContent: React.FC = () => {
 
   const [openPanelNodeIds, setOpenPanelNodeIds] = useState<string[]>([]);
   const [workflowName, setWorkflowName] = useState("");
+  const [workflowReadOnly, setWorkflowReadOnly] = useState(false);
+  const [workflowRawSource, setWorkflowRawSource] = useState<string | null>(null);
+  const [workflowImportWarnings, setWorkflowImportWarnings] = useState<string[]>([]);
+  const [workflowSourceFormat, setWorkflowSourceFormat] = useState<
+    "visual" | "nextflow"
+  >("visual");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -146,10 +226,152 @@ const WorkflowPageContent: React.FC = () => {
   );
 
   const { id: workflowId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { screenToFlowPosition } = useReactFlow();
+  const [isDuplicatingReadOnly, setIsDuplicatingReadOnly] = useState(false);
+  const [tutorialStepIndex, setTutorialStepIndex] = useState(() => {
+    if (sessionStorage.getItem(TUTORIAL_ACTIVE_KEY) !== "true") return null;
+    const storedStep = Number(sessionStorage.getItem(TUTORIAL_STEP_KEY) ?? "0");
+    return Number.isFinite(storedStep)
+      ? Math.min(Math.max(storedStep, 0), tutorialSteps.length - 1)
+      : 0;
+  });
+  const isTutorialActive = tutorialStepIndex !== null;
+
+  const finishTutorial = useCallback(async () => {
+    const tutorialCopyId = sessionStorage.getItem(TUTORIAL_COPY_ID_KEY);
+
+    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+    sessionStorage.removeItem(TUTORIAL_COPY_ID_KEY);
+    sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+    setTutorialStepIndex(null);
+
+    if (!tutorialCopyId) return;
+
+    try {
+      await api.delete(`/workflows/${tutorialCopyId}`);
+      if (workflowId === tutorialCopyId) {
+        navigate("/");
+      }
+    } catch (err) {
+      setError("Failed to remove tutorial workflow copy.");
+      console.error(err);
+    }
+  }, [navigate, workflowId]);
+
+  const setTutorialStep = useCallback((stepIndex: number | null) => {
+    if (stepIndex === null) {
+      sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+      sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+      sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+      setTutorialStepIndex(null);
+      return;
+    }
+
+    sessionStorage.setItem(TUTORIAL_ACTIVE_KEY, "true");
+    sessionStorage.setItem(TUTORIAL_STEP_KEY, String(stepIndex));
+    setTutorialStepIndex(stepIndex);
+  }, []);
+
+  const goToPreviousTutorialStep = useCallback(() => {
+    setTutorialStepIndex((currentStep) => {
+      if (currentStep === null) return currentStep;
+      const previousStep = Math.max(currentStep - 1, 0);
+      sessionStorage.setItem(TUTORIAL_STEP_KEY, String(previousStep));
+      return previousStep;
+    });
+  }, []);
+
+  const goToNextTutorialStep = useCallback(() => {
+    setTutorialStepIndex((currentStep) => {
+      if (currentStep === null) return currentStep;
+      if (currentStep >= tutorialSteps.length - 1) {
+        sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+        sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+        sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+        return null;
+      }
+
+      const nextStep = currentStep + 1;
+      sessionStorage.setItem(TUTORIAL_STEP_KEY, String(nextStep));
+      return nextStep;
+    });
+  }, []);
+
+  const duplicateReadOnlyWorkflow = useCallback(async (options?: {
+    trackTutorialCopy?: boolean;
+  }) => {
+    if (!workflowId || !workflowReadOnly || isDuplicatingReadOnly) {
+      return false;
+    }
+
+    try {
+      setIsDuplicatingReadOnly(true);
+      const response = await api.post(`/workflows/${workflowId}/duplicate`);
+      if (options?.trackTutorialCopy && response.data?._id) {
+        sessionStorage.setItem(TUTORIAL_COPY_ID_KEY, response.data._id);
+      }
+      navigate(`/workflow/${response.data._id}`);
+      return true;
+    } catch (err) {
+      setError("Failed to duplicate read-only workflow.");
+      console.error(err);
+      setIsDuplicatingReadOnly(false);
+      return false;
+    }
+  }, [workflowId, workflowReadOnly, isDuplicatingReadOnly, navigate]);
+
+  const handleTutorialForward = useCallback(() => {
+    if (tutorialStepIndex === 4 && workflowReadOnly) {
+      setTutorialStep(5);
+      void duplicateReadOnlyWorkflow({ trackTutorialCopy: true }).then((duplicated) => {
+        if (!duplicated) {
+          setTutorialStep(4);
+        }
+      });
+      return;
+    }
+
+    goToNextTutorialStep();
+  }, [
+    duplicateReadOnlyWorkflow,
+    goToNextTutorialStep,
+    setTutorialStep,
+    tutorialStepIndex,
+    workflowReadOnly,
+  ]);
+
+  const ensureEditableWorkflow = useCallback(async () => {
+    if (!workflowReadOnly) return true;
+    await duplicateReadOnlyWorkflow();
+    return false;
+  }, [workflowReadOnly, duplicateReadOnlyWorkflow]);
+
+  const handleWorkflowNameChange = useCallback(
+    (newName: string) => {
+      if (workflowReadOnly) {
+        void duplicateReadOnlyWorkflow();
+        return;
+      }
+      setWorkflowName(newName);
+      setIsDirty(true);
+    },
+    [workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty]
+  );
 
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
+      if (workflowReadOnly) {
+        if (tutorialStepIndex === 4) {
+          setTutorialStep(5);
+          void duplicateReadOnlyWorkflow({ trackTutorialCopy: true });
+          return;
+        }
+        void duplicateReadOnlyWorkflow();
+        return;
+      }
+
       const position = screenToFlowPosition({
         x: window.innerWidth / 2 - 150, // Adjust for panel width
         y: window.innerHeight / 3,
@@ -168,8 +390,19 @@ const WorkflowPageContent: React.FC = () => {
 
       setNodes((nds) => nds.concat(newNode));
       setIsDirty(true);
+      if (tutorialStepIndex === 4) {
+        setTutorialStep(5);
+      }
     },
-    [screenToFlowPosition, setNodes, setIsDirty]
+    [
+      screenToFlowPosition,
+      setNodes,
+      setIsDirty,
+      workflowReadOnly,
+      duplicateReadOnlyWorkflow,
+      tutorialStepIndex,
+      setTutorialStep,
+    ]
   );
 
   // Memoize nodes to prevent unnecessary re-renders, and disable interaction during connection
@@ -181,9 +414,9 @@ const WorkflowPageContent: React.FC = () => {
         isHighlight: node.id === activePanelNodeId,
       },
       selectable: !isConnecting,
-      draggable: !isConnecting,
+      draggable: !isConnecting && !workflowReadOnly,
     }));
-  }, [nodes, isConnecting, activePanelNodeId]);
+  }, [nodes, isConnecting, activePanelNodeId, workflowReadOnly]);
 
   // Memoize edges to prevent unnecessary re-renders
   const memoizedEdges = useMemo(() => {
@@ -228,12 +461,15 @@ const WorkflowPageContent: React.FC = () => {
       return;
     }
     try {
-      const response = await api.get(`/workflows/${workflowId}`);
+      const response = await api.get<WorkflowDescriptor>(`/workflows/${workflowId}`);
       const {
         name,
         nodes: fetchedNodes,
         edges: fetchedEdges,
         executionSettings,
+        rawSource,
+        importWarnings,
+        origin,
       } = response.data;
 
       console.log("Fetched workflow data:", {
@@ -245,19 +481,48 @@ const WorkflowPageContent: React.FC = () => {
       const workflowTitle =
         name && name.trim() !== "" ? name : "Untitled Workflow";
       setWorkflowName(workflowTitle);
+      setWorkflowReadOnly(
+        Boolean(response.data.isReadOnly || response.data.origin?.readOnly)
+      );
+      setWorkflowRawSource(rawSource ?? null);
+      setWorkflowImportWarnings(importWarnings ?? []);
+      setWorkflowSourceFormat(origin?.sourceFormat ?? "visual");
 
-      setNodes(fetchedNodes || []);
+      const loadedNodes = fetchedNodes || [];
+      setNodes(loadedNodes);
 
-      const hydratedEdges = (fetchedEdges || []).map((edge: any) => ({
-        ...edge,
-        type: "default",
-        data: {
-          ...edge.data,
-          onDelete: (edgeId: string) => {
-            setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+      const hydratedEdges = (fetchedEdges || []).map((edge: any) => {
+        const sourceNode = loadedNodes.find((node) => node.id === edge.source);
+        const targetNode = loadedNodes.find((node) => node.id === edge.target);
+        const legacyMergeInputMatch = String(edge.targetHandle ?? "").match(
+          /^in(\d+)$/
+        );
+
+        return {
+          ...edge,
+          sourceHandle:
+            sourceNode?.type === "fileInput" && edge.sourceHandle === "out"
+              ? "ch_files_out"
+              : edge.sourceHandle,
+          targetHandle:
+            targetNode?.data?.operatorType === "merge" && legacyMergeInputMatch
+              ? "in"
+              : edge.targetHandle,
+          type: "default",
+          data: {
+            ...edge.data,
+            order:
+              typeof edge.data?.order === "number"
+                ? edge.data.order
+                : legacyMergeInputMatch?.[1]
+                  ? Number(legacyMergeInputMatch[1]) - 1
+                  : undefined,
+            onDelete: (edgeId: string) => {
+              setEdges((eds) => eds.filter((e) => e.id !== edgeId));
+            },
           },
-        },
-      }));
+        };
+      });
 
       setEdges(hydratedEdges);
 
@@ -301,11 +566,91 @@ const WorkflowPageContent: React.FC = () => {
     } catch (err) {
       setError("Failed to fetch workflow.");
       setWorkflowName("Untitled Workflow"); // Set default name on error
+      setWorkflowReadOnly(false);
       console.error(err);
     } finally {
       setIsLoading(false);
     }
   }, [workflowId, setNodes, setEdges, setIsDirty, setExecutionSettings]);
+
+  const handleNodesChange = useCallback(
+    (changes: Parameters<typeof onNodesChange>[0]) => {
+      if (workflowReadOnly) {
+        const editableChanges = changes.filter(
+          (change) =>
+            change.type === "position" && (change as { dragging?: boolean }).dragging
+        );
+        if (editableChanges.length > 0 || changes.some((change) => change.type === "remove")) {
+          void duplicateReadOnlyWorkflow();
+        }
+
+        const internalChanges = changes.filter(
+          (change) =>
+            change.type !== "position" &&
+            change.type !== "remove" &&
+            change.type !== "add" &&
+            change.type !== "reset"
+        );
+        if (internalChanges.length > 0) {
+          onNodesChange(internalChanges);
+          setIsDirty(false);
+        }
+        return;
+      }
+      onNodesChange(changes);
+    },
+    [onNodesChange, workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty]
+  );
+
+  const handleEdgesChange = useCallback(
+    (changes: Parameters<typeof onEdgesChange>[0]) => {
+      if (workflowReadOnly) {
+        if (changes.some((change) => change.type === "remove")) {
+          void duplicateReadOnlyWorkflow();
+        }
+        const internalChanges = changes.filter(
+          (change) =>
+            change.type !== "remove" &&
+            change.type !== "add" &&
+            change.type !== "reset"
+        );
+        if (internalChanges.length > 0) {
+          onEdgesChange(internalChanges);
+          setIsDirty(false);
+        }
+        return;
+      }
+      onEdgesChange(changes);
+    },
+    [onEdgesChange, workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty]
+  );
+
+  const handleConnect = useCallback(
+    (connection: Parameters<typeof onConnect>[0]) => {
+      if (workflowReadOnly) {
+        void duplicateReadOnlyWorkflow();
+        return;
+      }
+      onConnect(connection);
+    },
+    [onConnect, workflowReadOnly, duplicateReadOnlyWorkflow]
+  );
+
+  const handleUpdateNodeData = useCallback(
+    async (nodeId: string, data: Partial<NodeData>) => {
+      const currentNode = nodes.find((node) => node.id === nodeId);
+      const isNoop =
+        currentNode &&
+        Object.entries(data).every(
+          ([key, value]) => currentNode.data[key] === value
+        );
+      if (isNoop) return;
+
+      if (!(await ensureEditableWorkflow())) return;
+      updateNodeData(nodeId, data);
+    },
+    [nodes, ensureEditableWorkflow, updateNodeData]
+  );
 
   useEffect(() => {
     fetchWorkflow();
@@ -417,6 +762,10 @@ const WorkflowPageContent: React.FC = () => {
       setError("No workflow ID provided.");
       return;
     }
+    if (workflowReadOnly) {
+      await duplicateReadOnlyWorkflow();
+      return;
+    }
     setIsSaving(true);
     setError(null);
     try {
@@ -480,17 +829,36 @@ const WorkflowPageContent: React.FC = () => {
   // Auto-save workflow when important changes are made
   useEffect(() => {
     const autoSaveTimer = setTimeout(() => {
-      if (workflowContext.isDirty && !isSaving && workflowId) {
+      if (workflowContext.isDirty && !isSaving && workflowId && !workflowReadOnly) {
         console.log("Auto-saving workflow...");
         handleSaveWorkflow();
       }
     }, 2000); // Auto-save 2 seconds after changes
 
     return () => clearTimeout(autoSaveTimer);
-  }, [workflowContext.isDirty, isSaving, workflowId, nodes, edges]);
+  }, [workflowContext.isDirty, isSaving, workflowId, nodes, edges, workflowReadOnly]);
 
   const handleDownloadScript = () => {
     try {
+      if (
+        workflowSourceFormat === "nextflow" &&
+        workflowRawSource &&
+        nodes.length === 0
+      ) {
+        const blob = new Blob([workflowRawSource], {
+          type: "text/plain;charset=utf-8",
+        });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `${workflowName.replace(/\s+/g, "_") || "workflow"}.nf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        return;
+      }
+
       const script = generateNextflowScript(
         nodes,
         edges,
@@ -559,13 +927,16 @@ const WorkflowPageContent: React.FC = () => {
       }
 
       // Generate the Nextflow script with execution settings
-      const nextflowScript = generateNextflowScript(
-        nodes,
-        edges,
-        workflowName || "workflow",
-        settings.output.directory || "results",
-        settings.output?.namingPattern ?? "{workflow_name}_{timestamp}"
-      );
+      const nextflowScript =
+        workflowSourceFormat === "nextflow" && workflowRawSource && nodes.length === 0
+          ? workflowRawSource
+          : generateNextflowScript(
+              nodes,
+              edges,
+              workflowName || "workflow",
+              settings.output.directory || "results",
+              settings.output?.namingPattern ?? "{workflow_name}_{timestamp}"
+            );
 
       if (!nextflowScript || nextflowScript.trim() === "") {
         throw new Error(
@@ -669,7 +1040,7 @@ const WorkflowPageContent: React.FC = () => {
             );
           } else {
             workflowContext.showToast(
-              "Workflow executed successfully! Check the execution panel for details.",
+              "Workflow executed successfully! Results have been written to ~/results. \nCheck the execution panel for details.",
               "success"
             );
           }
@@ -882,6 +1253,11 @@ const WorkflowPageContent: React.FC = () => {
   const onNodeDragStop = (_: React.MouseEvent, node: Node) => {
     setIsDragging(false);
     if (isHoveringDropZone) {
+      if (workflowReadOnly) {
+        void duplicateReadOnlyWorkflow();
+        setIsHoveringDropZone(false);
+        return;
+      }
       setNodes((nds) => nds.filter((n) => n.id !== node.id));
       setEdges((eds) =>
         eds.filter((e) => e.source !== node.id && e.target !== node.id)
@@ -891,6 +1267,10 @@ const WorkflowPageContent: React.FC = () => {
   };
 
   const handleDeleteNode = (node: Node<NodeData> | null) => {
+    if (workflowReadOnly) {
+      void duplicateReadOnlyWorkflow();
+      return;
+    }
     if (node) {
       setNodeToDelete(node);
     }
@@ -898,6 +1278,11 @@ const WorkflowPageContent: React.FC = () => {
 
   const onConfirmDelete = () => {
     if (nodeToDelete) {
+      if (workflowReadOnly) {
+        void duplicateReadOnlyWorkflow();
+        setNodeToDelete(null);
+        return;
+      }
       setNodes((nds) => nds.filter((n) => n.id !== nodeToDelete.id));
       setEdges((eds) =>
         eds.filter(
@@ -974,6 +1359,11 @@ const WorkflowPageContent: React.FC = () => {
 
   const handleExecutionSettingsChange = useCallback(
     (newSettings: ExecutionSettings) => {
+      if (workflowReadOnly) {
+        void duplicateReadOnlyWorkflow();
+        return;
+      }
+
       setExecutionSettings(newSettings);
 
       // Save to localStorage immediately
@@ -989,7 +1379,7 @@ const WorkflowPageContent: React.FC = () => {
       // Mark workflow as dirty to trigger auto-save
       setIsDirty(true);
     },
-    [setIsDirty]
+    [setIsDirty, workflowReadOnly, duplicateReadOnlyWorkflow]
   );
 
   const renderPanels = () => {
@@ -1027,7 +1417,7 @@ const WorkflowPageContent: React.FC = () => {
             {node.type === "outputDisplay" ? (
               <OutputDisplayPanelContent
                 node={node}
-                onNodeDataChange={updateNodeData}
+                onNodeDataChange={handleUpdateNodeData}
               />
             ) : null}
           </FloatingPanel>
@@ -1038,7 +1428,7 @@ const WorkflowPageContent: React.FC = () => {
             key={node.id}
             node={node}
             onClose={() => onPanelClose(node.id)}
-            onSave={updateNodeData}
+            onSave={handleUpdateNodeData}
             onDelete={() => {
               handleDeleteNode(node);
               onPanelClose(node.id);
@@ -1083,9 +1473,9 @@ const WorkflowPageContent: React.FC = () => {
         <Canvas
           nodes={memoizedNodes}
           edges={memoizedEdges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
+          onNodesChange={handleNodesChange}
+          onEdgesChange={handleEdgesChange}
+          onConnect={handleConnect}
           onNodeDragStart={onNodeDragStart}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
@@ -1094,16 +1484,40 @@ const WorkflowPageContent: React.FC = () => {
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
         />
+        {isTutorialActive && tutorialStepIndex !== null && (
+          <TutorialCallout
+            text={tutorialSteps[tutorialStepIndex].text}
+            targetSelector={tutorialSteps[tutorialStepIndex].targetSelector}
+            placement={tutorialSteps[tutorialStepIndex].placement}
+            canGoBack={tutorialStepIndex > 0}
+            canGoForward={tutorialStepIndex < tutorialSteps.length - 1}
+            skipLabel={
+              tutorialStepIndex === tutorialSteps.length - 1
+                ? "Finish Tutorial"
+                : "Skip Tutorial"
+            }
+            onBack={goToPreviousTutorialStep}
+            onForward={handleTutorialForward}
+            onSkip={() => {
+              void finishTutorial();
+            }}
+          />
+        )}
         <DeleteDropZone
           isDragging={isDragging}
           isHovering={isHoveringDropZone}
         />
         {renderPanels()}
       </div>
+      {workflowImportWarnings.length > 0 && (
+        <div className="border-t border-yellow-700/40 bg-yellow-100/90 px-4 py-3 text-sm text-yellow-900">
+          {workflowImportWarnings.join(" ")}
+        </div>
+      )}
 
       <BottomBar
         workflowName={workflowName}
-        onWorkflowNameChange={setWorkflowName}
+        onWorkflowNameChange={handleWorkflowNameChange}
         onSave={handleSaveWorkflow}
         onDownload={handleDownloadScript}
         onRun={handleRunWorkflow}

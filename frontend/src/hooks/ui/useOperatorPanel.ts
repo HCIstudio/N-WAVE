@@ -1,6 +1,7 @@
 import { useMemo, useCallback } from "react";
 import { useEdges, useNodes, type Node } from "reactflow";
 import type { NodeData } from "../../components/nodes/BaseNode";
+import { getIncomingFiles } from "../../utils/workflowConnections";
 
 export const useOperatorPanel = (
   node: Node<NodeData>,
@@ -10,12 +11,7 @@ export const useOperatorPanel = (
   const nodes = useNodes<NodeData>();
 
   const incomingFiles = useMemo(() => {
-    const parentEdge = edges.find((edge) => edge.target === node.id);
-    if (!parentEdge) return [];
-    const parentNode = nodes.find((n) => n.id === parentEdge.source);
-    const files = parentNode?.data.files || [];
-
-    return files;
+    return getIncomingFiles(node.id, edges, nodes);
   }, [edges, nodes, node.id]);
 
   const handleDataChange = useCallback(

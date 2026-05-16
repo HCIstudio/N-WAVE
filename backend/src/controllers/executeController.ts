@@ -761,42 +761,57 @@ const parseWorkflowInvocation = (line: string): {
 const getInvocationArguments = (line: string): string[] => {
   const trimmed = line.trim();
   const assignmentIndex = trimmed.indexOf("=");
-  const openIndex = trimmed.indexOf("(", assignmentIndex + 1);
-  if (openIndex === -1) return [];
-
-  let depth = 0;
-  let closeIndex = -1;
-  for (let i = openIndex; i < trimmed.length; i++) {
-    const char = trimmed.charAt(i);
-    if (char === "(") {
-      depth += 1;
-      continue;
-    }
-    if (char === ")") {
-      depth -= 1;
-      if (depth === 0) {
-        closeIndex = i;
-        break;
-      }
+  const rhs = assignmentIndex === -1 ? trimmed : trimmed.substring(assignmentIndex + 1);
+  const candidatePattern = /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g;
+  const lhsDefinitions = new Set<string>();
+  const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
+  const tupleDefinitions = tupleDefinitionMatch?.[1];
+  if (tupleDefinitions) {
+    tupleDefinitions
+      .split(",")
+      .map((name) => sanitizeVarName(name.trim()))
+      .filter(Boolean)
+      .forEach((name) => lhsDefinitions.add(name));
+  } else {
+    const definitionMatch = trimmed.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
+    const definitionName = definitionMatch?.[1];
+    if (definitionName) {
+      lhsDefinitions.add(sanitizeVarName(definitionName));
     }
   }
-  if (closeIndex === -1 || closeIndex <= openIndex + 1) return [];
-
-  const argsBlock = trimmed.substring(openIndex + 1, closeIndex);
-  const tokens = argsBlock.match(/\b(?:ch_|node_)[A-Za-z0-9_]+\b/g);
-  if (!tokens) return [];
-
-  const isTrackedVariable = (name: string): boolean =>
-    name.startsWith("ch_") || name.startsWith("node_");
 
   const args: string[] = [];
-  tokens.forEach((token) => {
-    const arg = sanitizeVarName(token);
-    if (!arg) return;
-    if (isTrackedVariable(arg) && !args.includes(arg)) {
+
+  let match: RegExpExecArray | null;
+  while ((match = candidatePattern.exec(rhs)) !== null) {
+    const rawName = match[0];
+    const arg = sanitizeVarName(rawName);
+    if (!arg || lhsDefinitions.has(arg)) {
+      continue;
+    }
+
+    const startIndex = match.index;
+    const endIndex = startIndex + rawName.length;
+    const previousChar = startIndex > 0 ? rhs.charAt(startIndex - 1) : "";
+    const nextNonWhitespaceChar =
+      rhs.slice(endIndex).match(/^\s*(.)/)?.[1] ?? "";
+
+    if (previousChar === ".") {
+      continue;
+    }
+
+    if (nextNonWhitespaceChar === "(") {
+      continue;
+    }
+
+    if (
+      (arg.startsWith("ch_") || arg.startsWith("node_")) &&
+      !args.includes(arg)
+    ) {
       args.push(arg);
     }
-  });
+  }
+
   return args;
 };
 

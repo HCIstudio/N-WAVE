@@ -1,1 +1,9 @@
-backend/results/*
+results/*
+frontend/src/**/*.js
+frontend/src/**/*.d.ts
+!frontend/src/**/*.js.map
+!frontend/src/types/css.d.ts
+!frontend/src/types/build-info.d.ts
+frontend/vite.config.js
+frontend/vite.config.d.ts
+frontend/*.tsbuildinfo

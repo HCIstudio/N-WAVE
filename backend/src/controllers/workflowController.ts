@@ -1,13 +1,33 @@
 import { Request, Response } from "express";
 import WorkflowModel, { IWorkflow } from "../models/WorkflowModel";
 import mongoose from "mongoose";
+import {
+  getBuiltinWorkflowById,
+  isBuiltinWorkflowId,
+  listBuiltinWorkflows,
+  toWorkflowDescriptor,
+} from "../workflows";
+import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 
 export const saveWorkflow = async (
   req: Request,
   res: Response
 ): Promise<void> => {
   try {
-    const { name, description, nodes, edges, executionSettings } = req.body;
+    const {
+      name,
+      description,
+      nodes,
+      edges,
+      executionSettings,
+      originType,
+      sourceFormat,
+      sourceKey,
+      rawSource,
+      importWarnings,
+      isBuiltin,
+      isReadOnly,
+    } = req.body;
 
     // Basic validation
     if (!nodes || !edges) {
@@ -21,10 +41,17 @@ export const saveWorkflow = async (
       nodes,
       edges,
       executionSettings,
+      originType,
+      sourceFormat,
+      sourceKey,
+      rawSource,
+      importWarnings,
+      isBuiltin,
+      isReadOnly,
     });
 
     const savedWorkflow = await newWorkflow.save();
-    res.status(201).json(savedWorkflow);
+    res.status(201).json(toWorkflowDescriptor(savedWorkflow));
   } catch (error: any) {
     console.error("Error saving workflow:", error);
     res.status(500).json({
@@ -41,7 +68,18 @@ export const getWorkflowById = async (
   try {
     const workflowId = req.params.id;
 
-    if (!workflowId || !mongoose.Types.ObjectId.isValid(workflowId)) {
+    if (!workflowId) {
+      res.status(400).json({ message: "Invalid workflow ID format" });
+      return;
+    }
+
+    const builtinWorkflow = getBuiltinWorkflowById(workflowId);
+    if (builtinWorkflow) {
+      res.status(200).json(builtinWorkflow);
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(workflowId)) {
       res.status(400).json({ message: "Invalid workflow ID format" });
       return;
     }
@@ -53,7 +91,7 @@ export const getWorkflowById = async (
       return;
     }
 
-    res.status(200).json(workflow);
+    res.status(200).json(toWorkflowDescriptor(workflow));
   } catch (error: any) {
     console.error(`Error fetching workflow by ID ${req.params.id}:`, error);
     res.status(500).json({
@@ -68,9 +106,11 @@ export const getAllWorkflows = async (
   res: Response
 ): Promise<void> => {
   try {
-    const workflows: IWorkflow[] = await WorkflowModel.find({}); // Fetches all workflows
-    // For summaries, you could do: await WorkflowModel.find({}).select('name createdAt');
-    res.status(200).json(workflows);
+    const workflows: IWorkflow[] = await WorkflowModel.find({});
+    const builtinWorkflows = listBuiltinWorkflows();
+    res
+      .status(200)
+      .json([...builtinWorkflows, ...workflows.map((workflow) => toWorkflowDescriptor(workflow))]);
   } catch (error: any) {
     console.error("Error fetching all workflows:", error);
     res.status(500).json({
@@ -88,7 +128,20 @@ export const updateWorkflow = async (
     const workflowId = req.params.id;
     const { name, description, nodes, edges, executionSettings } = req.body;
 
-    if (!workflowId || !mongoose.Types.ObjectId.isValid(workflowId)) {
+    if (!workflowId) {
+      res.status(400).json({ message: "Invalid workflow ID format" });
+      return;
+    }
+
+    if (isBuiltinWorkflowId(workflowId)) {
+      res.status(403).json({
+        message:
+          "Built-in workflows are read-only. Duplicate the workflow to create an editable copy.",
+      });
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(workflowId)) {
       res.status(400).json({ message: "Invalid workflow ID format" });
       return;
     }
@@ -122,7 +175,7 @@ export const updateWorkflow = async (
       return;
     }
 
-    res.status(200).json(updatedWorkflow);
+    res.status(200).json(toWorkflowDescriptor(updatedWorkflow));
   } catch (error: any) {
     console.error(`Error updating workflow ${req.params.id}:`, error);
     res.status(500).json({
@@ -139,7 +192,20 @@ export const deleteWorkflow = async (
   try {
     const workflowId = req.params.id;
 
-    if (!workflowId || !mongoose.Types.ObjectId.isValid(workflowId)) {
+    if (!workflowId) {
+      res.status(400).json({ message: "Invalid workflow ID format" });
+      return;
+    }
+
+    if (isBuiltinWorkflowId(workflowId)) {
+      res.status(403).json({
+        message:
+          "Built-in workflows cannot be deleted. Duplicate the workflow to create an editable copy.",
+      });
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(workflowId)) {
       res.status(400).json({ message: "Invalid workflow ID format" });
       return;
     }
@@ -162,4 +228,108 @@ export const deleteWorkflow = async (
   }
 };
 
-// We will add other controller functions like getAllWorkflows etc. later
+export const importWorkflow = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { name, description, rawSource, sourceKey } = req.body;
+
+    const importedWorkflow = importNextflowWorkflow({
+      name,
+      description,
+      rawSource,
+      sourceKey,
+    });
+
+    const savedWorkflow = await new WorkflowModel(importedWorkflow).save();
+    res.status(201).json(toWorkflowDescriptor(savedWorkflow));
+  } catch (error: any) {
+    console.error("Error importing workflow:", error);
+    const statusCode =
+      typeof error?.message === "string" &&
+      error.message.toLowerCase().includes("required")
+        ? 400
+        : 500;
+
+    res.status(statusCode).json({
+      message:
+        statusCode === 400
+          ? "Invalid workflow import payload"
+          : "Server error while importing workflow",
+      error: error.message,
+    });
+  }
+};
+
+export const duplicateWorkflow = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const workflowId = req.params.id;
+
+    if (!workflowId) {
+      res.status(400).json({ message: "Invalid workflow ID format" });
+      return;
+    }
+
+    const builtinWorkflow = getBuiltinWorkflowById(workflowId);
+    if (builtinWorkflow) {
+      const duplicatedWorkflow = new WorkflowModel({
+        name: `${builtinWorkflow.name} Copy`,
+        description: builtinWorkflow.description,
+        nodes: builtinWorkflow.nodes,
+        edges: builtinWorkflow.edges,
+        executionSettings: builtinWorkflow.executionSettings,
+        originType: "imported",
+        sourceFormat: builtinWorkflow.origin.sourceFormat,
+        sourceKey: builtinWorkflow.origin.sourceKey ?? workflowId,
+        rawSource: builtinWorkflow.rawSource ?? null,
+        importWarnings: builtinWorkflow.importWarnings ?? [],
+        isBuiltin: false,
+        isReadOnly: false,
+      });
+
+      const savedWorkflow = await duplicatedWorkflow.save();
+      res.status(201).json(toWorkflowDescriptor(savedWorkflow));
+      return;
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(workflowId)) {
+      res.status(400).json({ message: "Invalid workflow ID format" });
+      return;
+    }
+
+    const workflow: IWorkflow | null = await WorkflowModel.findById(workflowId);
+
+    if (!workflow) {
+      res.status(404).json({ message: "Workflow not found" });
+      return;
+    }
+
+    const duplicatedWorkflow = new WorkflowModel({
+      name: `${workflow.name ?? "Untitled Workflow"} Copy`,
+      description: workflow.description ?? "",
+      nodes: workflow.nodes ?? [],
+      edges: workflow.edges ?? [],
+      executionSettings: workflow.executionSettings,
+      originType: "database",
+      sourceFormat: workflow.sourceFormat ?? "visual",
+      sourceKey: workflow.sourceKey ?? String(workflow._id),
+      rawSource: workflow.rawSource ?? null,
+      importWarnings: workflow.importWarnings ?? [],
+      isBuiltin: false,
+      isReadOnly: false,
+    });
+
+    const savedWorkflow = await duplicatedWorkflow.save();
+    res.status(201).json(toWorkflowDescriptor(savedWorkflow));
+  } catch (error: any) {
+    console.error(`Error duplicating workflow ${req.params.id}:`, error);
+    res.status(500).json({
+      message: "Server error while duplicating workflow",
+      error: error.message,
+    });
+  }
+};

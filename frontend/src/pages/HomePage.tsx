@@ -1,25 +1,26 @@
 import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Pencil, Trash2, Save } from "lucide-react";
+import { BookOpen, Pencil, Trash2, Save, Copy, Upload } from "lucide-react";
 import api from "../api";
 import {
   ConfirmDialog,
   ActionDialog,
+  Modal,
   type ActionButtonProps,
 } from "../components/common";
 import PageLayout from "../components/layout/PageLayout";
 import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
+import type { WorkflowDescriptor } from "../types/backend";
 
-interface Workflow {
-  _id: string;
-  name: string;
-  description: string;
-}
+const DEMO_WORKFLOW_ID = "builtin:demo-basic";
+const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
+const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
+const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 
 const HomePage: React.FC = () => {
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
+  const [workflows, setWorkflows] = useState<WorkflowDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,10 +39,39 @@ const HomePage: React.FC = () => {
   const [isUnsavedChangesModalOpen, setIsUnsavedChangesModalOpen] =
     useState(false);
   const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importName, setImportName] = useState("");
+  const [importDescription, setImportDescription] = useState("");
+  const [importSource, setImportSource] = useState("");
+  const [importFileName, setImportFileName] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   const nameTextareaRef = useRef<HTMLTextAreaElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const editingCardRef = useRef<HTMLDivElement>(null);
+  const importFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  const [isTutorialIntroVisible, setIsTutorialIntroVisible] = useState(() => {
+    return sessionStorage.getItem(TUTORIAL_COMPLETED_KEY) !== "true";
+  });
+
+  const skipTutorial = () => {
+    sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+    setIsTutorialIntroVisible(false);
+  };
+
+  const startTutorial = () => {
+    sessionStorage.setItem(TUTORIAL_ACTIVE_KEY, "true");
+    sessionStorage.setItem(TUTORIAL_STEP_KEY, "0");
+  };
+
+  const retakeTutorial = () => {
+    sessionStorage.removeItem(TUTORIAL_COMPLETED_KEY);
+    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
+    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
+    setIsTutorialIntroVisible(true);
+  };
 
   const fetchWorkflows = async () => {
     try {
@@ -74,7 +104,7 @@ const HomePage: React.FC = () => {
     }
   }, [editingId, editData]);
 
-  const handleEditClick = (e: React.MouseEvent, wf: Workflow) => {
+  const handleEditClick = (e: React.MouseEvent, wf: WorkflowDescriptor) => {
     e.preventDefault();
     e.stopPropagation();
     setEditingId(wf._id);
@@ -149,6 +179,18 @@ const HomePage: React.FC = () => {
     e.stopPropagation();
     setWorkflowToDelete(id);
     setIsDeleteModalOpen(true);
+  };
+
+  const handleDuplicate = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const response = await api.post(`/workflows/${id}/duplicate`);
+      navigate(`/workflow/${response.data._id}`);
+    } catch (err) {
+      setError("Failed to duplicate workflow.");
+      console.error(err);
+    }
   };
 
   const confirmDelete = async () => {
@@ -236,6 +278,60 @@ const HomePage: React.FC = () => {
     }
   };
 
+  const resetImportForm = () => {
+    setImportName("");
+    setImportDescription("");
+    setImportSource("");
+    setImportFileName("");
+    if (importFileInputRef.current) {
+      importFileInputRef.current.value = "";
+    }
+  };
+
+  const handleImportFileChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const content = await file.text();
+      setImportSource(content);
+      setImportFileName(file.name);
+      if (!importName.trim()) {
+        setImportName(file.name.replace(/\.[^.]+$/, ""));
+      }
+    } catch (err) {
+      setError("Failed to read import file.");
+      console.error(err);
+    }
+  };
+
+  const handleImportWorkflow = async () => {
+    if (!importSource.trim()) {
+      setError("Nextflow source is required for import.");
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      const response = await api.post("/workflows/import", {
+        name: importName.trim() || undefined,
+        description: importDescription.trim() || undefined,
+        rawSource: importSource,
+        sourceKey: importFileName || undefined,
+      });
+      setIsImportModalOpen(false);
+      resetImportForm();
+      navigate(`/workflow/${response.data._id}`);
+    } catch (err) {
+      setError("Failed to import workflow.");
+      console.error(err);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (editingId && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -295,11 +391,21 @@ const HomePage: React.FC = () => {
     },
   ];
 
-  const renderWorkflowCard = (wf: Workflow) => {
+  const hasDemoWorkflow = workflows.some(
+    (wf) => wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin
+  );
+  const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
+
+  const renderWorkflowCard = (wf: WorkflowDescriptor) => {
     const isEditing = editingId === wf._id;
+    const isReadOnly = wf.isReadOnly || wf.origin?.readOnly;
+    const showDuplicate = Boolean(wf.origin?.canDuplicate);
+    const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
+    const hideCardButtons = isHomeTutorialActive && isDemoWorkflow;
 
     const cardContent = (
       <>
+        {!hideCardButtons && (
         <div className="absolute top-4 right-2 z-10 flex items-center gap-1">
           {isEditing ? (
             <>
@@ -314,33 +420,49 @@ const HomePage: React.FC = () => {
               >
                 <Save size={16} />
               </button>
-              <button
-                onClick={(e) => handleDeleteClick(e, wf._id)}
-                className="p-1 text-text-light hover:text-red-500"
-                aria-label="Delete"
-              >
-                <Trash2 size={16} />
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={(e) => handleDeleteClick(e, wf._id)}
+                  className="p-1 text-text-light hover:text-red-500"
+                  aria-label="Delete"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </>
           ) : (
             <>
-              <button
-                onClick={(e) => handleEditClick(e, wf)}
-                className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Edit"
-              >
-                <Pencil size={16} />
-              </button>
-              <button
-                onClick={(e) => handleDeleteClick(e, wf._id)}
-                className="p-1 text-text-light hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Delete"
-              >
-                <Trash2 size={16} />
-              </button>
+              {!isReadOnly && (
+                <button
+                  onClick={(e) => handleEditClick(e, wf)}
+                  className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Edit"
+                >
+                  <Pencil size={16} />
+                </button>
+              )}
+              {showDuplicate && (
+                <button
+                  onClick={(e) => handleDuplicate(e, wf._id)}
+                  className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Duplicate"
+                >
+                  <Copy size={16} />
+                </button>
+              )}
+              {!isReadOnly && (
+                <button
+                  onClick={(e) => handleDeleteClick(e, wf._id)}
+                  className="p-1 text-text-light hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                  aria-label="Delete"
+                >
+                  <Trash2 size={16} />
+                </button>
+              )}
             </>
           )}
         </div>
+        )}
         {isEditing ? (
           <>
             <div className="pr-12">
@@ -382,6 +504,9 @@ const HomePage: React.FC = () => {
                 <span className="text-gray-500 italic">No description</span>
               )}
             </p>
+            {isReadOnly && (
+              <div className="px-2 pt-1 text-xs text-gray-400">Read-only demo</div>
+            )}
           </>
         )}
       </>
@@ -403,6 +528,11 @@ const HomePage: React.FC = () => {
       <Link
         key={wf._id}
         to={`/workflow/${wf._id}`}
+        onClick={() => {
+          if (isDemoWorkflow && isHomeTutorialActive) {
+            startTutorial();
+          }
+        }}
         className="group relative block bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
       >
         {cardContent}
@@ -413,10 +543,71 @@ const HomePage: React.FC = () => {
   return (
     <PageLayout>
       <div className="min-h-screen flex flex-col">
+        {isHomeTutorialActive && (
+          <div className="fixed inset-0 z-20 bg-black/35" aria-hidden="true" />
+        )}
         <div className="flex-1 p-8">
-          <h1 className="text-3xl font-bold text-text mb-6">Workflows</h1>
+          <div className="mb-6 flex items-center justify-between gap-4">
+            <h1 className="text-3xl font-bold text-text">Workflows</h1>
+            <div className="flex items-center gap-3">
+              {!isHomeTutorialActive && (
+                <button
+                  type="button"
+                  onClick={retakeTutorial}
+                  className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                >
+                  Retake Tutorial
+                </button>
+              )}
+              <a
+                href="https://github.com/HCIstudio/N-WAVE/wiki"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <BookOpen size={16} />
+                <span>Wiki</span>
+              </a>
+              <button
+                onClick={() => setIsImportModalOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <Upload size={16} />
+                <span>Import Workflow</span>
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {workflows.map((wf) => renderWorkflowCard(wf))}
+            {workflows.map((wf) => {
+              const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
+              return (
+                <div
+                  key={wf._id}
+                  className={
+                    isHomeTutorialActive && isDemoWorkflow
+                      ? "relative z-30"
+                      : "relative"
+                  }
+                >
+                  {renderWorkflowCard(wf)}
+                  {isHomeTutorialActive && isDemoWorkflow && (
+                    <div className="relative z-40 mt-3 rounded-lg border border-nextflow-green/60 bg-background p-4 text-sm text-text shadow-2xl">
+                      <p>
+                        Getting started: This demo workflow explains the
+                        fundamentals of N-Wave
+                      </p>
+                      <button
+                        type="button"
+                        onClick={skipTutorial}
+                        className="mt-3 rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
+                      >
+                        Skip Tutorial
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <div
               onClick={handleNewWorkflow}
               className="flex items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent cursor-pointer transition-colors"
@@ -454,6 +645,97 @@ const HomePage: React.FC = () => {
           message="You have unsaved changes. What would you like to do?"
           actions={unsavedChangesActions}
         />
+        <Modal
+          isOpen={isImportModalOpen}
+          onClose={() => {
+            if (!isImporting) {
+              setIsImportModalOpen(false);
+              resetImportForm();
+            }
+          }}
+          title="Import Nextflow Workflow"
+          footer={
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  resetImportForm();
+                }}
+                className="rounded-md bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300"
+                disabled={isImporting}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleImportWorkflow}
+                className="rounded-md bg-nextflow-green px-4 py-2 text-white hover:bg-nextflow-green-dark disabled:opacity-50"
+                disabled={isImporting || !importSource.trim()}
+              >
+                {isImporting ? "Importing..." : "Import"}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm text-text">Name</label>
+              <input
+                type="text"
+                value={importName}
+                onChange={(e) => setImportName(e.target.value)}
+                className="w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none"
+                placeholder="Imported Nextflow Workflow"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-text">Description</label>
+              <textarea
+                value={importDescription}
+                onChange={(e) => setImportDescription(e.target.value)}
+                className="w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none"
+                rows={2}
+                placeholder="Optional description"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-text">
+                Nextflow File
+              </label>
+              <div className="flex gap-2">
+                <input
+                  ref={importFileInputRef}
+                  type="file"
+                  accept=".nf,.txt,.groovy"
+                  onChange={handleImportFileChange}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => importFileInputRef.current?.click()}
+                  className="rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
+                >
+                  Choose File
+                </button>
+                <div className="flex min-w-0 items-center text-sm text-text-light">
+                  <span className="truncate">
+                    {importFileName || "No file selected"}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="mb-1 block text-sm text-text">
+                Nextflow Source
+              </label>
+              <textarea
+                value={importSource}
+                onChange={(e) => setImportSource(e.target.value)}
+                className="min-h-[220px] w-full rounded-md border border-gray-600 bg-accent p-2 font-mono text-sm text-text focus:border-nextflow-green focus:outline-none"
+                placeholder="Paste a Nextflow workflow here or load a .nf file."
+              />
+            </div>
+          </div>
+        </Modal>
         <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
           <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
             <span>With the help of HU Berlin & HCIstudio</span>

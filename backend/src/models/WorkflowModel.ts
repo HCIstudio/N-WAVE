@@ -9,6 +9,13 @@ export interface IWorkflow extends Document {
   nodes: any[]; // Using any[] which translates to Mixed with Mongoose for flexibility
   edges: any[]; // Same as above
   executionSettings?: any; // Execution configuration settings
+  originType?: "database" | "builtin" | "imported";
+  sourceFormat?: "visual" | "nextflow";
+  sourceKey?: string | null;
+  rawSource?: string | null;
+  importWarnings?: string[];
+  isBuiltin?: boolean;
+  isReadOnly?: boolean;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -38,6 +45,41 @@ const WorkflowSchema: Schema = new Schema(
       type: Schema.Types.Mixed, // Flexible object for execution configuration
       required: false,
       default: null,
+    },
+    originType: {
+      type: String,
+      required: false,
+      default: "database",
+    },
+    sourceFormat: {
+      type: String,
+      required: false,
+      default: "visual",
+    },
+    sourceKey: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    rawSource: {
+      type: String,
+      required: false,
+      default: null,
+    },
+    importWarnings: {
+      type: [String],
+      required: false,
+      default: [],
+    },
+    isBuiltin: {
+      type: Boolean,
+      required: false,
+      default: false,
+    },
+    isReadOnly: {
+      type: Boolean,
+      required: false,
+      default: false,
     },
   },
   {

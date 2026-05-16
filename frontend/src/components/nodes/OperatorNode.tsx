@@ -4,6 +4,20 @@ import { useEdges, useNodes } from "reactflow";
 import BaseNode, { type NodeData } from "./BaseNode";
 import { WorkflowContext } from "../../context/WorkflowContext";
 import { useOperatorLogic } from "../../hooks";
+import { getIncomingFiles } from "../../utils/workflowConnections";
+
+const portsEqual = (
+  current: NodeData["inputs"] | NodeData["outputs"],
+  next: NonNullable<NodeData["inputs"]>
+) =>
+  Array.isArray(current) &&
+  current.length === next.length &&
+  current.every(
+    (port, index) =>
+      port.name === next[index].name &&
+      port.isConnectable === next[index].isConnectable &&
+      port.label === next[index].label
+  );
 
 const OperatorNode = (props: NodeProps<NodeData>) => {
   const { data, id } = props;
@@ -21,12 +35,7 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
 
   // Track incoming files to trigger updates when they change
   const incomingFiles = useMemo(() => {
-    const parentEdge = edges.find((edge) => edge.target === id);
-    if (!parentEdge) return [];
-    const parentNode = nodes.find((n) => n.id === parentEdge.source);
-    const files = parentNode?.data.files || [];
-
-    return files;
+    return getIncomingFiles(id, edges, nodes);
   }, [edges, nodes, id]);
 
   // Use the appropriate operator hook based on the operator type
@@ -37,11 +46,16 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
   useOperatorLogic(incomingFiles, data, operatorType, handleOperatorSave);
 
   useEffect(() => {
-    updateNodeData(id, {
-      inputs: [{ name: "in" }],
-      outputs: [{ name: "out" }],
-    });
-  }, [id, updateNodeData]);
+    const nextInputs = [{ name: "in" }];
+    const nextOutputs = [{ name: "out", isConnectable: true }];
+
+    if (!portsEqual(data.inputs, nextInputs) || !portsEqual(data.outputs, nextOutputs)) {
+      updateNodeData(id, {
+        inputs: nextInputs,
+        outputs: nextOutputs,
+      });
+    }
+  }, [data.inputs, data.outputs, id, updateNodeData]);
 
   // Set initial subtitle if it doesn't exist
   useEffect(() => {
@@ -56,8 +70,7 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
 
   // Update node when incoming files change (triggers visual refresh)
   useEffect(() => {
-    const parentEdge = edges.find((edge) => edge.target === id);
-    const isConnected = !!parentEdge;
+    const isConnected = edges.some((edge) => edge.target === id);
 
     if (isConnected) {
       if (incomingFiles.length > 0) {

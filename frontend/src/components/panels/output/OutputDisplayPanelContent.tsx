@@ -27,6 +27,16 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
   );
 
   const files = node?.data?.files || [];
+  const orderedFiles = useMemo(
+    () =>
+      [...files].sort(
+        (a, b) =>
+          (a.order ?? Number.MAX_SAFE_INTEGER) -
+            (b.order ?? Number.MAX_SAFE_INTEGER) ||
+          a.name.localeCompare(b.name)
+      ),
+    [files]
+  );
 
   useEffect(() => {
     if (selectedFileName === "all") {
@@ -46,21 +56,21 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
 
   const displayedContent = useMemo(() => {
     if (selectedFileName === "all") {
-      return files
+      return orderedFiles
         .map((file) => `--- FILE: ${file.name} ---\n\n${file.content}`)
         .join("\n\n");
     }
-    const selectedFile = files.find((file) => file.name === selectedFileName);
+    const selectedFile = orderedFiles.find((file) => file.name === selectedFileName);
     return selectedFile?.content || "";
-  }, [files, selectedFileName]);
+  }, [orderedFiles, selectedFileName]);
 
   const contentType = useMemo(() => {
     if (selectedFileName === "all") {
       return "text";
     }
-    const selectedFile = files.find((file) => file.name === selectedFileName);
+    const selectedFile = orderedFiles.find((file) => file.name === selectedFileName);
     return selectedFile ? getContentTypeForFile(selectedFile.name) : "text";
-  }, [displayedContent, selectedFileName, files]);
+  }, [displayedContent, selectedFileName, orderedFiles]);
 
   const handleDownload = () => {
     if (!node) return;
