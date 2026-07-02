@@ -54,7 +54,7 @@ Frontend is available at `http://localhost:5173`.
 
 ## License
 
-- This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0). See the [LICENSE](LICENSE) file or the backend for details.
+- This project is licensed under the Apache License 2.0. See the [LICENSE](../LICENSE) and [NOTICE](../NOTICE) files at the repository root for details.
 
 ---
 

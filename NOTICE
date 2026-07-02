@@ -1,0 +1,6 @@
+N-WAVE — Nextflow Workflow Authoring and Visualization Environment
+Copyright 2026 HCIstudio
+
+This product is licensed under the Apache License, Version 2.0 (see the LICENSE
+file). It orchestrates Nextflow (https://www.nextflow.io/, Apache License 2.0)
+but does not bundle or redistribute it.

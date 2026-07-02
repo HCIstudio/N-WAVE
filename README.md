@@ -254,5 +254,5 @@ PR produces a new versioned release automatically.
 
 ## License
 
-The backend is MIT licensed. The frontend is licensed under CC-BY-NC-SA-4.0. See the
-`LICENSE` files in each package.
+N-WAVE is licensed under the **Apache License 2.0**. See the [`LICENSE`](LICENSE) and
+[`NOTICE`](NOTICE) files for details.
