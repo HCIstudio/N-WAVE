@@ -72,9 +72,6 @@ const demoApi = {
     if (path === "/workflows") {
       return runStore(() => demoStore.create(data) as T);
     }
-    if (path === "/workflows/import") {
-      return runStore(() => demoStore.import(data) as T);
-    }
     const duplicateMatch = path.match(/^\/workflows\/([^/]+)\/duplicate$/);
     if (duplicateMatch) {
       return runStore(

@@ -7,12 +7,8 @@
 // actually uses, returning the exact same WorkflowDescriptor shape.
 
 import type { WorkflowDescriptor } from "../types/backend";
-import { defaultExecutionSettings } from "./defaultExecutionSettings";
+import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { DEMO_WORKFLOW_ID, demoWorkflowSeed } from "./demoWorkflow";
-import {
-  importNextflowWorkflow,
-  type ImportedWorkflowDraft,
-} from "./importNextflowWorkflow";
 
 const STORAGE_KEY = "nwave.demo.workflows";
 
@@ -197,24 +193,6 @@ export const demoStore = {
       sourceFormat: source.origin?.sourceFormat ?? "visual",
       sourceKey: source.origin?.sourceKey ?? id,
     });
-  },
-
-  /** POST /workflows/import */
-  import(payload: {
-    name?: string;
-    description?: string;
-    rawSource: string;
-    sourceKey?: string | null;
-  }): WorkflowDescriptor {
-    let draft: ImportedWorkflowDraft;
-    try {
-      draft = importNextflowWorkflow(payload);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : "Invalid workflow import";
-      throw new DemoStoreError(400, message);
-    }
-    return this.create(draft);
   },
 };
 

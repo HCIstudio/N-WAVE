@@ -3,7 +3,6 @@ import {
   saveWorkflow,
   getWorkflowById,
   getAllWorkflows,
-  importWorkflow,
   updateWorkflow,
   deleteWorkflow,
   duplicateWorkflow,
@@ -20,11 +19,6 @@ router.post("/", saveWorkflow);
 // @desc    Get all workflows
 // @access  Public
 router.get("/", getAllWorkflows);
-
-// @route   POST /api/workflows/import
-// @desc    Import a workflow from Nextflow source
-// @access  Public
-router.post("/import", importWorkflow);
 
 // @route   GET /api/workflows/:id
 // @desc    Get a specific workflow by its ID

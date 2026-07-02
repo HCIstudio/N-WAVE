@@ -13,6 +13,8 @@ import PageLayout from "../components/layout/PageLayout";
 import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
+import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
+import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
@@ -209,61 +211,6 @@ const HomePage: React.FC = () => {
 
   const handleNewWorkflow = async () => {
     try {
-      // Default execution settings for new workflows
-      const defaultExecutionSettings = {
-        mode: "docker",
-        nextflow: {
-          version: "25.04.4",
-          forceVersion: false,
-          enableDsl2: true,
-          enableTrace: false,
-          enableTimeline: false,
-          enableReport: false,
-        },
-        output: {
-          directory: "results",
-          namingPattern: "{workflow_name}_{timestamp}",
-          overwrite: false,
-          keepWorkDir: false,
-        },
-        container: {
-          enabled: true,
-          defaultImage: "ubuntu:22.04",
-          registry: "docker.io",
-          pullPolicy: "if-not-present",
-          customRunOptions: [],
-        },
-        resources: {
-          maxCpus: 4,
-          maxMemory: "4.GB",
-          maxTime: "PT30M",
-          executor: "local",
-        },
-        errorHandling: {
-          strategy: "terminate",
-          maxRetries: 0,
-          backoffStrategy: "exponential",
-          continueOnError: false,
-        },
-        environment: {
-          profile: "standard",
-          customParams: {},
-          environmentVariables: {},
-        },
-        cleanup: {
-          onSuccess: false,
-          onFailure: false,
-          intermediateFiles: false,
-          workDirectory: false,
-        },
-        validation: {
-          requireContainer: false,
-          allowMissingInputs: false,
-          strictChannelTypes: false,
-          enableTypeChecking: false,
-        },
-      };
-
       const response = await api.post("/workflows", {
         name: "Untitled Workflow",
         nodes: [],
@@ -315,12 +262,15 @@ const HomePage: React.FC = () => {
 
     try {
       setIsImporting(true);
-      const response = await api.post("/workflows/import", {
+      // Parse the Nextflow source into a visual graph in the browser, then save
+      // it through the normal create endpoint (no dedicated import endpoint).
+      const draft = importNextflowWorkflow({
         name: importName.trim() || undefined,
         description: importDescription.trim() || undefined,
         rawSource: importSource,
         sourceKey: importFileName || undefined,
       });
+      const response = await api.post("/workflows", draft);
       setIsImportModalOpen(false);
       resetImportForm();
       navigate(`/workflow/${response.data._id}`);
