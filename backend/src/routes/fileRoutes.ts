@@ -53,46 +53,6 @@ router.post("/register", upload.single("file"), async (req, res) => {
   }
 });
 
-// Route to get all file metadata
-router.get("/", async (req, res) => {
-  try {
-    const searchQuery = req.query.search as string;
-    const query = searchQuery
-      ? {
-          $or: [
-            { originalName: { $regex: searchQuery, $options: "i" } },
-            { tags: { $regex: searchQuery, $options: "i" } },
-            { fileType: { $regex: searchQuery, $options: "i" } },
-          ],
-        }
-      : {};
-
-    const files = await File.find(query)
-      .select("-__v") // Exclude version field
-      .sort({ createdAt: -1 });
-
-    res.status(200).send(files);
-  } catch (error) {
-    res.status(500).send({ message: "Error fetching files.", error });
-  }
-});
-
-// Route to get multiple file metadata by IDs
-router.post("/get-many", async (req, res) => {
-  try {
-    const { fileIds } = req.body;
-    if (!fileIds || !Array.isArray(fileIds)) {
-      return res.status(400).json({ msg: "File IDs must be an array." });
-    }
-
-    const files = await File.find({ _id: { $in: fileIds } }).select("-__v");
-    return res.status(200).json(files);
-  } catch (error) {
-    console.error("Error fetching multiple files:", error);
-    return res.status(500).send({ message: "Error fetching files.", error });
-  }
-});
-
 // Route to delete file metadata
 router.delete("/:id", async (req, res) => {
   try {
