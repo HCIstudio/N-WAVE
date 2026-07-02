@@ -146,17 +146,14 @@ export const demoStore = {
     if (index === -1) {
       throw new DemoStoreError(404, "Workflow not found for update");
     }
+    const existing = workflows[index];
     const updated: StoredWorkflow = {
-      ...workflows[index],
-      ...("name" in payload ? { name: payload.name! } : {}),
-      ...("description" in payload
-        ? { description: payload.description! }
-        : {}),
-      ...("nodes" in payload ? { nodes: payload.nodes! } : {}),
-      ...("edges" in payload ? { edges: payload.edges! } : {}),
-      ...("executionSettings" in payload
-        ? { executionSettings: payload.executionSettings }
-        : {}),
+      ...existing,
+      name: payload.name ?? existing.name,
+      description: payload.description ?? existing.description,
+      nodes: payload.nodes ?? existing.nodes,
+      edges: payload.edges ?? existing.edges,
+      executionSettings: payload.executionSettings ?? existing.executionSettings,
       updatedAt: new Date().toISOString(),
     };
     workflows[index] = updated;

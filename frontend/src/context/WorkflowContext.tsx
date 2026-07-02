@@ -1,5 +1,6 @@
 import {
   createContext,
+  useContext,
   useState,
   useCallback,
   type FC,
@@ -48,6 +49,20 @@ interface IWorkflowContext {
 export const WorkflowContext = createContext<IWorkflowContext | undefined>(
   undefined
 );
+
+/**
+ * Access the workflow context. Throws if used outside a WorkflowProvider, which
+ * lets consumers use the value without null checks or non-null assertions.
+ */
+export const useWorkflowContext = (): IWorkflowContext => {
+  const context = useContext(WorkflowContext);
+  if (!context) {
+    throw new Error(
+      "useWorkflowContext must be used within a WorkflowProvider"
+    );
+  }
+  return context;
+};
 
 export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
   const [nodes, setNodes] = useState<Node<NodeData>[]>([]);

@@ -73,9 +73,11 @@ const sanitizeId = (value: string): string =>
 const parseProcesses = (rawSource: string): ParsedProcess[] => {
   const processes: ParsedProcess[] = [];
   const processPattern = /process\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = processPattern.exec(rawSource)) !== null) {
+  for (
+    let match = processPattern.exec(rawSource);
+    match !== null;
+    match = processPattern.exec(rawSource)
+  ) {
     const processName = match[1];
     if (!processName) continue;
 

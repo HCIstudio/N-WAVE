@@ -1,8 +1,8 @@
-import { memo, useContext, useEffect, useMemo, useCallback } from "react";
+import { memo, useEffect, useMemo, useCallback } from "react";
 import type { NodeProps } from "reactflow";
 import { useEdges, useNodes } from "reactflow";
 import BaseNode, { type NodeData } from "./BaseNode";
-import { WorkflowContext } from "../../context/WorkflowContext";
+import { useWorkflowContext } from "../../context/WorkflowContext";
 import { useOperatorLogic } from "../../hooks";
 import { getIncomingFiles } from "../../utils/workflowConnections";
 
@@ -21,7 +21,7 @@ const portsEqual = (
 
 const OperatorNode = (props: NodeProps<NodeData>) => {
   const { data, id } = props;
-  const { updateNodeData } = useContext(WorkflowContext)!;
+  const { updateNodeData } = useWorkflowContext();
   const edges = useEdges();
   const nodes = useNodes<NodeData>();
 

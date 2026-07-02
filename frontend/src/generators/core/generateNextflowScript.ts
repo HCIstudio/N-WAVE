@@ -691,8 +691,11 @@ function getInvocationArguments(invocation: string): string[] {
   }
   const args: string[] = [];
 
-  let match: RegExpExecArray | null;
-  while ((match = candidatePattern.exec(rhs)) !== null) {
+  for (
+    let match = candidatePattern.exec(rhs);
+    match !== null;
+    match = candidatePattern.exec(rhs)
+  ) {
     const rawName = match[0];
     const name = sanitizeVarName(rawName);
     if (!name || lhsDefinitions.has(name)) {
