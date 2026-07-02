@@ -19,6 +19,9 @@ const router = createBrowserRouter(
     },
   ],
   {
+    // Prefix routes with the deployment base path (e.g. "/N-WAVE" on GitHub
+    // Pages). BASE_URL is "/" for local dev and Docker, so basename is "".
+    basename: import.meta.env.BASE_URL.replace(/\/$/, ""),
     future: {
       v7_startTransition: true,
       v7_relativeSplatPath: true,

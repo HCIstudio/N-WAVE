@@ -45,8 +45,14 @@ const appVersion =
 const buildDate = resolveCommitDate();
 const gitSha = resolveGitSha();
 
+// When deploying to a sub-path (e.g. GitHub Pages at /N-WAVE/) set
+// VITE_BASE_PATH so asset URLs and the router basename are prefixed correctly.
+// Defaults to "/" for local dev and the Docker/nginx deployment.
+const basePath = process.env.VITE_BASE_PATH?.trim() || "/";
+
 // https://vite.dev/config/
 export default defineConfig({
+  base: basePath,
   plugins: [react()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
@@ -57,8 +63,10 @@ export default defineConfig({
     host: true,
     port: 5173,
     proxy: {
+      // Dev proxy so the frontend's "/api" calls reach the local backend
+      // (backend defaults to port 5001 — see backend/.env / docker-compose).
       "/api": {
-        target: "http://localhost:3000",
+        target: "http://localhost:5001",
         changeOrigin: true,
       },
     },
