@@ -9,6 +9,22 @@ This repository contains both the backend and frontend codebases for the N-WAVE 
 - For backend setup, usage, and details, see [backend/README.md](./backend/README.md)
 - For frontend setup, usage, and details, see [frontend/README.md](./frontend/README.md)
 
+## Try it online (demo)
+
+A live, no-install build is published to GitHub Pages on every push to `main`:
+
+**https://hcistudio.github.io/N-WAVE/**
+
+The hosted demo runs **entirely in your browser** — there is no backend attached. That means:
+
+- ✅ You can build, edit, duplicate, import and inspect workflows and the generated Nextflow script.
+- 💾 Projects are **ephemeral**: they're saved only in your browser's local storage and are not shared with anyone.
+- 🚫 Workflows **cannot be executed** in the demo (execution needs Nextflow + Docker on a server).
+
+To actually run workflows, use the Docker deployment below.
+
+> How it works: the demo is built with `VITE_DEMO_MODE=true`, which swaps the HTTP API client for an in-browser store (see [`frontend/src/demo/`](./frontend/src/demo/)). The regular Docker build is unaffected and talks to the real backend as usual.
+
 ## Docker Compose Setup
 
 N-WAVE can be started from the project root with Docker Compose:

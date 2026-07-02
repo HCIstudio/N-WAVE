@@ -1,6 +1,8 @@
 import type React from "react";
 import { useEffect } from "react";
 import { Outlet } from "react-router-dom";
+import { isDemoMode } from "./api";
+import DemoBanner from "./demo/DemoBanner";
 
 const App: React.FC = () => {
   useEffect(() => {
@@ -15,7 +17,12 @@ const App: React.FC = () => {
     };
   }, []);
 
-  return <Outlet />;
+  return (
+    <>
+      <Outlet />
+      {isDemoMode && <DemoBanner />}
+    </>
+  );
 };
 
 export default App;
