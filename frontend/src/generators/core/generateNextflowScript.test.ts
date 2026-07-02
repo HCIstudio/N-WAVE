@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import type { Edge, Node } from "reactflow";
 import { generateNextflowScript } from "./generateNextflowScript";
 import { demoWorkflowSeed } from "../../demo/demoWorkflow";
@@ -33,6 +33,26 @@ describe("generateNextflowScript", () => {
 
   it("references the input channel from the file input node", () => {
     expect(script).toContain("ch_files");
+  });
+
+  it("does not warn about the file-input channel as an unresolved variable", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      generateNextflowScript(
+        nodes,
+        edges,
+        "Demo Workflow",
+        "results",
+        "{workflow_name}"
+      );
+      const messages = warn.mock.calls.map((args) => String(args[0]));
+      expect(messages.some((m) => m.includes("ch_files"))).toBe(false);
+      expect(messages.some((m) => m.includes("unresolved variable"))).toBe(
+        false
+      );
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it("is deterministic for the same graph within a run", () => {

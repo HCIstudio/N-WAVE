@@ -50,12 +50,17 @@ export const generateNextflowScript = (
   let outputDisplayCounter = 1;
   const channelDefinitions: string[] = [];
   const processInvocations: string[] = [];
+  // Top-level input channels defined by file-input nodes (e.g. "ch_files").
+  // These are legitimate workflow inputs, not process outputs, so they must be
+  // recognised as "resolved" during dependency validation.
+  const definedInputChannels = new Set<string>();
 
   // First pass: Define file inputs and map all node outputs to channel names
   nodes.forEach((node) => {
     if (node.type === "fileInput") {
       const channelName = "ch_files";
       channelNameMap.set(`${node.id}.ch_files_out`, channelName);
+      definedInputChannels.add(channelName);
 
       // Extract selected filenames from the node data
       const selectedFiles = node.data.files || [];
@@ -520,6 +525,13 @@ export const generateNextflowScript = (
   // Fail fast when an invocation uses an unresolved variable
   variableUsages.forEach((dependentInvocations, usedVar) => {
     if (!variableDefinitions.has(usedVar)) {
+      // Input channels from file-input nodes are defined at the top of the
+      // workflow rather than produced by a process invocation — they're
+      // resolved, not missing.
+      if (definedInputChannels.has(usedVar)) {
+        return;
+      }
+
       if (usedVar.startsWith("ch_") || usedVar.startsWith("node_")) {
         console.warn(
           `Treating unresolved variable "${usedVar}" as workflow input. Used in: ${dependentInvocations.join(
