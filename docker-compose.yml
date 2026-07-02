@@ -26,6 +26,8 @@
       NODE_ENV: production
       PORT: 5001
       MONGODB_URI: mongodb://mongodb:27017/nwave
+      # Always run Nextflow in a container (no host binary assumption).
+      NEXTFLOW_EXECUTION_MODE: docker
       BACKEND_CONTAINER_NAME: nwave-backend
       CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
     ports:
