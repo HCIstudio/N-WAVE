@@ -1,25 +1,64 @@
+# N-WAVE — run the latest published images (no build required).
+#
+#   docker compose -f latest.yml up -d
+#
+# This pulls the prebuilt images from Docker Hub and starts the full stack:
+#   - frontend (nginx) on http://localhost:5173  (serves the UI, proxies /api)
+#   - backend  (Express API + Nextflow runner) on http://localhost:5001
+#   - mongodb  for workflow persistence
+#
+# Workflow execution runs Nextflow on-demand via the host's Docker: the backend
+# mounts the Docker socket and launches the nextflow/nextflow image, sharing
+# files through --volumes-from nwave-backend. That's why the backend needs a
+# fixed container_name, the docker.sock mount, and the shared results volume.
 services:
+  mongodb:
+    image: mongo:7
+    container_name: nwave-mongodb
+    restart: unless-stopped
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     image: hcistudio/nwave-backend:latest
-    env_file: .env
-    ports:
-      - "5001:${PORT:-5001}"
+    container_name: nwave-backend
+    restart: unless-stopped
     depends_on:
-      - mongo
+      mongodb:
+        condition: service_healthy
     environment:
-      MONGODB_URI: "${MONGODB_URI:-mongodb://mongo:27017/nwave}"
+      NODE_ENV: production
+      PORT: 5001
+      MONGODB_URI: mongodb://mongodb:27017/nwave
+      # Always run Nextflow in a container (no host binary assumption), so the
+      # stack is self-contained on any machine with Docker.
+      NEXTFLOW_EXECUTION_MODE: docker
+      # Must match container_name so the on-demand Nextflow container can share
+      # this container's volumes (--volumes-from nwave-backend).
+      BACKEND_CONTAINER_NAME: nwave-backend
+      CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
+    ports:
+      - "5001:5001"
+    volumes:
+      # Persist workflow outputs to ./results on the host.
+      - ./results:/app/results
+      # Lets the backend launch the Nextflow container on the host's Docker.
+      - /var/run/docker.sock:/var/run/docker.sock
 
   frontend:
     image: hcistudio/nwave-frontend:latest
+    container_name: nwave-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
     ports:
-      - "5173:5173"
-
-  mongo:
-    image: mongo:5
-    volumes:
-      - mongo-data:/data/db
-    ports:
-      - "27017:27017"
+      # nginx inside the image listens on 80.
+      - "5173:80"
 
 volumes:
-  mongo-data:
+  mongodb_data:
