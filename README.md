@@ -244,10 +244,13 @@ For component-level docs, see [`backend/README.md`](backend/README.md) and
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `ci.yml` | push / PR | Builds the backend and frontend images (no push) as a smoke test. |
-| `build-and-push.yml` | push to `main` | Builds and pushes images to Docker Hub (`hcistudio/nwave-*`). |
+| `test.yml` | pull request / push to `main` | The merge gate: lint (informational), typecheck, and build for both packages. |
+| `release.yml` | push to `main` | Cuts a new version: bumps the patch version, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), and creates a GitHub Release with `latest.yml`. |
 | `pages.yml` | push to `main` | Builds the demo (`VITE_DEMO_MODE=true`) and deploys it to GitHub Pages. |
-| `release.yml` | tag `v*` | Attaches `latest.yml` to the GitHub release. |
+
+`main` is protected: changes land only via pull request, and a PR can be merged only once
+the **Test** workflow passes. Because `release.yml` runs on every merge to `main`, each merged
+PR produces a new versioned release automatically.
 
 ## License
 
