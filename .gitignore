@@ -1,4 +1,11 @@
 results/*
+
+# Local environment files — copy from the *.example templates. Never commit
+# real env files (they diverge and cause confusion; see .env.example).
+.env
+.env.*
+!.env.example
+
 frontend/src/**/*.js
 frontend/src/**/*.d.ts
 !frontend/src/**/*.js.map
