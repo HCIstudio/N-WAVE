@@ -1,7 +1,7 @@
-// Default execution settings applied to workflows created in the browser-only
-// demo. Mirrors backend/src/workflows/defaultExecutionSettings.ts so that a
-// workflow authored in the hosted demo behaves the same once exported and run
-// against a real backend.
+// Default execution settings applied to workflows created or imported in the
+// browser (new workflows, Nextflow imports, and the demo store all use this).
+// Mirrors backend/src/workflows/defaultExecutionSettings.ts, which the backend
+// still uses for its built-in workflow and as a materialize fallback.
 export const defaultExecutionSettings = {
   mode: "docker",
   nextflow: {

@@ -1,10 +1,11 @@
-// Client-side port of backend/src/workflows/importNextflowWorkflow.ts.
+// Parses a Nextflow script into a visual workflow graph (nodes + edges).
 //
-// The browser-only demo has no backend to POST /workflows/import to, so the
-// same "parse a Nextflow script into a visual graph" logic runs here. Keeping
-// it byte-for-byte equivalent to the backend means an imported workflow looks
-// the same in the demo and in a real deployment. This duplication is a known
-// wart — see the README section on unifying the front/back split.
+// This is the single, canonical implementation. Import runs entirely in the
+// browser: the parsed draft is then saved through the normal "create workflow"
+// path (POST /workflows in a real deployment, or the in-browser store in the
+// demo). The backend therefore has no import endpoint — the frontend owns all
+// graph logic (generation and import), the backend owns persistence and
+// execution.
 
 import { defaultExecutionSettings } from "./defaultExecutionSettings";
 
