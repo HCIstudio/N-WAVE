@@ -183,7 +183,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                     }
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nextflow-green/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nextflow-green"></div>
+                  <div className="w-9 h-5 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nextflow-green/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nextflow-green" />
                 </label>
               </div>
 
@@ -419,7 +419,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                           if (fsError.name === "AbortError") {
                             // User cancelled, do nothing
                             return;
-                          } else if (
+                          }if (
                             fsError.name === "NotAllowedError" ||
                             fsError.message.includes("system files")
                           ) {
@@ -447,11 +447,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                     function showSystemFolderError() {
                       const result = confirm(
                         `Can't access system folder\n\n` +
-                          `Chrome blocks access to system folders (C:\\, Program Files, etc.) for security.\n\n` +
-                          `Solutions:\n` +
-                          `1. Click OK to enter the path manually\n` +
-                          `2. Choose a user folder (Downloads, Documents, Desktop)\n\n` +
-                          `Click OK to enter path manually, or Cancel to try again.`
+                          "Chrome blocks access to system folders (C:\\, Program Files, etc.) for security.\n\n" +
+                          "Solutions:\n" +
+                          "1. Click OK to enter the path manually\n" +
+                          "2. Choose a user folder (Downloads, Documents, Desktop)\n\n" +
+                          "Click OK to enter path manually, or Cancel to try again."
                       );
 
                       if (result) {
@@ -469,7 +469,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                           "Tip: You can save anywhere with manual paths!",
                         "C:\\Results"
                       );
-                      if (userPath && userPath.trim()) {
+                      if (userPath?.trim()) {
                         onSettingsChange({
                           outputDirectory: userPath.trim().replace(/\\/g, "/"),
                         });
@@ -732,7 +732,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   }
                   className="sr-only peer"
                 />
-                <div className="w-9 h-5 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nextflow-green/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nextflow-green"></div>
+                <div className="w-9 h-5 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nextflow-green/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nextflow-green" />
               </label>
             </div>
 

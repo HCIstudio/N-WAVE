@@ -9,6 +9,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "preview": "vite preview"
@@ -39,11 +41,13 @@
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.4.1",
     "autoprefixer": "^10.4.19",
+    "jsdom": "^29.1.1",
     "postcss": "^8.5.4",
     "tailwind-scrollbar": "^4.0.2",
     "tailwindcss": "^3",
     "typescript": "~5.8.3",
-    "vite": "^6.3.5"
+    "vite": "^6.3.5",
+    "vitest": "^2.1.9"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

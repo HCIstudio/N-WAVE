@@ -1,10 +1,12 @@
 name: Test
 
 # The required gate for merging into main. It runs on every pull request (and on
-# main as a safety net). Typecheck + build are blocking; lint is informational
-# for now because the existing code has many outstanding lint findings — once
-# those are cleaned up, drop `continue-on-error` on the lint step to make it
-# blocking too.
+# main as a safety net): lint, unit tests, typecheck, and build — all blocking.
+#
+# The Biome config (frontend/biome.json) disables several rule groups that the
+# existing vibecoded code violates broadly (a11y, noExplicitAny, array-index
+# keys, exhaustive-deps, etc.). Those are tracked tech debt: re-enable them one
+# at a time as the code is cleaned up.
 on:
   pull_request:
   push:
@@ -37,9 +39,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint (informational)
+      - name: Lint
         run: pnpm lint
-        continue-on-error: true
+
+      - name: Unit tests
+        run: pnpm test
 
       - name: Typecheck & build
         run: pnpm build

@@ -87,7 +87,7 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
         if (filesWithoutContent.length > 0) {
           // Files exist but missing content - need reupload
           updateNodeData(id, {
-            subtitle: `Waiting for reupload`,
+            subtitle: "Waiting for reupload",
             lastUpdated: Date.now(),
           });
         } else {

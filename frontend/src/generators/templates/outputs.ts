@@ -45,8 +45,8 @@ export function generateOutputDisplayProcess(
     .replace(/\{date\}/g, date)
     .replace(/\{process_name\}/g, processName);
 
-  let outputFileName;
-  let processScript;
+  let outputFileName: string;
+  let processScript: string;
 
   if (selectedFileName === "all") {
     // Concatenate all files with unique numbering

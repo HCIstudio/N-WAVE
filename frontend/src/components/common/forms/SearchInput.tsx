@@ -24,7 +24,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
   return (
     <div className={`relative ${containerClassName}`}>
       <div
-        className={`absolute inset-y-0 left-0 pl-3 flex items-center cursor-pointer`}
+        className={"absolute inset-y-0 left-0 pl-3 flex items-center cursor-pointer"}
         onClick={onIconClick}
         role={onIconClick ? "button" : undefined}
         tabIndex={onIconClick ? 0 : undefined}

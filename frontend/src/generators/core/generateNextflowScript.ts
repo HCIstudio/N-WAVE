@@ -76,7 +76,7 @@ export const generateNextflowScript = (
       } else {
         // Fallback if no files
         paramsScript += `params.inputdir = "./inputs"\n`;
-        paramsScript += `params.selected_files = []\n\n`;
+        paramsScript += "params.selected_files = []\n\n";
         firstPassScript += `${channelName} = Channel.empty()\n\n`;
       }
     } else {
@@ -130,7 +130,7 @@ export const generateNextflowScript = (
       );
       if (incomingEdges.length === 0) return;
 
-      let upstreamChannelName = resolveChannelNameForEdge(
+      const upstreamChannelName = resolveChannelNameForEdge(
         incomingEdges[0],
         channelNameMap
       );
@@ -395,8 +395,7 @@ export const generateNextflowScript = (
         executionOrder.push(node.id);
 
         const normalizeToPathChannel = (channelExpr: string): string =>
-          channelExpr +
-          '.map { item -> file(item instanceof String ? "${params.inputdir}/${item}" : item) }';
+          `${channelExpr}.map { item -> file(item instanceof String ? "\${params.inputdir}/\${item}" : item) }`;
         const outputInvocationArg =
           selectedFileName === "all"
             ? `${normalizeToPathChannel(upstreamChannelName)}.collect()`
@@ -437,7 +436,7 @@ export const generateNextflowScript = (
     .map((id) => processScripts[id])
     .filter(Boolean);
   if (orderedProcessScripts.length > 0) {
-    finalScript += "\n" + orderedProcessScripts.join("\n\n") + "\n";
+    finalScript += `\n${orderedProcessScripts.join("\n\n")}\n`;
   }
 
   finalScript += "\nworkflow {\n";
@@ -467,7 +466,7 @@ export const generateNextflowScript = (
       if (!variableUsages.has(usedVar)) {
         variableUsages.set(usedVar, []);
       }
-      variableUsages.get(usedVar)!.push(invocation);
+      variableUsages.get(usedVar)?.push(invocation);
     });
   });
 
@@ -614,7 +613,7 @@ function resolveChannelNameForEdge(
   edge: Edge,
   channelNameMap: Map<string, string>
 ): string | null {
-  let upstreamChannelName = channelNameMap.get(
+  const upstreamChannelName = channelNameMap.get(
     `${edge.source}.${edge.sourceHandle}`
   );
 
@@ -624,7 +623,7 @@ function resolveChannelNameForEdge(
 
   let alternativeChannelName = null;
 
-  if (edge.sourceHandle && edge.sourceHandle.includes("_")) {
+  if (edge.sourceHandle?.includes("_")) {
     const outputName = edge.sourceHandle.split("_").pop();
     alternativeChannelName = channelNameMap.get(`${edge.source}.${outputName}`);
   }
@@ -731,7 +730,7 @@ function sanitizeVarName(name: string): string {
   if (typeof name !== "string") return "";
   let sanitized = name.replace(/[-\s]+/g, "_");
   if (/^[0-9]/.test(sanitized)) {
-    sanitized = "v_" + sanitized;
+    sanitized = `v_${sanitized}`;
   }
   return sanitized;
 }

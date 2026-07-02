@@ -76,7 +76,7 @@ export const useProcessOperatorLogic = (
     const count = processedFiles.length;
 
     if (operatorType === "merge") {
-      subtitle = count > 0 ? `Merged to 1 file` : `Merged (0 files)`;
+      subtitle = count > 0 ? "Merged to 1 file" : "Merged (0 files)";
     } else {
       let pastTense: string;
       switch (operatorType) {
@@ -88,7 +88,7 @@ export const useProcessOperatorLogic = (
           break;
         default:
           pastTense =
-            operatorType.charAt(0).toUpperCase() + operatorType.slice(2) + "ed";
+            `${operatorType.charAt(0).toUpperCase() + operatorType.slice(2)}ed`;
       }
 
       // For filter operations, don't show "(unedited)" if files were selected

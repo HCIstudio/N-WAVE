@@ -26,13 +26,13 @@ export function generateFileInputChannels(config: InputConfig): {
       .join(", ")}]\n\n`;
 
     // Create channel from file list with proper file staging
-    channelScript += `ch_files = Channel.fromList(params.selected_files)\n`;
+    channelScript += "ch_files = Channel.fromList(params.selected_files)\n";
     channelScript += `    .map { filename -> file("\${params.inputdir}/\${filename}") }\n\n`;
   } else {
     // Fallback if no files
     paramsScript += `params.inputdir = "./inputs"\n`;
-    paramsScript += `params.selected_files = []\n\n`;
-    channelScript += `ch_files = Channel.empty()\n\n`;
+    paramsScript += "params.selected_files = []\n\n";
+    channelScript += "ch_files = Channel.empty()\n\n";
   }
 
   return { paramsScript, channelScript };
@@ -46,11 +46,12 @@ export function generateValueInputChannel(config: {
   const { channelName, value, valueType } = config;
 
   switch (valueType) {
-    case "list":
+    case "list": {
       const listValue = Array.isArray(value) ? value : [value];
       return `${channelName} = Channel.fromList([${listValue
         .map((v) => `'${v}'`)
         .join(", ")}])\n`;
+    }
     case "number":
       return `${channelName} = Channel.value(${value})\n`;
     case "boolean":
@@ -85,7 +86,7 @@ export function generateParameterInput(config: {
       paramsScript += `params.${paramName} = "${defaultValue}"\n`;
       channelScript += `ch_${paramName} = Channel.fromPath(params.${paramName})\n`;
       break;
-    case "list":
+    case "list": {
       const listValue = Array.isArray(defaultValue)
         ? defaultValue
         : [defaultValue];
@@ -94,6 +95,7 @@ export function generateParameterInput(config: {
         .join(", ")}]\n`;
       channelScript += `ch_${paramName} = Channel.fromList(params.${paramName})\n`;
       break;
+    }
     case "number":
       paramsScript += `params.${paramName} = ${defaultValue}\n`;
       channelScript += `ch_${paramName} = Channel.value(params.${paramName})\n`;

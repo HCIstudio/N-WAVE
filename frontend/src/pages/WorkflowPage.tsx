@@ -785,8 +785,8 @@ const WorkflowPageContent: React.FC = () => {
         }
 
         // Remove other large content fields but keep user selections
-        delete sanitizedData.fileContent;
-        delete sanitizedData.processedContent;
+        sanitizedData.fileContent = undefined;
+        sanitizedData.processedContent = undefined;
 
         // Sanitize selectedFilterFiles - keep selection metadata but remove content
         if (sanitizedData.selectedFilterFiles) {
@@ -1061,11 +1061,11 @@ const WorkflowPageContent: React.FC = () => {
           );
 
           // Combine stdout and stderr for comprehensive parsing
-          const allOutput = stdout + "\n" + stderr;
+          const allOutput = `${stdout}\n${stderr}`;
           const lines = allOutput.split("\n").filter((l) => l.trim());
 
           console.log(`📊 Total lines to parse: ${lines.length}`);
-          console.log(`📄 Full output to parse:`, allOutput);
+          console.log("📄 Full output to parse:", allOutput);
 
           // Parse all lines to simulate the execution progression rapidly
           lines.forEach((line, index) => {
@@ -1422,7 +1422,7 @@ const WorkflowPageContent: React.FC = () => {
             ) : null}
           </FloatingPanel>
         );
-      } else {
+      }
         return (
           <PropertiesPanel
             key={node.id}
@@ -1440,7 +1440,6 @@ const WorkflowPageContent: React.FC = () => {
             recenterTrigger={recenterTrigger}
           />
         );
-      }
     });
   };
 
