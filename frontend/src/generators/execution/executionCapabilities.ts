@@ -538,11 +538,11 @@ export const settingsValidator = new ExecutionSettingsValidator(
 /**
  * Utility functions for common execution scenarios
  */
-export class ExecutionModeHelper {
+export const ExecutionModeHelper = {
   /**
    * Get the best execution mode for the current system
    */
-  static async getBestExecutionMode(): Promise<{
+  async getBestExecutionMode(): Promise<{
     mode: ExecutionMode;
     reason: string;
   }> {
@@ -571,12 +571,12 @@ export class ExecutionModeHelper {
 
     // Return the first (best) available option
     return { mode: recommendations[0].mode, reason: recommendations[0].reason };
-  }
+  },
 
   /**
    * Check if a specific execution mode is feasible
    */
-  static async isExecutionModeFeasible(mode: ExecutionMode): Promise<boolean> {
+  async isExecutionModeFeasible(mode: ExecutionMode): Promise<boolean> {
     const capabilities = await capabilityDetector.getCapabilities();
 
     switch (mode) {
@@ -595,12 +595,12 @@ export class ExecutionModeHelper {
       default:
         return false;
     }
-  }
+  },
 
   /**
    * Get user-friendly description of what each mode requires
    */
-  static getExecutionModeRequirements(mode: ExecutionMode): string[] {
+  getExecutionModeRequirements(mode: ExecutionMode): string[] {
     switch (mode) {
       case ExecutionMode.LOCAL:
         return [
@@ -633,5 +633,5 @@ export class ExecutionModeHelper {
       default:
         return ["Unknown execution mode"];
     }
-  }
-}
+  },
+};

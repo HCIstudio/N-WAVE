@@ -1,12 +1,12 @@
-import { memo, useContext, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import type { NodeProps } from "reactflow";
 import { useEdges, useNodes } from "reactflow";
 import BaseNode, { type NodeData } from "../BaseNode";
-import { WorkflowContext } from "../../../context/WorkflowContext";
+import { useWorkflowContext } from "../../../context/WorkflowContext";
 
 const OutputDisplayNode = (props: NodeProps<NodeData>) => {
   const { data, id } = props;
-  const { updateNodeData } = useContext(WorkflowContext)!;
+  const { updateNodeData } = useWorkflowContext();
 
   const edges = useEdges();
   const nodes = useNodes<NodeData>();
