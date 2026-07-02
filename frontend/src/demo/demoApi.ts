@@ -63,6 +63,24 @@ const demoApi = {
         ? ok(workflow as T)
         : fail(404, "Workflow not found");
     }
+
+    // No backend runtime in the demo, so Docker/Nextflow are simply unavailable.
+    // Returning the same shape as the real endpoints keeps the settings UI happy
+    // (it shows "unavailable") without firing a request that would 404.
+    if (path === "/execute/docker-status") {
+      return ok({
+        dockerAvailable: false,
+        error: EXECUTION_DISABLED_MESSAGE,
+      } as T);
+    }
+    if (path === "/execute/nextflow-status") {
+      return ok({
+        nextflowAvailable: false,
+        dockerNextflowAvailable: false,
+        error: EXECUTION_DISABLED_MESSAGE,
+      } as T);
+    }
+
     return fail(404, `No demo handler for GET ${path}`);
   },
 

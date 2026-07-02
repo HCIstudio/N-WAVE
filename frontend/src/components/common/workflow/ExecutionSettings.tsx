@@ -14,6 +14,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { MemoryInput } from "../forms";
+import api from "../../../api";
 
 interface DockerStatus {
   dockerAvailable: boolean;
@@ -69,15 +70,12 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     setLoading(true);
     try {
       const [dockerResponse, nextflowResponse] = await Promise.all([
-        fetch("/api/execute/docker-status"),
-        fetch("/api/execute/nextflow-status"),
+        api.get("/execute/docker-status"),
+        api.get("/execute/nextflow-status"),
       ]);
 
-      const dockerData = await dockerResponse.json();
-      const nextflowData = await nextflowResponse.json();
-
-      setDockerStatus(dockerData);
-      setNextflowStatus(nextflowData);
+      setDockerStatus(dockerResponse.data);
+      setNextflowStatus(nextflowResponse.data);
     } catch (error) {
       console.error("Failed to check system status:", error);
       setDockerStatus({

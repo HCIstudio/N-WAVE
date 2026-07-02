@@ -9,6 +9,7 @@ import {
   type ValidationWarning,
   type NextflowVersion,
 } from "../../types/execution";
+import api from "../../api";
 
 /**
  * Detects system capabilities for Nextflow execution
@@ -58,8 +59,8 @@ export class ExecutionCapabilityDetector {
    */
   private async checkDockerCapability(): Promise<SystemCapabilities["docker"]> {
     try {
-      const response = await fetch("/api/execute/docker-status");
-      const data = await response.json();
+      const response = await api.get("/execute/docker-status");
+      const data = response.data;
 
       return {
         available: data.dockerAvailable || false,
@@ -81,8 +82,8 @@ export class ExecutionCapabilityDetector {
     SystemCapabilities["nextflow"]
   > {
     try {
-      const response = await fetch("/api/execute/nextflow-status");
-      const data = await response.json();
+      const response = await api.get("/execute/nextflow-status");
+      const data = response.data;
 
       return {
         local: {
