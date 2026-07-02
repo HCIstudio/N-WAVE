@@ -13,8 +13,11 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          # Ship the production compose file (pulls the published Docker Hub
+          # images) plus an example env file so users can run a tagged release
+          # without cloning the repo.
           files: |
-            deploy/docker-compose.yml
-            deploy/.env.example
+            latest.yml
+            .env.backend
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

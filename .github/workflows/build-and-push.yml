@@ -15,7 +15,9 @@ jobs:
             dockerfile: ./backend/Dockerfile
             image: hcistudio/nwave-backend
           - name: frontend
-            context: ./frontend
+            # Root context on purpose: the frontend Dockerfile copies
+            # frontend/package.json and the repo .git directory.
+            context: .
             dockerfile: ./frontend/Dockerfile
             image: hcistudio/nwave-frontend
 

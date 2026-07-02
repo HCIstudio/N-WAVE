@@ -34,7 +34,11 @@ jobs:
       - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
-          context: ./frontend
+          # The frontend Dockerfile expects the repository root as its build
+          # context: it copies frontend/package.json and the repo .git directory
+          # (used to embed the version / commit into the build). Building with
+          # ./frontend as the context makes those COPY paths fail.
+          context: .
           file: frontend/Dockerfile
           platforms: linux/amd64
           push: false
