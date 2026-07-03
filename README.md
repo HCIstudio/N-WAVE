@@ -1,5 +1,12 @@
 # N-WAVE
 
+[![Test](https://github.com/HCIstudio/N-WAVE/actions/workflows/test.yml/badge.svg)](https://github.com/HCIstudio/N-WAVE/actions/workflows/test.yml)
+[![Pages](https://github.com/HCIstudio/N-WAVE/actions/workflows/pages.yml/badge.svg)](https://github.com/HCIstudio/N-WAVE/actions/workflows/pages.yml)
+[![Release](https://img.shields.io/github/v/release/HCIstudio/N-WAVE?label=release)](https://github.com/HCIstudio/N-WAVE/releases/latest)
+[![Frontend pulls](https://img.shields.io/docker/pulls/hcistudio/nwave-frontend?label=frontend%20pulls)](https://hub.docker.com/r/hcistudio/nwave-frontend)
+[![Backend pulls](https://img.shields.io/docker/pulls/hcistudio/nwave-backend?label=backend%20pulls)](https://hub.docker.com/r/hcistudio/nwave-backend)
+[![License](https://img.shields.io/github/license/HCIstudio/N-WAVE)](LICENSE)
+
 **Nextflow Workflow Authoring and Visualization Environment**
 
 N-WAVE is a visual editor for [Nextflow](https://www.nextflow.io/) pipelines. You build a
