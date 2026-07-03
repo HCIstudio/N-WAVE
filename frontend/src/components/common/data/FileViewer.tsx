@@ -29,8 +29,8 @@ const FastqViewer: React.FC<{ content: string }> = ({ content }) => {
 
   return (
     <div className="text-sm text-gray-200 bg-transparent p-4 h-full w-full overflow-auto font-mono">
-      {reads.slice(0, 100).map((read, index) => (
-        <div key={index} className="mb-2 border-b border-gray-600 pb-2">
+      {reads.slice(0, 100).map((read) => (
+        <div key={read.header} className="mb-2 border-b border-gray-600 pb-2">
           <div className="text-blue-400">{read.header}</div>
           <div className="text-green-400 break-all">{read.sequence}</div>
           <div className="text-gray-500">{read.plus}</div>
@@ -67,8 +67,8 @@ const FastaViewer: React.FC<{ content: string }> = ({ content }) => {
 
   return (
     <div className="text-sm text-gray-200 bg-transparent p-4 h-full w-full overflow-auto font-mono">
-      {sequences.slice(0, 50).map((seq, index) => (
-        <div key={index} className="mb-3">
+      {sequences.slice(0, 50).map((seq) => (
+        <div key={seq.header} className="mb-3">
           <div className="text-blue-400 font-bold">{seq.header}</div>
           <div className="text-green-400 break-all mt-1">{seq.sequence}</div>
         </div>
@@ -92,10 +92,8 @@ const TabularViewer: React.FC<{ content: string }> = ({ content }) => {
         <thead>
           <tr className="border-b border-gray-600">
             {rows[0]?.map((cell, index) => (
-              <th
-                key={index}
-                className="text-left p-2 text-blue-400 font-semibold"
-              >
+              // biome-ignore lint/suspicious/noArrayIndexKey: table columns are positional and never reorder
+              <th key={index} className="text-left p-2 text-blue-400 font-semibold">
                 {cell}
               </th>
             ))}
@@ -103,8 +101,10 @@ const TabularViewer: React.FC<{ content: string }> = ({ content }) => {
         </thead>
         <tbody>
           {rows.slice(1, 101).map((row, index) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: table rows are positional and never reorder
             <tr key={index} className="border-b border-gray-700">
               {row.map((cell, cellIndex) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: table cells are positional and never reorder
                 <td key={cellIndex} className="p-2 truncate max-w-xs">
                   {cell}
                 </td>

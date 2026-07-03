@@ -37,9 +37,9 @@ const ActionDialog = ({
 
   const footer = (
     <div className="flex space-x-2">
-      {actions.map((action, index) => (
+      {actions.map((action) => (
         <button
-          key={index}
+          key={action.text}
           onClick={handleActionClick(action)}
           className={`px-4 py-2 rounded-md ${
             action.className || "bg-accent hover:bg-accent-hover text-text"

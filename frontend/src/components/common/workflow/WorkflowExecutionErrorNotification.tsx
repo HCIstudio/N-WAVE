@@ -288,9 +288,9 @@ const WorkflowExecutionErrorNotification: React.FC<
                     <span>Suggested Fixes</span>
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                    {suggestions.slice(0, 4).map((suggestion, index) => (
+                    {suggestions.slice(0, 4).map((suggestion) => (
                       <div
-                        key={index}
+                        key={suggestion}
                         className="flex items-start space-x-2 p-2 bg-nextflow-green/10 border border-nextflow-green/20 rounded text-xs"
                       >
                         <div className="w-1 h-1 bg-nextflow-green rounded-full mt-1.5 flex-shrink-0" />
