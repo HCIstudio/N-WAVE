@@ -2,7 +2,7 @@ import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Pencil, Trash2, Save, Copy, Upload } from "lucide-react";
-import api from "../api";
+import api, { isDemoMode } from "../api";
 import {
   ConfirmDialog,
   ActionDialog,
@@ -687,11 +687,50 @@ const HomePage: React.FC = () => {
           </div>
         </Modal>
         <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
-          <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-            <span>With the help of HU Berlin & HCIstudio</span>
-            <span>Version {buildInfo.version}</span>
-            <span>Built {buildInfo.displayBuildDate}</span>
-            <span>SHA {buildInfo.sha}</span>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+            <a
+              href="https://hcistudio.org"
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0"
+            >
+              <img
+                src={`${import.meta.env.BASE_URL}hcistudio-logo.png`}
+                alt="HCIstudio"
+                className="h-8 w-auto"
+              />
+            </a>
+            <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+              <span>v{buildInfo.version}</span>
+              <span>Built {buildInfo.displayBuildDate}</span>
+              <a
+                href="https://hcistudio.org/impressum/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline-offset-2 hover:text-text hover:underline"
+              >
+                Legal Notice
+              </a>
+              <a
+                href="https://hcistudio.org/datenschutz/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline-offset-2 hover:text-text hover:underline"
+              >
+                Privacy Policy
+              </a>
+              <span>
+                {isDemoMode && "Hosted on GitHub Pages:"}
+                <a
+                  href="https://github.com/HCIstudio/N-WAVE"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline-offset-2 hover:text-text hover:underline"
+                >
+                  View Source
+                </a>
+              </span>
+            </div>
           </div>
         </footer>
       </div>

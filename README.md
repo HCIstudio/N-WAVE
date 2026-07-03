@@ -244,13 +244,25 @@ For component-level docs, see [`backend/README.md`](backend/README.md) and
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `test.yml` | pull request / push to `main` | The merge gate: lint (informational), typecheck, and build for both packages. |
-| `release.yml` | push to `main` | Cuts a new version: bumps the patch version, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), and creates a GitHub Release with `latest.yml`. |
-| `pages.yml` | push to `main` | Builds the demo (`VITE_DEMO_MODE=true`) and deploys it to GitHub Pages. |
+| `test.yml` | pull request / push to `main` | The merge gate: lint, unit tests, typecheck, and build for both packages (all blocking). |
+| `release.yml` | push to `main` | Auto-versions and ships every merge: steps the version, deploys the demo to GitHub Pages, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
 
 `main` is protected: changes land only via pull request, and a PR can be merged only once
-the **Test** workflow passes. Because `release.yml` runs on every merge to `main`, each merged
-PR produces a new versioned release automatically.
+the **Test** workflow passes.
+
+**Versioning is fully automatic — you never set a version by hand.** On every merge to
+`main`, `release.yml` steps the patch version (from the latest `v*` tag) and applies that
+number everywhere in the same run: the Pages demo footer, the Docker images, and both
+`package.json` files (committed back to `main`).
+
+**One-time setup — `RELEASE_TOKEN`:** the version-bump commit is pushed back to `main`,
+which is pull-request-only, so CI needs to push as an actor that bypasses the ruleset
+(repo/org admins do). Create a **fine-grained Personal Access Token** owned by a repo admin,
+scoped to this repository with **Contents: Read and write**, and add it as the repository
+**Actions secret `RELEASE_TOKEN`**. A PAT push re-triggers the workflow, so the `release.yml`
+`version` job ignores its own `chore(release):` commits — no release loop. (The GitHub
+Actions app itself can't be added to a *repository* ruleset's bypass list, which is why a PAT
+is used.)
 
 ## License
 

@@ -1,6 +1,6 @@
 {
   "name": "n-wave-backend",
-  "version": "1.0.0",
+  "version": "1.0.10",
   "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for your scientific workflows.",
   "main": "dist/server.js",
   "scripts": {

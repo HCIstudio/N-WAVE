@@ -1,13 +1,19 @@
 name: Release
 
-# Every merge into main automatically cuts a new version: it bumps the patch
-# version from the latest v* tag, builds the backend and frontend images, pushes
-# them to Docker Hub (as :<version> and :latest), and creates a GitHub Release
-# (tag v<version>) with the runnable latest.yml attached.
+# Auto-versioning: every push to main steps the patch version (derived from the
+# latest v* tag), and that version is applied everywhere in the same run:
+#   - injected into the Pages demo build (the site footer shows it),
+#   - injected into the Docker images (:<version> + :latest) pushed to Docker Hub,
+#   - written back into frontend/ and backend/package.json and committed to main,
+#   - tagged v<version> with a GitHub Release.
 #
-# Runs only on main (which is PR-only), so in practice "one release per merged
-# PR". Note: images live in Docker Hub — the release "attaches" the compose file
-# that pulls them, and lists the image tags in its notes.
+# You never set the version by hand.
+#
+# The bump commit is committed back to main using a repo-admin PAT stored as the
+# RELEASE_TOKEN secret (admins bypass the main ruleset, which is otherwise
+# PR-only). A PAT push re-triggers this workflow, so the `version` job below is
+# guarded to ignore its own "chore(release):" commits — no release loop. See the
+# README "Versioning" section for the one-time PAT setup.
 on:
   push:
     branches:
@@ -15,9 +21,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write # push the bump commit + tags/releases
+  pages: write # deploy the demo to Pages
+  id-token: write # required by deploy-pages
 
-# Serialize releases so two quick merges can't race on the version number.
 concurrency:
   group: release
   cancel-in-progress: false
@@ -27,16 +34,23 @@ env:
   FRONTEND_IMAGE: hcistudio/nwave-frontend
 
 jobs:
-  release:
+  # Decide the next version once, so every downstream job uses the same number.
+  version:
+    # Ignore our own version-bump commits so we don't release in a loop (the bump
+    # is pushed with a PAT, which — unlike GITHUB_TOKEN — re-triggers workflows).
+    if: >-
+      ${{ github.event_name == 'workflow_dispatch' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):') }}
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+      tag: ${{ steps.v.outputs.tag }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # need full history + tags for versioning
-
+          fetch-depth: 0 # need all tags to find the latest version
       - name: Compute next version
-        id: version
+        id: v
         run: |
           latest=$(git tag -l 'v*' --sort=-v:refname | head -n1)
           if [ -z "$latest" ]; then
@@ -51,12 +65,75 @@ jobs:
           echo "tag=v$next" >> "$GITHUB_OUTPUT"
           echo "Next version: v$next (from ${latest:-<none>})"
 
+  # Deploy the demo to GitHub Pages with the new version injected.
+  pages:
+    needs: version
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Build demo site
+        working-directory: frontend
+        env:
+          VITE_DEMO_MODE: 'true'
+          VITE_BASE_PATH: /${{ github.event.repository.name }}/
+          APP_VERSION: ${{ needs.version.outputs.version }}
+        run: pnpm run build
+      - name: Add SPA fallback
+        run: cp frontend/dist/index.html frontend/dist/404.html
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+  # Build/push the images, write the version into package.json + commit, release.
+  release:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          # PAT from a repo admin (admins bypass the main ruleset) so the version
+          # bump can be committed back to main. See README "Versioning".
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: Write version into package.json files
+        run: |
+          node -e '
+            const fs = require("fs");
+            const version = process.argv[1];
+            for (const path of ["frontend/package.json", "backend/package.json"]) {
+              const pkg = JSON.parse(fs.readFileSync(path, "utf8"));
+              pkg.version = version;
+              fs.writeFileSync(path, JSON.stringify(pkg, null, 2) + "\n");
+            }
+          ' "${{ needs.version.outputs.version }}"
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
-
       - name: Login to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -71,7 +148,7 @@ jobs:
           push: true
           tags: |
             ${{ env.BACKEND_IMAGE }}:latest
-            ${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.BACKEND_IMAGE }}:${{ needs.version.outputs.version }}
           cache-from: type=registry,ref=${{ env.BACKEND_IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.BACKEND_IMAGE }}:buildcache,mode=max
 
@@ -84,29 +161,41 @@ jobs:
           file: ./frontend/Dockerfile
           push: true
           build-args: |
-            APP_VERSION=${{ steps.version.outputs.version }}
+            APP_VERSION=${{ needs.version.outputs.version }}
             GIT_SHA=${{ github.sha }}
           tags: |
             ${{ env.FRONTEND_IMAGE }}:latest
-            ${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.version }}
+            ${{ env.FRONTEND_IMAGE }}:${{ needs.version.outputs.version }}
           cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache,mode=max
+
+      - name: Commit version bump and tag
+        run: |
+          version="${{ needs.version.outputs.version }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package.json backend/package.json
+          git commit -m "chore(release): v${version}"
+          git tag "v${version}"
+          # Uses the RELEASE_TOKEN PAT from the checkout above. This re-triggers
+          # the workflow, but the `version` job ignores "chore(release):" commits.
+          git push origin HEAD:main
+          git push origin "v${version}"
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          target_commitish: ${{ github.sha }}
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: ${{ needs.version.outputs.tag }}
           generate_release_notes: true
           files: |
             latest.yml
           body: |
-            Automated release from the latest merge to `main`.
+            Automated release — the version is stepped automatically on each merge to `main`.
 
             **Docker images**
-            - `${{ env.BACKEND_IMAGE }}:${{ steps.version.outputs.version }}` (also `:latest`)
-            - `${{ env.FRONTEND_IMAGE }}:${{ steps.version.outputs.version }}` (also `:latest`)
+            - `${{ env.BACKEND_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`)
+            - `${{ env.FRONTEND_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`)
 
             **Run it**
             ```bash
