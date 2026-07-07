@@ -451,14 +451,14 @@ const HomePage: React.FC = () => {
             <h2 className="text-lg font-semibold text-nextflow-green whitespace-pre-wrap h-[42px] overflow-hidden p-2 pr-12">
               {wf.name}
             </h2>
-            <p className="text-sm text-text-light mt-2 whitespace-pre-wrap h-[40px] overflow-hidden p-2">
+            <p className="text-sm leading-5 text-text-light mt-2 whitespace-pre-wrap h-[76px] overflow-y-auto p-2">
               {wf.description || (
                 <span className="text-gray-500 italic">No description</span>
               )}
             </p>
-            {isReadOnly && (
-              <div className="px-2 pt-1 text-xs text-gray-400">Read-only demo</div>
-            )}
+            <div className="h-5 px-2 pt-1 text-xs text-gray-400">
+              {isReadOnly ? "Read-only demo" : ""}
+            </div>
           </>
         )}
       </>
