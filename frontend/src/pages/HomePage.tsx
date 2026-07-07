@@ -15,6 +15,8 @@ import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
+import hcistudioLogo from "../assets/hcistudio-logo.png";
+import fondaLogo from "../assets/fonda-logo.png";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
@@ -688,18 +690,28 @@ const HomePage: React.FC = () => {
         </Modal>
         <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-            <a
-              href="https://hcistudio.org"
-              target="_blank"
-              rel="noreferrer"
-              className="shrink-0"
-            >
-              <img
-                src={`${import.meta.env.BASE_URL}hcistudio-logo.png`}
-                alt="HCIstudio"
-                className="h-8 w-auto"
-              />
-            </a>
+            <div className="flex shrink-0 items-center gap-3">
+              <a
+                href="https://hcistudio.org"
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+              >
+                <img
+                  src={hcistudioLogo}
+                  alt="HCIstudio"
+                  className="h-8 w-auto"
+                />
+              </a>
+              <a
+                href="https://fonda.hu-berlin.de"
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+              >
+                <img src={fondaLogo} alt="FONDA" className="h-8 w-auto" />
+              </a>
+            </div>
             <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
               <span>v{buildInfo.version}</span>
               <span>Built {buildInfo.displayBuildDate}</span>
