@@ -15,6 +15,8 @@ import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
+import hcistudioLogo from "../assets/hcistudio-logo.png";
+import fondaLogo from "../assets/fonda-logo.png";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
@@ -449,14 +451,14 @@ const HomePage: React.FC = () => {
             <h2 className="text-lg font-semibold text-nextflow-green whitespace-pre-wrap h-[42px] overflow-hidden p-2 pr-12">
               {wf.name}
             </h2>
-            <p className="text-sm text-text-light mt-2 whitespace-pre-wrap h-[40px] overflow-hidden p-2">
+            <p className="text-sm leading-5 text-text-light mt-2 whitespace-pre-wrap h-[76px] overflow-y-auto p-2">
               {wf.description || (
                 <span className="text-gray-500 italic">No description</span>
               )}
             </p>
-            {isReadOnly && (
-              <div className="px-2 pt-1 text-xs text-gray-400">Read-only demo</div>
-            )}
+            <div className="h-5 px-2 pt-1 text-xs text-gray-400">
+              {isReadOnly ? "Read-only demo" : ""}
+            </div>
           </>
         )}
       </>
@@ -494,7 +496,14 @@ const HomePage: React.FC = () => {
     <PageLayout>
       <div className="min-h-screen flex flex-col">
         {isHomeTutorialActive && (
-          <div className="fixed inset-0 z-20 bg-black/35" aria-hidden="true" />
+          <div
+            className="fixed inset-0 z-20"
+            aria-hidden="true"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, rgba(0,168,120,0.22) 0px, rgba(0,168,120,0.22) 2px, transparent 2px, transparent 14px), repeating-linear-gradient(45deg, rgba(0,168,120,0.12) 0px, rgba(0,168,120,0.12) 7px, rgba(0,0,0,0.05) 7px, rgba(0,0,0,0.05) 14px)",
+            }}
+          />
         )}
         <div className="flex-1 p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -686,20 +695,30 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         </Modal>
-        <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
+        <footer className="relative z-30 border-t border-accent/60 bg-background px-8 py-4 text-xs text-text-light">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-            <a
-              href="https://hcistudio.org"
-              target="_blank"
-              rel="noreferrer"
-              className="shrink-0"
-            >
-              <img
-                src={`${import.meta.env.BASE_URL}hcistudio-logo.png`}
-                alt="HCIstudio"
-                className="h-8 w-auto"
-              />
-            </a>
+            <div className="flex shrink-0 items-center gap-3">
+              <a
+                href="https://hcistudio.org"
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+              >
+                <img
+                  src={hcistudioLogo}
+                  alt="HCIstudio"
+                  className="h-8 w-auto"
+                />
+              </a>
+              <a
+                href="https://fonda.hu-berlin.de"
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+              >
+                <img src={fondaLogo} alt="FONDA" className="h-8 w-auto" />
+              </a>
+            </div>
             <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
               <span>v{buildInfo.version}</span>
               <span>Built {buildInfo.displayBuildDate}</span>
