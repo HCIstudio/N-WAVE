@@ -496,7 +496,14 @@ const HomePage: React.FC = () => {
     <PageLayout>
       <div className="min-h-screen flex flex-col">
         {isHomeTutorialActive && (
-          <div className="fixed inset-0 z-20 bg-black/35" aria-hidden="true" />
+          <div
+            className="fixed inset-0 z-20"
+            aria-hidden="true"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, rgba(0,168,120,0.22) 0px, rgba(0,168,120,0.22) 2px, transparent 2px, transparent 14px), repeating-linear-gradient(45deg, rgba(0,168,120,0.12) 0px, rgba(0,168,120,0.12) 7px, rgba(0,0,0,0.05) 7px, rgba(0,0,0,0.05) 14px)",
+            }}
+          />
         )}
         <div className="flex-1 p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -688,7 +695,7 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         </Modal>
-        <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
+        <footer className="relative z-30 border-t border-accent/60 bg-background px-8 py-4 text-xs text-text-light">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
             <div className="flex shrink-0 items-center gap-3">
               <a
