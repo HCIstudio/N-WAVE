@@ -1,4 +1,4 @@
-trolimport express, { Express, Request, Response } from "express";
+import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import cors, { CorsOptions } from "cors";
 import path from "path";
@@ -7,7 +7,6 @@ import connectDB from "./config/db"; // Uncommented
 import workflowRoutes from "./routes/workflowRoutes"; // Uncommented and to be used
 import executeRoutes from "./routes/executeRoutes";
 import fileRoutes from "./routes/fileRoutes"; // Import the new file routes
-import processRoutes from "./routes/processRoutes"; // Import the process routes
 import nfcoreRoutes from "./routes/nfcoreRoutes";
 import customNodeRoutes from "./routes/customNodeRoutes";
 
@@ -56,7 +55,6 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/files", fileRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/execute", executeRoutes);
-app.use("/api/process", processRoutes);
 app.use("/api/nfcore", nfcoreRoutes);
 app.use("/api/custom-nodes", customNodeRoutes);
 
