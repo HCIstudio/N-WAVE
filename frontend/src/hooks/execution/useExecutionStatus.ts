@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../components/nodes/BaseNode";
+import { getExecutionLabelForProcessName } from "../../registry";
 import type {
   WorkflowExecutionStatus,
   NodeExecutionStatus,
@@ -141,6 +142,9 @@ export const useExecutionStatus = ({
 
         // Create user-friendly names for display
         const getDisplayName = (nfProcessName: string) => {
+          const registryLabel = getExecutionLabelForProcessName(nfProcessName);
+          if (registryLabel) return registryLabel;
+
           if (nfProcessName.includes("filter_node")) return "Filter";
           if (nfProcessName.includes("map_node")) return "Map";
           if (nfProcessName.includes("merge_node")) return "Merge";

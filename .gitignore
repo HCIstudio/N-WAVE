@@ -1,4 +1,5 @@
 results/*
+.cache/
 frontend/src/**/*.js
 frontend/src/**/*.d.ts
 !frontend/src/**/*.js.map
@@ -7,3 +8,5 @@ frontend/src/**/*.d.ts
 frontend/vite.config.js
 frontend/vite.config.d.ts
 frontend/*.tsbuildinfo
+docs/*
+validation/*

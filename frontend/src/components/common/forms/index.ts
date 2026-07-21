@@ -8,6 +8,7 @@ export * from "./FormComponents";
 
 // Specialized form components
 export { default as ProcessDropdown } from "./ProcessDropdown";
+export { default as NfCoreLibraryModal } from "./NfCoreLibraryModal";
 export { default as TimeInput } from "./TimeInput";
 export { default as MemoryInput } from "./MemoryInput";
 

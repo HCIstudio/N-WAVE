@@ -8,6 +8,8 @@ import workflowRoutes from "./routes/workflowRoutes"; // Uncommented and to be u
 import executeRoutes from "./routes/executeRoutes";
 import fileRoutes from "./routes/fileRoutes"; // Import the new file routes
 import processRoutes from "./routes/processRoutes"; // Import the process routes
+import nfcoreRoutes from "./routes/nfcoreRoutes";
+import customNodeRoutes from "./routes/customNodeRoutes";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -55,6 +57,8 @@ app.use("/api/files", fileRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/execute", executeRoutes);
 app.use("/api/process", processRoutes);
+app.use("/api/nfcore", nfcoreRoutes);
+app.use("/api/custom-nodes", customNodeRoutes);
 
 const PORT = process.env.PORT || 5001;
 

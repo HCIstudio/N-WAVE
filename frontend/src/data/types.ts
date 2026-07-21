@@ -7,7 +7,7 @@ export interface NextflowProcess {
   icon: string;
   initialData?: Partial<NodeData>;
   outputs?: { name: string; isConnectable?: boolean; label?: string }[];
-  operatorType?: "filter" | "map" | "merge";
+  operatorType?: string;
   filterCondition?: string;
   filterValue?: string;
   mapReplaceFind?: string;
@@ -15,7 +15,7 @@ export interface NextflowProcess {
   mergeOperation?: "join";
   mergeJoinSeparator?: string;
   joinType?: string;
-  processType?: "fastqc" | "trimmomatic";
+  processType?: string;
   threads?: number;
 }
 

@@ -76,7 +76,9 @@ export const executeProcess = async (
 
   // If nextflowScript is provided, execute as a full Nextflow workflow
   if (nextflowScript) {
-    const normalizedNextflowScript = stabilizeWorkflowInvocations(nextflowScript);
+    const normalizedNextflowScript = stabilizeWorkflowInvocations(
+      normalizeLegacyGeneratedScript(nextflowScript)
+    );
     await executeNextflowWorkflow(
       normalizedNextflowScript,
       workflowName,
@@ -200,10 +202,37 @@ const executeNextflowWorkflow = async (
 
     const containerImage = executionSettings.containerImage || "ubuntu:22.04";
 
+    const extractedNextflowAssets =
+      extractNwaveNextflowAssets(nextflowScript);
+    const hasNfCoreModules =
+      getReferencedNfCoreModules(extractedNextflowAssets.script).length > 0;
+    const shouldUseProcessDocker =
+      executionSettings.useDocker || hasNfCoreModules;
+    const nextflowConfig = buildExecutionConfig(
+      extractedNextflowAssets.config,
+      shouldUseProcessDocker
+    );
+    const moduleConfigOption = nextflowConfig.trim()
+      ? "-c nwave_modules.config "
+      : "";
+
     // Write the Nextflow script to workflow directory
     const scriptPath = path.join(workflowDir, `${sanitizedWorkflowName}.nf`);
-    fs.writeFileSync(scriptPath, nextflowScript);
+    fs.writeFileSync(scriptPath, extractedNextflowAssets.script);
     console.log(`Created workflow script: ${scriptPath}`);
+
+    if (nextflowConfig.trim()) {
+      const configPath = path.join(mainOutputDir, "nwave_modules.config");
+      const workflowConfigPath = path.join(workflowDir, "nwave_modules.config");
+      fs.writeFileSync(configPath, nextflowConfig);
+      fs.writeFileSync(workflowConfigPath, nextflowConfig);
+      console.log(`Created module config: ${configPath}`);
+    }
+
+    materializeNfCoreModules(extractedNextflowAssets.script, [
+      path.join(mainOutputDir, "modules"),
+      path.join(workflowDir, "modules"),
+    ]);
 
     // Create input files in inputs directory
     if (fileContent && Object.keys(fileContent).length > 0) {
@@ -231,7 +260,7 @@ const executeNextflowWorkflow = async (
         });
       });
       console.log(
-        `Using local Nextflow with Docker processes: ${executionSettings.useDocker}`
+        `Using local Nextflow with Docker processes: ${shouldUseProcessDocker}`
       );
     } catch (error) {
       useLocalNextflow = false;
@@ -262,6 +291,14 @@ const executeNextflowWorkflow = async (
       }
     }
 
+    if (useLocalNextflow && shouldUseProcessDocker) {
+      await ensureDockerAvailable(
+        hasNfCoreModules
+          ? "nf-core modules require Docker process containers"
+          : "Docker process execution is enabled"
+      );
+    }
+
     // Build Nextflow command based on availability
     const scriptFile = path.join(workflowDir, `${sanitizedWorkflowName}.nf`);
     const relativeScriptPath = path.relative(mainOutputDir, scriptFile);
@@ -272,23 +309,31 @@ const executeNextflowWorkflow = async (
       // Local Nextflow available - use native path separators
       // Set environment variable for log location
       const envVars = `NXF_LOG_FILE=nextflow/.nextflow.log`;
-      if (executionSettings.useDocker) {
-        // Enable Docker for individual process containers (not global container)
-        // This allows each process to use its own container directive
-        nextflowCmd = `${envVars} nextflow -log nextflow/.nextflow.log run ./${relativeScriptPath} -with-docker --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
-      } else {
-        nextflowCmd = `${envVars} nextflow -log nextflow/.nextflow.log run ./${relativeScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
-      }
+      nextflowCmd = `${envVars} nextflow -log nextflow/.nextflow.log ${moduleConfigOption}run ./${relativeScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
     } else {
       // Use Docker Nextflow container via backend container volumes.
-      // With Docker socket mounting, host Docker cannot mount container-internal
-      // paths directly, so we share backend volumes into the Nextflow container.
       const backendContainerName =
         process.env.BACKEND_CONTAINER_NAME || "nwave-backend";
-      const dockerMainOutputDir = mainOutputDir.replace(/\\/g, "/");
-      const dockerScriptPath = relativeScriptPath.replace(/\\/g, "/");
-      // Run Nextflow in a separate container but inside the same mounted volumes.
-      nextflowCmd = `docker run --rm --volumes-from ${backendContainerName} -e NXF_LOG_FILE=nextflow/.nextflow.log -w "${dockerMainOutputDir}" nextflow/nextflow:${nextflowVersion} nextflow -log nextflow/.nextflow.log run ./${dockerScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
+      const resultsMount = await resolveContainerMount(
+        backendContainerName,
+        "/app/results"
+      );
+      const dockerResultsRoot = shouldUseProcessDocker
+        ? toDockerHostVisiblePath(resultsMount.source)
+        : "/app/results";
+      const dockerMainOutputDir = path
+        .posix
+        .join(dockerResultsRoot, path.relative("/app/results", mainOutputDir).replace(/\\/g, "/"));
+      const dockerScriptPath = path
+        .posix
+        .relative(dockerMainOutputDir, path.posix.join(dockerMainOutputDir, "workflow", `${sanitizedWorkflowName}.nf`));
+      const nextflowRunnerMount = shouldUseProcessDocker
+        ? `-v ${shellQuote(`${resultsMount.source}:${dockerResultsRoot}`)}`
+        : `--volumes-from ${shellQuote(backendContainerName)}`;
+      // When process Docker is enabled, run Nextflow from a path that is also
+      // visible to the host Docker daemon. Otherwise sibling task containers
+      // receive empty /app/results mounts and cannot see .command.sh.
+      nextflowCmd = `docker run --rm ${nextflowRunnerMount} -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(dockerMainOutputDir)} nextflow/nextflow:${nextflowVersion} nextflow -log nextflow/.nextflow.log ${moduleConfigOption}run ./${dockerScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
     }
 
     console.log(`Executing: ${nextflowCmd}`);
@@ -523,8 +568,319 @@ export const checkDockerStatus = (req: Request, res: Response): void => {
   });
 };
 
+const ensureDockerAvailable = async (reason: string): Promise<void> => {
+  try {
+    await new Promise((resolve, reject) => {
+      exec("docker info", (error) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(true);
+        }
+      });
+    });
+  } catch {
+    throw new Error(
+      `${reason}, but Docker is not available. Please start Docker Desktop and try again.`
+    );
+  }
+};
+
+const buildExecutionConfig = (
+  generatedConfig: string,
+  enableDocker: boolean
+): string => {
+  const configBlocks = [generatedConfig.trim()].filter(Boolean);
+
+  if (enableDocker) {
+    configBlocks.push(
+      [
+        "docker {",
+        "  enabled = true",
+        "}",
+        "",
+        "process {",
+        "  executor = 'local'",
+        "}",
+      ].join("\n")
+    );
+  }
+
+  return configBlocks.join("\n\n");
+};
+
+const resolveContainerMount = async (
+  containerName: string,
+  destination: string
+): Promise<{ source: string; destination: string }> => {
+  const mountsJson = await execOutput(
+    `docker inspect ${shellQuote(containerName)} --format '{{json .Mounts}}'`
+  );
+  const mounts = JSON.parse(mountsJson) as Array<{
+    Source?: string;
+    Destination?: string;
+  }>;
+  const mount = mounts.find((entry) => entry.Destination === destination);
+
+  if (!mount?.Source || !mount.Destination) {
+    throw new Error(
+      `Could not resolve Docker mount for ${destination} in ${containerName}`
+    );
+  }
+
+  return { source: mount.Source, destination: mount.Destination };
+};
+
+const toDockerHostVisiblePath = (hostPath: string): string => {
+  const windowsPathMatch = hostPath.match(/^([A-Za-z]):\\(.*)$/);
+  if (!windowsPathMatch) {
+    return hostPath.replace(/\\/g, "/");
+  }
+
+  const drive = windowsPathMatch[1]!.toLowerCase();
+  const rest = windowsPathMatch[2]!.replace(/\\/g, "/");
+  return `/run/desktop/mnt/host/${drive}/${rest}`;
+};
+
+const execOutput = (command: string): Promise<string> =>
+  new Promise((resolve, reject) => {
+    exec(command, { maxBuffer: 1024 * 1024 }, (error, stdout, stderr) => {
+      if (error) {
+        reject(new Error(stderr || error.message));
+        return;
+      }
+
+      resolve(stdout.trim());
+    });
+  });
+
+const shellQuote = (value: string): string =>
+  `'${value.replace(/'/g, "'\\''")}'`;
+
+const extractNwaveNextflowAssets = (
+  script: string
+): { script: string; config: string } => {
+  const configBlocks: string[] = [];
+  const cleanedScript = script.replace(
+    /\/\*\s*N-WAVE_NEXTFLOW_CONFIG\s*([\s\S]*?)\*\//g,
+    (_match, configBlock: string) => {
+      configBlocks.push(configBlock.trim());
+      return "";
+    }
+  );
+
+  return {
+    script: cleanedScript,
+    config: configBlocks.filter(Boolean).join("\n\n"),
+  };
+};
+
+const normalizeLegacyGeneratedScript = (script: string): string => {
+  assertNoLegacyBioinformaticsTemplates(script);
+
+  let normalizedScript = addLegacyFileInputAliases(script);
+  normalizedScript = addLegacyProcessOutputAliases(normalizedScript);
+  return normalizedScript;
+};
+
+const assertNoLegacyBioinformaticsTemplates = (script: string): void => {
+  if (
+    script.includes("Installing FastQC dependencies") ||
+    script.includes("Downloading FastQC") ||
+    script.includes("Downloading Trimmomatic") ||
+    script.includes("trimmomatic-0.39.jar")
+  ) {
+    throw new Error(
+      "Generated workflow uses a legacy inline FastQC/Trimmomatic template. " +
+        "The frontend is not using the current nf-core node generator. " +
+        "Rebuild and restart the frontend container/dev server, then create a new FastQC/Trimmomatic node."
+    );
+  }
+};
+
+const addLegacyFileInputAliases = (script: string): string => {
+  if (!/\bch_files\b/.test(script)) return script;
+
+  const referencedAliases = Array.from(
+    new Set(
+      [...script.matchAll(/\b([A-Za-z_][A-Za-z0-9_]*_ch_files_out)\b/g)].map(
+        (match) => match[1]
+      )
+    )
+  ).filter(
+    (alias): alias is string => Boolean(alias)
+  ).filter(
+    (alias) =>
+      !new RegExp(`^\\s*${escapeRegExp(alias)}\\s*=`, "m").test(script)
+  );
+
+  if (referencedAliases.length === 0) return script;
+
+  const aliasBlock = referencedAliases
+    .map((alias) => `${alias} = ch_files`)
+    .join("\n");
+
+  const workflowIndex = script.indexOf("\nworkflow {");
+  if (workflowIndex === -1) {
+    return `${script}\n\n${aliasBlock}\n`;
+  }
+
+  return `${script.slice(0, workflowIndex)}\n${aliasBlock}\n${script.slice(
+    workflowIndex
+  )}`;
+};
+
+const addLegacyProcessOutputAliases = (script: string): string => {
+  const aliasLines: string[] = [];
+  const tupleAssignmentPattern =
+    /^\s*\(([^)]+)\)\s*=\s*[A-Za-z_][A-Za-z0-9_]*\s*\(/gm;
+  let match: RegExpExecArray | null;
+
+  while ((match = tupleAssignmentPattern.exec(script)) !== null) {
+    const assignedVars = match[1]
+      ?.split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+
+    assignedVars?.forEach((assignedVar) => {
+      const aliasMatch = assignedVar.match(
+        /^(?:[A-Za-z0-9]+_)?node_([0-9]+)_(.+)$/
+      );
+      if (!aliasMatch) return;
+
+      const alias = `node_${aliasMatch[1]}_${aliasMatch[2]}`;
+      if (alias === assignedVar) return;
+      if (!new RegExp(`\\b${escapeRegExp(alias)}\\b`).test(script)) return;
+      if (new RegExp(`^\\s*${escapeRegExp(alias)}\\s*=`, "m").test(script)) {
+        return;
+      }
+
+      aliasLines.push(`    ${alias} = ${assignedVar}`);
+    });
+  }
+
+  const uniqueAliasLines = Array.from(new Set(aliasLines));
+  if (uniqueAliasLines.length === 0) return script;
+
+  return script.replace(
+    /^(\s*\([^)]+\)\s*=\s*[A-Za-z_][A-Za-z0-9_]*\s*\([^\n]*\)\s*)$/m,
+    `$1\n${uniqueAliasLines.join("\n")}`
+  );
+};
+
+const escapeRegExp = (value: string): string =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const materializeNfCoreModules = (
+  script: string,
+  targetModuleRoots: string[]
+): void => {
+  const moduleNames = getReferencedNfCoreModules(script);
+  if (moduleNames.length === 0) return;
+
+  moduleNames.forEach((moduleName) => {
+    const sourceDir = resolveNfCoreModuleSourceDir(moduleName);
+
+    targetModuleRoots.forEach((targetRoot) => {
+      const targetDir = path.join(targetRoot, "nf-core", ...moduleName.split("/"));
+      const resolvedTargetRoot = path.resolve(targetRoot);
+      const resolvedTargetDir = path.resolve(targetDir);
+      if (!resolvedTargetDir.startsWith(resolvedTargetRoot)) {
+        throw new Error(`Refusing to copy nf-core module outside ${targetRoot}`);
+      }
+
+      if (fs.existsSync(targetDir)) {
+        fs.rmSync(targetDir, { recursive: true, force: true });
+      }
+      fs.mkdirSync(path.dirname(targetDir), { recursive: true });
+      fs.cpSync(sourceDir, targetDir, { recursive: true });
+      console.log(`Materialized nf-core module ${moduleName}: ${targetDir}`);
+    });
+  });
+};
+
+const getReferencedNfCoreModules = (script: string): string[] => {
+  const modules = new Set<string>();
+  const includePattern =
+    /from\s+['"]\.\/modules\/nf-core\/([A-Za-z0-9_/-]+)\/main['"]/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = includePattern.exec(script)) !== null) {
+    const moduleName = match[1];
+    if (!moduleName) {
+      continue;
+    }
+    if (
+      !/^[A-Za-z0-9_/-]+$/.test(moduleName) ||
+      moduleName.split("/").some((segment) => !segment || segment === "..")
+    ) {
+      throw new Error(`Invalid nf-core module name: ${moduleName}`);
+    }
+    modules.add(moduleName);
+  }
+
+  return Array.from(modules);
+};
+
+const resolveNfCoreModuleSourceDir = (moduleName: string): string => {
+  const sourceRoots = [
+    ...resolveInstalledNfCoreModuleRoots(),
+    ...resolveBundledNfCoreModuleRoots(),
+  ];
+  const sourceDir = sourceRoots
+    .map((sourceRoot) => path.join(sourceRoot, ...moduleName.split("/")))
+    .find((candidate) => fs.existsSync(candidate));
+
+  if (!sourceDir) {
+    throw new Error(
+      `nf-core module "${moduleName}" is not installed or bundled. Checked roots: ${sourceRoots.join(", ")}`
+    );
+  }
+
+  return sourceDir;
+};
+
+const resolveInstalledNfCoreModuleRoots = (): string[] => {
+  const dataRoot = path.resolve(
+    process.env.NWAVE_DATA_DIR || path.join(process.cwd(), "results", ".nwave")
+  );
+  const installedRoot = path.join(dataRoot, "nf-core", "modules", "nf-core");
+  return fs.existsSync(installedRoot) ? [installedRoot] : [];
+};
+
+const resolveBundledNfCoreModuleRoots = (): string[] => {
+  const candidates = [
+    path.join(
+      process.cwd(),
+      "dist",
+      "workflows",
+      "library",
+      "assets",
+      "nf-core",
+      "modules",
+      "nf-core"
+    ),
+    path.join(
+      process.cwd(),
+      "src",
+      "workflows",
+      "library",
+      "assets",
+      "nf-core",
+      "modules",
+      "nf-core"
+    ),
+  ];
+
+  return candidates.filter((candidate) => fs.existsSync(candidate));
+};
+
 // New endpoint for cancelling execution
 const stabilizeWorkflowInvocations = (script: string): string => {
+  if (script.includes("N-WAVE generator: registry-nfcore-v1")) {
+    return script;
+  }
+
   const lines = script.split(/\r?\n/);
   const workflowStart = lines.findIndex((line) => line.trim() === "workflow {");
   const workflowEnd = lines.lastIndexOf("}");

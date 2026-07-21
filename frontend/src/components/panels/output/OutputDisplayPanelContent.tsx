@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState, useMemo, useEffect } from "react";
 import type { Node } from "reactflow";
-import { Download } from "lucide-react";
+import { Download, Info } from "lucide-react";
 import type { NodeData } from "../../nodes/BaseNode";
 import { FileViewer, detectFileType } from "../../common";
 
@@ -27,6 +27,10 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
   );
 
   const files = node?.data?.files || [];
+  const previewUnavailable = Boolean(node?.data?.previewUnavailable);
+  const previewUnavailableReason =
+    node?.data?.previewUnavailableReason ||
+    "The connected upstream node does not provide browser preview output. Run the workflow to produce real results.";
   const orderedFiles = useMemo(
     () =>
       [...files].sort(
@@ -118,6 +122,20 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
   };
 
   const renderContent = () => {
+    if (previewUnavailable) {
+      return (
+        <div className="p-4 text-sm text-text-light">
+          <div className="flex items-start gap-2 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <div>
+              <p className="font-medium">Preview unavailable</p>
+              <p className="mt-1">{previewUnavailableReason}</p>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     if (!displayedContent) {
       return (
         <div className="p-4 text-center text-text-light">
@@ -153,7 +171,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
             value={selectedFileName}
             onChange={(e) => setSelectedFileName(e.target.value)}
             className="w-full rounded-md border-gray-600 bg-accent text-text p-2 focus:border-nextflow-green focus:ring-nextflow-green"
-            disabled={files.length === 0}
+            disabled={previewUnavailable || files.length === 0}
           >
             <option value="all">All Files (Concatenated)</option>
             {files.map((file) => (
@@ -173,6 +191,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
               value={downloadFormat}
               onChange={(e) => setDownloadFormat(e.target.value)}
               className="flex-grow rounded-l-md border-gray-600 bg-accent text-text p-2 focus:border-nextflow-green focus:ring-nextflow-green"
+              disabled={previewUnavailable}
             >
               <option value="txt">Text</option>
               <option value="csv" disabled={selectedFileName === "all"}>
@@ -186,7 +205,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
               onClick={handleDownload}
               className="p-2 text-text bg-accent hover:bg-accent-hover rounded-r-md"
               aria-label="Download Output"
-              disabled={!displayedContent}
+              disabled={previewUnavailable || !displayedContent}
             >
               <Download size={18} />
             </button>

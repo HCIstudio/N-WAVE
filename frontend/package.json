@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "nfcore:catalog": "node ../scripts/generate-nfcore-catalog.mjs",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "preview": "vite preview"

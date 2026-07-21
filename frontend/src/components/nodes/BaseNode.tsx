@@ -8,6 +8,8 @@ export interface PortData {
   name: string;
   isConnectable?: boolean;
   label?: string; // Display label for the port
+  fileType?: string;
+  filePattern?: string;
 }
 
 export interface FileObject {
@@ -41,6 +43,8 @@ export interface NodeData {
   filterText?: string;
   isHighlight?: boolean;
   _hasWarning?: boolean; // Warning state (e.g., missing file content)
+  previewUnavailable?: boolean;
+  previewUnavailableReason?: string;
   [key: string]: any; // Allow other properties
 
   // Process-specific properties
@@ -62,12 +66,14 @@ const BaseNode = ({
   children?: ReactNode;
 }) => {
   const iconName = data.icon || "DefaultIcon";
+  const maxPortCount = Math.max(data.inputs?.length ?? 0, data.outputs?.length ?? 0);
+  const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32);
+  const dynamicMinWidth = Math.max(120, maxPortCount > 6 ? 152 : 120);
 
   // Base classes for the node
   const nodeClasses = [
     "group",
     "min-w-[120px]", // Ensure a minimum width
-    "min-h-[100px]", // Ensure a minimum height
     "bg-[#fcfcfc]", // Corresponds to --color-node-background, a light grey
     "rounded-lg",
     "flex",
@@ -122,6 +128,7 @@ const BaseNode = ({
       className={clsx(nodeClasses, {
         "shadow-lg shadow-nextflow-green/50": selected || data.isHighlight,
       })}
+      style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
     >
       {/* Input Handles */}
       {data.inputs?.map((port, index, arr) => (
@@ -139,8 +146,13 @@ const BaseNode = ({
             onMouseDown={onMouseDown}
           />
           {port.label && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-600 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border">
-              {port.label}
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
+              <div className="text-xs text-gray-600">{port.label}</div>
+              {(port.fileType || port.filePattern) && (
+                <div className="text-[10px] text-gray-400">
+                  {[port.fileType, port.filePattern].filter(Boolean).join(" ")}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -212,8 +224,13 @@ const BaseNode = ({
             onMouseDown={onMouseDown}
           />
           {port.label && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-600 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border">
-              {port.label}
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
+              <div className="text-xs text-gray-600">{port.label}</div>
+              {(port.fileType || port.filePattern) && (
+                <div className="text-[10px] text-gray-400">
+                  {[port.fileType, port.filePattern].filter(Boolean).join(" ")}
+                </div>
+              )}
             </div>
           )}
         </div>

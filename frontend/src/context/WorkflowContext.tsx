@@ -19,6 +19,7 @@ import {
 } from "reactflow";
 import type { NodeData } from "../components/nodes/BaseNode";
 import type { ToastType } from "../components/common";
+import { validateConnectionWithNodeDefinitions } from "../registry";
 
 interface ToastState {
   message: string;
@@ -84,53 +85,24 @@ export const WorkflowProvider: FC<PropsWithChildren<{}>> = ({ children }) => {
     (connection: Connection) => {
       const currentNodes = getNodes();
       const currentEdges = getEdges();
+      const sourceNode = connection.source
+        ? currentNodes.find((node) => node.id === connection.source)
+        : undefined;
+      const targetNode = connection.target
+        ? currentNodes.find((node) => node.id === connection.target)
+        : undefined;
 
-      if (connection.target) {
-        const targetNode = currentNodes.find(
-          (node) => node.id === connection.target
-        );
-        if (targetNode?.type === "outputDisplay") {
-          const existingEdges = currentEdges.filter(
-            (edge) => edge.target === connection.target
-          );
-          if (existingEdges.length > 0) {
-            showToast("Display Output can only take one input.", "error");
-            return false;
-          }
-        }
+      const validation = validateConnectionWithNodeDefinitions({
+        connection,
+        sourceNode,
+        targetNode,
+        nodes: currentNodes,
+        edges: currentEdges,
+      });
 
-        // Prevent connecting FastQC outputs to Trimmomatic
-        if (
-          targetNode?.data?.processType === "trimmomatic" &&
-          connection.source
-        ) {
-          const sourceNode = currentNodes.find(
-            (node) => node.id === connection.source
-          );
-          if (sourceNode?.data?.processType === "fastqc") {
-            showToast(
-              "Cannot connect FastQC to Trimmomatic. FastQC produces quality reports (ZIP/HTML), not FASTQ files. Connect both to the same File Input instead.",
-              "error"
-            );
-            return false;
-          }
-        }
-      }
-
-      if (connection.source) {
-        const sourceNode = currentNodes.find(
-          (node) => node.id === connection.source
-        );
-        if (
-          sourceNode?.type === "fileInput" &&
-          (!sourceNode.data.files || sourceNode.data.files.length === 0)
-        ) {
-          showToast(
-            "File Input requires at least one file before connecting.",
-            "error"
-          );
-          return false;
-        }
+      if (!validation.valid) {
+        showToast(validation.message || "Invalid connection.", "error");
+        return false;
       }
 
       return true;

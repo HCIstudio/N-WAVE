@@ -1,10 +1,6 @@
 import type { Node, Edge } from "reactflow";
-import {
-  generateProcessCode,
-  generateOperatorCode,
-  generateOutputCode,
-} from "./templateEngine";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
+import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
 
 /**
  * Generates a Nextflow script from the current workflow nodes.
@@ -50,12 +46,18 @@ export const generateNextflowScript = (
   let outputDisplayCounter = 1;
   const channelDefinitions: string[] = [];
   const processInvocations: string[] = [];
+  const includeStatements: string[] = [];
+  const nextflowConfigBlocks: string[] = [];
 
   // First pass: Define file inputs and map all node outputs to channel names
   nodes.forEach((node) => {
     if (node.type === "fileInput") {
       const channelName = "ch_files";
+      const legacyFileOutputChannelName = sanitizeVarName(
+        `${node.id}_ch_files_out`
+      );
       channelNameMap.set(`${node.id}.ch_files_out`, channelName);
+      channelNameMap.set(`${node.id}.out`, channelName);
 
       // Extract selected filenames from the node data
       const selectedFiles = node.data.files || [];
@@ -73,11 +75,13 @@ export const generateNextflowScript = (
         // Create channel from file list with proper file staging
         firstPassScript += `${channelName} = Channel.fromList(params.selected_files)\n`;
         firstPassScript += `    .map { filename -> file("\${params.inputdir}/\${filename}") }\n\n`;
+        firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       } else {
         // Fallback if no files
         paramsScript += `params.inputdir = "./inputs"\n`;
         paramsScript += `params.selected_files = []\n\n`;
         firstPassScript += `${channelName} = Channel.empty()\n\n`;
+        firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       }
     } else {
       node.data.outputs?.forEach((output: { name: string }) => {
@@ -149,276 +153,74 @@ export const generateNextflowScript = (
         }
       }
 
-      if (node.type === "operator" || node.type === "filter") {
-        // Handle backward compatibility: old filter nodes had type: "filter"
-        // New nodes have type: "operator" with operatorType field
-        const operatorType =
-          node.type === "filter" ? "filter" : node.data.operatorType;
+      const nodeDefinition = getNodeDefinitionForNode(node);
+      const generationResult = nodeDefinition?.generateNextflow?.({
+        node,
+        processName,
+        incomingEdges,
+        upstreamChannelName,
+        outputChannelName,
+        channelNameMap,
+        outputDisplayCounter,
+        outputNamingPattern,
+        workflowName,
+        timestamp,
+        date: dateStr,
+        resolveChannelNameForEdge,
+        buildMixedChannelExpression,
+        sanitizeVarName,
+      });
 
-        if (operatorType === "filter") {
-          const filterText = node.data.filterText || "";
-          const filterMode = node.data.filterMode || "contains";
-          const filterNegate = node.data.filterNegate || false;
-          const selectedFiles = node.data.selectedFilterFiles || [];
-          const containerImage = node.data.containerImage || "ubuntu:22.04";
-          const cpus = node.data.cpus || 1;
-          const memory = node.data.memory || "2.GB";
+      if (!generationResult) return;
 
-          // Use template for clean filter generation
-          processScripts[node.id] = generateOperatorCode("filter", {
-            processName,
-            cpuCount: cpus,
-            memoryAmount: memory,
-            containerImage,
-            filterText,
-            filterMode,
-            filterNegate,
-          });
+      processScripts[node.id] = generationResult.processScript;
 
-          executionOrder.push(node.id);
-
-          // If specific files are selected, filter by filename first
-          if (selectedFiles.length > 0) {
-            const selectedFileNames = selectedFiles.map((f: any) => f.name);
-            const fileNameFilter = selectedFileNames
-              .map((name: string) => `file.name == '${name}'`)
-              .join(" || ");
-
-            channelDefinitions.push(
-              `    // Filter to only process selected files: ${selectedFileNames.join(
-                ", "
-              )}\n`
-            );
-            channelDefinitions.push(
-              `    ${outputChannelName}_selected = ${upstreamChannelName}.filter { file -> ${fileNameFilter} }\n`
-            );
-            processInvocations.push(
-              `    ${outputChannelName} = ${processName}(${outputChannelName}_selected)\n`
-            );
-          } else {
-            // Process all files if none specifically selected
-            processInvocations.push(
-              `    ${outputChannelName} = ${processName}(${upstreamChannelName})\n`
-            );
-          }
-        } else if (operatorType === "map") {
-          const mapOperation = node.data.mapOperation || "changeCase";
-          const containerImage = node.data.containerImage || "ubuntu:22.04";
-          const cpus = node.data.cpus || 1;
-          const memory = node.data.memory || "2.GB";
-
-          // Use template for clean map generation
-          processScripts[node.id] = generateOperatorCode("map", {
-            processName,
-            cpuCount: cpus,
-            memoryAmount: memory,
-            containerImage,
-            mapOperation,
-            mapChangeCase: node.data.mapChangeCase,
-            mapReplaceFind: node.data.mapReplaceFind,
-            mapReplaceWith: node.data.mapReplaceWith,
-          });
-
-          executionOrder.push(node.id);
-
-          // Add process invocation
-          processInvocations.push(
-            `    ${outputChannelName} = ${processName}(${upstreamChannelName})\n`
-          );
-        } else if (operatorType === "merge") {
-          const mergeOperation = node.data.mergeOperation || "join";
-          const containerImage = node.data.containerImage || "ubuntu:22.04";
-          const cpus = node.data.cpus || 1;
-          const memory = node.data.memory || "2.GB";
-
-          if (mergeOperation === "join") {
-            const mergeTemplate = generateOperatorCode("merge", {
-              processName,
-              cpuCount: cpus,
-              memoryAmount: memory,
-              containerImage,
-              mergeOperation: "join",
-              joinType: node.data.joinType || "txt",
-            } as any);
-
-            processScripts[node.id] = mergeTemplate;
-            executionOrder.push(node.id);
-
-            const upstreamChannelNames = incomingEdges
-              .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
-              .filter((channelName): channelName is string => !!channelName);
-
-            if (upstreamChannelNames.length === 0) {
-              return;
-            }
-
-            const mergeInputChannelName = `${outputChannelName}_merge_inputs`;
-
-            processInvocations.push(
-              `    ${mergeInputChannelName} = ${buildMixedChannelExpression(
-                upstreamChannelNames
-              )}\n`
-            );
-            processInvocations.push(
-              `    ${outputChannelName} = ${processName}(${mergeInputChannelName}.collect())\n`
-            );
-          }
-        }
-      } else if (node.type === "process") {
-        // Generate process script based on process type
-        const processType = node.data.processType || "generic";
-
-        if (processType === "fastqc") {
-          // Generate FastQC process with node settings
-          const fastqcOptions = node.data.fastqcOptions || "";
-          const containerImage = node.data.containerImage || "ubuntu:22.04";
-          const cpus = node.data.cpus || 1;
-          const memory = node.data.memory || "2.GB";
-
-          processScripts[node.id] = generateProcessCode("fastqc", {
-            processName,
-            cpuCount: cpus,
-            memoryAmount: memory,
-            containerImage,
-            fastqcOptions,
-          });
-        } else if (processType === "trimmomatic") {
-          // Generate Trimmomatic process with node settings
-          // Build params string from node data
-          const trimmomaticParamsArr = [
-            `LEADING:${node.data.leading ?? 3}`,
-            `TRAILING:${node.data.trailing ?? 3}`,
-            `SLIDINGWINDOW:${node.data.slidingwindow ?? "4:15"}`,
-            `MINLEN:${node.data.minlen ?? 36}`,
-          ];
-          if (node.data.adapter_file && node.data.adapter_file.trim() !== "") {
-            trimmomaticParamsArr.push(`ILLUMINACLIP:${node.data.adapter_file}`);
-          }
-          if (node.data.custom_steps && node.data.custom_steps.trim() !== "") {
-            // Allow multiple custom steps, one per line
-            const steps = node.data.custom_steps
-              .split("\n")
-              .map((s: string) => s.trim())
-              .filter(Boolean);
-            trimmomaticParamsArr.push(...steps);
-          }
-          // (phred_score is not used in the script, as -phred33 is hardcoded)
-          const trimmomaticParams = trimmomaticParamsArr.join(" ");
-          const containerImage = node.data.containerImage || "ubuntu:22.04";
-          const cpus = node.data.cpus || 1;
-          const memory = node.data.memory || "2.GB";
-
-          processScripts[node.id] = generateProcessCode("trimmomatic", {
-            processName,
-            cpuCount: cpus,
-            memoryAmount: memory,
-            containerImage,
-            trimmomaticParams,
-          });
-        } else {
-          // Generate generic process with node settings
-          const script = node.data.script || '"""\necho "Hello World"\n"""';
-          const containerImage = node.data.containerImage || "ubuntu:22.04";
-          const cpus = node.data.cpus || 1;
-          const memory = node.data.memory || "2.GB";
-          const timeLimit = node.data.timeLimit || "1.h";
-
-          processScripts[node.id] = generateProcessCode("generic", {
-            processName,
-            cpuCount: cpus,
-            memoryAmount: memory,
-            containerImage,
-            script,
-            timeLimit,
-          });
-        }
-
+      if (generationResult.includeInExecutionOrder !== false) {
         executionOrder.push(node.id);
-
-        let inputChannels = "";
-        if (incomingEdges.length > 0) {
-          inputChannels = incomingEdges
-            .map((e) =>
-              sanitizeVarName(`${e.source}_${e.sourceHandle || "out"}`)
-            )
-            .join(", ");
-        }
-
-        // Only destructure real outputs
-        let outputVars: string[] = [];
-        if (node.data.outputs && Array.isArray(node.data.outputs)) {
-          outputVars = node.data.outputs
-            .map((output: { name: string }) => {
-              if (!output || !output.name) return undefined;
-              return sanitizeVarName(`${processName}_${output.name}`);
-            })
-            .filter(Boolean);
-        }
-
-        if (outputVars.length > 0) {
-          processInvocations.push(
-            `    (${outputVars.join(
-              ", "
-            )}) = ${processName}(${inputChannels})\n`
-          );
-        } else {
-          processInvocations.push(`    ${processName}(${inputChannels})\n`);
-        }
-      } else if (node.type === "outputDisplay") {
-        // Generate output process that saves files to results directory
-        const outputLabel = (node.data.label || "Output").replace(
-          /[\s-]+/g,
-          "_"
-        );
-        const downloadFormat = node.data.downloadFormat || "txt";
-        const selectedFileName = node.data.selectedFileName || "all";
-        const containerImage = node.data.containerImage || "ubuntu:22.04";
-        const cpus = node.data.cpus || 1;
-        const memory = node.data.memory || "2.GB";
-
-        // Use template for output display
-        processScripts[node.id] = generateOutputCode({
-          processName,
-          cpuCount: cpus,
-          memoryAmount: memory,
-          containerImage,
-          outputLabel,
-          downloadFormat,
-          selectedFileName,
-          outputDisplayCounter,
-          outputNamingPattern,
-          workflowName,
-          timestamp,
-          date: dateStr,
-        });
-
-        executionOrder.push(node.id);
-
-        const normalizeToPathChannel = (channelExpr: string): string =>
-          channelExpr +
-          '.map { item -> file(item instanceof String ? "${params.inputdir}/${item}" : item) }';
-        const outputInvocationArg =
-          selectedFileName === "all"
-            ? `${normalizeToPathChannel(upstreamChannelName)}.collect()`
-            : normalizeToPathChannel(upstreamChannelName);
-
-        // Add process call in workflow instead of view statement (to be executed after channel definitions)
-        processInvocations.push(
-          `    // Save output from: ${node.data.label || "Output"}\n`
-        );
-        processInvocations.push(
-          `    ${processName}(${outputInvocationArg})\n`
-        );
-
-        // Increment counter for next output display node
-        outputDisplayCounter++;
       }
+
+      if (generationResult.channelDefinitions) {
+        channelDefinitions.push(...generationResult.channelDefinitions);
+      }
+
+      if (generationResult.includeStatements) {
+        includeStatements.push(...generationResult.includeStatements);
+      }
+
+      if (generationResult.nextflowConfigBlocks) {
+        nextflowConfigBlocks.push(...generationResult.nextflowConfigBlocks);
+      }
+
+      processInvocations.push(...generationResult.processInvocations);
+      outputDisplayCounter +=
+        generationResult.outputDisplayCounterIncrement ?? 0;
     }
   });
 
   // Final Script Assembly
-  let finalScript = `// Workflow Script for ${workflowName}\n\n`;
+  let finalScript = `// Workflow Script for ${workflowName}\n`;
+  finalScript += `// N-WAVE generator: registry-nfcore-v1\n\n`;
+  finalScript += "nextflow.enable.dsl = 2\n\n";
   finalScript += paramsScript;
+  if (nextflowConfigBlocks.length > 0) {
+    finalScript += "/* N-WAVE_NEXTFLOW_CONFIG\n";
+    finalScript += "process {\n";
+    finalScript += Array.from(new Set(nextflowConfigBlocks))
+      .map((block) =>
+        block
+          .split("\n")
+          .map((line) => `  ${line}`)
+          .join("\n")
+      )
+      .join("\n\n");
+    finalScript += "\n}";
+    finalScript += "\n*/\n\n";
+  }
+  const uniqueIncludeStatements = Array.from(new Set(includeStatements));
+  if (uniqueIncludeStatements.length > 0) {
+    finalScript += uniqueIncludeStatements.join("\n");
+    finalScript += "\n\n";
+  }
   finalScript += firstPassScript;
 
   // Deduplicate executionOrder to prevent duplicate process definitions
@@ -451,6 +253,14 @@ export const generateNextflowScript = (
   const variableDefinitions = new Map<string, string>();
   const variableUsages = new Map<string, string[]>();
 
+  channelDefinitions.forEach((definition) => {
+    const { definitions } = parseInvocation(definition);
+
+    definitions.forEach((varName) => {
+      variableDefinitions.set(varName, definition);
+    });
+  });
+
   processInvocations.forEach((invocation) => {
     // Skip comments and empty lines
     if (invocation.trim().startsWith("//") || invocation.trim() === "") {
@@ -474,6 +284,7 @@ export const generateNextflowScript = (
   // Add invocations in dependency order - variables must be defined before used
   const processed = new Set<string>();
   const processing = new Set<string>(); // Track currently processing to detect cycles
+  const channelDefinitionSet = new Set(channelDefinitions);
 
   function addInvocation(invocation: string): void {
     if (processed.has(invocation)) return;
@@ -488,7 +299,7 @@ export const generateNextflowScript = (
 
     processing.add(invocation);
 
-    getInvocationArguments(invocation).forEach((usedVar) => {
+    parseInvocation(invocation).usages.forEach((usedVar) => {
       const definingInvocation = variableDefinitions.get(usedVar);
       // If this invocation uses a variable, make sure that variable is defined first
       if (definingInvocation && !processed.has(definingInvocation)) {
@@ -497,6 +308,11 @@ export const generateNextflowScript = (
     });
 
     processing.delete(invocation);
+
+    if (channelDefinitionSet.has(invocation)) {
+      processed.add(invocation);
+      return;
+    }
 
     // Now add this invocation
     if (invocation.includes("save_")) {
@@ -575,35 +391,53 @@ function parseInvocation(invocation: string): {
     return { definitions, usages };
   }
 
-  // Tuple assignment: `(a, b) = process(...)`
-  const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
-  if (tupleDefinitionMatch) {
-    tupleDefinitionMatch[1]
-      .split(",")
-      .map((name) => sanitizeVarName(name.trim()))
-      .filter(Boolean)
-      .filter(
-        (name) =>
-          name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")
-      )
-      .forEach((name) => definitions.push(name));
-  } else {
+  trimmed.split(/\r?\n/).forEach((line) => {
+    const lineTrimmed = line.trim();
+    if (!lineTrimmed || lineTrimmed.startsWith("//")) return;
+
+    // Tuple assignment: `(a, b) = process(...)`
+    const tupleDefinitionMatch = lineTrimmed.match(
+      /^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/
+    );
+    if (tupleDefinitionMatch) {
+      tupleDefinitionMatch[1]
+        .split(",")
+        .map((name) => sanitizeVarName(name.trim()))
+        .filter(Boolean)
+        .filter(
+          (name) =>
+            name.includes("_") ||
+            name.startsWith("ch_") ||
+            name.startsWith("node_")
+        )
+        .forEach((name) => {
+          if (!definitions.includes(name)) definitions.push(name);
+        });
+      return;
+    }
+
     // Single assignment: `var = process(...)`
-    const definitionMatch = trimmed.match(
+    const definitionMatch = lineTrimmed.match(
       /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/
     );
     if (definitionMatch) {
       const varName = sanitizeVarName(definitionMatch[1]);
       if (
         varName &&
-        (varName.includes("_") || varName.startsWith("ch_") || varName.startsWith("node_"))
+        (varName.includes("_") ||
+          varName.startsWith("ch_") ||
+          varName.startsWith("node_")) &&
+        !definitions.includes(varName)
       ) {
         definitions.push(varName);
       }
     }
-  }
+  });
 
   getInvocationArguments(invocation).forEach((arg) => {
+    if (!usages.includes(arg)) usages.push(arg);
+  });
+  getChainedChannelRoots(invocation).forEach((arg) => {
     if (!usages.includes(arg)) usages.push(arg);
   });
 
@@ -711,6 +545,11 @@ function getInvocationArguments(invocation: string): string[] {
       continue;
     }
 
+    // Exclude process aliases in module output references like `FASTQC_1.out.html`.
+    if (rhs.slice(endIndex).match(/^\s*\.out\./)) {
+      continue;
+    }
+
     // Exclude the callee in direct function/process invocations like `foo(bar)`.
     if (nextNonWhitespaceChar === "(") {
       continue;
@@ -725,6 +564,33 @@ function getInvocationArguments(invocation: string): string[] {
   }
 
   return args;
+}
+
+function getChainedChannelRoots(invocation: string): string[] {
+  const trimmed = invocation.trim();
+  if (trimmed === "" || trimmed.startsWith("//")) {
+    return [];
+  }
+
+  const assignmentIndex = trimmed.indexOf("=");
+  const rhs = assignmentIndex === -1 ? trimmed : trimmed.substring(assignmentIndex + 1);
+  const chainRootPattern =
+    /\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:map|filter|collect|concat|mix|flatten|view|set)\b/g;
+  const roots: string[] = [];
+  let match: RegExpExecArray | null;
+
+  while ((match = chainRootPattern.exec(rhs)) !== null) {
+    const name = sanitizeVarName(match[1] ?? "");
+    if (
+      name &&
+      (name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")) &&
+      !roots.includes(name)
+    ) {
+      roots.push(name);
+    }
+  }
+
+  return roots;
 }
 
 function sanitizeVarName(name: string): string {

@@ -45,63 +45,101 @@ export function generateOutputDisplayProcess(
     .replace(/\{date\}/g, date)
     .replace(/\{process_name\}/g, processName);
 
-  let outputFileName;
+  let outputPattern;
   let processScript;
 
   if (selectedFileName === "all") {
-    // Concatenate all files with unique numbering
-    outputFileName = `${basePattern}_${String(outputDisplayCounter).padStart(
+    const outputPrefix = `${basePattern}_${String(outputDisplayCounter).padStart(
       2,
       "0"
-    )}_${outputLabel}.${downloadFormat}`;
+    )}_${outputLabel}`;
+    outputPattern = `${outputPrefix}*`;
     processScript = `"""
-    echo "Combining input files into ${outputFileName}" >&2
-    echo "=== Combined Output: ${outputLabel} ===" > "${outputFileName}"
-    echo "Generated: \\$(date)" >> "${outputFileName}"
-    echo "" >> "${outputFileName}"
+    MANIFEST="${outputPrefix}_manifest.txt"
+    COMBINED="${outputPrefix}.txt"
+    copied_count=0
+    text_count=0
+
+    echo "Saving output files for ${outputLabel}" >&2
+    echo "=== Output Manifest: ${outputLabel} ===" > "\\$MANIFEST"
+    echo "Generated: \\$(date)" >> "\\$MANIFEST"
+    echo "" >> "\\$MANIFEST"
+
+    echo "=== Combined Text Output: ${outputLabel} ===" > "\\$COMBINED"
+    echo "Generated: \\$(date)" >> "\\$COMBINED"
+    echo "" >> "\\$COMBINED"
     
     echo "Listing staged input files in Nextflow order:" >&2
     printf '%s\\n' $input_files >&2
 
     for file in $input_files; do
         if [ -f "\\$file" ]; then
+            base=\\$(basename "\\$file")
+            lower=\\$(printf '%s' "\\$base" | tr '[:upper:]' '[:lower:]')
             echo "Processing input file: \\$file" >&2
-            echo "" >> "${outputFileName}"
-            echo "=== File: \\$file ===" >> "${outputFileName}"
-            cat "\\$file" >> "${outputFileName}"
-            echo "" >> "${outputFileName}"
+            echo "File: \\$base" >> "\\$MANIFEST"
+
+            case "\\$lower" in
+                *.txt|*.csv|*.tsv|*.json|*.log|*.md|*.yaml|*.yml)
+                    echo "" >> "\\$COMBINED"
+                    echo "=== File: \\$base ===" >> "\\$COMBINED"
+                    cat "\\$file" >> "\\$COMBINED"
+                    echo "" >> "\\$COMBINED"
+                    text_count=\\$((text_count + 1))
+                    ;;
+                *)
+                    target="${outputPrefix}_\\$base"
+                    cp "\\$file" "\\$target"
+                    echo "Copied artifact: \\$target" >> "\\$MANIFEST"
+                    copied_count=\\$((copied_count + 1))
+                    ;;
+            esac
         else
             echo "Skipping: \\$file (not a file)" >&2
         fi
     done
-    
-    echo "=== End of Combined Output ===" >> "${outputFileName}"
-    echo "Final output created: ${outputFileName}" >&2
+
+    if [ "\\$text_count" -eq 0 ]; then
+        rm -f "\\$COMBINED"
+    else
+        echo "=== End of Combined Text Output ===" >> "\\$COMBINED"
+    fi
+
+    echo "" >> "\\$MANIFEST"
+    echo "Copied artifacts: \\$copied_count" >> "\\$MANIFEST"
+    echo "Combined text files: \\$text_count" >> "\\$MANIFEST"
+    echo "Output manifest created: \\$MANIFEST" >&2
     """`;
   } else {
-    // Save individual file with enhanced content and unique numbering
-    outputFileName = `${basePattern}_${String(outputDisplayCounter).padStart(
+    const outputPrefix = `${basePattern}_${String(outputDisplayCounter).padStart(
       2,
       "0"
-    )}_${outputLabel}_\${input_file.baseName}.${downloadFormat}`;
+    )}_${outputLabel}`;
+    outputPattern = `${outputPrefix}*`;
     processScript = `"""
     echo "Processing file: \${input_file}" >&2
-    echo "Output file: ${outputFileName}" >&2
-    
-    # Add header with metadata
-    echo "=== ${outputLabel} Output ===" > "${outputFileName}"
-    echo "Generated: \\$(date)" >> "${outputFileName}"
-    echo "Source file: \${input_file}" >> "${outputFileName}"
-    echo "" >> "${outputFileName}"
-    echo "=== Content ===" >> "${outputFileName}"
-    
-    # Copy the actual content
-    cat "\${input_file}" >> "${outputFileName}"
-    
-    echo "" >> "${outputFileName}"
-    echo "=== End of Output ===" >> "${outputFileName}"
-    
-    echo "Output file created: ${outputFileName}" >&2
+    base=\\$(basename "\${input_file}")
+    lower=\\$(printf '%s' "\\$base" | tr '[:upper:]' '[:lower:]')
+
+    case "\\$lower" in
+        *.txt|*.csv|*.tsv|*.json|*.log|*.md|*.yaml|*.yml)
+            output_file="${outputPrefix}_\\$base.${downloadFormat}"
+            echo "=== ${outputLabel} Output ===" > "\\$output_file"
+            echo "Generated: \\$(date)" >> "\\$output_file"
+            echo "Source file: \${input_file}" >> "\\$output_file"
+            echo "" >> "\\$output_file"
+            echo "=== Content ===" >> "\\$output_file"
+            cat "\${input_file}" >> "\\$output_file"
+            echo "" >> "\\$output_file"
+            echo "=== End of Output ===" >> "\\$output_file"
+            ;;
+        *)
+            output_file="${outputPrefix}_\\$base"
+            cp "\${input_file}" "\\$output_file"
+            ;;
+    esac
+
+    echo "Output file created: \\$output_file" >&2
     """`;
   }
 
@@ -114,10 +152,10 @@ export function generateOutputDisplayProcess(
     publishDir params.outdir, mode: 'copy'
 
     input:
-    ${selectedFileName === "all" ? 'path input_files, name: "display_input_*"' : "file input_file"}
+    ${selectedFileName === "all" ? "path input_files" : "file input_file"}
 
     output:
-    file "${outputFileName}"
+    path "${outputPattern}"
 
     script:
     ${processScript}

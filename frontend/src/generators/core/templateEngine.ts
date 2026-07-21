@@ -1,8 +1,6 @@
 // Template engine that orchestrates all capability-specific templates
 
 import {
-  generateFastQCProcess,
-  generateTrimmomaticProcess,
   generateGenericProcess,
   type ProcessConfig,
 } from "../templates/processes";
@@ -31,10 +29,6 @@ export function generateProcessCode(
   config: ProcessConfig
 ): string {
   switch (processType) {
-    case "fastqc":
-      return generateFastQCProcess(config);
-    case "trimmomatic":
-      return generateTrimmomaticProcess(config);
     default:
       return generateGenericProcess(config);
   }

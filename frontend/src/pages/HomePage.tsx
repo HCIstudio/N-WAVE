@@ -18,6 +18,7 @@ const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
 const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
+const TUTORIAL_VERSION = "custom-nodes-v3";
 
 const HomePage: React.FC = () => {
   const [workflows, setWorkflows] = useState<WorkflowDescriptor[]>([]);
@@ -51,11 +52,11 @@ const HomePage: React.FC = () => {
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   const [isTutorialIntroVisible, setIsTutorialIntroVisible] = useState(() => {
-    return sessionStorage.getItem(TUTORIAL_COMPLETED_KEY) !== "true";
+    return localStorage.getItem(TUTORIAL_COMPLETED_KEY) !== TUTORIAL_VERSION;
   });
 
   const skipTutorial = () => {
-    sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+    localStorage.setItem(TUTORIAL_COMPLETED_KEY, TUTORIAL_VERSION);
     sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
     sessionStorage.removeItem(TUTORIAL_STEP_KEY);
     setIsTutorialIntroVisible(false);
@@ -67,7 +68,7 @@ const HomePage: React.FC = () => {
   };
 
   const retakeTutorial = () => {
-    sessionStorage.removeItem(TUTORIAL_COMPLETED_KEY);
+    localStorage.removeItem(TUTORIAL_COMPLETED_KEY);
     sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
     sessionStorage.removeItem(TUTORIAL_STEP_KEY);
     setIsTutorialIntroVisible(true);
