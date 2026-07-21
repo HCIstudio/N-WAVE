@@ -519,8 +519,7 @@ function getInvocationArguments(invocation: string): string[] {
     return [];
   }
 
-  const assignmentIndex = trimmed.indexOf("=");
-  const rhs = assignmentIndex === -1 ? trimmed : trimmed.substring(assignmentIndex + 1);
+  const rhs = getInvocationExpression(trimmed);
   const candidatePattern = /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g;
   const lhsDefinitions = new Set<string>();
   const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
@@ -560,6 +559,11 @@ function getInvocationArguments(invocation: string): string[] {
       continue;
     }
 
+    // Exclude assignment targets inside multi-line invocation blocks.
+    if (nextNonWhitespaceChar === "=") {
+      continue;
+    }
+
     // Exclude process aliases in module output references like `FASTQC_1.out.html`.
     if (rhs.slice(endIndex).match(/^\s*\.out\./)) {
       continue;
@@ -587,8 +591,7 @@ function getChainedChannelRoots(invocation: string): string[] {
     return [];
   }
 
-  const assignmentIndex = trimmed.indexOf("=");
-  const rhs = assignmentIndex === -1 ? trimmed : trimmed.substring(assignmentIndex + 1);
+  const rhs = getInvocationExpression(trimmed);
   const chainRootPattern =
     /\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:map|filter|collect|concat|mix|flatten|view|set)\b/g;
   const roots: string[] = [];
@@ -606,6 +609,24 @@ function getChainedChannelRoots(invocation: string): string[] {
   }
 
   return roots;
+}
+
+function getInvocationExpression(trimmedInvocation: string): string {
+  const tupleAssignmentMatch = trimmedInvocation.match(
+    /^\s*\([^)]+?\)\s*=/
+  );
+  if (tupleAssignmentMatch) {
+    return trimmedInvocation.substring(tupleAssignmentMatch[0].length);
+  }
+
+  const leadingAssignmentMatch = trimmedInvocation.match(
+    /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=/
+  );
+  if (leadingAssignmentMatch) {
+    return trimmedInvocation.substring(leadingAssignmentMatch[0].length);
+  }
+
+  return trimmedInvocation;
 }
 
 function sanitizeVarName(name: string): string {

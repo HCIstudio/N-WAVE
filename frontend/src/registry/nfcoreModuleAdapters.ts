@@ -347,8 +347,10 @@ export const generateNfCoreModuleNode =
         .map((channel) => channel.definition)
         .filter((definition): definition is string => Boolean(definition)),
       processInvocations: [
-        `    ${moduleAlias}(${inputChannels.map((channel) => channel.name).join(", ")})\n`,
-        ...outputAssignments,
+        [
+          `    ${moduleAlias}(${inputChannels.map((channel) => channel.name).join(", ")})`,
+          ...outputAssignments.map((assignment) => assignment.trimEnd()),
+        ].join("\n") + "\n",
       ],
       includeInExecutionOrder: false,
     };
