@@ -245,50 +245,49 @@ const executeNextflowWorkflow = async (
       }
     }
 
-    // Check if local Nextflow is available, fallback to Docker if not
-    let useLocalNextflow = true;
-    let nextflowVersion = executionSettings.nextflowVersion || "25.04.4";
+    const nextflowVersion = executionSettings.nextflowVersion || "25.04.4";
 
-    try {
-      await new Promise((resolve, reject) => {
-        exec("nextflow -version", (error) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(true);
-          }
-        });
-      });
+    // Decide how to run Nextflow:
+    //   "docker" — always run Nextflow in a container (nextflow/nextflow). The
+    //              only host requirement is Docker itself; no local binary is
+    //              used. This is what the Docker deployment sets, so
+    //              `docker compose up` is fully self-contained on any machine.
+    //   "local"  — always use a host `nextflow` binary.
+    //   "auto"   — (dev default) prefer a local binary, fall back to container.
+    const executionMode = (
+      process.env.NEXTFLOW_EXECUTION_MODE || "auto"
+    ).toLowerCase();
+
+    const isCommandAvailable = (command: string): Promise<boolean> =>
+      new Promise((resolve) => exec(command, (error) => resolve(!error)));
+
+    let useLocalNextflow: boolean;
+    if (executionMode === "docker") {
+      useLocalNextflow = false;
+    } else if (executionMode === "local") {
+      useLocalNextflow = true;
+    } else {
+      useLocalNextflow = await isCommandAvailable("nextflow -version");
+    }
+
+    if (useLocalNextflow) {
       console.log(
         `Using local Nextflow with Docker processes: ${shouldUseProcessDocker}`
       );
-    } catch (error) {
-      useLocalNextflow = false;
-      console.log(`Local Nextflow not available. Using Docker Nextflow...`);
-
-      // Check if Docker is available for fallback
-      try {
-        await new Promise((resolve, reject) => {
-          exec("docker info", (dockerError, dockerStdout, dockerStderr) => {
-            if (dockerError) {
-              reject(
-                new Error(
-                  "Docker Desktop is not running. Please start Docker Desktop and try again."
-                )
-              );
-            } else {
-              resolve(true);
-            }
-          });
-        });
-        console.log(
-          `Docker is available. Using Nextflow container: ${nextflowVersion}`
-        );
-      } catch (dockerError: any) {
+    } else {
+      // Container mode needs a reachable Docker daemon. In docker-compose the
+      // host Docker socket is mounted into the backend container.
+      const dockerAvailable = await isCommandAvailable("docker info");
+      if (!dockerAvailable) {
         throw new Error(
-          `Cannot execute workflow: No local Nextflow found and ${dockerError.message}`
+          executionMode === "docker"
+            ? "Cannot execute workflow: Docker is not available. Ensure the Docker socket is mounted into the backend container (see docker-compose)."
+            : "Cannot execute workflow: no local Nextflow found and Docker is not running. Start Docker and try again."
         );
       }
+      console.log(
+        `Using Nextflow container: nextflow/nextflow:${nextflowVersion}`
+      );
     }
 
     if (useLocalNextflow && shouldUseProcessDocker) {
@@ -330,10 +329,14 @@ const executeNextflowWorkflow = async (
       const nextflowRunnerMount = shouldUseProcessDocker
         ? `-v ${shellQuote(`${resultsMount.source}:${dockerResultsRoot}`)}`
         : `--volumes-from ${shellQuote(backendContainerName)}`;
+      // Pin the Nextflow container to linux/amd64: the official nextflow/nextflow
+      // tags are amd64-only, so on ARM hosts this runs under emulation instead
+      // of failing with "no matching manifest". Overridable via NEXTFLOW_PLATFORM.
+      const nextflowPlatform = process.env.NEXTFLOW_PLATFORM || "linux/amd64";
       // When process Docker is enabled, run Nextflow from a path that is also
       // visible to the host Docker daemon. Otherwise sibling task containers
       // receive empty /app/results mounts and cannot see .command.sh.
-      nextflowCmd = `docker run --rm ${nextflowRunnerMount} -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(dockerMainOutputDir)} nextflow/nextflow:${nextflowVersion} nextflow -log nextflow/.nextflow.log ${moduleConfigOption}run ./${dockerScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
+      nextflowCmd = `docker run --rm --platform ${nextflowPlatform} ${nextflowRunnerMount} -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(dockerMainOutputDir)} nextflow/nextflow:${nextflowVersion} nextflow -log nextflow/.nextflow.log ${moduleConfigOption}run ./${dockerScriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory "${maxMemory}" -work-dir nextflow/work`;
     }
 
     console.log(`Executing: ${nextflowCmd}`);

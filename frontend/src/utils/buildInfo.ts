@@ -5,7 +5,12 @@ const formatBuildDate = (value: string) => {
     return value;
   }
 
-  return parsed.toLocaleDateString("de-DE");
+  // ISO-style YYYY-MM-DD (e.g. 2026-07-03), computed manually so it's
+  // deterministic regardless of the runtime locale/timezone.
+  const year = parsed.getFullYear();
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };
 
 export const buildInfo = {

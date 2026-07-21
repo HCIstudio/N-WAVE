@@ -11,7 +11,7 @@ import {
   Settings,
   Container,
 } from "lucide-react";
-import { ConfirmationDialog } from "../common";
+import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
 import type { ExecutionSettings } from "../../types/execution";
 
@@ -439,8 +439,9 @@ const BottomBar: React.FC<BottomBarProps> = ({
       </div>
 
       {/* Confirmation Dialog for Unsaved Changes */}
-      <ConfirmationDialog
+      <ConfirmDialog
         isOpen={showConfirmDialog}
+        variant="primary"
         title="Unsaved Changes"
         message="You have unsaved changes to your execution settings. Would you like to save them before closing?"
         confirmText="Save & Close"
@@ -450,7 +451,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
           setShowConfirmDialog(false);
           setShowExecutionSettings(false);
         }}
-        onCancel={() => {
+        onClose={() => {
           setShowConfirmDialog(false);
           setShowExecutionSettings(false);
         }}

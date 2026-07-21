@@ -26,8 +26,7 @@ common/
 ├── dialogs/               # Modal dialogs and confirmations
 │   ├── Modal.tsx               # Base modal component
 │   ├── ActionDialog.tsx        # Action confirmation dialog
-│   ├── ConfirmationDialog.tsx  # Generic confirmation dialog
-│   ├── ConfirmDialog.tsx       # Simple confirm/cancel dialog
+│   ├── ConfirmDialog.tsx       # Confirm/cancel dialog (danger | primary variant)
 │   └── index.ts                # Dialog component exports
 ├── data/                  # Data viewing and display components
 │   ├── FileViewer.tsx          # Multi-format file viewer
@@ -89,8 +88,7 @@ common/
 
 - `Modal`: Base modal component with backdrop and positioning
 - `ActionDialog`: Confirmation dialog with custom action buttons
-- `ConfirmationDialog`: Generic confirmation with customizable content
-- `ConfirmDialog`: Simple yes/no confirmation dialog
+- `ConfirmDialog`: Yes/no confirmation dialog; `variant="danger"` (default) or `"primary"`
 
 **Use Cases**:
 

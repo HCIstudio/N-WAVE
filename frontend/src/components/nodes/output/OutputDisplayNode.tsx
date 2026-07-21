@@ -1,8 +1,8 @@
-import { memo, useContext, useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import type { NodeProps } from "reactflow";
 import { useEdges, useNodes } from "reactflow";
 import BaseNode, { type NodeData } from "../BaseNode";
-import { WorkflowContext } from "../../../context/WorkflowContext";
+import { useWorkflowContext } from "../../../context/WorkflowContext";
 import { isOperatorTypeRegistered } from "../../../hooks";
 
 const getNodeLabel = (nodeData: NodeData, fallback: string): string =>
@@ -10,7 +10,7 @@ const getNodeLabel = (nodeData: NodeData, fallback: string): string =>
 
 const OutputDisplayNode = (props: NodeProps<NodeData>) => {
   const { data, id } = props;
-  const { updateNodeData } = useContext(WorkflowContext)!;
+  const { updateNodeData } = useWorkflowContext();
 
   const edges = useEdges();
   const nodes = useNodes<NodeData>();

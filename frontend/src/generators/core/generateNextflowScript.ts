@@ -48,6 +48,10 @@ export const generateNextflowScript = (
   const processInvocations: string[] = [];
   const includeStatements: string[] = [];
   const nextflowConfigBlocks: string[] = [];
+  // Top-level input channels defined by file-input nodes (e.g. "ch_files").
+  // These are legitimate workflow inputs, not process outputs, so they must be
+  // recognised as "resolved" during dependency validation.
+  const definedInputChannels = new Set<string>();
 
   // First pass: Define file inputs and map all node outputs to channel names
   nodes.forEach((node) => {
@@ -58,6 +62,7 @@ export const generateNextflowScript = (
       );
       channelNameMap.set(`${node.id}.ch_files_out`, channelName);
       channelNameMap.set(`${node.id}.out`, channelName);
+      definedInputChannels.add(channelName);
 
       // Extract selected filenames from the node data
       const selectedFiles = node.data.files || [];
@@ -79,7 +84,7 @@ export const generateNextflowScript = (
       } else {
         // Fallback if no files
         paramsScript += `params.inputdir = "./inputs"\n`;
-        paramsScript += `params.selected_files = []\n\n`;
+        paramsScript += "params.selected_files = []\n\n";
         firstPassScript += `${channelName} = Channel.empty()\n\n`;
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       }
@@ -134,7 +139,7 @@ export const generateNextflowScript = (
       );
       if (incomingEdges.length === 0) return;
 
-      let upstreamChannelName = resolveChannelNameForEdge(
+      const upstreamChannelName = resolveChannelNameForEdge(
         incomingEdges[0],
         channelNameMap
       );
@@ -239,7 +244,7 @@ export const generateNextflowScript = (
     .map((id) => processScripts[id])
     .filter(Boolean);
   if (orderedProcessScripts.length > 0) {
-    finalScript += "\n" + orderedProcessScripts.join("\n\n") + "\n";
+    finalScript += `\n${orderedProcessScripts.join("\n\n")}\n`;
   }
 
   finalScript += "\nworkflow {\n";
@@ -277,7 +282,7 @@ export const generateNextflowScript = (
       if (!variableUsages.has(usedVar)) {
         variableUsages.set(usedVar, []);
       }
-      variableUsages.get(usedVar)!.push(invocation);
+      variableUsages.get(usedVar)?.push(invocation);
     });
   });
 
@@ -337,6 +342,13 @@ export const generateNextflowScript = (
   // Fail fast when an invocation uses an unresolved variable
   variableUsages.forEach((dependentInvocations, usedVar) => {
     if (!variableDefinitions.has(usedVar)) {
+      // Input channels from file-input nodes are defined at the top of the
+      // workflow rather than produced by a process invocation — they're
+      // resolved, not missing.
+      if (definedInputChannels.has(usedVar)) {
+        return;
+      }
+
       if (usedVar.startsWith("ch_") || usedVar.startsWith("node_")) {
         console.warn(
           `Treating unresolved variable "${usedVar}" as workflow input. Used in: ${dependentInvocations.join(
@@ -448,7 +460,7 @@ function resolveChannelNameForEdge(
   edge: Edge,
   channelNameMap: Map<string, string>
 ): string | null {
-  let upstreamChannelName = channelNameMap.get(
+  const upstreamChannelName = channelNameMap.get(
     `${edge.source}.${edge.sourceHandle}`
   );
 
@@ -458,7 +470,7 @@ function resolveChannelNameForEdge(
 
   let alternativeChannelName = null;
 
-  if (edge.sourceHandle && edge.sourceHandle.includes("_")) {
+  if (edge.sourceHandle?.includes("_")) {
     const outputName = edge.sourceHandle.split("_").pop();
     alternativeChannelName = channelNameMap.get(`${edge.source}.${outputName}`);
   }
@@ -526,8 +538,11 @@ function getInvocationArguments(invocation: string): string[] {
   }
   const args: string[] = [];
 
-  let match: RegExpExecArray | null;
-  while ((match = candidatePattern.exec(rhs)) !== null) {
+  for (
+    let match = candidatePattern.exec(rhs);
+    match !== null;
+    match = candidatePattern.exec(rhs)
+  ) {
     const rawName = match[0];
     const name = sanitizeVarName(rawName);
     if (!name || lhsDefinitions.has(name)) {
@@ -597,7 +612,7 @@ function sanitizeVarName(name: string): string {
   if (typeof name !== "string") return "";
   let sanitized = name.replace(/[-\s]+/g, "_");
   if (/^[0-9]/.test(sanitized)) {
-    sanitized = "v_" + sanitized;
+    sanitized = `v_${sanitized}`;
   }
   return sanitized;
 }

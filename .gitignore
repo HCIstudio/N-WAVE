@@ -1,5 +1,8 @@
 results/*
 .cache/
+.env
+.env.*
+!.env.example
 frontend/src/**/*.js
 frontend/src/**/*.d.ts
 !frontend/src/**/*.js.map

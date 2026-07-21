@@ -1,0 +1,84 @@
+name: Test
+
+# The required gate for merging into main. It runs on every pull request (and on
+# main as a safety net): lint, unit tests, typecheck, and build — all blocking.
+#
+# The Biome config (frontend/biome.json) disables several rule groups that the
+# existing vibecoded code violates broadly (a11y, noExplicitAny, array-index
+# keys, exhaustive-deps, etc.). Those are tracked tech debt: re-enable them one
+# at a time as the code is cleaned up.
+on:
+  pull_request:
+  push:
+    branches:
+      - 'main'
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    name: Frontend
+    # Skip the automated version-bump commits that release.yml pushes to main.
+    if: >-
+      ${{ github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Typecheck & build
+        run: pnpm build
+
+  backend:
+    name: Backend
+    # Skip the automated version-bump commits that release.yml pushes to main.
+    if: >-
+      ${{ github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.14.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: backend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck & build
+        run: pnpm build

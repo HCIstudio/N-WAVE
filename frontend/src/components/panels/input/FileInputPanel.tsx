@@ -1,16 +1,10 @@
 import type React from "react";
-import {
-  useState,
-  useCallback,
-  useContext,
-  useMemo,
-  useEffect,
-} from "react";
+import { useState, useCallback, useMemo, useEffect } from "react";
 import type { Node } from "reactflow";
 import { File, X, UploadCloud, Trash2, Plus } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import type { NodeData } from "../../nodes/BaseNode";
-import { WorkflowContext } from "../../../context/WorkflowContext";
+import { useWorkflowContext } from "../../../context/WorkflowContext";
 import { SearchInput, detectFileType } from "../../common";
 import api from "../../../api";
 
@@ -26,7 +20,7 @@ const FileInputPanel: React.FC<{
   node: Node<NodeData>;
   onSave: (nodeId: string, data: Partial<NodeData>) => void;
 }> = ({ node }) => {
-  const { updateNodeData } = useContext(WorkflowContext)!;
+  const { updateNodeData } = useWorkflowContext();
   const nodeFiles: FileObject[] = node.data.files || [];
 
   // Check if any files are missing content (loaded from saved workflow)
@@ -296,7 +290,7 @@ const FileInputPanel: React.FC<{
     const k = 1024;
     const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+    return `${Number.parseFloat((bytes / k ** i).toFixed(1))} ${sizes[i]}`;
   };
 
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {

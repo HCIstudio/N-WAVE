@@ -4,11 +4,9 @@ declare global {
   }
 }
 
-{
-  /*Resource Management Modal*/
-}
+// Resource Management Modal
 import type React from "react";
-import { type FC, type PropsWithChildren } from "react";
+import type { FC, PropsWithChildren } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {

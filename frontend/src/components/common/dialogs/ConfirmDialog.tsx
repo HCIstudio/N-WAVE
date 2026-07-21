@@ -10,6 +10,11 @@ interface ConfirmDialogProps {
   message: string;
   confirmText?: string;
   cancelText?: string;
+  /**
+   * Confirm button style. "danger" (default, red) for destructive actions like
+   * delete; "primary" (green) for non-destructive confirmations like "save".
+   */
+  variant?: "danger" | "primary";
 }
 
 const ConfirmDialog = ({
@@ -20,7 +25,12 @@ const ConfirmDialog = ({
   message,
   confirmText = "Confirm",
   cancelText = "Cancel",
+  variant = "danger",
 }: ConfirmDialogProps) => {
+  const confirmButtonClasses =
+    variant === "primary"
+      ? "bg-nextflow-green hover:bg-nextflow-green/90 text-white"
+      : "bg-red-600 hover:bg-red-700 text-white";
   // Wrap the onClose and onConfirm handlers with simpler versions
   const handleClose = (e?: React.MouseEvent) => {
     // Still stop propagation but don't prevent default
@@ -48,7 +58,7 @@ const ConfirmDialog = ({
       </button>
       <button
         onClick={handleConfirm}
-        className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 text-white"
+        className={`px-4 py-2 rounded-md ${confirmButtonClasses}`}
       >
         {confirmText}
       </button>

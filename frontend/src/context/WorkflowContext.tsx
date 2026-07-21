@@ -1,5 +1,6 @@
 import {
   createContext,
+  useContext,
   useState,
   useCallback,
   type FC,
@@ -50,7 +51,21 @@ export const WorkflowContext = createContext<IWorkflowContext | undefined>(
   undefined
 );
 
-export const WorkflowProvider: FC<PropsWithChildren<{}>> = ({ children }) => {
+/**
+ * Access the workflow context. Throws if used outside a WorkflowProvider, which
+ * lets consumers use the value without null checks or non-null assertions.
+ */
+export const useWorkflowContext = (): IWorkflowContext => {
+  const context = useContext(WorkflowContext);
+  if (!context) {
+    throw new Error(
+      "useWorkflowContext must be used within a WorkflowProvider"
+    );
+  }
+  return context;
+};
+
+export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
   const [nodes, setNodes] = useState<Node<NodeData>[]>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [isDirty, setIsDirty] = useState(false);
@@ -270,7 +285,7 @@ export const WorkflowProvider: FC<PropsWithChildren<{}>> = ({ children }) => {
     [setNodes, getEdges]
   );
 
-  const onConnectStart = (_: React.MouseEvent, {}: any) => {
+  const onConnectStart = (_: React.MouseEvent, _params: any) => {
     // This logic can be simplified or removed if not causing issues,
     // as isValidConnection now handles the primary validation.
   };

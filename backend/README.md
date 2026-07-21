@@ -21,8 +21,8 @@ The backend server for **N-WAVE: Nextflow Workflow Authoring and Visualization E
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/dariodaddamio/N-WAVE.git
-   cd n-wave/backend
+   git clone https://github.com/HCIstudio/N-WAVE.git
+   cd N-WAVE/backend
    ```
 
 2. **Install dependencies**
@@ -152,7 +152,7 @@ N-WAVE is designed to bring the full power of Nextflow to an intuitive web inter
 
 ## License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0). See the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0. See the [LICENSE](../LICENSE) and [NOTICE](../NOTICE) files at the repository root for details.
 
 ## Support
 

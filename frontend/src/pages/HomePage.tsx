@@ -2,7 +2,7 @@ import type React from "react";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { BookOpen, Pencil, Trash2, Save, Copy, Upload } from "lucide-react";
-import api from "../api";
+import api, { isDemoMode } from "../api";
 import {
   ConfirmDialog,
   ActionDialog,
@@ -13,6 +13,10 @@ import PageLayout from "../components/layout/PageLayout";
 import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
+import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
+import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
+import hcistudioLogo from "../assets/hcistudio-logo.png";
+import fondaLogo from "../assets/fonda-logo.png";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
@@ -210,61 +214,6 @@ const HomePage: React.FC = () => {
 
   const handleNewWorkflow = async () => {
     try {
-      // Default execution settings for new workflows
-      const defaultExecutionSettings = {
-        mode: "docker",
-        nextflow: {
-          version: "25.04.4",
-          forceVersion: false,
-          enableDsl2: true,
-          enableTrace: false,
-          enableTimeline: false,
-          enableReport: false,
-        },
-        output: {
-          directory: "results",
-          namingPattern: "{workflow_name}_{timestamp}",
-          overwrite: false,
-          keepWorkDir: false,
-        },
-        container: {
-          enabled: true,
-          defaultImage: "ubuntu:22.04",
-          registry: "docker.io",
-          pullPolicy: "if-not-present",
-          customRunOptions: [],
-        },
-        resources: {
-          maxCpus: 4,
-          maxMemory: "4.GB",
-          maxTime: "PT30M",
-          executor: "local",
-        },
-        errorHandling: {
-          strategy: "terminate",
-          maxRetries: 0,
-          backoffStrategy: "exponential",
-          continueOnError: false,
-        },
-        environment: {
-          profile: "standard",
-          customParams: {},
-          environmentVariables: {},
-        },
-        cleanup: {
-          onSuccess: false,
-          onFailure: false,
-          intermediateFiles: false,
-          workDirectory: false,
-        },
-        validation: {
-          requireContainer: false,
-          allowMissingInputs: false,
-          strictChannelTypes: false,
-          enableTypeChecking: false,
-        },
-      };
-
       const response = await api.post("/workflows", {
         name: "Untitled Workflow",
         nodes: [],
@@ -316,12 +265,15 @@ const HomePage: React.FC = () => {
 
     try {
       setIsImporting(true);
-      const response = await api.post("/workflows/import", {
+      // Parse the Nextflow source into a visual graph in the browser, then save
+      // it through the normal create endpoint (no dedicated import endpoint).
+      const draft = importNextflowWorkflow({
         name: importName.trim() || undefined,
         description: importDescription.trim() || undefined,
         rawSource: importSource,
         sourceKey: importFileName || undefined,
       });
+      const response = await api.post("/workflows", draft);
       setIsImportModalOpen(false);
       resetImportForm();
       navigate(`/workflow/${response.data._id}`);
@@ -500,14 +452,14 @@ const HomePage: React.FC = () => {
             <h2 className="text-lg font-semibold text-nextflow-green whitespace-pre-wrap h-[42px] overflow-hidden p-2 pr-12">
               {wf.name}
             </h2>
-            <p className="text-sm text-text-light mt-2 whitespace-pre-wrap h-[40px] overflow-hidden p-2">
+            <p className="text-sm leading-5 text-text-light mt-2 whitespace-pre-wrap h-[76px] overflow-y-auto p-2">
               {wf.description || (
                 <span className="text-gray-500 italic">No description</span>
               )}
             </p>
-            {isReadOnly && (
-              <div className="px-2 pt-1 text-xs text-gray-400">Read-only demo</div>
-            )}
+            <div className="h-5 px-2 pt-1 text-xs text-gray-400">
+              {isReadOnly ? "Read-only demo" : ""}
+            </div>
           </>
         )}
       </>
@@ -545,7 +497,14 @@ const HomePage: React.FC = () => {
     <PageLayout>
       <div className="min-h-screen flex flex-col">
         {isHomeTutorialActive && (
-          <div className="fixed inset-0 z-20 bg-black/35" aria-hidden="true" />
+          <div
+            className="fixed inset-0 z-20"
+            aria-hidden="true"
+            style={{
+              backgroundImage:
+                "repeating-linear-gradient(45deg, rgba(0,168,120,0.22) 0px, rgba(0,168,120,0.22) 2px, transparent 2px, transparent 14px), repeating-linear-gradient(45deg, rgba(0,168,120,0.12) 0px, rgba(0,168,120,0.12) 7px, rgba(0,0,0,0.05) 7px, rgba(0,0,0,0.05) 14px)",
+            }}
+          />
         )}
         <div className="flex-1 p-8">
           <div className="mb-6 flex items-center justify-between gap-4">
@@ -624,8 +583,8 @@ const HomePage: React.FC = () => {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <line x1="12" y1="5" x2="12" y2="19"></line>
-                <line x1="5" y1="12" x2="19" y2="12"></line>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               <span className="ml-2">New Workflow</span>
             </div>
@@ -737,12 +696,61 @@ const HomePage: React.FC = () => {
             </div>
           </div>
         </Modal>
-        <footer className="border-t border-accent/60 bg-accent/30 px-8 py-4 text-xs text-text-light">
-          <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
-            <span>With the help of HU Berlin & HCIstudio</span>
-            <span>Version {buildInfo.version}</span>
-            <span>Built {buildInfo.displayBuildDate}</span>
-            <span>SHA {buildInfo.sha}</span>
+        <footer className="relative z-30 border-t border-accent/60 bg-background px-8 py-4 text-xs text-text-light">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+            <div className="flex shrink-0 items-center gap-3">
+              <a
+                href="https://hcistudio.org"
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+              >
+                <img
+                  src={hcistudioLogo}
+                  alt="HCIstudio"
+                  className="h-8 w-auto"
+                />
+              </a>
+              <a
+                href="https://fonda.hu-berlin.de"
+                target="_blank"
+                rel="noreferrer"
+                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+              >
+                <img src={fondaLogo} alt="FONDA" className="h-8 w-auto" />
+              </a>
+            </div>
+            <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
+              <span>v{buildInfo.version}</span>
+              <span>Built {buildInfo.displayBuildDate}</span>
+              <a
+                href="https://hcistudio.org/impressum/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline-offset-2 hover:text-text hover:underline"
+              >
+                Legal Notice
+              </a>
+              <a
+                href="https://hcistudio.org/datenschutz/"
+                target="_blank"
+                rel="noreferrer"
+                className="underline-offset-2 hover:text-text hover:underline"
+              >
+                Privacy Policy
+              </a>
+              <span>
+                {isDemoMode && "Hosted on GitHub Pages:"}
+                <a
+                  href="https://github.com/HCIstudio/N-WAVE"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline-offset-2 hover:text-text hover:underline"
+                >
+                  View Source
+                </a>
+              </span>
+            </div>
           </div>
         </footer>
       </div>

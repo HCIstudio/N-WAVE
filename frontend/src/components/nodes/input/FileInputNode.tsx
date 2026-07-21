@@ -1,7 +1,7 @@
 import type React from "react";
-import { useRef, useContext, useEffect, type ChangeEvent } from "react";
+import { useRef, useEffect, type ChangeEvent } from "react";
 import type { NodeProps } from "reactflow";
-import { WorkflowContext } from "../../../context/WorkflowContext";
+import { useWorkflowContext } from "../../../context/WorkflowContext";
 import BaseNode, { type NodeData } from "../BaseNode";
 import { detectFileType } from "../../common";
 import clsx from "clsx";
@@ -16,7 +16,7 @@ interface FileObject {
 
 const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
   const { id, data } = props;
-  const { updateNodeData } = useContext(WorkflowContext)!;
+  const { updateNodeData } = useWorkflowContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isConnectable = !!data.files && data.files.length > 0;
 

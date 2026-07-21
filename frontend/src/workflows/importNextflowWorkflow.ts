@@ -1,3 +1,12 @@
+// Parses a Nextflow script into a visual workflow graph (nodes + edges).
+//
+// This is the single, canonical implementation. Import runs entirely in the
+// browser: the parsed draft is then saved through the normal "create workflow"
+// path (POST /workflows in a real deployment, or the in-browser store in the
+// demo). The backend therefore has no import endpoint — the frontend owns all
+// graph logic (generation and import), the backend owns persistence and
+// execution.
+
 import { defaultExecutionSettings } from "./defaultExecutionSettings";
 
 interface ImportNextflowWorkflowInput {
@@ -7,7 +16,7 @@ interface ImportNextflowWorkflowInput {
   sourceKey?: string | null;
 }
 
-interface ImportedWorkflowDraft {
+export interface ImportedWorkflowDraft {
   name: string;
   description: string;
   nodes: any[];
@@ -64,9 +73,11 @@ const sanitizeId = (value: string): string =>
 const parseProcesses = (rawSource: string): ParsedProcess[] => {
   const processes: ParsedProcess[] = [];
   const processPattern = /process\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = processPattern.exec(rawSource)) !== null) {
+  for (
+    let match = processPattern.exec(rawSource);
+    match !== null;
+    match = processPattern.exec(rawSource)
+  ) {
     const processName = match[1];
     if (!processName) continue;
 
@@ -142,7 +153,9 @@ const inferProcessNode = (
   }
 
   if (lowerName.startsWith("filter") || lowerBody.includes("grep ")) {
-    const grepMatch = process.body.match(/grep\s+(?:-v\s+)?(?:-E\s+)?["']([^"']+)["']/);
+    const grepMatch = process.body.match(
+      /grep\s+(?:-v\s+)?(?:-E\s+)?["']([^"']+)["']/
+    );
     return {
       id,
       type: "operator",
@@ -326,9 +339,7 @@ const buildVisualGraph = (
         }
       }
 
-      const callMatch = line.match(
-        /^([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/
-      );
+      const callMatch = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/);
       if (callMatch?.[1]) {
         const [, processName, args = ""] = callMatch;
         const targetNode = processNodes.get(processName);
@@ -353,10 +364,14 @@ const buildVisualGraph = (
     warnings.push("No Nextflow process blocks were found to visualize.");
   }
   if (workflowBody.trim() === "") {
-    warnings.push("No workflow block was found, so process connections could not be inferred.");
+    warnings.push(
+      "No workflow block was found, so process connections could not be inferred."
+    );
   }
   if (processes.length > 0 && edges.length === 0) {
-    warnings.push("Processes were visualized, but no workflow connections could be inferred.");
+    warnings.push(
+      "Processes were visualized, but no workflow connections could be inferred."
+    );
   }
 
   return { nodes, edges, warnings };
@@ -391,9 +406,7 @@ export const importNextflowWorkflow = ({
     sourceFormat: "nextflow",
     sourceKey: sourceKey?.trim() || null,
     rawSource: normalizedSource,
-    importWarnings: [
-      ...visualGraph.warnings,
-    ],
+    importWarnings: [...visualGraph.warnings],
     isBuiltin: false,
     isReadOnly: false,
   };

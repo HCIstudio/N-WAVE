@@ -7,7 +7,6 @@ import {
   listBuiltinWorkflows,
   toWorkflowDescriptor,
 } from "../workflows";
-import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 
 export const saveWorkflow = async (
   req: Request,
@@ -223,40 +222,6 @@ export const deleteWorkflow = async (
     console.error(`Error deleting workflow ${req.params.id}:`, error);
     res.status(500).json({
       message: "Server error while deleting workflow",
-      error: error.message,
-    });
-  }
-};
-
-export const importWorkflow = async (
-  req: Request,
-  res: Response
-): Promise<void> => {
-  try {
-    const { name, description, rawSource, sourceKey } = req.body;
-
-    const importedWorkflow = importNextflowWorkflow({
-      name,
-      description,
-      rawSource,
-      sourceKey,
-    });
-
-    const savedWorkflow = await new WorkflowModel(importedWorkflow).save();
-    res.status(201).json(toWorkflowDescriptor(savedWorkflow));
-  } catch (error: any) {
-    console.error("Error importing workflow:", error);
-    const statusCode =
-      typeof error?.message === "string" &&
-      error.message.toLowerCase().includes("required")
-        ? 400
-        : 500;
-
-    res.status(statusCode).json({
-      message:
-        statusCode === 400
-          ? "Invalid workflow import payload"
-          : "Server error while importing workflow",
       error: error.message,
     });
   }

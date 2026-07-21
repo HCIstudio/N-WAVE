@@ -45,8 +45,8 @@ export function generateOutputDisplayProcess(
     .replace(/\{date\}/g, date)
     .replace(/\{process_name\}/g, processName);
 
-  let outputPattern;
-  let processScript;
+  let outputPattern: string;
+  let processScript: string;
 
   if (selectedFileName === "all") {
     const outputPrefix = `${basePattern}_${String(outputDisplayCounter).padStart(
