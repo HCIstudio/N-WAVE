@@ -1,5 +1,8 @@
 results/*
 .cache/
+
+# Local environment files - copy from the *.example templates.
+# Never commit real env files (they diverge, cause confusion and contain private information).
 .env
 .env.*
 !.env.example
