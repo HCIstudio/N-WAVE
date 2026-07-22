@@ -22,9 +22,10 @@
  */
 
 import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
-import { useFilterOperator } from "./useFilterOperator";
-import { useMapOperator } from "./useMapOperator";
-import { useMergeOperator } from "./useMergeOperator";
+import {
+  getNodeDefinitionByOperatorType,
+  getRegisteredOperatorTypes as getRegisteredOperatorTypesFromDefinitions,
+} from "../../registry";
 
 // Type for operator hook functions
 type OperatorHook = (
@@ -33,16 +34,18 @@ type OperatorHook = (
   onSave: (data: Partial<NodeData>) => void
 ) => any;
 
-// Registry of operator types to their hooks
-const operatorRegistry: Record<string, OperatorHook> = {
-  filter: useFilterOperator,
-  map: useMapOperator,
-  merge: useMergeOperator,
-};
+// Runtime overrides support incremental extension without changing node definitions.
+const operatorRegistryOverrides: Record<string, OperatorHook> = {};
 
 // Function to get the appropriate hook for an operator type
 export const getOperatorHook = (operatorType: string): OperatorHook | null => {
-  return operatorRegistry[operatorType] || null;
+  return (
+    operatorRegistryOverrides[operatorType] ||
+    (getNodeDefinitionByOperatorType(operatorType)?.previewHook as
+      | OperatorHook
+      | undefined) ||
+    null
+  );
 };
 
 // Function to register new operator hooks (for future extensibility)
@@ -50,15 +53,20 @@ export const registerOperatorHook = (
   operatorType: string,
   hook: OperatorHook
 ) => {
-  operatorRegistry[operatorType] = hook;
+  operatorRegistryOverrides[operatorType] = hook;
 };
 
 // Get all registered operator types
 export const getRegisteredOperatorTypes = (): string[] => {
-  return Object.keys(operatorRegistry);
+  return [
+    ...new Set([
+      ...getRegisteredOperatorTypesFromDefinitions(),
+      ...Object.keys(operatorRegistryOverrides),
+    ]),
+  ];
 };
 
 // Check if an operator type is registered
 export const isOperatorTypeRegistered = (operatorType: string): boolean => {
-  return operatorType in operatorRegistry;
+  return !!getOperatorHook(operatorType);
 };

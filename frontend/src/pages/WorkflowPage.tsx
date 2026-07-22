@@ -32,11 +32,18 @@ import { Loader } from "lucide-react";
 import { type ExecutionSettings, ExecutionMode } from "../types/execution";
 import type { WorkflowDescriptor } from "../types/backend";
 import TutorialCallout from "../components/tutorial/TutorialCallout";
+import {
+  deleteCustomNode,
+  migrateLegacyCustomNodes,
+  refreshCustomNodes,
+} from "../api/customNodes";
+import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
 
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
 const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 const TUTORIAL_COPY_ID_KEY = "nwave.demoTutorial.copyId";
+const TUTORIAL_VERSION = "custom-nodes-v3";
 
 const tutorialSteps = [
   {
@@ -237,6 +244,136 @@ const WorkflowPageContent: React.FC = () => {
       : 0;
   });
   const isTutorialActive = tutorialStepIndex !== null;
+  const [customNodeDeleteCandidate, setCustomNodeDeleteCandidate] =
+    useState<StoredCustomNode | null>(null);
+  const [customNodeDeleteError, setCustomNodeDeleteError] = useState<
+    string | null
+  >(null);
+
+  const applyCustomNodeDefinitionToPlacedNodes = useCallback(
+    (customNode: StoredCustomNode, markDirty = true) => {
+      const pathInputs = customNode.inputs.filter(
+        (input) => input.kind === "path"
+      );
+      const valueInputs = customNode.inputs.filter(
+        (input) => input.kind === "val"
+      );
+      const nextInputs = pathInputs.map((input) => ({
+        name: input.name,
+        label: input.label,
+        fileType: input.fileType,
+        filePattern: input.filePattern,
+        isConnectable: true,
+      }));
+      const nextOutputs = customNode.outputs.map((output) => ({
+        name: output.name,
+        label: output.label,
+        fileType: output.fileType,
+        filePattern: output.filePattern,
+        isConnectable: true,
+      }));
+
+      const affectedNodeIds = new Set(
+        nodes
+          .filter((node) => node.data.customNodeId === customNode.id)
+          .map((node) => node.id)
+      );
+      if (affectedNodeIds.size === 0) return;
+      const validInputHandles = new Set(nextInputs.map((input) => input.name));
+      const validOutputHandles = new Set(
+        nextOutputs.map((output) => output.name)
+      );
+      setNodes((currentNodes) =>
+        currentNodes.map((node) => {
+          if (node.data.customNodeId !== customNode.id) return node;
+          const previousValues = node.data.customNodeValues ?? {};
+          const nextValues = Object.fromEntries(
+            valueInputs.map((input: CustomNodeInput) => [
+              input.name,
+              previousValues[input.name] ?? input.defaultValue ?? "",
+            ])
+          );
+
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              label: customNode.label,
+              subtitle: "Custom node",
+              icon: customNode.icon,
+              processType: customNode.processType,
+              customNodeDefinition: customNode,
+              customNodeValueInputs: valueInputs,
+              customNodeValues: nextValues,
+              inputs: nextInputs,
+              outputs: nextOutputs,
+            },
+          };
+        })
+      );
+      setEdges((currentEdges) =>
+        currentEdges.filter((edge) => {
+          if (affectedNodeIds.has(edge.source)) {
+            return !edge.sourceHandle || validOutputHandles.has(edge.sourceHandle);
+          }
+          if (affectedNodeIds.has(edge.target)) {
+            return !edge.targetHandle || validInputHandles.has(edge.targetHandle);
+          }
+          return true;
+        })
+      );
+      if (markDirty) setIsDirty(true);
+    },
+    [nodes, setNodes, setEdges, setIsDirty]
+  );
+
+  const purgeCustomNodeFromCurrentWorkflow = useCallback(
+    (customNodeId: string) => {
+      const removedNodeIds = new Set(
+        nodes
+          .filter((node) => node.data.customNodeId === customNodeId)
+          .map((node) => node.id)
+      );
+      if (removedNodeIds.size === 0) return;
+      setNodes((currentNodes) =>
+        currentNodes.filter((node) => !removedNodeIds.has(node.id))
+      );
+      setEdges((currentEdges) =>
+        currentEdges.filter(
+          (edge) =>
+            !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target)
+        )
+      );
+      setIsDirty(true);
+    },
+    [nodes, setNodes, setEdges, setIsDirty]
+  );
+
+  const handleConfirmCustomNodeDelete = useCallback(async () => {
+    if (!customNodeDeleteCandidate) return;
+
+    try {
+      setCustomNodeDeleteError(null);
+      await deleteCustomNode(customNodeDeleteCandidate.id);
+      purgeCustomNodeFromCurrentWorkflow(customNodeDeleteCandidate.id);
+      await refreshCustomNodes();
+      setCustomNodeDeleteCandidate(null);
+    } catch (deleteError: any) {
+      setCustomNodeDeleteError(
+        deleteError?.response?.data?.message ||
+          deleteError?.message ||
+          "Failed to delete custom node."
+      );
+    }
+  }, [customNodeDeleteCandidate, purgeCustomNodeFromCurrentWorkflow]);
+
+  useEffect(() => {
+    migrateLegacyCustomNodes()
+      .catch(() => 0)
+      .finally(() => {
+        refreshCustomNodes().catch(() => 0);
+      });
+  }, []);
 
   const finishTutorial = useCallback(async () => {
     const tutorialCopyId = sessionStorage.getItem(TUTORIAL_COPY_ID_KEY);
@@ -244,7 +381,7 @@ const WorkflowPageContent: React.FC = () => {
     sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
     sessionStorage.removeItem(TUTORIAL_STEP_KEY);
     sessionStorage.removeItem(TUTORIAL_COPY_ID_KEY);
-    sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+    localStorage.setItem(TUTORIAL_COMPLETED_KEY, TUTORIAL_VERSION);
     setTutorialStepIndex(null);
 
     if (!tutorialCopyId) return;
@@ -264,7 +401,7 @@ const WorkflowPageContent: React.FC = () => {
     if (stepIndex === null) {
       sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
       sessionStorage.removeItem(TUTORIAL_STEP_KEY);
-      sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+      localStorage.setItem(TUTORIAL_COMPLETED_KEY, TUTORIAL_VERSION);
       setTutorialStepIndex(null);
       return;
     }
@@ -289,7 +426,7 @@ const WorkflowPageContent: React.FC = () => {
       if (currentStep >= tutorialSteps.length - 1) {
         sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
         sessionStorage.removeItem(TUTORIAL_STEP_KEY);
-        sessionStorage.setItem(TUTORIAL_COMPLETED_KEY, "true");
+        localStorage.setItem(TUTORIAL_COMPLETED_KEY, TUTORIAL_VERSION);
         return null;
       }
 
@@ -1459,7 +1596,14 @@ const WorkflowPageContent: React.FC = () => {
 
   return (
     <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
-      <Header onProcessSelect={handleProcessSelect} />
+      <Header
+        onProcessSelect={handleProcessSelect}
+        onCustomNodeSaved={applyCustomNodeDefinitionToPlacedNodes}
+        onCustomNodeDeleteRequested={(customNode) => {
+          setCustomNodeDeleteError(null);
+          setCustomNodeDeleteCandidate(customNode);
+        }}
+      />
       <div className="flex-grow relative">
         {isLoading && (
           <div className="absolute inset-0 bg-background bg-opacity-80 flex items-center justify-center z-50">
@@ -1537,6 +1681,22 @@ const WorkflowPageContent: React.FC = () => {
           }" node?`}
           onConfirm={onConfirmDelete}
           onClose={handleCancelDelete}
+        />
+      )}
+      {customNodeDeleteCandidate && (
+        <ConfirmDialog
+          isOpen={!!customNodeDeleteCandidate}
+          title="Delete Custom Node"
+          message={
+            customNodeDeleteError ||
+            `Delete "${customNodeDeleteCandidate.label}" from N-WAVE? This removes the node from the node library and purges all placed instances from saved workflows.`
+          }
+          confirmText="Delete"
+          onConfirm={handleConfirmCustomNodeDelete}
+          onClose={() => {
+            setCustomNodeDeleteCandidate(null);
+            setCustomNodeDeleteError(null);
+          }}
         />
       )}
       {toast && (

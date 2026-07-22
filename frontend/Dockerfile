@@ -17,7 +17,6 @@ COPY frontend/package.json frontend/pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 COPY frontend .
-COPY .git /app/.git
 RUN pnpm build
 
 FROM nginx:1.27-alpine AS runtime

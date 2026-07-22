@@ -1,11 +1,11 @@
 results/*
+.cache/
 
-# Local environment files — copy from the *.example templates. Never commit
-# real env files (they diverge and cause confusion; see .env.example).
+# Local environment files - copy from the *.example templates.
+# Never commit real env files (they diverge, cause confusion and contain private information).
 .env
 .env.*
 !.env.example
-
 frontend/src/**/*.js
 frontend/src/**/*.d.ts
 !frontend/src/**/*.js.map
@@ -14,3 +14,5 @@ frontend/src/**/*.d.ts
 frontend/vite.config.js
 frontend/vite.config.d.ts
 frontend/*.tsbuildinfo
+docs/*
+validation/*

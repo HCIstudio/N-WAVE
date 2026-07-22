@@ -30,10 +30,12 @@
       NEXTFLOW_EXECUTION_MODE: docker
       BACKEND_CONTAINER_NAME: nwave-backend
       CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
+      NWAVE_CUSTOM_NODE_DIR: /app/custom-nodes
     ports:
       - "5001:5001"
     volumes:
       - ./results:/app/results
+      - ./frontend/src/registry/custom/nodes:/app/custom-nodes
       - /var/run/docker.sock:/var/run/docker.sock
 
   frontend:

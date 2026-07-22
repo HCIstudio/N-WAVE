@@ -2,12 +2,19 @@ import type React from "react";
 import { useState, useRef, useEffect } from "react";
 import { ProcessDropdown } from "../common";
 import type { NextflowProcess } from "../../data/types";
+import type { StoredCustomNode } from "../../registry/customNodes";
 
 interface HeaderProps {
   onProcessSelect: (process: NextflowProcess) => void;
+  onCustomNodeSaved?: (node: StoredCustomNode) => void;
+  onCustomNodeDeleteRequested?: (node: StoredCustomNode) => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onProcessSelect }) => {
+const Header: React.FC<HeaderProps> = ({
+  onProcessSelect,
+  onCustomNodeSaved,
+  onCustomNodeDeleteRequested,
+}) => {
   const [isDropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -59,6 +66,8 @@ const Header: React.FC<HeaderProps> = ({ onProcessSelect }) => {
           <ProcessDropdown
             onSelectProcess={handleSelectProcess}
             onClose={() => setDropdownOpen(false)}
+            onCustomNodeSaved={onCustomNodeSaved}
+            onCustomNodeDeleteRequested={onCustomNodeDeleteRequested}
           />
         )}
       </div>

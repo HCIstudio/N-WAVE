@@ -5,10 +5,7 @@ import { GripVertical, Trash2, X } from "lucide-react";
 import type { NodeData } from "../../nodes/BaseNode";
 import ConfirmDialog from "../../common/dialogs/ConfirmDialog";
 import OperatorNodePanel from "../operator/OperatorNodePanel";
-import ProcessNodePanel from "../process/ProcessNodePanel";
-import FileInputPanel from "../input/FileInputPanel";
-import FastQCPanel from "../process/FastQCPanel";
-import TrimmomaticPanel from "../process/TrimmomaticPanel";
+import { getNodeDefinitionForNode } from "../../../registry";
 
 interface PropertiesPanelProps {
   node: Node<NodeData>;
@@ -171,39 +168,26 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       "node.data.processType:",
       node.data.processType
     );
-    switch (node.type) {
-      case "process":
-        // Check if this is a specific process type (like FastQC or Trimmomatic)
-        if (node.data.processType === "fastqc") {
-          console.log("[PropertiesPanel] Rendering FastQCPanel");
-          return <FastQCPanel node={node} onSave={onSave} />;
-        }
-        if (node.data.processType === "trimmomatic") {
-          console.log("[PropertiesPanel] Rendering TrimmomaticPanel");
-          return <TrimmomaticPanel node={node} onSave={onSave} />;
-        }
-        console.log(
-          "[PropertiesPanel] Rendering ProcessNodePanel (generic process)"
-        );
-        return <ProcessNodePanel node={node} onSave={onSave} />;
-      case "operator":
-      case "filter":
-        console.log("[PropertiesPanel] Rendering OperatorNodePanel");
-        return <OperatorNodePanel node={node} onSave={onSave} />;
-      case "fileInput":
-        console.log("[PropertiesPanel] Rendering FileInputPanel");
-        return <FileInputPanel node={node} onSave={onSave} />;
-      default:
-        console.log(
-          "[PropertiesPanel] No properties available for this node type:",
-          node.type
-        );
-        return (
-          <p className="text-sm text-text-light text-center py-4">
-            No properties available for this node type.
-          </p>
-        );
+    if (node.type === "operator" || node.type === "filter") {
+      console.log("[PropertiesPanel] Rendering OperatorNodePanel");
+      return <OperatorNodePanel node={node} onSave={onSave} />;
     }
+
+    const PanelComponent = getNodeDefinitionForNode(node)?.panel;
+    if (PanelComponent) {
+      console.log("[PropertiesPanel] Rendering registry panel");
+      return <PanelComponent node={node} onSave={onSave} />;
+    }
+
+    console.log(
+      "[PropertiesPanel] No properties available for this node type:",
+      node.type
+    );
+    return (
+      <p className="text-sm text-text-light text-center py-4">
+        No properties available for this node type.
+      </p>
+    );
   };
 
   return (

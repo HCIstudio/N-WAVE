@@ -7,6 +7,8 @@ import connectDB from "./config/db"; // Uncommented
 import workflowRoutes from "./routes/workflowRoutes"; // Uncommented and to be used
 import executeRoutes from "./routes/executeRoutes";
 import fileRoutes from "./routes/fileRoutes"; // Import the new file routes
+import nfcoreRoutes from "./routes/nfcoreRoutes";
+import customNodeRoutes from "./routes/customNodeRoutes";
 
 // Load environment variables from .env file
 dotenv.config();
@@ -53,6 +55,8 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/files", fileRoutes);
 app.use("/api/workflows", workflowRoutes);
 app.use("/api/execute", executeRoutes);
+app.use("/api/nfcore", nfcoreRoutes);
+app.use("/api/custom-nodes", customNodeRoutes);
 
 const PORT = process.env.PORT || 5001;
 
