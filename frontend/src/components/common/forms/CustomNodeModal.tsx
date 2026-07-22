@@ -315,6 +315,7 @@ const EditableFileInputs: React.FC<{
     <div className="space-y-2">
       {inputs.map((input, index) => (
         <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
           key={`file-input-${index}`}
           className="rounded-md border border-accent bg-background/60 p-3"
         >
@@ -454,6 +455,7 @@ const EditableSettings: React.FC<{
     <div className="space-y-2">
       {settings.map((setting, index) => (
         <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
           key={`setting-${index}`}
           className="rounded-md border border-accent bg-background/60 p-3"
         >
@@ -790,6 +792,7 @@ const EditableOutputs: React.FC<{
     <div className="space-y-2">
       {outputs.map((output, index) => (
         <div
+          // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
           key={`output-${index}`}
           className="rounded-md border border-accent bg-background/60 p-3"
         >

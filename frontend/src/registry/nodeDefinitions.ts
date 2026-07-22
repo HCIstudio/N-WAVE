@@ -409,14 +409,16 @@ export const getNodePaletteCategories = (): NextflowProcessCategory[] => {
   const categories = new Map<string, NextflowProcessCategory>();
 
   nodeDefinitions.forEach((definition) => {
-    if (!categories.has(definition.category)) {
-      categories.set(definition.category, {
+    let category = categories.get(definition.category);
+    if (!category) {
+      category = {
         category: definition.category,
         processes: [],
-      });
+      };
+      categories.set(definition.category, category);
     }
 
-    categories.get(definition.category)!.processes.push({
+    category.processes.push({
       label: definition.label,
       description: definition.description,
       type: definition.type,

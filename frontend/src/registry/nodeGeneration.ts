@@ -199,8 +199,7 @@ export const generateOutputDisplayNode: NodeGenerator = ({
   const { containerImage, cpus, memory } = getResourceSettings(node);
 
   const normalizeToPathChannel = (channelExpr: string): string =>
-    channelExpr +
-    `.map { item ->
+    `${channelExpr}.map { item ->
         def value = item instanceof List && item.size() > 1 ? item[-1] : item
         file(value instanceof String ? "\${params.inputdir}/\${value}" : value)
     }`;

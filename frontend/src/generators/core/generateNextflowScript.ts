@@ -204,7 +204,7 @@ export const generateNextflowScript = (
 
   // Final Script Assembly
   let finalScript = `// Workflow Script for ${workflowName}\n`;
-  finalScript += `// N-WAVE generator: registry-nfcore-v1\n\n`;
+  finalScript += "// N-WAVE generator: registry-nfcore-v1\n\n";
   finalScript += "nextflow.enable.dsl = 2\n\n";
   finalScript += paramsScript;
   if (nextflowConfigBlocks.length > 0) {
@@ -595,9 +595,8 @@ function getChainedChannelRoots(invocation: string): string[] {
   const chainRootPattern =
     /\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:map|filter|collect|concat|mix|flatten|view|set)\b/g;
   const roots: string[] = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = chainRootPattern.exec(rhs)) !== null) {
+  let match = chainRootPattern.exec(rhs);
+  while (match !== null) {
     const name = sanitizeVarName(match[1] ?? "");
     if (
       name &&
@@ -606,6 +605,7 @@ function getChainedChannelRoots(invocation: string): string[] {
     ) {
       roots.push(name);
     }
+    match = chainRootPattern.exec(rhs);
   }
 
   return roots;

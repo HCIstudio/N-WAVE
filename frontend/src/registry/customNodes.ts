@@ -402,11 +402,11 @@ const buildTupleDefinition = ({
 
   return [
     `    ${channelName} = ${expression}.map { ${args.join(", ")} ->`,
-    `        def extractCustomPath = { item -> item instanceof List && item.size() > 0 ? item[-1] : item }`,
+    "        def extractCustomPath = { item -> item instanceof List && item.size() > 0 ? item[-1] : item }",
     `        def firstPath = extractCustomPath(${args[0]})`,
-    `        def meta = [id: firstPath.baseName]`,
+    "        def meta = [id: firstPath.baseName]",
     `        tuple(${lines.join(", ")})`,
-    `    }\n`,
+    "    }\n",
   ].join("\n");
 };
 

@@ -336,7 +336,7 @@ export const generateNfCoreModuleNode =
 
     const configBlock =
       configLines.length > 0
-        ? [`withName: '${moduleAlias}' {`, ...configLines, `}`].join("\n")
+        ? [`withName: '${moduleAlias}' {`, ...configLines, "}"].join("\n")
         : undefined;
 
     return {
@@ -347,10 +347,10 @@ export const generateNfCoreModuleNode =
         .map((channel) => channel.definition)
         .filter((definition): definition is string => Boolean(definition)),
       processInvocations: [
-        [
+        `${[
           `    ${moduleAlias}(${inputChannels.map((channel) => channel.name).join(", ")})`,
           ...outputAssignments.map((assignment) => assignment.trimEnd()),
-        ].join("\n") + "\n",
+        ].join("\n")}\n`,
       ],
       includeInExecutionOrder: false,
     };
@@ -379,12 +379,12 @@ function buildAdaptedInputChannel({
     name: channelName,
     definition: [
       `    ${channelName} = ${upstream}.map { item ->`,
-      `        def reads = item instanceof List && item.size() > 1 ? item[1] : item`,
-      `        def existingMeta = item instanceof List && item.size() > 0 && item[0] instanceof Map ? item[0] : [:]`,
-      `        def singleEnd = existingMeta.single_end == null ? true : existingMeta.single_end`,
-      `        def meta = existingMeta + [id: existingMeta.id ?: reads.baseName, single_end: singleEnd]`,
-      `        tuple(meta, reads)`,
-      `    }\n`,
+      "        def reads = item instanceof List && item.size() > 1 ? item[1] : item",
+      "        def existingMeta = item instanceof List && item.size() > 0 && item[0] instanceof Map ? item[0] : [:]",
+      "        def singleEnd = existingMeta.single_end == null ? true : existingMeta.single_end",
+      "        def meta = existingMeta + [id: existingMeta.id ?: reads.baseName, single_end: singleEnd]",
+      "        tuple(meta, reads)",
+      "    }\n",
     ].join("\n"),
   };
 }
@@ -525,13 +525,13 @@ function buildTupleInputGroupDefinition({
 
   return [
     `    ${channelName} = ${expression}.map { ${args.join(", ")} ->`,
-    `        def extractNwavePath = { item -> item instanceof List && item.size() > 0 ? item[-1] : item }`,
+    "        def extractNwavePath = { item -> item instanceof List && item.size() > 0 ? item[-1] : item }",
     ...valueLines,
     metaName
       ? `        def meta = [id: ${firstHandle}.baseName]`
       : undefined,
     `        tuple(${tupleValues.join(", ")})`,
-    `    }\n`,
+    "    }\n",
   ]
     .filter((line): line is string => Boolean(line))
     .join("\n");
