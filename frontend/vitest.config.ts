@@ -9,5 +9,20 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    coverage: {
+      // Run with `pnpm test:coverage`. CI reports the summary in its logs; no
+      // threshold gate for now (coverage is still low — tightening it is
+      // tracked separately). Enable thresholds here when ready to enforce.
+      provider: "v8",
+      reporter: ["text", "text-summary"],
+      include: ["src/**/*.{ts,tsx}"],
+      exclude: [
+        "src/**/*.{test,spec}.{ts,tsx}",
+        "src/**/*.d.ts",
+        "src/test/**",
+        "src/main.tsx",
+        "src/vite-env.d.ts",
+      ],
+    },
   },
 });

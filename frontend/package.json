@@ -12,6 +12,7 @@
     "nfcore:catalog": "node ../scripts/generate-nfcore-catalog.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "lint": "biome lint .",
     "format": "biome format --write .",
     "preview": "vite preview"
@@ -41,6 +42,7 @@
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.4.1",
+    "@vitest/coverage-v8": "2.1.9",
     "autoprefixer": "^10.4.19",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.4",
