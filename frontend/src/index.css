@@ -47,7 +47,7 @@
 }
 
 .edge-delete-button:hover {
-  background: #ff5555;
+  background: #ef4444; /* danger */
   color: #fff;
 }
 

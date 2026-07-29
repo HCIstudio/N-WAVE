@@ -202,7 +202,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
     <>
       {/* Execution Settings Modal */}
       {showExecutionSettings && (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50">
           <div
             ref={modalRef}
             className="bg-panel-background rounded-lg shadow-2xl w-full max-w-4xl mx-4 max-h-[85vh] overflow-hidden border border-panel-border flex flex-col"

@@ -29,8 +29,8 @@ const ConfirmDialog = ({
 }: ConfirmDialogProps) => {
   const confirmButtonClasses =
     variant === "primary"
-      ? "bg-nextflow-green hover:bg-nextflow-green/90 text-white"
-      : "bg-red-600 hover:bg-red-700 text-white";
+      ? "bg-nextflow-green hover:bg-nextflow-green-dark text-white"
+      : "bg-danger hover:bg-danger-hover text-white";
   // Wrap the onClose and onConfirm handlers with simpler versions
   const handleClose = (e?: React.MouseEvent) => {
     // Still stop propagation but don't prevent default

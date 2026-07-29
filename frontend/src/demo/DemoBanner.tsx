@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
+import { FlaskConical, X } from "lucide-react";
 
 /** Gap in px between the banner and the footer (or the viewport bottom). */
 const GAP = 12;
@@ -62,21 +63,20 @@ const DemoBanner = () => {
 
   return (
     <div
-      className="fixed left-3 z-50 max-w-xs rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900 shadow-md"
+      className="fixed left-3 z-50 max-w-xs rounded-lg border border-panel-border border-l-4 border-l-warning bg-panel-background px-3 py-2 text-xs text-text shadow-lg"
       style={{ bottom: bottomOffset }}
     >
       <div className="flex items-start gap-2">
-        <span aria-hidden className="mt-0.5">
-          🧪
-        </span>
-        <div>
-          <strong>Demo mode.</strong> Projects are saved only in this browser and
-          workflows can't be executed here. Build, edit and export freely — then{" "}
+        <FlaskConical className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
+        <div className="text-text-light">
+          <strong className="text-text">Demo mode.</strong> Projects are saved
+          only in this browser and workflows can't be executed here. Build, edit
+          and export freely — then{" "}
           <a
             href="https://github.com/HCIstudio/N-WAVE#readme"
             target="_blank"
             rel="noreferrer"
-            className="font-medium underline"
+            className="font-medium text-nextflow-green underline"
           >
             run it with Docker
           </a>{" "}
@@ -85,10 +85,10 @@ const DemoBanner = () => {
         <button
           type="button"
           onClick={() => setDismissed(true)}
-          className="ml-1 text-amber-700 hover:text-amber-900"
+          className="ml-1 text-text-light hover:text-text"
           aria-label="Dismiss demo notice"
         >
-          ✕
+          <X className="h-4 w-4" />
         </button>
       </div>
     </div>

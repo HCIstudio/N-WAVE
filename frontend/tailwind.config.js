@@ -21,6 +21,38 @@ export default {
           DEFAULT: "#00A878",
           dark: "#007F5C",
         },
+        // Semantic status colors, used for toasts, dialogs, and inline
+        // feedback. Tuned to read on both the dark panels and light surfaces.
+        success: {
+          DEFAULT: "#10B981",
+          hover: "#059669",
+        },
+        warning: {
+          DEFAULT: "#F59E0B",
+          hover: "#D97706",
+        },
+        danger: {
+          DEFAULT: "#EF4444",
+          hover: "#DC2626",
+        },
+        info: {
+          DEFAULT: "#3B82F6",
+          hover: "#2563EB",
+        },
+        // Shared scrim for modal/dialog backdrops so every overlay dims the
+        // page by the same amount.
+        overlay: "rgba(0, 0, 0, 0.6)",
+      },
+      fontFamily: {
+        sans: [
+          "system-ui",
+          "-apple-system",
+          "Segoe UI",
+          "Roboto",
+          "Helvetica",
+          "Arial",
+          "sans-serif",
+        ],
       },
       typography: ({ theme }) => ({
         invert: {

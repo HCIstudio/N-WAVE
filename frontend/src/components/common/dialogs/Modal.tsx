@@ -29,11 +29,11 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-40 flex justify-center items-center"
+      className="fixed inset-0 bg-overlay z-40 flex justify-center items-center"
       onClick={onClose}
     >
       <div
-        className="bg-panel-background text-text rounded-lg shadow-xl w-1/2 max-w-lg flex flex-col"
+        className="bg-panel-background text-text rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between p-4 border-b border-panel-border">

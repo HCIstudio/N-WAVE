@@ -11,26 +11,24 @@ interface ToastProps {
   onClose: () => void;
 }
 
+// Toasts share the dark panel surface and signal their type with a colored
+// left accent bar and icon, drawn from the semantic theme tokens.
 const toastConfig = {
   info: {
-    icon: <Info className="text-blue-500" />,
-    bgClass: "bg-white",
-    textClass: "text-gray-800",
+    icon: <Info className="h-5 w-5 text-info" />,
+    accentClass: "border-l-info",
   },
   success: {
-    icon: <CheckCircle className="text-green-500" />,
-    bgClass: "bg-white",
-    textClass: "text-gray-800",
+    icon: <CheckCircle className="h-5 w-5 text-success" />,
+    accentClass: "border-l-success",
   },
   warning: {
-    icon: <AlertTriangle className="text-yellow-500" />,
-    bgClass: "bg-white",
-    textClass: "text-gray-800",
+    icon: <AlertTriangle className="h-5 w-5 text-warning" />,
+    accentClass: "border-l-warning",
   },
   error: {
-    icon: <XCircle className="text-white" />,
-    bgClass: "bg-red-500",
-    textClass: "text-white",
+    icon: <XCircle className="h-5 w-5 text-danger" />,
+    accentClass: "border-l-danger",
   },
 };
 
@@ -47,20 +45,19 @@ const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
     return () => clearTimeout(timer);
   }, [message, type, onClose]);
 
-  const { icon, bgClass, textClass } = toastConfig[type];
+  const { icon, accentClass } = toastConfig[type];
 
   return (
     <div
       className={clsx(
-        "fixed top-5 left-1/2 -translate-x-1/2 min-w-[300px] rounded-lg shadow-lg overflow-hidden transition-all duration-300 z-50",
-        bgClass,
-        textClass,
+        "fixed top-5 left-1/2 -translate-x-1/2 min-w-[300px] max-w-md rounded-lg border border-panel-border border-l-4 bg-panel-background text-text shadow-lg transition-all duration-300 z-50",
+        accentClass,
         visible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-10"
       )}
     >
-      <div className="flex items-center p-4">
-        <div className="mr-3 text-2xl">{icon}</div>
-        <div>{message}</div>
+      <div className="flex items-center gap-3 p-4">
+        <div className="shrink-0 text-xl">{icon}</div>
+        <div className="text-sm">{message}</div>
       </div>
     </div>
   );
