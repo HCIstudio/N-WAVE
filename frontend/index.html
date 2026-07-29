@@ -2,9 +2,48 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Favicons and web app manifest. %BASE_URL% keeps paths correct under the
+         GitHub Pages sub-path (/N-WAVE/) and at the root Docker deployment. -->
+    <link rel="icon" type="image/png" sizes="96x96" href="%BASE_URL%favicon-96x96.png" />
+    <link rel="icon" type="image/svg+xml" sizes="any" href="%BASE_URL%favicon.svg" />
+    <link rel="icon" href="%BASE_URL%favicon.ico" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%site.webmanifest" />
+    <meta name="theme-color" content="#1E1E1E" />
+
     <title>N-WAVE</title>
+    <meta
+      name="description"
+      content="A visual, node-based editor for building, visualizing, and running Nextflow pipelines from your browser."
+    />
+
+    <!-- Open Graph (Facebook, LinkedIn, Slack, Discord, ...) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="N-WAVE" />
+    <meta
+      property="og:title"
+      content="N-WAVE — Nextflow Workflow Authoring and Visualization Environment"
+    />
+    <meta
+      property="og:description"
+      content="A visual, node-based editor for building, visualizing, and running Nextflow pipelines from your browser."
+    />
+    <meta property="og:url" content="https://hcistudio.github.io/N-WAVE/" />
+    <meta property="og:image" content="https://hcistudio.github.io/N-WAVE/icon-512.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="N-WAVE — Nextflow Workflow Authoring and Visualization Environment"
+    />
+    <meta
+      name="twitter:description"
+      content="A visual, node-based editor for building, visualizing, and running Nextflow pipelines from your browser."
+    />
+    <meta name="twitter:image" content="https://hcistudio.github.io/N-WAVE/icon-512.png" />
   </head>
   <body>
     <div id="root"></div>
