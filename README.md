@@ -2,50 +2,31 @@
 
 **Nextflow Workflow Authoring and Visualization Environment**
 
+[![Test](https://github.com/HCIstudio/N-WAVE/actions/workflows/test.yml/badge.svg)](https://github.com/HCIstudio/N-WAVE/actions/workflows/test.yml)
+[![Demo](https://img.shields.io/website?url=https%3A%2F%2Fhcistudio.github.io%2FN-WAVE%2F&label=demo&up_message=live&down_message=down)](https://hcistudio.github.io/N-WAVE/)
+[![Release](https://img.shields.io/github/v/release/HCIstudio/N-WAVE?label=release)](https://github.com/HCIstudio/N-WAVE/releases/latest)
+[![Frontend pulls](https://img.shields.io/docker/pulls/hcistudio/nwave-frontend?logo=docker&label=frontend%20pulls)](https://hub.docker.com/r/hcistudio/nwave-frontend)
+[![Backend pulls](https://img.shields.io/docker/pulls/hcistudio/nwave-backend?logo=docker&label=backend%20pulls)](https://hub.docker.com/r/hcistudio/nwave-backend)
+[![License](https://img.shields.io/github/license/HCIstudio/N-WAVE)](LICENSE)
+
 N-WAVE is a visual editor for [Nextflow](https://www.nextflow.io/) pipelines. You build a
-workflow by dragging nodes onto a canvas — file inputs, operators (filter / map / merge),
-processes, and output displays — connect them, and N-WAVE generates a runnable Nextflow
-script from the graph. You can then execute the workflow and inspect its results, all from
-the browser. It's aimed at researchers and teams who want to compose and run data workflows
-without hand-writing Nextflow.
+workflow by dragging nodes onto a canvas — file inputs, operators, processes, and output
+displays — connect them, and N-WAVE generates a runnable Nextflow script from the graph. You
+can then execute the workflow and inspect its results from the browser.
 
-- 🧪 **[Try the live demo](https://hcistudio.github.io/N-WAVE/)** — runs entirely in your browser, no install.
-- 🐳 **[Run it with Docker](#2-quick-start-with-published-images-docker)** — the full stack with one command.
+- **Live demo:** https://hcistudio.github.io/N-WAVE/ — runs in the browser with no install. Workflows can be built and edited but not executed (that needs the backend).
+- **Documentation:** the [Wiki](https://github.com/HCIstudio/N-WAVE/wiki) covers authoring workflows, the node reference, and running via Docker.
 
----
-
-## Contents
-
-- [What's in the box](#whats-in-the-box)
-- [How it works](#how-it-works)
-  - [Architecture](#architecture)
-  - [How workflow execution works](#how-workflow-execution-works)
-- [Running N-WAVE](#running-n-wave)
-  - [1. Online demo (browser only)](#1-online-demo-browser-only)
-  - [2. Quick start with published images (Docker)](#2-quick-start-with-published-images-docker)
-  - [3. From source (Docker Compose)](#3-from-source-docker-compose)
-  - [4. Local development](#4-local-development)
-- [Configuration](#configuration)
-- [Repository layout](#repository-layout)
-- [Continuous integration & releases](#continuous-integration--releases)
-- [License](#license)
-
----
-
-## What's in the box
+## Components
 
 | Piece | Tech | Responsibility |
 |-------|------|----------------|
-| **Frontend** | React 18, Vite, TypeScript, [React Flow](https://reactflow.dev/), Tailwind | The visual canvas, workflow library, and the client-side Nextflow **script generator**. |
-| **Backend** | Node, Express, TypeScript, Mongoose | Workflow **persistence** and workflow **execution** (runs Nextflow). |
-| **Database** | MongoDB | Stores saved workflows. |
-| **Runner** | `nextflow/nextflow` Docker image | Pulled on demand by the backend to actually run pipelines. |
+| Frontend | React, Vite, TypeScript, [React Flow](https://reactflow.dev/), Tailwind | The visual canvas and the client-side Nextflow script generator. |
+| Backend | Node, Express, TypeScript, Mongoose | Workflow persistence and execution. |
+| Database | MongoDB | Stores saved workflows. |
+| Runner | `nextflow/nextflow` Docker image | Pulled on demand by the backend to run pipelines. |
 
----
-
-## How it works
-
-### Architecture
+## Architecture
 
 ```
                      ┌──────────────────────────────────────────────┐
@@ -66,17 +47,17 @@ without hand-writing Nextflow.
                      └───────────────────────┘        └───────────────────────────┘
 ```
 
-- The **frontend** owns the canvas and turns the node graph into a Nextflow script
+- The frontend owns the canvas and turns the node graph into a Nextflow script
   (`frontend/src/generators/`). The script is generated in the browser.
-- The **backend** persists workflows to MongoDB and executes them. It exposes a small REST
-  API under `/api` (`workflows`, `files`, `execute`).
-- The **frontend** talks to the backend only through `frontend/src/api.ts`. In the online
-  demo that client is swapped for an in-browser store (see
-  [`frontend/src/demo/`](frontend/src/demo/)), which is why the demo needs no backend.
+- The backend persists workflows to MongoDB and executes them. It exposes a small REST API
+  under `/api` (`workflows`, `files`, `execute`).
+- The frontend talks to the backend only through `frontend/src/api.ts`. In the online demo
+  that client is swapped for an in-browser store (`frontend/src/demo/`), which is why the
+  demo needs no backend.
 
 ### How workflow execution works
 
-The backend does **not** bundle Nextflow. When you run a workflow it launches the official
+The backend does not bundle Nextflow. When you run a workflow it launches the official
 `nextflow/nextflow` image on the host's Docker daemon and shares files with it via
 `--volumes-from`:
 
@@ -89,55 +70,39 @@ This is controlled by the `NEXTFLOW_EXECUTION_MODE` environment variable:
 
 | Value | Behavior |
 |-------|----------|
-| `docker` | **Always** run Nextflow in a container. The only host requirement is Docker — no local Nextflow/Java. This is what the Docker deployment uses, so it runs on any machine. |
+| `docker` | Always run Nextflow in a container. The only host requirement is Docker — no local Nextflow or Java. This is what the Docker deployment uses, so it runs on any machine. |
 | `local` | Always use a host `nextflow` binary. |
 | `auto` (default) | Prefer a local binary, fall back to the container. Convenient for development. |
 
-Because the `nextflow/nextflow` tags are published for `linux/amd64` only, the runner is
-pinned to that platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) so it works natively on
-Intel/AMD and under emulation on ARM (e.g. Apple Silicon).
+The `nextflow/nextflow` tags are published for `linux/amd64` only, so the runner is pinned to
+that platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) — it runs natively on Intel/AMD and
+under emulation on ARM (for example Apple Silicon).
 
 For the backend to launch containers, the host Docker socket is mounted into it
 (`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
-volumes — both are set up in the compose files.
-
----
+volumes. Both are set up in the compose files.
 
 ## Running N-WAVE
 
-### 1. Online demo (browser only)
+### With published images (Docker)
 
-Visit **https://hcistudio.github.io/N-WAVE/**. Everything runs client-side:
-
-- ✅ Build, edit, duplicate, import, and inspect workflows and their generated Nextflow.
-- 💾 Projects are **ephemeral** — saved only in your browser's local storage.
-- 🚫 Workflows **cannot be executed** (that needs a backend). Use Docker for real runs.
-
-### 2. Quick start with published images (Docker)
-
-No clone required — grab the compose file from the [latest release](https://github.com/HCIstudio/N-WAVE/releases)
-(`latest.yml`) and start it:
+Grab `latest.yml` from the [latest release](https://github.com/HCIstudio/N-WAVE/releases) and
+start the stack:
 
 ```bash
 docker compose -f latest.yml up -d
 ```
 
-This pulls the prebuilt images and starts the full stack. Then open **http://localhost:5173**.
+Then open http://localhost:5173. Stop with `docker compose -f latest.yml down`.
 
 - Frontend (UI): http://localhost:5173
 - Backend (API): http://localhost:5001
 - MongoDB: `mongodb://localhost:27017`
 
-Workflow outputs are written to `./results` on the host. Stop with:
+Workflow outputs are written to `./results` on the host. Requires Docker with the daemon
+running. The first execution pulls the `nextflow/nextflow` image, so it may take a moment.
 
-```bash
-docker compose -f latest.yml down
-```
-
-> Requires Docker with the daemon running. The first workflow execution pulls the
-> `nextflow/nextflow` image, so it may take a moment.
-
-### 3. From source (Docker Compose)
+### From source (Docker Compose)
 
 Clone the repo and build the images locally:
 
@@ -145,27 +110,20 @@ Clone the repo and build the images locally:
 docker compose up -d --build
 ```
 
-Same endpoints as above. This is the recommended way to run a full, executable stack while
-developing on the Docker packaging.
+Same endpoints as above. Stop and remove volumes with `docker compose down -v`.
 
-Stop and remove volumes with:
+### Local development
 
-```bash
-docker compose down -v
-```
+Run the dev servers directly for fast iteration. You need MongoDB (and Docker, if you want to
+execute workflows).
 
-### 4. Local development
-
-Run the frontend and backend dev servers directly for fast iteration. You still need MongoDB
-(and Docker, if you want to execute workflows).
-
-**MongoDB** (easiest via Docker):
+MongoDB (easiest via Docker):
 
 ```bash
 docker run -d --name nwave-mongo -p 27017:27017 mongo:7
 ```
 
-**Backend** (`http://localhost:5001`, hot-reloads via nodemon):
+Backend (`http://localhost:5001`, hot-reloads via nodemon):
 
 ```bash
 cd backend
@@ -174,7 +132,7 @@ pnpm install
 pnpm dev
 ```
 
-**Frontend** (`http://localhost:5173`, Vite dev server, proxies `/api` → `localhost:5001`):
+Frontend (`http://localhost:5173`, Vite dev server, proxies `/api` to `localhost:5001`):
 
 ```bash
 cd frontend
@@ -188,8 +146,6 @@ To build the browser-only demo locally:
 cd frontend
 VITE_DEMO_MODE=true pnpm build && pnpm preview
 ```
-
----
 
 ## Configuration
 
@@ -209,12 +165,10 @@ VITE_DEMO_MODE=true pnpm build && pnpm preview
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `VITE_DEMO_MODE` | `false` | `true` builds the backend-less demo (in-browser storage). |
-| `VITE_BASE_PATH` | `/` | Base path for sub-path hosting (e.g. `/N-WAVE/` on GitHub Pages). |
+| `VITE_BASE_PATH` | `/` | Base path for sub-path hosting (for example `/N-WAVE/` on GitHub Pages). |
 | `VITE_API_BASE_URL` | `/api` | Where the frontend sends API requests. |
 
-See `.env.example` for a starting point for the from-source Docker build.
-
----
+Copy [`.env.example`](.env.example) as a starting point for the from-source Docker build.
 
 ## Repository layout
 
@@ -222,6 +176,7 @@ See `.env.example` for a starting point for the from-source Docker build.
 N-WAVE/
 ├─ backend/                 # Express API + Nextflow execution
 │  └─ src/
+│     ├─ config/            # database and server configuration
 │     ├─ controllers/       # workflow CRUD, execution
 │     ├─ routes/            # /api/workflows, /api/files, /api/execute
 │     ├─ models/            # Mongoose models
@@ -237,34 +192,32 @@ N-WAVE/
 └─ .github/workflows/       # CI, image publish, release, Pages deploy
 ```
 
-For component-level docs, see [`backend/README.md`](backend/README.md) and
-[`frontend/README.md`](frontend/README.md).
+See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md)
+for package-level notes.
 
-## Continuous integration & releases
+## CI and releases
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | `test.yml` | pull request / push to `main` | The merge gate: lint, unit tests, typecheck, and build for both packages (all blocking). |
-| `release.yml` | push to `main` | Auto-versions and ships every merge: steps the version, deploys the demo to GitHub Pages, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
+| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
 
-`main` is protected: changes land only via pull request, and a PR can be merged only once
-the **Test** workflow passes.
+`main` is protected: changes land only via pull request, and a PR can be merged only once the
+Test workflow passes.
 
-**Versioning is fully automatic — you never set a version by hand.** On every merge to
-`main`, `release.yml` steps the patch version (from the latest `v*` tag) and applies that
-number everywhere in the same run: the Pages demo footer, the Docker images, and both
-`package.json` files (committed back to `main`).
+Versioning is automatic — you never set a version by hand. On every merge to `main`,
+`release.yml` steps the patch version (from the latest `v*` tag) and applies that number
+everywhere in the same run: the Pages demo footer, the Docker images, and both `package.json`
+files.
 
-**One-time setup — `RELEASE_TOKEN`:** the version-bump commit is pushed back to `main`,
-which is pull-request-only, so CI needs to push as an actor that bypasses the ruleset
-(repo/org admins do). Create a **fine-grained Personal Access Token** owned by a repo admin,
-scoped to this repository with **Contents: Read and write**, and add it as the repository
-**Actions secret `RELEASE_TOKEN`**. A PAT push re-triggers the workflow, so the `release.yml`
-`version` job ignores its own `chore(release):` commits — no release loop. (The GitHub
-Actions app itself can't be added to a *repository* ruleset's bypass list, which is why a PAT
-is used.)
+One-time setup — `RELEASE_TOKEN`: the version-bump commit is pushed back to `main`, which is
+pull-request-only, so CI needs to push as an actor that bypasses the ruleset (repo/org admins
+do). Create a fine-grained Personal Access Token owned by a repo admin, scoped to this
+repository with Contents: Read and write, and add it as the repository Actions secret
+`RELEASE_TOKEN`. A PAT push re-triggers the workflow, so the `release.yml` `version` job
+ignores its own `chore(release):` commits to avoid a release loop. (The GitHub Actions app
+itself cannot be added to a repository ruleset's bypass list, which is why a PAT is used.)
 
 ## License
 
-N-WAVE is licensed under the **Apache License 2.0**. See the [`LICENSE`](LICENSE) and
-[`NOTICE`](NOTICE) files for details.
+Apache License 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).

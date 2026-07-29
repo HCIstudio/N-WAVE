@@ -498,12 +498,8 @@ const HomePage: React.FC = () => {
       <div className="min-h-screen flex flex-col">
         {isHomeTutorialActive && (
           <div
-            className="fixed inset-0 z-20"
+            className="fixed inset-0 z-20 bg-nextflow-green-dark/40"
             aria-hidden="true"
-            style={{
-              backgroundImage:
-                "repeating-linear-gradient(45deg, rgba(0,168,120,0.22) 0px, rgba(0,168,120,0.22) 2px, transparent 2px, transparent 14px), repeating-linear-gradient(45deg, rgba(0,168,120,0.12) 0px, rgba(0,168,120,0.12) 7px, rgba(0,0,0,0.05) 7px, rgba(0,0,0,0.05) 14px)",
-            }}
           />
         )}
         <div className="flex-1 p-8">

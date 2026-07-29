@@ -1,61 +1,32 @@
 # N-WAVE Frontend
 
-This is the frontend for **N-WAVE: Nextflow Workflow Authoring and Visualization Environment**. It provides an intuitive, node-based web interface for building, visualizing, and running Nextflow workflows.
+React + Vite + TypeScript single-page app: the node-based workflow editor and the
+client-side Nextflow script generator. It talks to the backend through a small REST API; in
+the browser-only demo build that client is swapped for in-browser storage.
 
-## Overview
-
-- **Node-based Workflow Editor**: Drag-and-drop interface for constructing scientific workflows visually
-- **Reusable UI Components**: Modular React components for nodes, panels, dialogs, and more
-- **Real-time Execution Feedback**: Integrated with the backend for workflow execution and status updates
-- **TypeScript + React + Vite**: Modern, fast, and scalable frontend stack
-
-## Project Structure
-
-- `src/components/` — UI components (nodes, panels, dialogs, etc.)
-- `src/hooks/` — Custom React hooks for workflow logic and UI state
-- `src/generators/` — Nextflow script generation from visual workflows
-- `src/data/` — Node/process definitions and type declarations
-- `src/context/` — React context for global state
-- `src/pages/` — Main application pages
-- `src/api.ts` — API integration with the backend
-
-> **Note:** The structure is modular and can be extended as the project grows. Add new folder as needed to keep code organized and maintainable.
-
-> For detailed documentation on components, hooks, and generators, see the README files in their respective subdirectories.
-
-## Setup
-
-1. **Install dependencies**
-   ```bash
-   pnpm install
-   ```
-2. **Start the development server**
-   ```bash
-   pnpm dev
-   ```
-3. **Build for production**
-   ```bash
-   pnpm build
-   ```
-
-## Docker
-
-From the repository root, start the full application with:
+## Development
 
 ```bash
-docker compose up -d --build
+pnpm install
+pnpm dev      # http://localhost:5173, proxies /api to the backend on :5001
+pnpm build    # typecheck + production build
+pnpm test     # unit tests (pnpm test:coverage for coverage)
 ```
 
-Frontend is available at `http://localhost:5173`.
+For the full stack (frontend + backend + MongoDB) and the architecture, see the
+[root README](../README.md). For usage guides, see the
+[Wiki](https://github.com/HCIstudio/N-WAVE/wiki).
 
-## Feature Requests & Contribution
+## Structure
 
-- All feature requests, contribution guidelines, and roadmap are managed in the [backend README](../backend/README.md). Please refer to it for project direction and how to get involved.
+- `src/components/` — canvas, nodes, panels, dialogs
+- `src/generators/` — graph → Nextflow script
+- `src/hooks/` — workflow logic and UI state
+- `src/registry/`, `src/data/` — node and process definitions
+- `src/demo/` — in-browser store for the demo build
+- `src/pages/` — HomePage (library) and WorkflowPage (editor)
+- `src/api.ts`, `src/api/` — backend client
 
 ## License
 
-- This project is licensed under the Apache License 2.0. See the [LICENSE](../LICENSE) and [NOTICE](../NOTICE) files at the repository root for details.
-
----
-
-**N-WAVE** — Making Nextflow workflows accessible to everyone.
+Apache License 2.0. See [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE) at the repository root.
