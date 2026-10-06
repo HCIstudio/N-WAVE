@@ -6,6 +6,7 @@ import {
   DEFAULT_NEXTFLOW_VERSION,
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
+  buildPipelineConfig,
   capMaxMemory,
   normalizeMaxCpus,
   resolveNextflowPlatform,
@@ -33,8 +34,13 @@ import {
   resolveSubworkflowComponents,
 } from "../nfcore/library";
 import type { ExecutionSettings } from "../execution/types";
+import { findRunResultsDir, listFiles, recordRun } from "../runs/runIndex";
 import { getErrorMessage } from "../utils/errors";
-import { cancelExecutionSchema, executeRequestSchema } from "../validation/schemas";
+import {
+  cancelExecutionSchema,
+  executeRequestSchema,
+  type PipelineRunRequest,
+} from "../validation/schemas";
 import { parseBody } from "../validation/validate";
 
 // A simple in-memory cache to store input values temporarily
@@ -70,6 +76,30 @@ export const executeProcess = async (
     containerImage,
     workflowName,
   });
+
+  // A Pipeline node runs a whole nf-core pipeline instead of a script.
+  if (body.pipeline) {
+    await executeNextflowWorkflow(
+      "",
+      workflowName,
+      executionSettings || {
+        useDocker: true,
+        containerImage,
+        outputDirectory,
+        outputNaming: "{workflow_name}_{timestamp}",
+        maxCpus: 4,
+        maxMemory: "4 GB",
+        executionTimeout: 0,
+        errorStrategy: "terminate",
+        publishMode: "copy",
+        cleanupOnFailure: true,
+      },
+      res,
+      fileContent,
+      body.pipeline
+    );
+    return;
+  }
 
   // If nextflowScript is provided, execute as a full Nextflow workflow
   if (nextflowScript) {
@@ -121,7 +151,8 @@ const executeNextflowWorkflow = async (
   workflowName: string,
   executionSettings: ExecutionSettings,
   res: Response,
-  fileContent?: Record<string, string>
+  fileContent?: Record<string, string>,
+  pipeline?: PipelineRunRequest
 ): Promise<void> => {
   try {
     const sanitizedWorkflowName = sanitizeWorkflowName(workflowName);
@@ -155,45 +186,70 @@ const executeNextflowWorkflow = async (
     // Memory is capped for system safety.
     const maxMemory = capMaxMemory(executionSettings.maxMemory);
 
-    const extractedNextflowAssets =
-      extractNwaveNextflowAssets(nextflowScript);
-    const hasNfCoreModules =
-      getReferencedNfCoreModules(extractedNextflowAssets.script).length > 0 ||
-      getReferencedNfCoreSubworkflows(extractedNextflowAssets.script).length >
-        0;
-    const shouldUseProcessDocker =
-      executionSettings.useDocker || hasNfCoreModules;
-    const nextflowConfig = buildExecutionConfig(
-      extractedNextflowAssets.config,
-      shouldUseProcessDocker
-    );
-    const withModuleConfig = nextflowConfig.trim() !== "";
-
-    // Write the Nextflow script to workflow directory
+    let hasNfCoreModules: boolean;
+    let shouldUseProcessDocker: boolean;
+    let withModuleConfig: boolean;
     const scriptPath = path.join(workflowDir, `${sanitizedWorkflowName}.nf`);
-    fs.writeFileSync(scriptPath, extractedNextflowAssets.script);
-    console.log(`Created workflow script: ${scriptPath}`);
 
-    if (withModuleConfig) {
-      const configPath = path.join(mainOutputDir, "nwave_modules.config");
-      const workflowConfigPath = path.join(workflowDir, "nwave_modules.config");
-      fs.writeFileSync(configPath, nextflowConfig);
-      fs.writeFileSync(workflowConfigPath, nextflowConfig);
-      console.log(`Created module config: ${configPath}`);
+    if (pipeline) {
+      // A whole nf-core pipeline: Nextflow pulls it from GitHub; its
+      // processes always run in containers (-profile docker).
+      hasNfCoreModules = true;
+      shouldUseProcessDocker = true;
+      withModuleConfig = true;
+      fs.writeFileSync(
+        path.join(mainOutputDir, "nwave_modules.config"),
+        buildPipelineConfig(maxCpus, maxMemory)
+      );
+      if (Object.keys(pipeline.params).length > 0) {
+        fs.writeFileSync(
+          path.join(mainOutputDir, "params.json"),
+          `${JSON.stringify(pipeline.params, null, 2)}\n`
+        );
+      }
+      console.log(
+        `Running nf-core/${pipeline.name} ${pipeline.version} (-profile ${pipeline.profiles.join(",")})`
+      );
+    } else {
+      const extractedNextflowAssets =
+        extractNwaveNextflowAssets(nextflowScript);
+      hasNfCoreModules =
+        getReferencedNfCoreModules(extractedNextflowAssets.script).length > 0 ||
+        getReferencedNfCoreSubworkflows(extractedNextflowAssets.script).length >
+          0;
+      shouldUseProcessDocker =
+        executionSettings.useDocker || hasNfCoreModules;
+      const nextflowConfig = buildExecutionConfig(
+        extractedNextflowAssets.config,
+        shouldUseProcessDocker
+      );
+      withModuleConfig = nextflowConfig.trim() !== "";
+
+      // Write the Nextflow script to workflow directory
+      fs.writeFileSync(scriptPath, extractedNextflowAssets.script);
+      console.log(`Created workflow script: ${scriptPath}`);
+
+      if (withModuleConfig) {
+        const configPath = path.join(mainOutputDir, "nwave_modules.config");
+        const workflowConfigPath = path.join(workflowDir, "nwave_modules.config");
+        fs.writeFileSync(configPath, nextflowConfig);
+        fs.writeFileSync(workflowConfigPath, nextflowConfig);
+        console.log(`Created module config: ${configPath}`);
+      }
+
+      // Install modules the workflow uses but that aren't installed yet (e.g.
+      // FastQC on a fresh install), from the catalog's pinned commit.
+      await ensureModulesInstalled(
+        getReferencedNfCoreModules(extractedNextflowAssets.script)
+      );
+      await ensureSubworkflowsInstalled(
+        getReferencedNfCoreSubworkflows(extractedNextflowAssets.script)
+      );
+      materializeNfCoreModules(extractedNextflowAssets.script, [
+        mainOutputDir,
+        workflowDir,
+      ]);
     }
-
-    // Install modules the workflow uses but that aren't installed yet (e.g.
-    // FastQC on a fresh install), from the catalog's pinned commit.
-    await ensureModulesInstalled(
-      getReferencedNfCoreModules(extractedNextflowAssets.script)
-    );
-    await ensureSubworkflowsInstalled(
-      getReferencedNfCoreSubworkflows(extractedNextflowAssets.script)
-    );
-    materializeNfCoreModules(extractedNextflowAssets.script, [
-      mainOutputDir,
-      workflowDir,
-    ]);
 
     // Create input files in inputs directory. File names are validated by the
     // request schema to be plain names (no path separators), so they cannot
@@ -253,18 +309,29 @@ const executeNextflowWorkflow = async (
 
     if (useLocalNextflow && shouldUseProcessDocker) {
       await ensureDockerAvailable(
-        hasNfCoreModules
+        pipeline
+          ? "nf-core pipelines run their steps in Docker containers"
+          : hasNfCoreModules
           ? "nf-core modules require Docker process containers"
           : "Docker process execution is enabled"
       );
     }
 
     const relativeScriptPath = path.relative(mainOutputDir, scriptPath);
+    const pipelineTarget = pipeline
+      ? {
+          name: pipeline.name,
+          version: pipeline.version,
+          profiles: pipeline.profiles,
+          withParamsFile: Object.keys(pipeline.params).length > 0,
+        }
+      : undefined;
     let nextflowCmd: string;
 
     if (useLocalNextflow) {
       nextflowCmd = buildLocalNextflowCommand({
         scriptPath: relativeScriptPath,
+        pipeline: pipelineTarget,
         withModuleConfig,
         maxCpus,
         maxMemory,
@@ -292,6 +359,7 @@ const executeNextflowWorkflow = async (
       // receive empty /app/results mounts and cannot see .command.sh.
       nextflowCmd = buildContainerNextflowCommand({
         scriptPath: path.posix.join("workflow", `${sanitizedWorkflowName}.nf`),
+        pipeline: pipelineTarget,
         withModuleConfig,
         maxCpus,
         maxMemory,
@@ -313,6 +381,11 @@ const executeNextflowWorkflow = async (
 
     // Generate execution ID for tracking and cancellation
     const executionId = `${sanitizedWorkflowName}_${Date.now()}`;
+    try {
+      recordRun(executionId, mainOutputDir);
+    } catch (error: unknown) {
+      console.warn(`Could not record run ${executionId}:`, error);
+    }
 
     // Set up streaming response for real-time output
     res.writeHead(200, {
@@ -321,6 +394,8 @@ const executeNextflowWorkflow = async (
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
     });
+    // The frontend reads this to find the run's results afterwards.
+    res.write(`N-WAVE run: ${executionId}\n`);
 
     // Execute Nextflow with streaming output
     const childProcess = exec(nextflowCmd, {
@@ -328,7 +403,9 @@ const executeNextflowWorkflow = async (
       timeout:
         executionSettings.executionTimeout > 0
           ? executionSettings.executionTimeout * 60000
-          : 600000, // 10 minutes default
+          : pipeline
+            ? 0 // pipelines run as long as they need
+            : 600000, // 10 minutes default
       maxBuffer: 1024 * 1024 * 10, // 10MB buffer
     });
 
@@ -728,4 +805,50 @@ export const checkNextflowStatus = (_req: Request, res: Response): void => {
       version: stdout.trim(),
     });
   });
+};
+
+const parseRunId = (req: Request, res: Response): string | null => {
+  const id = String(req.params.id ?? "");
+  if (!/^[A-Za-z0-9_-]{1,300}$/.test(id)) {
+    res.status(400).json({ message: "Invalid run id" });
+    return null;
+  }
+  return id;
+};
+
+/** `{ files }`: the files in a run's results directory. */
+export const listRunResultFiles = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunResultsDir(id);
+  if (!dir) {
+    res.status(404).json({ message: `No results for run ${id}` });
+    return;
+  }
+  res.json({ id, files: listFiles(dir) });
+};
+
+/**
+ * One file from a run's results. HTML reports (MultiQC) are served in a
+ * CSP sandbox: their scripts run, but without access to this origin.
+ */
+export const getRunResultFile = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunResultsDir(id);
+  const relative = typeof req.query.path === "string" ? req.query.path : "";
+  const target = path.resolve(dir ?? "", relative);
+  if (
+    !dir ||
+    !relative ||
+    !target.startsWith(`${path.resolve(dir)}${path.sep}`) ||
+    !fs.existsSync(target) ||
+    !fs.statSync(target).isFile()
+  ) {
+    res.status(404).json({ message: "Result file not found" });
+    return;
+  }
+  res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-popups");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.sendFile(target);
 };

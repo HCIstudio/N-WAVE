@@ -102,10 +102,32 @@ export const executionSettingsSchema = z.object({
   nextflowVersion: nextflowVersion.optional(),
 });
 
+/** A whole nf-core pipeline to run (Pipeline node). */
+export const pipelineRunSchema = z.object({
+  name: z.string().regex(/^[a-z0-9][a-z0-9_-]*$/, "invalid pipeline name").max(100),
+  version: z
+    .string()
+    .regex(/^[A-Za-z0-9][A-Za-z0-9._-]*$/, "invalid pipeline version")
+    .max(100),
+  profiles: z
+    .array(z.string().regex(/^[A-Za-z0-9_-]+$/, "invalid profile name").max(100))
+    .min(1)
+    .max(10),
+  params: z
+    .record(
+      z.string().regex(/^[A-Za-z_][A-Za-z0-9_.-]*$/, "invalid parameter name"),
+      z.union([z.string().max(10_000), z.number(), z.boolean()])
+    )
+    .refine((params) => Object.keys(params).length <= 1_000)
+    .default({}),
+});
+export type PipelineRunRequest = z.infer<typeof pipelineRunSchema>;
+
 export const executeRequestSchema = z
   .object({
     script: z.string().max(MAX_SCRIPT_LENGTH).optional(),
     nextflowScript: z.string().max(MAX_SCRIPT_LENGTH).optional(),
+    pipeline: pipelineRunSchema.optional(),
     inputs: z
       .array(z.object({ name: z.string().min(1).max(255), value: z.unknown() }))
       .max(1_000)
@@ -123,8 +145,8 @@ export const executeRequestSchema = z
       .optional(),
     executionSettings: executionSettingsSchema.optional(),
   })
-  .refine((body) => Boolean(body.script || body.nextflowScript), {
-    message: "Script or nextflowScript is required",
+  .refine((body) => Boolean(body.script || body.nextflowScript || body.pipeline), {
+    message: "Script, nextflowScript or pipeline is required",
   });
 export type ExecuteRequestBody = z.infer<typeof executeRequestSchema>;
 

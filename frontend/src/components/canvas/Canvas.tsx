@@ -29,6 +29,7 @@ const nodeTypes = {
   samplesheet: BaseNode,
   parameters: BaseNode,
   channelOperator: BaseNode,
+  pipeline: BaseNode,
   outputDisplay: OutputDisplayNode,
   filter: OperatorNode,
   operator: OperatorNode,

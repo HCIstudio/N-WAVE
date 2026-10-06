@@ -9,6 +9,7 @@ import workflowRoutes from "./routes/workflowRoutes";
 import executeRoutes from "./routes/executeRoutes";
 import nfcoreRoutes from "./routes/nfcoreRoutes";
 import customNodeRoutes from "./routes/customNodeRoutes";
+import pipelineRoutes from "./routes/pipelineRoutes";
 import { getErrorMessage } from "./utils/errors";
 
 /** Maximum JSON/urlencoded request body; input file contents travel inline. */
@@ -54,6 +55,7 @@ export const createApp = (): Express => {
   app.use("/api/execute", executeRoutes);
   app.use("/api/nfcore", nfcoreRoutes);
   app.use("/api/custom-nodes", customNodeRoutes);
+  app.use("/api/pipelines", pipelineRoutes);
 
   // Turn body-parser failures (malformed JSON, oversized bodies) into JSON
   // errors instead of Express's default HTML page.

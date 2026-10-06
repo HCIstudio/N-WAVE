@@ -3,6 +3,7 @@ import type { Connection, Edge, Node } from "reactflow";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
 import ParametersPanel from "../components/panels/input/ParametersPanel";
+import PipelinePanel from "../components/panels/process/PipelinePanel";
 import ChannelOperatorPanel from "../components/panels/operator/ChannelOperatorPanel";
 import { generateChannelOperatorNode } from "./channelOperator";
 import SamplesheetPanel from "../components/panels/input/SamplesheetPanel";
@@ -379,6 +380,43 @@ const builtinNodeDefinitions: NodeDefinition[] = [
         };
       }
 
+      return { valid: true };
+    },
+  },
+  {
+    id: "pipeline",
+    kind: "process",
+    category: "nf-core Pipelines",
+    label: "nf-core Pipeline",
+    description:
+      "Runs a complete nf-core pipeline (e.g. rnaseq) with its parameters. The workflow then runs that pipeline instead of a generated script.",
+    type: "pipeline",
+    icon: "Workflow",
+    inputs: [{ name: "input", label: "--input", isConnectable: true }],
+    outputs: [],
+    defaults: {
+      label: "nf-core Pipeline",
+      subtitle: "nf-core/rnaseq 3.27.0",
+      pipelineName: "rnaseq",
+      pipelineVersion: "3.27.0",
+      pipelineTestProfile: false,
+      pipelineValues: {},
+      inputs: [{ name: "input", label: "--input", isConnectable: true }],
+      outputs: [],
+    },
+    panel: PipelinePanel,
+    executionLabel: "nf-core Pipeline",
+    validateConnection: ({ sourceNode, targetNode }) => {
+      if (
+        targetNode?.type === "pipeline" &&
+        !["fileInput", "samplesheet", "parameters"].includes(sourceNode?.type ?? "")
+      ) {
+        return {
+          valid: false,
+          message:
+            "A pipeline takes its inputs from File Input, Samplesheet or Parameters nodes.",
+        };
+      }
       return { valid: true };
     },
   },
