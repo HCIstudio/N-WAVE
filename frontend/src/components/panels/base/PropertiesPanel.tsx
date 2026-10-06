@@ -34,7 +34,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   style,
   recenterTrigger,
 }) => {
-  console.log("[PropertiesPanel] node prop:", node);
   const panelRef = useRef<HTMLDivElement>(null);
   const [label, setLabel] = useState(node.data.label || "");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -162,27 +161,15 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   }`;
 
   const renderNodeSpecificFields = () => {
-    console.log(
-      "[PropertiesPanel] node.type:",
-      node.type,
-      "node.data.processType:",
-      node.data.processType
-    );
     if (node.type === "operator" || node.type === "filter") {
-      console.log("[PropertiesPanel] Rendering OperatorNodePanel");
       return <OperatorNodePanel node={node} onSave={onSave} />;
     }
 
     const PanelComponent = getNodeDefinitionForNode(node)?.panel;
     if (PanelComponent) {
-      console.log("[PropertiesPanel] Rendering registry panel");
       return <PanelComponent node={node} onSave={onSave} />;
     }
 
-    console.log(
-      "[PropertiesPanel] No properties available for this node type:",
-      node.type
-    );
     return (
       <p className="text-sm text-text-light text-center py-4">
         No properties available for this node type.

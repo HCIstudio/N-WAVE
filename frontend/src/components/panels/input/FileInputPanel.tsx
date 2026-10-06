@@ -241,9 +241,6 @@ const FileInputPanel: React.FC<{
               api.delete(`/files/${file._id}`)
             )
           );
-          console.log(
-            `Deleted ${filesToDeleteFromBackend.length} file metadata records from backend`
-          );
         } catch (error) {
           console.warn(
             "Could not delete some file metadata from backend:",

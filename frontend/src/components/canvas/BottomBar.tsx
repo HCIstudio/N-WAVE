@@ -181,7 +181,6 @@ const BottomBar: React.FC<BottomBarProps> = ({
       );
       setSettingsSaved(true);
       setSettingsChanged(false);
-      console.log("Execution settings saved");
     } catch (error) {
       console.error("Failed to save execution settings:", error);
     }

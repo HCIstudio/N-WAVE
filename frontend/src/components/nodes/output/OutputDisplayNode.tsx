@@ -87,11 +87,6 @@ const OutputDisplayNode = (props: NodeProps<NodeData>) => {
       }
     } else if (incomingFiles !== null) {
       if (hasChanged || previewStateChanged) {
-        console.log("📺 OutputDisplay updating with new files:", {
-          fileCount: incomingFiles.length,
-          filesWithContent: incomingFiles.filter((f) => f.content).length,
-          fileNames: incomingFiles.map((f) => f.name),
-        });
         updateNodeData(id, {
           files: incomingFiles,
           previewUnavailable: false,
@@ -103,7 +98,6 @@ const OutputDisplayNode = (props: NodeProps<NodeData>) => {
       data.previewUnavailable
     ) {
       // Input has been disconnected, clear the files
-      console.log("📺 OutputDisplay clearing files (disconnected)");
       updateNodeData(id, {
         files: [],
         previewUnavailable: false,

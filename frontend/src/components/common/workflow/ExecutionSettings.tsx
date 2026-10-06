@@ -438,10 +438,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                         fallbackToManualInput();
                       }
                     } catch (error) {
-                      console.log(
-                        "Directory selection cancelled or failed:",
-                        error
-                      );
                       fallbackToManualInput();
                     }
 

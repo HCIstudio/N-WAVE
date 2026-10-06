@@ -222,12 +222,6 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
 
           // Force downstream nodes to refresh when file inputs change
           if (updatedNode.type === "fileInput" && data.files) {
-            if (process.env.NODE_ENV === "development") {
-              console.log(
-                "🔄 File input changed, triggering downstream updates"
-              );
-            }
-
             // Add a timestamp to force re-renders of downstream nodes
             const timestamp = Date.now();
 
@@ -266,13 +260,6 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
                     _refreshTimestamp: timestamp,
                   },
                 };
-
-                if (process.env.NODE_ENV === "development") {
-                  console.log(
-                    "⬇️ Triggered refresh for downstream node:",
-                    downstreamId
-                  );
-                }
               }
             });
           }

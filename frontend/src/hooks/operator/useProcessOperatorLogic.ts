@@ -99,14 +99,6 @@ export const useProcessOperatorLogic = (
       }${editedIndicator}`;
     }
 
-    console.log(`📊 ${operatorType} operator saving:`, {
-      fileCount: count,
-      subtitle,
-      filesWithContent: processedFiles.filter((f) => f.content).length,
-      selectedFiles: selectedFiles?.length || 0,
-      filesWereEdited,
-    });
-
     onSave({ files: processedFiles, subtitle });
   }, [processedFiles, operatorType, onSave, incomingFiles, selectedFiles]);
 };

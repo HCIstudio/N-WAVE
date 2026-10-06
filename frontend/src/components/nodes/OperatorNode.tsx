@@ -93,14 +93,6 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
         } else {
           // Files have content - use subtitle from operator logic if available
           // Otherwise fall back to basic file count
-          console.log(`🔍 OperatorNode ${id} checking subtitle:`, {
-            currentSubtitle: data.subtitle,
-            operatorName,
-            incomingFilesCount: incomingFiles.length,
-            selectedFilterFiles: data.selectedFilterFiles?.length || 0,
-            operatorType,
-          });
-
           // Only set fallback subtitle if:
           // 1. No subtitle exists, OR
           // 2. Subtitle is just the operator name (default), OR
@@ -113,25 +105,12 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
             const fileCount = incomingFiles.length;
             const isUnedited = operatorType === "filter" && !data.filterText;
             const uneditedStatus = isUnedited ? " (unedited)" : "";
-
-            console.log(
-              `⚠️ OperatorNode ${id} overriding subtitle with basic count:`,
-              `${operatorName}: ${fileCount} file${
-                fileCount === 1 ? "" : "s"
-              }${uneditedStatus}`
-            );
-
             updateNodeData(id, {
               subtitle: `${operatorName}: ${fileCount} file${
                 fileCount === 1 ? "" : "s"
               }${uneditedStatus}`,
               lastUpdated: Date.now(),
             });
-          } else {
-            console.log(
-              `✅ OperatorNode ${id} keeping existing subtitle:`,
-              data.subtitle
-            );
           }
           // If operator logic has already set a subtitle, don't override it
         }

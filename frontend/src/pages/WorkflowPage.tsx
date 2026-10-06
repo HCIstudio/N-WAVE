@@ -609,12 +609,6 @@ const WorkflowPageContent: React.FC = () => {
         origin,
       } = response.data;
 
-      console.log("Fetched workflow data:", {
-        name,
-        hasNodes: !!fetchedNodes,
-        hasEdges: !!fetchedEdges,
-        hasExecutionSettings: !!executionSettings,
-      });
       const workflowTitle =
         name && name.trim() !== "" ? name : "Untitled Workflow";
       setWorkflowName(workflowTitle);
@@ -675,10 +669,6 @@ const WorkflowPageContent: React.FC = () => {
           // Update the component state with the restored settings
           setExecutionSettings(executionSettings);
 
-          console.log(
-            "Restored execution settings from workflow:",
-            executionSettings
-          );
         } catch (error) {
           console.error("Failed to restore execution settings:", error);
         }
@@ -689,7 +679,6 @@ const WorkflowPageContent: React.FC = () => {
           if (savedSettings) {
             const parsed = JSON.parse(savedSettings);
             setExecutionSettings(parsed);
-            console.log("Loaded execution settings from localStorage:", parsed);
           }
         } catch (error) {
           console.error(
@@ -857,7 +846,6 @@ const WorkflowPageContent: React.FC = () => {
           "executionSettings",
           JSON.stringify(defaultSettings)
         );
-        console.log("Initialized default execution settings in localStorage");
       } catch (error) {
         console.error("Failed to initialize execution settings:", error);
       }
@@ -967,7 +955,6 @@ const WorkflowPageContent: React.FC = () => {
   useEffect(() => {
     const autoSaveTimer = setTimeout(() => {
       if (workflowContext.isDirty && !isSaving && workflowId && !workflowReadOnly) {
-        console.log("Auto-saving workflow...");
         handleSaveWorkflow();
       }
     }, 2000); // Auto-save 2 seconds after changes
@@ -1081,11 +1068,6 @@ const WorkflowPageContent: React.FC = () => {
         );
       }
 
-      console.log(
-        `Transferring ${Object.keys(workflowFiles).length} files to server:`,
-        Object.keys(workflowFiles)
-      );
-
       // Flatten the enhanced execution settings to match backend interface
       const flatExecutionSettings = {
         useDocker: settings.container?.enabled ?? false,
@@ -1100,16 +1082,6 @@ const WorkflowPageContent: React.FC = () => {
         cleanupOnFailure: settings.cleanup?.onFailure ?? true,
         nextflowVersion: settings.nextflow?.version ?? "25.04.4",
       };
-
-      console.log(
-        "Sending flattened execution settings:",
-        flatExecutionSettings
-      );
-      console.log("Original settings structure:", {
-        resources: settings.resources,
-        container: settings.container,
-        output: settings.output,
-      });
 
       // Execute the workflow with file content
       const response = await api.post(
@@ -1131,18 +1103,12 @@ const WorkflowPageContent: React.FC = () => {
 
       // Handle streaming response
       if (typeof response.data === "string") {
-        console.log("Received streaming response from backend");
-
         // Parse the streaming output line by line in real-time
         const lines = response.data.split("\n").filter((l) => l.trim());
 
         lines.forEach((line, index) => {
           // Parse each line immediately
           setTimeout(() => {
-            console.log(
-              `Real-time parsing line ${index + 1}/${lines.length}:`,
-              line
-            );
             executionStatus.parseNextflowOutput(line);
           }, index * 10);
         });
@@ -1193,36 +1159,23 @@ const WorkflowPageContent: React.FC = () => {
       } else {
         // Fallback for older JSON response format
         const parseOutputLines = (stdout: string, stderr = "") => {
-          console.log(
-            "🔍 Parsing real Nextflow output from completed execution..."
-          );
-
           // Combine stdout and stderr for comprehensive parsing
           const allOutput = `${stdout}\n${stderr}`;
           const lines = allOutput.split("\n").filter((l) => l.trim());
-
-          console.log(`📊 Total lines to parse: ${lines.length}`);
-          console.log("📄 Full output to parse:", allOutput);
 
           // Parse all lines to simulate the execution progression rapidly
           lines.forEach((line, index) => {
             // Add small delays to simulate real-time parsing for better UX
             setTimeout(() => {
-              console.log(
-                `📄 Parsing line ${index + 1}/${lines.length}:`,
-                line
-              );
               executionStatus.parseNextflowOutput(line);
             }, index * 50); // 50ms delay between each line for visual effect
           });
 
           // Complete execution after all lines are parsed
           setTimeout(() => {
-            console.log(`🔍 Checking for completion in output: "${allOutput}"`);
             if (
               allOutput.includes("Nextflow execution completed successfully")
             ) {
-              console.log("✅ Detected successful completion from output");
               executionStatus.completeExecution(true);
 
               if (workflowContext.showToast) {
@@ -1250,10 +1203,6 @@ const WorkflowPageContent: React.FC = () => {
         // Store execution ID immediately for cancellation
         if (response.data.executionId) {
           setCurrentExecutionId(response.data.executionId);
-          console.log(
-            "Execution ID set for cancellation:",
-            response.data.executionId
-          );
         }
 
         // Set initial execution result
@@ -1270,15 +1219,9 @@ const WorkflowPageContent: React.FC = () => {
           const { stdout, stderr, success } = response.data;
 
           if (stdout) {
-            console.log(
-              "📥 Received stdout from backend:",
-              stdout.length,
-              "characters"
-            );
             parseOutputLines(stdout, stderr);
           } else if (success) {
             // If success but no stdout, complete immediately
-            console.log("✅ Backend reported successful execution (no output)");
             executionStatus.completeExecution(true);
 
             if (workflowContext.showToast) {
