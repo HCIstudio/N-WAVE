@@ -1,14 +1,16 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { type Document, Schema } from "mongoose";
+import type { JsonObject, WorkflowEdge, WorkflowNode } from "../workflows/types";
 
-// We can use Schema.Types.Mixed for flexible array elements like nodes and edges.
-// For stricter typing, you could define sub-schemas for NodeData and EdgeData.
+// Nodes, edges and execution settings are stored as Schema.Types.Mixed: their
+// shape is owned by the frontend. Request bodies are validated in
+// src/validation/schemas.ts before they reach the model.
 
 export interface IWorkflow extends Document {
   name?: string;
   description?: string;
-  nodes: any[]; // Using any[] which translates to Mixed with Mongoose for flexibility
-  edges: any[]; // Same as above
-  executionSettings?: any; // Execution configuration settings
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  executionSettings?: JsonObject | null;
   originType?: "database" | "builtin" | "imported";
   sourceFormat?: "visual" | "nextflow";
   sourceKey?: string | null;

@@ -1,20 +1,54 @@
-import { Request, Response } from "express";
-import fs from "fs";
-import path from "path";
+import type { Request, Response } from "express";
+import fs from "node:fs";
+import path from "node:path";
 import WorkflowModel from "../models/WorkflowModel";
+import { getErrorMessage } from "../utils/errors";
+import { saveCustomNodeSchema } from "../validation/schemas";
+import { parseBody } from "../validation/validate";
+import type { JsonObject, WorkflowEdge, WorkflowNode } from "../workflows/types";
 
 interface CustomNodeRegistry {
   schemaVersion: number;
   nodes: unknown[];
 }
 
+/** The parts of a stored custom node definition the backend reads. */
+interface CustomNodePort {
+  name: string;
+  label?: string;
+  kind?: string;
+  fileType?: string;
+  filePattern?: string;
+  defaultValue?: unknown;
+}
+
+interface CustomNodeDefinition {
+  id: string;
+  label?: string;
+  icon?: string;
+  processType?: string;
+  inputs?: CustomNodePort[];
+  outputs?: CustomNodePort[];
+}
+
+const asObject = (value: unknown): JsonObject | undefined =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as JsonObject)
+    : undefined;
+
+const getNodeData = (node: WorkflowNode): JsonObject =>
+  asObject(node.data) ?? {};
+
+const isCustomNodeInstance = (node: WorkflowNode, nodeId: string): boolean =>
+  getNodeData(node).customNodeId === nodeId;
+
 export const listCustomNodes = (_req: Request, res: Response): void => {
   try {
     res.json(loadRegistry());
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to load custom nodes",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -23,18 +57,12 @@ export const saveCustomNode = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  try {
-    const node = req.body?.node;
-    if (!node || typeof node !== "object") {
-      res.status(400).json({ message: "Custom node payload is required" });
-      return;
-    }
+  const body = parseBody(saveCustomNodeSchema, req, res);
+  if (!body) return;
 
-    const nodeId = String(node.id ?? "").trim();
-    if (!nodeId) {
-      res.status(400).json({ message: "Custom node id is required" });
-      return;
-    }
+  try {
+    const { node } = body;
+    const nodeId = node.id;
 
     const nodePath = getNodeFilePath(nodeId);
     const existed = fs.existsSync(nodePath);
@@ -46,10 +74,10 @@ export const saveCustomNode = async (
       nodePath,
       updatedWorkflows,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to save custom node",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -76,8 +104,9 @@ export const deleteCustomNode = async (
     let workflowCleanupError: string | undefined;
     try {
       updatedWorkflows = await purgeCustomNodeFromWorkflows(nodeId);
-    } catch (cleanupError: any) {
-      workflowCleanupError = cleanupError?.message || "Workflow cleanup failed";
+    } catch (cleanupError: unknown) {
+      workflowCleanupError =
+        getErrorMessage(cleanupError) || "Workflow cleanup failed";
       console.error(
         `Failed to purge custom node ${nodeId} from saved workflows:`,
         cleanupError
@@ -86,10 +115,10 @@ export const deleteCustomNode = async (
     res
       .status(200)
       .json({ id: nodeId, nodePath, updatedWorkflows, workflowCleanupError });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to delete custom node",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -105,18 +134,18 @@ const purgeCustomNodeFromWorkflows = async (
   for (const workflow of workflows) {
     const removedNodeIds = new Set(
       workflow.nodes
-        .filter((node: any) => node?.data?.customNodeId === nodeId)
-        .map((node: any) => node.id)
+        .filter((node) => isCustomNodeInstance(node, nodeId))
+        .map((node) => node.id)
         .filter(Boolean)
     );
     if (removedNodeIds.size === 0) continue;
 
     workflow.nodes = workflow.nodes.filter(
-      (node: any) => !removedNodeIds.has(node?.id)
+      (node) => !removedNodeIds.has(node.id)
     );
     workflow.edges = workflow.edges.filter(
-      (edge: any) =>
-        !removedNodeIds.has(edge?.source) && !removedNodeIds.has(edge?.target)
+      (edge) =>
+        !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target)
     );
     workflow.markModified("nodes");
     workflow.markModified("edges");
@@ -128,9 +157,9 @@ const purgeCustomNodeFromWorkflows = async (
 };
 
 const updateWorkflowsForCustomNode = async (
-  customNode: any
+  customNode: CustomNodeDefinition
 ): Promise<number> => {
-  const nodeId = String(customNode?.id ?? "").trim();
+  const nodeId = customNode.id.trim();
   if (!nodeId) return 0;
 
   const workflows = await WorkflowModel.find({
@@ -140,27 +169,27 @@ const updateWorkflowsForCustomNode = async (
 
   for (const workflow of workflows) {
     let changed = false;
-    const affectedNodeIds = new Set<string>();
-    const validInputs = new Set(
-      getCustomPathInputs(customNode).map((input: any) => input.name)
+    const affectedNodeIds = new Set<unknown>();
+    const validInputs = new Set<unknown>(
+      getCustomPathInputs(customNode).map((input) => input.name)
     );
-    const validOutputs = new Set(
-      getCustomOutputs(customNode).map((output: any) => output.name)
+    const validOutputs = new Set<unknown>(
+      getCustomOutputs(customNode).map((output) => output.name)
     );
 
-    workflow.nodes = workflow.nodes.map((node: any) => {
-      if (node?.data?.customNodeId !== nodeId) return node;
+    workflow.nodes = workflow.nodes.map((node) => {
+      if (!isCustomNodeInstance(node, nodeId)) return node;
       changed = true;
       affectedNodeIds.add(node.id);
       return applyCustomNodeDefinitionToWorkflowNode(node, customNode);
     });
 
     if (affectedNodeIds.size > 0) {
-      const nextEdges = workflow.edges.filter((edge: any) => {
-        if (affectedNodeIds.has(edge?.source)) {
+      const nextEdges = workflow.edges.filter((edge: WorkflowEdge) => {
+        if (affectedNodeIds.has(edge.source)) {
           return !edge.sourceHandle || validOutputs.has(edge.sourceHandle);
         }
-        if (affectedNodeIds.has(edge?.target)) {
+        if (affectedNodeIds.has(edge.target)) {
           return !edge.targetHandle || validInputs.has(edge.targetHandle);
         }
         return true;
@@ -183,16 +212,17 @@ const updateWorkflowsForCustomNode = async (
 };
 
 const applyCustomNodeDefinitionToWorkflowNode = (
-  node: any,
-  customNode: any
-): any => {
+  node: WorkflowNode,
+  customNode: CustomNodeDefinition
+): WorkflowNode => {
   const valueInputs = getCustomValueInputs(customNode);
-  const previousValues = node?.data?.customNodeValues ?? {};
+  const nodeData = getNodeData(node);
+  const previousValues = asObject(nodeData.customNodeValues) ?? {};
 
   return {
     ...node,
     data: {
-      ...node.data,
+      ...nodeData,
       label: customNode.label,
       subtitle: "Custom node",
       icon: customNode.icon,
@@ -200,19 +230,19 @@ const applyCustomNodeDefinitionToWorkflowNode = (
       customNodeDefinition: customNode,
       customNodeValueInputs: valueInputs,
       customNodeValues: Object.fromEntries(
-        valueInputs.map((input: any) => [
+        valueInputs.map((input) => [
           input.name,
           previousValues[input.name] ?? input.defaultValue ?? "",
         ])
       ),
-      inputs: getCustomPathInputs(customNode).map((input: any) => ({
+      inputs: getCustomPathInputs(customNode).map((input) => ({
         name: input.name,
         label: input.label,
         fileType: input.fileType,
         filePattern: input.filePattern,
         isConnectable: true,
       })),
-      outputs: getCustomOutputs(customNode).map((output: any) => ({
+      outputs: getCustomOutputs(customNode).map((output) => ({
         name: output.name,
         label: output.label,
         fileType: output.fileType,
@@ -223,18 +253,18 @@ const applyCustomNodeDefinitionToWorkflowNode = (
   };
 };
 
-const getCustomPathInputs = (customNode: any): any[] =>
-  Array.isArray(customNode?.inputs)
-    ? customNode.inputs.filter((input: any) => input?.kind === "path")
-    : [];
+const getCustomPathInputs = (
+  customNode: CustomNodeDefinition
+): CustomNodePort[] =>
+  (customNode.inputs ?? []).filter((input) => input.kind === "path");
 
-const getCustomValueInputs = (customNode: any): any[] =>
-  Array.isArray(customNode?.inputs)
-    ? customNode.inputs.filter((input: any) => input?.kind === "val")
-    : [];
+const getCustomValueInputs = (
+  customNode: CustomNodeDefinition
+): CustomNodePort[] =>
+  (customNode.inputs ?? []).filter((input) => input.kind === "val");
 
-const getCustomOutputs = (customNode: any): any[] =>
-  Array.isArray(customNode?.outputs) ? customNode.outputs : [];
+const getCustomOutputs = (customNode: CustomNodeDefinition): CustomNodePort[] =>
+  customNode.outputs ?? [];
 
 const loadRegistry = (): CustomNodeRegistry => {
   const nodeDirectory = getNodeDirectory();
@@ -245,9 +275,9 @@ const loadRegistry = (): CustomNodeRegistry => {
     .readdirSync(nodeDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
     .map((entry) => path.join(nodeDirectory, entry.name))
-    .map((nodePath) => JSON.parse(fs.readFileSync(nodePath, "utf8")))
-    .filter((node) => node && typeof node === "object")
-    .sort((a: any, b: any) =>
+    .map((nodePath): unknown => JSON.parse(fs.readFileSync(nodePath, "utf8")))
+    .filter((node): node is JsonObject => asObject(node) !== undefined)
+    .sort((a, b) =>
       String(a.label ?? a.id ?? "").localeCompare(String(b.label ?? b.id ?? ""))
     );
 

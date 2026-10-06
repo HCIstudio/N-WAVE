@@ -178,6 +178,8 @@ N-WAVE/
 │  └─ src/
 │     ├─ config/            # database and server configuration
 │     ├─ controllers/       # workflow CRUD, execution
+│     ├─ execution/         # Nextflow script normalization + command building
+│     ├─ validation/        # zod request-body schemas
 │     ├─ routes/            # /api/workflows, /api/files, /api/execute
 │     ├─ models/            # Mongoose models
 │     └─ workflows/         # built-in demo, import & materialize logic

@@ -1,7 +1,10 @@
-import { Request, Response } from "express";
+import type { Request, Response } from "express";
 import axios from "axios";
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
+import { getErrorMessage } from "../utils/errors";
+import { installNfCoreModuleSchema } from "../validation/schemas";
+import { parseBody } from "../validation/validate";
 
 type SupportLevel = "full" | "candidate" | "needs_review" | "unsupported";
 
@@ -105,10 +108,10 @@ export const listNfCoreCatalog = (_req: Request, res: Response): void => {
         installed: installedIds.has(entry.id),
       })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to load nf-core catalog",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -141,10 +144,10 @@ export const listInstalledNfCoreModules = (
         ),
       })),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to list installed nf-core modules",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -153,12 +156,11 @@ export const installNfCoreModule = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const body = parseBody(installNfCoreModuleSchema, req, res);
+  if (!body) return;
+
   try {
-    const moduleId = String(req.body?.id ?? "").trim();
-    if (!moduleId) {
-      res.status(400).json({ message: "Module id is required" });
-      return;
-    }
+    const moduleId = body.id;
 
     const catalog = loadCatalog();
     const entry = catalog.modules.find((moduleEntry) => moduleEntry.id === moduleId);
@@ -212,10 +214,10 @@ export const installNfCoreModule = async (
       installed: installedEntry,
       manifest,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to install nf-core module",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -289,7 +291,7 @@ const enrichInstalledManifest = (
     return manifest;
   }
 
-  const currentManifest = manifest as Record<string, any>;
+  const currentManifest = manifest as Record<string, unknown>;
   const refreshedManifest = buildAdapterManifest(catalogEntry);
 
   return {
@@ -301,7 +303,7 @@ const enrichInstalledManifest = (
     source: refreshedManifest.source,
     inputGroups: refreshedManifest.inputGroups,
     defaults: {
-      ...currentManifest.defaults,
+      ...(currentManifest.defaults as Record<string, unknown> | undefined),
       nwaveNfCoreSupportsExtArgs:
         refreshedManifest.defaults.nwaveNfCoreSupportsExtArgs,
       nwaveNfCoreExtArgNames: refreshedManifest.defaults.nwaveNfCoreExtArgNames,
@@ -320,12 +322,12 @@ const downloadGitHubDirectory = async (
   const repoMatch = entry.source.repository.match(
     /^https:\/\/github\.com\/([^/]+)\/([^/.]+)(?:\.git)?$/
   );
-  if (!repoMatch) {
+  const owner = repoMatch?.[1];
+  const repo = repoMatch?.[2];
+  if (!owner || !repo) {
     throw new Error(`Unsupported module repository: ${entry.source.repository}`);
   }
 
-  const owner = repoMatch[1]!;
-  const repo = repoMatch[2]!;
   await downloadGitHubContents({
     owner,
     repo,

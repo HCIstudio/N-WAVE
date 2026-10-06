@@ -1,6 +1,9 @@
-import { Request, Response } from "express";
-import WorkflowModel, { IWorkflow } from "../models/WorkflowModel";
+import type { Request, Response } from "express";
+import WorkflowModel, { type IWorkflow } from "../models/WorkflowModel";
 import mongoose from "mongoose";
+import { getErrorMessage } from "../utils/errors";
+import { createWorkflowSchema, updateWorkflowSchema } from "../validation/schemas";
+import { parseBody } from "../validation/validate";
 import {
   getBuiltinWorkflowById,
   isBuiltinWorkflowId,
@@ -12,50 +15,19 @@ export const saveWorkflow = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const body = parseBody(createWorkflowSchema, req, res);
+  if (!body) return;
+
   try {
-    const {
-      name,
-      description,
-      nodes,
-      edges,
-      executionSettings,
-      originType,
-      sourceFormat,
-      sourceKey,
-      rawSource,
-      importWarnings,
-      isBuiltin,
-      isReadOnly,
-    } = req.body;
-
-    // Basic validation
-    if (!nodes || !edges) {
-      res.status(400).json({ message: "Nodes and edges are required" });
-      return;
-    }
-
-    const newWorkflow = new WorkflowModel({
-      name,
-      description,
-      nodes,
-      edges,
-      executionSettings,
-      originType,
-      sourceFormat,
-      sourceKey,
-      rawSource,
-      importWarnings,
-      isBuiltin,
-      isReadOnly,
-    });
+    const newWorkflow = new WorkflowModel(body);
 
     const savedWorkflow = await newWorkflow.save();
     res.status(201).json(toWorkflowDescriptor(savedWorkflow));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error saving workflow:", error);
     res.status(500).json({
       message: "Server error while saving workflow",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -91,17 +63,17 @@ export const getWorkflowById = async (
     }
 
     res.status(200).json(toWorkflowDescriptor(workflow));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error fetching workflow by ID ${req.params.id}:`, error);
     res.status(500).json({
       message: "Server error while fetching workflow",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
 
 export const getAllWorkflows = async (
-  req: Request,
+  _req: Request,
   res: Response
 ): Promise<void> => {
   try {
@@ -110,11 +82,11 @@ export const getAllWorkflows = async (
     res
       .status(200)
       .json([...builtinWorkflows, ...workflows.map((workflow) => toWorkflowDescriptor(workflow))]);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Error fetching all workflows:", error);
     res.status(500).json({
       message: "Server error while fetching all workflows",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -123,9 +95,12 @@ export const updateWorkflow = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const body = parseBody(updateWorkflowSchema, req, res);
+  if (!body) return;
+
   try {
     const workflowId = req.params.id;
-    const { name, description, nodes, edges, executionSettings } = req.body;
+    const { name, description, nodes, edges, executionSettings } = body;
 
     if (!workflowId) {
       res.status(400).json({ message: "Invalid workflow ID format" });
@@ -145,10 +120,8 @@ export const updateWorkflow = async (
       return;
     }
 
-    // Basic validation for update data (at least one field should be present if we want to be strict)
-    // For now, we allow partial updates. If nodes/edges are provided, they replace the old ones.
-    // If name is provided, it updates the name.
-
+    // Partial update: provided nodes/edges replace the stored ones. The schema
+    // guarantees at least one field is present.
     const updateData: Partial<IWorkflow> = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
@@ -156,11 +129,6 @@ export const updateWorkflow = async (
     if (edges !== undefined) updateData.edges = edges;
     if (executionSettings !== undefined)
       updateData.executionSettings = executionSettings;
-
-    if (Object.keys(updateData).length === 0) {
-      res.status(400).json({ message: "No update data provided" });
-      return;
-    }
 
     const updatedWorkflow: IWorkflow | null =
       await WorkflowModel.findByIdAndUpdate(
@@ -175,11 +143,11 @@ export const updateWorkflow = async (
     }
 
     res.status(200).json(toWorkflowDescriptor(updatedWorkflow));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error updating workflow ${req.params.id}:`, error);
     res.status(500).json({
       message: "Server error while updating workflow",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -218,11 +186,11 @@ export const deleteWorkflow = async (
     }
 
     res.status(200).json({ message: "Workflow deleted successfully" });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error deleting workflow ${req.params.id}:`, error);
     res.status(500).json({
       message: "Server error while deleting workflow",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };
@@ -290,11 +258,11 @@ export const duplicateWorkflow = async (
 
     const savedWorkflow = await duplicatedWorkflow.save();
     res.status(201).json(toWorkflowDescriptor(savedWorkflow));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`Error duplicating workflow ${req.params.id}:`, error);
     res.status(500).json({
       message: "Server error while duplicating workflow",
-      error: error.message,
+      error: getErrorMessage(error),
     });
   }
 };

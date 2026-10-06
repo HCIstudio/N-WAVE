@@ -1,4 +1,4 @@
-import express, { Router } from "express";
+import express, { type Router } from "express";
 import multer from "multer";
 import File from "../models/File";
 
@@ -20,8 +20,8 @@ router.post("/register", upload.single("file"), async (req, res) => {
     const tags = req.body.tags ? req.body.tags.split(",") : [];
 
     // Generate unique filename for metadata tracking
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const filename = "file-" + uniqueSuffix;
+    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+    const filename = `file-${uniqueSuffix}`;
 
     const newFile = new File({
       originalName: originalname,

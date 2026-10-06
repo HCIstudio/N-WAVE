@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import dotenv from "dotenv";
-import path from "path";
+import path from "node:path";
+import { getErrorMessage } from "../utils/errors";
 
 const connectDB = async () => {
   try {
@@ -20,8 +21,8 @@ const connectDB = async () => {
     await mongoose.connect(mongoURI);
 
     console.log("MongoDB Connected...");
-  } catch (err: any) {
-    console.error("MongoDB Connection Error:", err.message);
+  } catch (err: unknown) {
+    console.error("MongoDB Connection Error:", getErrorMessage(err));
     process.exit(1);
   }
 };
