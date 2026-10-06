@@ -52,9 +52,11 @@ Guidelines:
 - **Add tests with your change.** Tests live next to the code as `*.test.ts(x)`. Backend route
   tests use `supertest` against `createApp()` with the Mongoose model mocked, so they need no
   database or Docker.
-- **Keep lint green; don't add new rule exceptions.** Several Biome rules are still disabled in
-  `frontend/biome.json` while the existing code is cleaned up (tracked in
-  [#20](https://github.com/HCIstudio/N-WAVE/issues/20)). Re-enabling one is a welcome PR.
+- **Keep lint green; don't add new rule exceptions.** `noExplicitAny` is still disabled in
+  `frontend/biome.json` while the existing code is typed (tracked in
+  [#20](https://github.com/HCIstudio/N-WAVE/issues/20)). A `biome-ignore` needs a reason —
+  for hooks, use it only for deliberate re-run triggers, and prefer `useLatestRef` for
+  callbacks an effect should call without re-running.
 - **No debug logging.** `console.log`/`console.info` fail lint; use `console.warn` or
   `console.error` for messages that should stay.
 - **Validate API input.** New or changed request bodies get a zod schema in

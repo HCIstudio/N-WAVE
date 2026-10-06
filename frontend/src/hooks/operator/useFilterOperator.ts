@@ -12,17 +12,6 @@ export const useFilterOperator = (
     return nodeData.selectedFilterFiles || [];
   });
 
-  // Create a key for tracking file changes
-  const incomingFilesKey = useMemo(
-    () =>
-      incomingFiles
-        .map(
-          (f) => `${f.name}:${f.size || 0}:${(f.content || "").slice(0, 100)}`
-        )
-        .join("|"),
-    [incomingFiles]
-  );
-
   const {
     filterText = "",
     filterMode = "contains",
@@ -54,7 +43,7 @@ export const useFilterOperator = (
         setSelectedFiles([]);
       }
     }
-  }, [incomingFilesKey, selectedFiles]);
+  }, [incomingFiles, selectedFiles]);
 
   const filteredFiles = useMemo((): FileObject[] => {
     const filesToProcess =
@@ -122,7 +111,6 @@ export const useFilterOperator = (
     filterText,
     filterMode,
     filterNegate,
-    nodeData._refreshTimestamp,
   ]);
 
   useProcessOperatorLogic(

@@ -62,7 +62,6 @@ export const useMapOperator = (
     mapChangeCase,
     mapReplaceFind,
     mapReplaceWith,
-    nodeData._refreshTimestamp,
   ]);
 
   useProcessOperatorLogic(mappedFiles, "map", onSave, incomingFiles);

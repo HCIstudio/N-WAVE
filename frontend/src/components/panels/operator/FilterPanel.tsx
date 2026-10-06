@@ -43,14 +43,14 @@ const FilterPanelContent: React.FC<InjectedOperatorProps> = ({
 
       handleDataChange("selectedFilterFiles", newSelection);
     },
-    [selectedFilterFiles, handleDataChange, nodeId]
+    [selectedFilterFiles, handleDataChange]
   );
 
   const handleSelectAll = useCallback(
     (isChecked: boolean) => {
       handleDataChange("selectedFilterFiles", isChecked ? incomingFiles : []);
     },
-    [incomingFiles, handleDataChange, nodeId]
+    [incomingFiles, handleDataChange]
   );
 
   // Simple file selection checking - match by name (this preserves selections across file re-uploads)

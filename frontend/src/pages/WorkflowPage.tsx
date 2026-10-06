@@ -28,7 +28,7 @@ import {
   WorkflowExecutionErrorNotification,
 } from "../components/common";
 import ExecutionStatusPanel from "../components/common/workflow/ExecutionStatusPanel";
-import { useExecutionStatus } from "../hooks";
+import { useExecutionStatus, useLatestRef } from "../hooks";
 import { generateNextflowScript } from "../generators";
 import { Loader } from "lucide-react";
 import { type ExecutionSettings, ExecutionMode } from "../types/execution";
@@ -143,7 +143,10 @@ const WorkflowPageContent: React.FC = () => {
   } = workflowContext;
   // Errors from user actions (save, duplicate, script generation) are shown as
   // toasts so the editor stays usable.
-  const showError = (message: string) => showToast(message, "error");
+  const showError = useCallback(
+    (message: string) => showToast(message, "error"),
+    [showToast]
+  );
 
   const [openPanelNodeIds, setOpenPanelNodeIds] = useState<string[]>([]);
   const [workflowName, setWorkflowName] = useState("");
@@ -408,7 +411,7 @@ const WorkflowPageContent: React.FC = () => {
       showError("Failed to remove tutorial workflow copy.");
       console.error(err);
     }
-  }, [navigate, workflowId]);
+  }, [navigate, workflowId, showError]);
 
   const setTutorialStep = useCallback((stepIndex: number | null) => {
     if (stepIndex === null) {
@@ -472,7 +475,7 @@ const WorkflowPageContent: React.FC = () => {
       setIsDuplicatingReadOnly(false);
       return false;
     }
-  }, [workflowId, workflowReadOnly, isDuplicatingReadOnly, navigate]);
+  }, [workflowId, workflowReadOnly, isDuplicatingReadOnly, navigate, showError]);
 
   const handleTutorialForward = useCallback(() => {
     if (tutorialStepIndex === 4 && workflowReadOnly) {
@@ -728,7 +731,7 @@ const WorkflowPageContent: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [workflowId, setNodes, setEdges, setIsDirty, setExecutionSettings]);
+  }, [workflowId, setNodes, setEdges, setIsDirty]);
 
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
@@ -983,16 +986,28 @@ const WorkflowPageContent: React.FC = () => {
     }
   };
 
-  // Auto-save workflow when important changes are made
+  // Auto-save 2 seconds after the last change. The timer restarts whenever
+  // the graph changes; it calls the latest handleSaveWorkflow so it never
+  // saves a stale snapshot.
+  const handleSaveWorkflowRef = useLatestRef(handleSaveWorkflow);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: nodes and edges restart the debounce timer.
   useEffect(() => {
     const autoSaveTimer = setTimeout(() => {
       if (workflowContext.isDirty && !isSaving && workflowId && !workflowReadOnly) {
-        handleSaveWorkflow();
+        handleSaveWorkflowRef.current();
       }
-    }, 2000); // Auto-save 2 seconds after changes
+    }, 2000);
 
     return () => clearTimeout(autoSaveTimer);
-  }, [workflowContext.isDirty, isSaving, workflowId, nodes, edges, workflowReadOnly]);
+  }, [
+    workflowContext.isDirty,
+    isSaving,
+    workflowId,
+    nodes,
+    edges,
+    workflowReadOnly,
+    handleSaveWorkflowRef,
+  ]);
 
   const handleDownloadScript = () => {
     try {

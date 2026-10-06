@@ -3,10 +3,9 @@ name: Test
 # The required gate for merging into main. It runs on every pull request (and on
 # main as a safety net): lint, unit tests, typecheck, and build — all blocking.
 #
-# The Biome config (frontend/biome.json) still disables a few rules that the
-# existing code violates broadly (noExplicitAny, exhaustive-deps). Those
-# are tracked tech debt (#20): re-enable them one at a time as the code is
-# cleaned up.
+# The Biome config (frontend/biome.json) still disables suspicious/
+# noExplicitAny, which the existing code violates broadly. It is tracked tech
+# debt (#20): re-enable it once the remaining explicit anys are typed.
 on:
   pull_request:
   push:

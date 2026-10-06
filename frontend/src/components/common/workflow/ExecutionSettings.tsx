@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useEffect, useId } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import {
   CheckCircle,
   XCircle,
@@ -69,7 +69,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   const [activeTab, setActiveTab] = useState<string>("execution");
   const [showDirectoryHelp, setShowDirectoryHelp] = useState(false);
 
-  const checkStatus = async () => {
+  const checkStatus = useCallback(async () => {
     setLoading(true);
     try {
       const [dockerResponse, nextflowResponse] = await Promise.all([
@@ -93,11 +93,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     checkStatus();
-  }, []);
+  }, [checkStatus]);
 
   const commonContainerImages = [
     { value: "ubuntu:22.04", label: "Ubuntu 22.04 (Recommended)" },

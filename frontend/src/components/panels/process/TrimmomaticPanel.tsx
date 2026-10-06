@@ -59,7 +59,8 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
     onSave(node.id, updateData);
   };
 
-  // Auto-save on changes
+  // Auto-save whenever one of the settings below changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the settings are the autosave triggers; handleSave reads them.
   React.useEffect(() => {
     handleSave();
   }, [

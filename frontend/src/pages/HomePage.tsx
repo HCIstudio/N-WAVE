@@ -103,7 +103,7 @@ const HomePage: React.FC = () => {
     setActionError(detail ? `${message} ${detail}` : message);
   };
 
-  const fetchWorkflows = async () => {
+  const fetchWorkflows = useCallback(async () => {
     try {
       setLoading(true);
       const response = await api.get("/workflows");
@@ -115,17 +115,19 @@ const HomePage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchWorkflows();
-  }, []);
+  }, [fetchWorkflows]);
 
   // Focus the name field when a card enters edit mode.
   useEffect(() => {
     if (editingId) nameTextareaRef.current?.focus();
   }, [editingId]);
 
+  // Grow the edit textareas to fit their text as it changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: editData is the resize trigger.
   useEffect(() => {
     const resizeTextarea = (ref: React.RefObject<HTMLTextAreaElement>) => {
       if (ref.current) {

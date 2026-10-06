@@ -74,7 +74,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
     }
     const selectedFile = orderedFiles.find((file) => file.name === selectedFileName);
     return selectedFile ? getContentTypeForFile(selectedFile.name) : "text";
-  }, [displayedContent, selectedFileName, orderedFiles]);
+  }, [selectedFileName, orderedFiles]);
 
   const handleDownload = () => {
     if (!node) return;
