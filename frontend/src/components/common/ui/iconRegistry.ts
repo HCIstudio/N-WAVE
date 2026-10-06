@@ -22,6 +22,7 @@ import {
   Terminal,
   Trash2,
   Wand,
+  Workflow,
   X,
 } from "lucide-react";
 
@@ -54,5 +55,6 @@ export const iconRegistry: Record<string, LucideIcon> = {
   Terminal,
   Trash2,
   Wand,
+  Workflow,
   X,
 };

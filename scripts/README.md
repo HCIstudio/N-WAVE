@@ -1,8 +1,10 @@
 # nf-core modules in N-WAVE
 
-N-WAVE can use any module from [nf-core/modules](https://github.com/nf-core/modules) as a
-node. This page explains how modules are turned into nodes, what the generated code does with
-their inputs, and how to add a manual adapter for a module the automatic path gets wrong.
+N-WAVE can use any module or subworkflow from
+[nf-core/modules](https://github.com/nf-core/modules) as a node. This page explains how
+modules are turned into nodes, what the generated code does with their inputs, how
+subworkflows work, and how to add a manual adapter for a module the automatic path gets
+wrong.
 
 ## The catalog
 
@@ -111,6 +113,55 @@ In the online demo there is no backend: the library installs modules into the br
 GitHub at the catalog's commit. Export Project fetches the remaining module files the same
 way. The catalog itself is a static asset loaded the first time
 the library is opened.
+
+## Subworkflows
+
+The catalog also lists the subworkflows in `subworkflows/nf-core/` (the `subworkflows` array,
+catalog schema 3), parsed by `nfcoreSubworkflowParser.mjs`
+(`node --test scripts/nfcoreSubworkflowParser.test.mjs`, also run in CI). For each one it
+records:
+
+- **takes**, in call order. A take is a *value* when its comment says so (`// val: …`,
+  `// bool: …`) or, without a `channel` comment, when `meta.yml` types it as a string,
+  boolean or number; every other take is a *channel*.
+- **emits**, the node's outputs.
+- **components**: the modules (`../../../modules/nf-core/<module>`) and subworkflows
+  (`../<name>`) it includes. A subworkflow that includes a plugin, a local file or something
+  that can't be installed is unsupported; `installability.reasons` says why.
+
+A subworkflow node has an input port per channel take and a setting per value take, like a
+module's `val` inputs. Each channel input also has a setting for the expression passed while
+nothing is connected, shaped after the take's comment: `// channel: [ val(meta), path(fasta) ]`
+gives `Channel.value([[:], []])`, which nf-core modules read as "no file". The node waits for
+at least one connection, and several connections to one input are mixed. The generated code
+includes the subworkflow under an alias and calls it like a module:
+
+```groovy
+include { BAM_SORT_STATS_SAMTOOLS as NFCORE_SUBWORKFLOW_BAM_SORT_STATS_SAMTOOLS_N1 } from './subworkflows/nf-core/bam_sort_stats_samtools/main'
+
+workflow {
+    NFCORE_SUBWORKFLOW_BAM_SORT_STATS_SAMTOOLS_N1(bams, Channel.value([[:], [], []]))
+    n1_bam = NFCORE_SUBWORKFLOW_BAM_SORT_STATS_SAMTOOLS_N1.out.bam
+}
+```
+
+Processes inside the subworkflow are named `<alias>:<PROCESS>`. The node's **Process
+config** setting adds selectors for them to the `process` config, for example
+`withName: '.*:SAMTOOLS_SORT' { ext.prefix = { "${meta.id}.sorted" } }`. The `nextflow.config`
+files some subworkflows ship are suggestions written for nf-core pipelines; they are copied
+with the subworkflow but not applied.
+
+Installing a subworkflow also installs the modules and subworkflows it includes (directly or
+through nested subworkflows) that aren't installed yet, at the catalog's commit. They appear
+in the node menu as well. Installed subworkflows live in
+`$NWAVE_DATA_DIR/nf-core/subworkflows/nf-core/<name>`. Before a run, the backend installs
+missing subworkflows with what they include, and copies them into the run's
+`subworkflows/nf-core/` next to `modules/nf-core/`. Export Project does the same, reading
+each subworkflow's includes to find the files it needs.
+
+**Convert to custom node** works on subworkflow nodes too: the custom node holds the
+workflow, renamed, with its includes rewritten relative to `main.nf`; its takes, values,
+placeholders and process config are kept.
 
 ## Manual adapters
 

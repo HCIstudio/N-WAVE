@@ -309,7 +309,7 @@ export function getValueInputs(inputGroups, metaInputs) {
   );
 }
 
-function toValueType(metaType) {
+export function toValueType(metaType) {
   switch (metaType.toLowerCase()) {
     case "boolean":
       return "boolean";
@@ -327,7 +327,7 @@ function toValueType(metaType) {
 }
 
 /** Default from the description ("(default= gene_id)"), else by type. */
-function defaultValueFor(type, description) {
+export function defaultValueFor(type, description) {
   const documented = description.match(
     /\bdefault\s*[=:]\s*["'`]?([^"'`),\s]+)/i
   )?.[1];

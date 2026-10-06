@@ -12,6 +12,7 @@ import {
   type NfCoreModuleInputGroup,
   type NfCoreValueInput,
 } from "./nfcore/inputChannels";
+import type { NfCoreSubworkflowTake } from "./nfcore/subworkflow";
 
 export type {
   NfCoreModuleInputGroup,
@@ -53,6 +54,8 @@ export interface NfCoreModuleAdapter {
 
 export interface NfCoreAdapterManifest {
   schemaVersion: number;
+  /** "subworkflow" for nf-core subworkflows; modules have none. */
+  kind?: "module" | "subworkflow";
   id: string;
   label: string;
   description: string;
@@ -91,6 +94,10 @@ export interface NfCoreAdapterManifest {
     label?: string;
   }>;
   defaults?: Partial<NodeData>;
+  /** Subworkflows: every `take`, in call order. */
+  takes?: NfCoreSubworkflowTake[];
+  /** Subworkflows: the modules and subworkflows included directly. */
+  components?: { modules: string[]; subworkflows: string[] };
 }
 
 export const fastqcNfCoreAdapter: NfCoreModuleAdapter = {

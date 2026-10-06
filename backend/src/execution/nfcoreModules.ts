@@ -1,8 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-// Where nf-core module files live on the backend: modules installed from the
-// library, under the N-WAVE data dir. Runs install missing modules first
+// Where nf-core module and subworkflow files live on the backend: installed
+// from the library, under the N-WAVE data dir. Runs install missing modules first
 // (see ensureModulesInstalled in src/nfcore/library.ts).
 
 /** Root of N-WAVE's persistent data (installed modules, indexes). */
@@ -35,4 +35,14 @@ export const resolveNfCoreModuleDir = (moduleName: string): string => {
     );
   }
   return dir;
+};
+
+const installedSubworkflowRoot = (): string =>
+  path.join(getNwaveDataRoot(), "nf-core", "subworkflows", "nf-core");
+
+/** Directory holding an installed subworkflow's files, or null. */
+export const findNfCoreSubworkflowDir = (name: string): string | null => {
+  if (!/^[A-Za-z0-9_-]+$/.test(name)) return null;
+  const candidate = path.join(installedSubworkflowRoot(), name);
+  return fs.existsSync(path.join(candidate, "main.nf")) ? candidate : null;
 };

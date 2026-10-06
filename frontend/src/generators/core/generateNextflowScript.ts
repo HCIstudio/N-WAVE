@@ -618,7 +618,11 @@ function getInvocationArguments(invocation: string): string[] {
     return [];
   }
 
-  const rhs = getInvocationExpression(trimmed);
+  // String literals ('gene_id', "${params.x}") hold no channel names.
+  const rhs = getInvocationExpression(trimmed).replace(
+    /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g,
+    "''",
+  );
   const candidatePattern = /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g;
   const lhsDefinitions = new Set<string>();
   const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);

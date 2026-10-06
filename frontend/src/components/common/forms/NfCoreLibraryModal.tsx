@@ -7,6 +7,7 @@ import {
   refreshInstalledNfCoreNodes,
   uninstallNfCoreModule,
   type NfCoreCatalogModule,
+  type NfCoreCatalogSubworkflow,
 } from "../../../api/nfcore";
 import { getNfCoreInputPorts } from "../../../registry/nfcore/manifest";
 import DynamicIcon from "../ui/DynamicIcon";
@@ -33,6 +34,10 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
   onInstalled,
 }) => {
   const [catalog, setCatalog] = useState<NfCoreCatalogModule[]>([]);
+  const [subworkflows, setSubworkflows] = useState<NfCoreCatalogSubworkflow[]>(
+    []
+  );
+  const [view, setView] = useState<"modules" | "subworkflows">("modules");
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [installingId, setInstallingId] = useState<string | null>(null);
@@ -46,7 +51,10 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
     setIsLoading(true);
     setError(null);
     getNfCoreCatalog()
-      .then((response) => setCatalog(response.modules))
+      .then((response) => {
+        setCatalog(response.modules);
+        setSubworkflows(response.subworkflows ?? []);
+      })
       .catch((catalogError: unknown) => {
         setError(getErrorMessage(catalogError, "Failed to load nf-core catalog"));
       })
@@ -81,27 +89,60 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
         return left.id.localeCompare(right.id);
       });
   }, [catalog, searchTerm]);
-  const pageCount = Math.max(1, Math.ceil(filteredModules.length / pageSize));
-  const currentPage = Math.min(page, pageCount - 1);
-  const visibleModules = filteredModules.slice(
-    currentPage * pageSize,
-    currentPage * pageSize + pageSize
-  );
-
-  const setInstalled = (id: string, installed: boolean) =>
-    setCatalog((current) =>
-      current.map((candidate) =>
-        candidate.id === id ? { ...candidate, installed } : candidate
+  const filteredSubworkflows = useMemo(() => {
+    const normalizedSearch = searchTerm.trim().toLowerCase();
+    return subworkflows
+      .filter(
+        (subworkflow) =>
+          !normalizedSearch ||
+          [
+            subworkflow.id,
+            subworkflow.label,
+            subworkflow.description,
+            subworkflow.workflowName,
+            ...subworkflow.keywords,
+            ...subworkflow.components.modules,
+          ]
+            .join(" ")
+            .toLowerCase()
+            .includes(normalizedSearch)
       )
-    );
+      .sort((left, right) => {
+        if (left.installed !== right.installed) return left.installed ? -1 : 1;
+        if (left.support !== right.support) {
+          return supportRank(left.support) - supportRank(right.support);
+        }
+        return left.id.localeCompare(right.id);
+      });
+  }, [subworkflows, searchTerm]);
+  const matchCount =
+    view === "modules" ? filteredModules.length : filteredSubworkflows.length;
+  const pageCount = Math.max(1, Math.ceil(matchCount / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const pageSlice = <T,>(items: T[]) =>
+    items.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+  const visibleModules = view === "modules" ? pageSlice(filteredModules) : [];
+  const visibleSubworkflows =
+    view === "subworkflows" ? pageSlice(filteredSubworkflows) : [];
 
-  const handleUninstall = async (module: NfCoreCatalogModule) => {
+  const setInstalled = (ids: string[], installed: boolean) => {
+    const update = <T extends { id: string; installed?: boolean }>(
+      current: T[]
+    ) =>
+      current.map((candidate) =>
+        ids.includes(candidate.id) ? { ...candidate, installed } : candidate
+      );
+    setCatalog(update);
+    setSubworkflows(update);
+  };
+
+  const handleUninstall = async (module: { id: string }) => {
     setInstallingId(module.id);
     setError(null);
     setNotice(null);
     try {
       await uninstallNfCoreModule(module.id);
-      setInstalled(module.id, false);
+      setInstalled([module.id], false);
       setNotice(
         `Removed ${module.id}. Workflows that use it need it reinstalled to generate code.`
       );
@@ -113,15 +154,19 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
     }
   };
 
-  const handleInstall = async (module: NfCoreCatalogModule) => {
+  const handleInstall = async (module: { id: string }) => {
     setInstallingId(module.id);
     setError(null);
     setNotice(null);
     try {
-      await installNfCoreModule(module.id);
+      const { dependencies } = await installNfCoreModule(module.id);
       await refreshInstalledNfCoreNodes();
-      setInstalled(module.id, true);
-      setNotice(`Installed ${module.id}. It is now in the node menu.`);
+      setInstalled([module.id, ...dependencies], true);
+      setNotice(
+        dependencies.length > 0
+          ? `Installed ${module.id} and what it includes (${dependencies.join(", ")}). They are now in the node menu.`
+          : `Installed ${module.id}. It is now in the node menu.`
+      );
       onInstalled();
     } catch (installError: unknown) {
       setError(getErrorMessage(installError, `Failed to install ${module.id}`));
@@ -155,17 +200,49 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
         </div>
 
         <div className="border-b border-accent p-3">
+          <div
+            role="tablist"
+            aria-label="nf-core library sections"
+            className="mb-2 flex gap-2"
+          >
+            {(["modules", "subworkflows"] as const).map((section) => (
+              <button
+                key={section}
+                type="button"
+                role="tab"
+                aria-selected={view === section}
+                onClick={() => {
+                  setView(section);
+                  setPage(0);
+                }}
+                className={`rounded-md px-3 py-1.5 text-sm ${
+                  view === section
+                    ? "bg-nextflow-green/15 text-nextflow-green"
+                    : "text-text-light hover:bg-accent"
+                }`}
+              >
+                {section === "modules"
+                  ? `Modules (${catalog.length})`
+                  : `Subworkflows (${subworkflows.length})`}
+              </button>
+            ))}
+          </div>
           <SearchInput
             value={searchTerm}
             onChange={(event) => {
               setSearchTerm(event.target.value);
               setPage(0);
             }}
-            placeholder="Search nf-core modules..."
+            placeholder={
+              view === "modules"
+                ? "Search nf-core modules..."
+                : "Search nf-core subworkflows..."
+            }
           />
           <div className="mt-2 flex items-center justify-between text-xs text-text-light">
             <span>
-              Showing {visibleModules.length} of {filteredModules.length} matches
+              Showing {visibleModules.length + visibleSubworkflows.length} of{" "}
+              {matchCount} matches
             </span>
             {isLoading && <span>Loading catalog...</span>}
           </div>
@@ -295,9 +372,103 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
             );
           })}
 
-          {!isLoading && filteredModules.length === 0 && (
+          {visibleSubworkflows.map((subworkflow) => {
+            const isInstalling = installingId === subworkflow.id;
+            const isInstalled = Boolean(subworkflow.installed);
+            const canInstall =
+              subworkflow.installability?.automatic !== false && !isInstalled;
+            const channelTakes = subworkflow.takes.filter(
+              (take) => take.kind === "channel"
+            ).length;
+            const includes = [
+              ...subworkflow.components.modules,
+              ...subworkflow.components.subworkflows,
+            ];
+
+            return (
+              <div
+                key={subworkflow.id}
+                className="grid grid-cols-[1fr_auto] gap-3 border-b border-accent/60 px-3 py-3 last:border-b-0"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-sm font-medium text-text">
+                      {subworkflow.label}
+                    </h3>
+                    <span className="rounded-md border border-accent px-2 py-0.5 text-xs text-text-light">
+                      {subworkflow.id}
+                    </span>
+                    {isInstalled && (
+                      <span className="rounded-md bg-nextflow-green/15 px-2 py-0.5 text-xs text-nextflow-green">
+                        Installed
+                      </span>
+                    )}
+                    {subworkflow.support === "unsupported" && (
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-xs ${supportClass(
+                          subworkflow.support
+                        )}`}
+                      >
+                        {supportLabels[subworkflow.support]}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 line-clamp-2 text-sm text-text-light">
+                    {subworkflow.description || "No description available."}
+                  </p>
+                  <p className="mt-1 text-xs text-text-light">
+                    {subworkflow.workflowName} - inputs {channelTakes}
+                    {subworkflow.takes.length > channelTakes
+                      ? ` - settings ${subworkflow.takes.length - channelTakes}`
+                      : ""}{" "}
+                    - outputs {subworkflow.emits.length}
+                  </p>
+                  {includes.length > 0 && (
+                    <p className="mt-1 truncate text-xs text-text-light">
+                      Includes {includes.join(", ")}
+                    </p>
+                  )}
+                  {subworkflow.installability?.automatic === false &&
+                    subworkflow.installability.reasons.length > 0 && (
+                      <p className="mt-1 text-xs text-yellow-200">
+                        {subworkflow.installability.reasons[0]}
+                      </p>
+                    )}
+                </div>
+                {isInstalled ? (
+                  <button
+                    type="button"
+                    disabled={isInstalling}
+                    onClick={() => handleUninstall(subworkflow)}
+                    aria-label={`Remove ${subworkflow.id}`}
+                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isInstalling ? "Removing..." : "Remove"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!canInstall || isInstalling}
+                    onClick={() => handleInstall(subworkflow)}
+                    aria-label={
+                      canInstall ? `Install ${subworkflow.id}` : undefined
+                    }
+                    className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isInstalling
+                      ? "Installing..."
+                      : canInstall
+                        ? "Install"
+                        : "Unsupported"}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {!isLoading && matchCount === 0 && (
             <p className="p-6 text-center text-sm text-text-light">
-              No nf-core modules match the current search.
+              No nf-core {view} match the current search.
             </p>
           )}
         </div>

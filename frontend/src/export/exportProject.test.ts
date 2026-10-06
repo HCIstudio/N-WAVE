@@ -8,6 +8,7 @@ import {
   buildProjectFiles,
   extractNextflowConfig,
   getReferencedNfCoreModules,
+  getReferencedNfCoreSubworkflows,
   toProjectName,
   zipProject,
 } from "./exportProject";
@@ -133,6 +134,87 @@ describe("buildProjectFiles", () => {
       moduleFiles: {},
     });
     expect(Object.keys(unsafe).some((path) => path.includes(".."))).toBe(false);
+  });
+});
+
+describe("projects with nf-core subworkflows", () => {
+  const subworkflowScript = `include { BAM_SORT_STATS_SAMTOOLS as SORT_N1 } from './subworkflows/nf-core/bam_sort_stats_samtools/main'
+include { FASTQC as FASTQC_N2 } from './modules/nf-core/fastqc/main'
+
+workflow {
+    SORT_N1(ch_bam, Channel.value([[:], [], []]))
+}
+`;
+  const subworkflowFiles = {
+    bam_sort_stats_samtools: {
+      "main.nf": [
+        "include { SAMTOOLS_SORT } from '../../../modules/nf-core/samtools/sort/main'",
+        "include { BAM_STATS_SAMTOOLS } from '../bam_stats_samtools/main'",
+        "workflow BAM_SORT_STATS_SAMTOOLS {}",
+      ].join("\n"),
+      "nextflow.config": "process {}",
+    },
+    bam_stats_samtools: {
+      "main.nf":
+        "include { SAMTOOLS_STATS } from '../../../modules/nf-core/samtools/stats'\nworkflow BAM_STATS_SAMTOOLS {}",
+    },
+  };
+  const modules = {
+    fastqc: { "main.nf": "process FASTQC {}" },
+    "samtools/sort": { "main.nf": "process SAMTOOLS_SORT {}" },
+    "samtools/stats": { "main.nf": "process SAMTOOLS_STATS {}" },
+  };
+
+  it("lists the subworkflows a script includes", () => {
+    expect(getReferencedNfCoreSubworkflows(subworkflowScript)).toEqual([
+      "bam_sort_stats_samtools",
+    ]);
+  });
+
+  it("adds the subworkflows and every module they include", () => {
+    const files = buildProjectFiles({
+      workflowName: "sort",
+      script: subworkflowScript,
+      inputFiles: [],
+      moduleFiles: modules,
+      subworkflowFiles,
+    });
+    expect(
+      Object.keys(files)
+        .filter((name) => /^(modules|subworkflows)\//.test(name))
+        .sort(),
+    ).toEqual([
+      "modules/nf-core/fastqc/main.nf",
+      "modules/nf-core/samtools/sort/main.nf",
+      "modules/nf-core/samtools/stats/main.nf",
+      "subworkflows/nf-core/bam_sort_stats_samtools/main.nf",
+      "subworkflows/nf-core/bam_sort_stats_samtools/nextflow.config",
+      "subworkflows/nf-core/bam_stats_samtools/main.nf",
+    ]);
+    expect(files["README.md"]).toContain("  - `bam_stats_samtools`");
+  });
+
+  it("fails when a subworkflow's or an included module's files are missing", () => {
+    expect(() =>
+      buildProjectFiles({
+        workflowName: "sort",
+        script: subworkflowScript,
+        inputFiles: [],
+        moduleFiles: modules,
+        subworkflowFiles: {
+          bam_sort_stats_samtools: subworkflowFiles.bam_sort_stats_samtools,
+        },
+      }),
+    ).toThrow("Missing files for nf-core subworkflow bam_stats_samtools.");
+    expect(() =>
+      buildProjectFiles({
+        workflowName: "sort",
+        script: subworkflowScript,
+        inputFiles: [],
+        moduleFiles: { fastqc: modules.fastqc },
+        subworkflowFiles,
+      }),
+    ).toThrow("Missing files for nf-core module samtools/sort.");
   });
 });
 

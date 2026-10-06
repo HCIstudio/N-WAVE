@@ -1,6 +1,9 @@
 // Builds a self-contained Nextflow project from a generated workflow script:
 // the files the backend would otherwise add at run time (module config,
-// nf-core module files, input files) plus a README with the run command.
+// nf-core module and subworkflow files, input files) plus a README with the
+// run command.
+
+import { getSubworkflowIncludes } from "../registry/nfcore/subworkflowSource";
 
 /** Pinned Nextflow version the generated scripts are tested with. */
 export const DEFAULT_NEXTFLOW_VERSION = "25.04.4";
@@ -18,6 +21,8 @@ export interface ProjectExportInput {
   inputFiles: ProjectInputFile[];
   /** nf-core module files keyed by module path ("fastqc", "star/align"). */
   moduleFiles: Record<string, Record<string, string>>;
+  /** nf-core subworkflow files keyed by name ("bam_stats_samtools"). */
+  subworkflowFiles?: Record<string, Record<string, string>>;
   nextflowVersion?: string;
 }
 
@@ -63,6 +68,54 @@ export const getReferencedNfCoreModules = (script: string): string[] => {
   return Array.from(modules).sort();
 };
 
+/**
+ * nf-core subworkflows a script includes, by name ("bam_stats_samtools").
+ * Mirrors getReferencedNfCoreSubworkflows in the backend.
+ */
+export const getReferencedNfCoreSubworkflows = (script: string): string[] => {
+  const subworkflows = new Set<string>();
+  for (const match of script.matchAll(
+    /from\s+['"]\.\/subworkflows\/nf-core\/([A-Za-z0-9_-]+)\/main['"]/g,
+  )) {
+    subworkflows.add(match[1]);
+  }
+  return Array.from(subworkflows).sort();
+};
+
+/**
+ * Every nf-core module and subworkflow a project needs: the ones the script
+ * includes plus, recursively, the ones those subworkflows include.
+ * `subworkflowSource` returns a subworkflow's main.nf (or undefined when it
+ * isn't known yet).
+ */
+export const resolveNfCoreComponents = (
+  script: string,
+  subworkflowSource: (name: string) => string | undefined,
+): { modules: string[]; subworkflows: string[]; unresolved: string[] } => {
+  const modules = new Set(getReferencedNfCoreModules(script));
+  const subworkflows = new Set<string>();
+  const unresolved: string[] = [];
+  const queue = getReferencedNfCoreSubworkflows(script);
+  while (queue.length > 0) {
+    const name = queue.shift() as string;
+    if (subworkflows.has(name)) continue;
+    subworkflows.add(name);
+    const source = subworkflowSource(name);
+    if (source === undefined) {
+      unresolved.push(name);
+      continue;
+    }
+    const includes = getSubworkflowIncludes(source);
+    for (const module of includes.modules) modules.add(module);
+    queue.push(...includes.subworkflows);
+  }
+  return {
+    modules: Array.from(modules).sort(),
+    subworkflows: Array.from(subworkflows).sort(),
+    unresolved,
+  };
+};
+
 /** A folder/file-name friendly version of the workflow name. */
 export const toProjectName = (workflowName: string): string =>
   workflowName
@@ -105,12 +158,14 @@ export const buildReadme = ({
   projectName,
   workflowName,
   modules,
+  subworkflows = [],
   inputFiles,
   nextflowVersion,
 }: {
   projectName: string;
   workflowName: string;
   modules: string[];
+  subworkflows?: string[];
   inputFiles: ProjectInputFile[];
   nextflowVersion: string;
 }): string => {
@@ -162,6 +217,12 @@ export const buildReadme = ({
           ...modules.map((module) => `  - \`${module}\``),
         ]
       : []),
+    ...(subworkflows.length > 0
+      ? [
+          "- `subworkflows/nf-core/`: the nf-core subworkflows the workflow uses:",
+          ...subworkflows.map((subworkflow) => `  - \`${subworkflow}\``),
+        ]
+      : []),
     ...(inputFiles.length > 0 ? ["- `inputs/`: input files"] : []),
     "",
   ].join("\n");
@@ -176,7 +237,14 @@ export const buildProjectFiles = (
 ): Record<string, string> => {
   const projectName = toProjectName(input.workflowName);
   const { script, config } = extractNextflowConfig(input.script);
-  const modules = getReferencedNfCoreModules(script);
+  const subworkflowFiles = input.subworkflowFiles ?? {};
+  const { modules, subworkflows, unresolved } = resolveNfCoreComponents(
+    script,
+    (name) => subworkflowFiles[name]?.["main.nf"],
+  );
+  if (unresolved.length > 0) {
+    throw new Error(`Missing files for nf-core subworkflow ${unresolved[0]}.`);
+  }
   const nextflowVersion = input.nextflowVersion || DEFAULT_NEXTFLOW_VERSION;
 
   const files: Record<string, string> = {
@@ -186,10 +254,21 @@ export const buildProjectFiles = (
       projectName,
       workflowName: input.workflowName || projectName,
       modules,
+      subworkflows,
       inputFiles: input.inputFiles,
       nextflowVersion,
     }),
   };
+
+  for (const subworkflow of subworkflows) {
+    for (const [name, content] of Object.entries(
+      subworkflowFiles[subworkflow] ?? {},
+    )) {
+      if (isSafeRelativePath(name)) {
+        files[`subworkflows/nf-core/${subworkflow}/${name}`] = content;
+      }
+    }
+  }
 
   for (const module of modules) {
     const moduleFiles = input.moduleFiles[module];

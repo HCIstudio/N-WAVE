@@ -4,9 +4,13 @@ import type { Request, Response } from "express";
 import { getNwaveDataRoot } from "../execution/nfcoreModules";
 import {
   buildAdapterManifest,
+  buildSubworkflowManifest,
   ensureInside,
   findCatalogEntry,
+  findSubworkflowEntry,
   installModule,
+  installSubworkflow,
+  isSubworkflowId,
   loadCatalog,
   loadInstalledIndex,
   type NfCoreCatalogEntry,
@@ -43,6 +47,10 @@ export const listNfCoreCatalog = (_req: Request, res: Response): void => {
         ...entry,
         installed: installedIds.has(entry.id),
       })),
+      subworkflows: (catalog.subworkflows ?? []).map((entry) => ({
+        ...entry,
+        installed: installedIds.has(entry.id),
+      })),
     });
   } catch (error: unknown) {
     sendError(res, error, "Failed to load nf-core catalog");
@@ -58,11 +66,17 @@ export const listInstalledNfCoreModules = (
       dataRoot: getNwaveDataRoot(),
       installed: Object.values(loadInstalledIndex()).map((entry) => ({
         ...entry,
-        manifest: enrichInstalledManifest(
-          readJsonIfExists(entry.manifestPath),
-          findCatalogEntry(entry.id),
-          entry.sourceCommit
-        ),
+        manifest: isSubworkflowId(entry.id)
+          ? refreshSubworkflowManifest(
+              readJsonIfExists(entry.manifestPath),
+              entry.id,
+              entry.sourceCommit
+            )
+          : enrichInstalledManifest(
+              readJsonIfExists(entry.manifestPath),
+              findCatalogEntry(entry.id),
+              entry.sourceCommit
+            ),
       })),
     });
   } catch (error: unknown) {
@@ -78,6 +92,21 @@ export const installNfCoreModule = async (
   if (!body) return;
 
   try {
+    if (isSubworkflowId(body.id)) {
+      const entry = findSubworkflowEntry(body.id);
+      if (!entry) {
+        throw new NfCoreLibraryError(
+          404,
+          `Unknown nf-core subworkflow: ${body.id}`
+        );
+      }
+      const { installed, manifest, dependencies } =
+        await installSubworkflow(entry);
+      res
+        .status(201)
+        .json({ module: entry, installed, manifest, dependencies });
+      return;
+    }
     const entry = findCatalogEntry(body.id);
     if (!entry) {
       throw new NfCoreLibraryError(404, `Unknown nf-core module: ${body.id}`);
@@ -102,7 +131,14 @@ export const uninstallNfCoreModule = (req: Request, res: Response): void => {
     }
 
     const moduleRoot = path.resolve(installed.moduleDir);
-    ensureInside(path.join(getNwaveDataRoot(), "nf-core", "modules"), moduleRoot);
+    ensureInside(
+      path.join(
+        getNwaveDataRoot(),
+        "nf-core",
+        isSubworkflowId(body.id) ? "subworkflows" : "modules"
+      ),
+      moduleRoot
+    );
     fs.rmSync(moduleRoot, { recursive: true, force: true });
     delete index[body.id];
     writeInstalledIndex(index);
@@ -160,6 +196,23 @@ export const getNfCoreModuleFiles = async (
 const readJsonIfExists = (filePath: string): unknown | null => {
   if (!fs.existsSync(filePath)) return null;
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
+};
+
+/**
+ * An installed subworkflow's manifest, rebuilt from the current catalog when
+ * its files are from the catalog's commit, otherwise marked as outdated.
+ */
+const refreshSubworkflowManifest = (
+  manifest: unknown | null,
+  id: string,
+  installedCommit?: string
+): unknown | null => {
+  const entry = findSubworkflowEntry(id);
+  if (!manifest || !entry || typeof manifest !== "object") return manifest;
+  if (installedCommit && installedCommit !== entry.source.commit) {
+    return { ...(manifest as Record<string, unknown>), outdated: true };
+  }
+  return buildSubworkflowManifest(entry);
 };
 
 /**
