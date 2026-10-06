@@ -46,7 +46,7 @@ test.describe("parameters node", () => {
     expect(files[`${project}/main.nf`]).toContain(
       "params.fasta = 'https://example.org/genome.fa'"
     );
-    expect(files[`${project}/main.nf`]).toMatch(/\w+_fasta = Channel\.of\(file\(params\.fasta/);
+    expect(files[`${project}/main.nf`]).toMatch(/\w+_fasta = Channel\.of\(nwaveInputFile\(params\.fasta\)\)/);
     expect(files[`${project}/nextflow.config`]).toMatch(
       /params \{\n {2}genome_name = 'R64-1-1'\n {2}fasta = 'https:\/\/example\.org\/genome\.fa'\n\}/
     );

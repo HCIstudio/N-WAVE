@@ -79,16 +79,10 @@ export const getGroupItems = (
 const hasMeta = (item: string): string =>
   `${item} instanceof List && ${item}.size() > 1 && ${item}[0] instanceof Map`;
 
-/** Groovy closures defined at the top of each generated map closure. */
-const HELPER_CLOSURES = [
-  `def filesOf = { item -> ${hasMeta("item")} ? (item.size() == 2 ? item[1] : item[1..-1]) : item }`,
-  `def metaOf = { item -> ${hasMeta("item")} ? item[0] : null }`,
-];
-
 const RESERVED_NAMES = new Set([
   "meta",
-  "filesOf",
-  "metaOf",
+  "nwaveFilesOf",
+  "nwaveMetaOf",
   "it",
   "in",
   "as",
@@ -263,11 +257,11 @@ export const buildNfCoreGroupChannels = (
     const fileLines = locals.map(({ item, arg, local }) =>
       item.mode === "collect"
         ? `            def ${local} = ${arg}`
-        : `            def ${local} = filesOf(${arg})`,
+        : `            def ${local} = nwaveFilesOf(${arg})`,
     );
     const metaCandidates = locals
       .filter(({ item }) => item.mode !== "collect")
-      .map(({ arg }) => `metaOf(${arg})`);
+      .map(({ arg }) => `nwaveMetaOf(${arg})`);
     const first = locals[0];
     const builtMeta =
       first.item.mode === "collect"
@@ -287,7 +281,6 @@ export const buildNfCoreGroupChannels = (
     const lines = [
       `    ${channelName} = ${combined}${filter}`,
       `        .map { ${closureArgs} ->`,
-      ...HELPER_CLOSURES.map((helper) => `            ${helper}`),
       ...fileLines,
       group.metaName
         ? `            def meta = ${[...metaCandidates, builtMeta].join(" ?: ")}`

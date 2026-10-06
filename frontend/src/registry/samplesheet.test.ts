@@ -171,7 +171,7 @@ describe("generateSamplesheetChannel", () => {
     );
     expect(channel).toContain(".splitCsv(header: true, strip: true)");
     expect(channel).toContain(
-      "def reads = [row['fastq_1'], row['fastq_2']].findAll { it }.collect { resolve(it) }",
+      "def reads = [row['fastq_1'], row['fastq_2']].findAll { it }.collect { nwaveInputFile(it) }",
     );
     expect(channel).toContain(
       "def meta = row.findAll { key, value -> !(key in ['sample', 'fastq_1', 'fastq_2']) } + [id: row['sample'], single_end: reads.size() == 1]",

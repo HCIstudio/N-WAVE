@@ -2,6 +2,7 @@ import type { Node, Edge } from "reactflow";
 import type { FileObject } from "../../components/nodes/BaseNode";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
 import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
+import { helperFunctionsFor } from "./helpers";
 import {
   generateParameterDeclarations,
   getNodeParameters,
@@ -63,6 +64,13 @@ export const generateNextflowScript = (
   // These are legitimate workflow inputs, not process outputs, so they must be
   // recognised as "resolved" during dependency validation.
   const definedInputChannels = new Set<string>();
+  // Declared dependencies of invocations (see NodeGenerationResult).
+  const declaredDependencies = new Map<
+    string,
+    { definitions: string[]; usages: string[] }
+  >();
+  const dependenciesOf = (invocation: string) =>
+    declaredDependencies.get(invocation) ?? parseInvocation(invocation);
 
   // Input nodes read from the input directory; declare it once.
   let inputDirDeclared = false;
@@ -179,6 +187,7 @@ export const generateNextflowScript = (
       node.type === "operator" ||
       node.type === "filter" ||
       node.type === "process" ||
+      node.type === "channelOperator" ||
       node.type === "outputDisplay"
     ) {
       if (invokedNodes.has(node.id)) continue;
@@ -247,6 +256,14 @@ export const generateNextflowScript = (
       }
 
       processInvocations.push(...generationResult.processInvocations);
+      if (generationResult.dependencies) {
+        for (const invocation of generationResult.processInvocations) {
+          declaredDependencies.set(invocation, {
+            definitions: generationResult.dependencies.defines,
+            usages: generationResult.dependencies.uses,
+          });
+        }
+      }
       outputDisplayCounter +=
         generationResult.outputDisplayCounterIncrement ?? 0;
     }
@@ -281,7 +298,13 @@ export const generateNextflowScript = (
     finalScript += uniqueIncludeStatements.join("\n");
     finalScript += "\n\n";
   }
-  finalScript += firstPassScript;
+  // Helper functions the generated code calls (top-level, strict syntax).
+  const helperFunctions = helperFunctionsFor(
+    [firstPassScript, ...channelDefinitions, ...processInvocations].join("\n")
+  );
+  if (helperFunctions.length > 0) {
+    finalScript += `${helperFunctions.join("\n\n")}\n\n`;
+  }
 
   // Deduplicate executionOrder to prevent duplicate process definitions
   const uniqueExecutionOrder = [...new Set(executionOrder)];
@@ -303,6 +326,15 @@ export const generateNextflowScript = (
   }
 
   finalScript += "\nworkflow {\n";
+  // Input channels (File Input, Samplesheet, Parameters) are statements, so
+  // they belong in the workflow block.
+  if (firstPassScript.trim()) {
+    finalScript += `${firstPassScript
+      .trimEnd()
+      .split("\n")
+      .map((line) => (line ? `    ${line}` : line))
+      .join("\n")}\n\n`;
+  }
   // Channel definitions are ordered with the process calls below: one built
   // from another node's output must come after the call that defines it.
 
@@ -315,7 +347,7 @@ export const generateNextflowScript = (
   const variableUsages = new Map<string, string[]>();
 
   for (const definition of channelDefinitions) {
-    const { definitions } = parseInvocation(definition);
+    const { definitions } = dependenciesOf(definition);
 
     for (const varName of definitions) {
       variableDefinitions.set(varName, definition);
@@ -328,7 +360,7 @@ export const generateNextflowScript = (
       continue;
     }
 
-    const { definitions, usages } = parseInvocation(invocation);
+    const { definitions, usages } = dependenciesOf(invocation);
 
     for (const varName of definitions) {
       variableDefinitions.set(varName, invocation);
@@ -360,7 +392,7 @@ export const generateNextflowScript = (
 
     processing.add(invocation);
 
-    for (const usedVar of parseInvocation(invocation).usages) {
+    for (const usedVar of dependenciesOf(invocation).usages) {
       const definingInvocation = variableDefinitions.get(usedVar);
       // If this invocation uses a variable, make sure that variable is defined first
       if (definingInvocation && !processed.has(definingInvocation)) {
