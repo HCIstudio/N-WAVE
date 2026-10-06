@@ -1,9 +1,13 @@
 import type { IWorkflow } from "../models/WorkflowModel";
 import { materializeWorkflow } from "./materializeWorkflow";
-import { getDemoWorkflowDescriptor, demoWorkflowId } from "./library/demoWorkflow";
+import { getDemoWorkflowDescriptor } from "./library/demoWorkflow";
+import { getRnaseqPipelineExampleDescriptor } from "./library/rnaseqPipelineExample";
 import type { WorkflowDescriptor } from "./types";
 
-const builtinWorkflowFactories = [getDemoWorkflowDescriptor];
+const builtinWorkflowFactories = [
+  getDemoWorkflowDescriptor,
+  getRnaseqPipelineExampleDescriptor,
+];
 
 export const listBuiltinWorkflows = (): WorkflowDescriptor[] =>
   builtinWorkflowFactories.map((factory) => factory());
@@ -13,7 +17,8 @@ export const getBuiltinWorkflowById = (
 ): WorkflowDescriptor | null =>
   listBuiltinWorkflows().find((workflow) => workflow._id === id) ?? null;
 
-export const isBuiltinWorkflowId = (id: string): boolean => id === demoWorkflowId;
+export const isBuiltinWorkflowId = (id: string): boolean =>
+  getBuiltinWorkflowById(id) !== null;
 
 export const toWorkflowDescriptor = (workflow: IWorkflow): WorkflowDescriptor => {
   const workflowObject = workflow.toObject ? workflow.toObject() : workflow;

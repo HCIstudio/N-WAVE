@@ -134,7 +134,7 @@ describe("launching an nf-core pipeline", () => {
       ),
     ).toEqual([
       "A workflow can run one pipeline; remove the extra Pipeline nodes.",
-      "A workflow with a Pipeline node runs that pipeline only; it can hold input nodes (File Input, Samplesheet, Parameters) but no other steps.",
+      "A workflow with a Pipeline node runs that pipeline only; it can hold input nodes (File Input, Samplesheet, Parameters) and notes, but no other steps.",
       "Choose a pipeline.",
     ]);
     expect(() => buildPipelineLaunch([pipeline()], [])).toThrow(

@@ -414,9 +414,7 @@ const HomePage: React.FC = () => {
     },
   ];
 
-  const hasDemoWorkflow = workflows.some(
-    (wf) => wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin
-  );
+  const hasDemoWorkflow = workflows.some((wf) => wf._id === DEMO_WORKFLOW_ID);
   const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
   const hasUserWorkflows = workflows.some(
     (wf) => !(wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin)
@@ -426,7 +424,7 @@ const HomePage: React.FC = () => {
     const isEditing = editingId === wf._id;
     const isReadOnly = wf.isReadOnly || wf.origin?.readOnly;
     const showDuplicate = Boolean(wf.origin?.canDuplicate);
-    const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
+    const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
     const hideCardButtons = isHomeTutorialActive && isDemoWorkflow;
 
     const cardContent = (
@@ -630,7 +628,7 @@ const HomePage: React.FC = () => {
           )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {workflows.map((wf) => {
-              const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
+              const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
               return (
                 <div
                   key={wf._id}

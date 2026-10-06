@@ -608,6 +608,11 @@ const WorkflowPageContent: React.FC = () => {
       },
       selectable: !isConnecting,
       draggable: !isConnecting && !workflowReadOnly,
+      // React Flow marks draggable nodes "nopan"; without it, the canvas's
+      // double-click zoom swallows the double-click that opens a panel.
+      className: workflowReadOnly
+        ? [node.className, "nopan"].filter(Boolean).join(" ")
+        : node.className,
     }));
   }, [nodes, isConnecting, activePanelNodeId, workflowReadOnly]);
 

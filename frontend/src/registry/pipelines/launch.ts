@@ -38,8 +38,11 @@ export const PIPELINE_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 /** Where launches read their input files from, relative to the launch dir. */
 export const PIPELINE_INPUT_DIR = "inputs";
 
-/** Node types that may sit next to a Pipeline node: they only provide files. */
-const INPUT_NODE_TYPES = new Set(["fileInput", "samplesheet", "parameters"]);
+/**
+ * Node types that may sit next to a Pipeline node: they only provide files,
+ * or (notes) explain the workflow.
+ */
+const INPUT_NODE_TYPES = new Set(["fileInput", "samplesheet", "parameters", "note"]);
 
 export interface PipelineLaunch {
   nodeId: string;
@@ -83,7 +86,7 @@ export const getPipelineLaunchIssues = (
   );
   if (others.length > 0) {
     issues.push(
-      "A workflow with a Pipeline node runs that pipeline only; it can hold input nodes (File Input, Samplesheet, Parameters) but no other steps.",
+      "A workflow with a Pipeline node runs that pipeline only; it can hold input nodes (File Input, Samplesheet, Parameters) and notes, but no other steps.",
     );
   }
   const [pipeline] = pipelines;

@@ -2,6 +2,7 @@ import type React from "react";
 import type { Connection, Edge, Node } from "reactflow";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
+import NotePanel from "../components/panels/input/NotePanel";
 import ParametersPanel from "../components/panels/input/ParametersPanel";
 import PipelinePanel from "../components/panels/process/PipelinePanel";
 import ChannelOperatorPanel from "../components/panels/operator/ChannelOperatorPanel";
@@ -36,7 +37,13 @@ import {
   trimmomaticNfCoreAdapter,
 } from "./nfcoreModuleAdapters";
 
-export type NodeKind = "input" | "operator" | "process" | "output";
+export type NodeKind =
+  | "input"
+  | "operator"
+  | "process"
+  | "output"
+  /** Canvas notes: no ports, no code. */
+  | "annotation";
 
 export type NodePanelComponent = React.ComponentType<{
   node: Node<NodeData>;
@@ -419,6 +426,23 @@ const builtinNodeDefinitions: NodeDefinition[] = [
       }
       return { valid: true };
     },
+  },
+  {
+    id: "note",
+    kind: "annotation",
+    category: "Notes",
+    label: "Note",
+    description:
+      "Text on the canvas that explains the workflow. No connections, no code.",
+    type: "note",
+    icon: "StickyNote",
+    defaults: {
+      label: "Note",
+      noteText: "",
+      inputs: [],
+      outputs: [],
+    },
+    panel: NotePanel,
   },
   {
     id: "outputDisplay",
