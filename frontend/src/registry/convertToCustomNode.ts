@@ -9,6 +9,7 @@ import {
   parseCustomNodeSource,
   type StoredCustomNode,
 } from "./customNodes";
+import { isSubworkflowPublishBlock } from "./nfcore/publish";
 import type { NfCoreSubworkflowTake } from "./nfcore/subworkflow";
 import type { NodeCode } from "./nodeCode";
 
@@ -191,7 +192,11 @@ export const buildCustomNodeFromNode = (
     ),
     // A subworkflow's config holds whole selectors; keep them as written.
     config: isWorkflow
-      ? code.configBlocks.join("\n").split("\n").filter((line) => line.trim())
+      ? code.configBlocks
+          .filter((block) => !isSubworkflowPublishBlock(block))
+          .join("\n")
+          .split("\n")
+          .filter((line) => line.trim())
       : configStatements(code.configBlocks),
   };
 

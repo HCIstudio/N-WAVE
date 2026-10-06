@@ -17,6 +17,7 @@ import {
   type NfCoreSubworkflowCatalogEntry,
 } from "./nfcore/subworkflow";
 import { getNodeCode } from "./nodeCode";
+import { publishDirLines, resultsFolderFor } from "./nfcore/publish";
 import { registerDynamicNodeDefinitions } from "./nodeDefinitions";
 
 const convert = (definitionId: string, moduleSource?: string) => {
@@ -67,7 +68,13 @@ describe("convert to custom node", () => {
     const { conversion, convertedCode } = convert("fastqc", moduleSource);
 
     expect(conversion.customNode.processName).toBe("FASTQC");
-    expect(conversion.customNode.config).toEqual(["ext.args = '--kmers 7'"]);
+    // ext.args, then saving outputs to results/ (kept after the conversion).
+    expect(conversion.customNode.config?.[0]).toBe("ext.args = '--kmers 7'");
+    expect(conversion.customNode.config?.slice(1)).toEqual(
+      publishDirLines(resultsFolderFor(makeNode("fastqc").data, "")).map((line) =>
+        line.trim(),
+      ),
+    );
     expect(conversion.ports).toEqual({
       inputs: { reads: "reads" },
       outputs: { html: "html", zip: "zip", versions: "versions_fastqc" },

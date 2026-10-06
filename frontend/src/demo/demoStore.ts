@@ -15,6 +15,7 @@ import type { ExecutionSettings } from "../types/execution";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { demoWorkflowSeed } from "./demoWorkflow";
 import { rnaseqExampleSeed } from "./rnaseqExample";
+import rnaseqStarSalmonExample from "./rnaseqStarSalmonExample.json";
 
 const STORAGE_KEY = "nwave.demo.workflows";
 
@@ -122,6 +123,19 @@ const getBuiltinDescriptors = (): WorkflowDescriptor[] => [
       ...rnaseqExampleSeed.resources,
     },
   }),
+  builtinDescriptor(
+    rnaseqStarSalmonExample as unknown as Parameters<
+      typeof builtinDescriptor
+    >[0],
+    "examples/rnaseq-star-salmon",
+    {
+      ...defaultExecutionSettings,
+      resources: {
+        ...defaultExecutionSettings.resources,
+        ...rnaseqStarSalmonExample.resources,
+      },
+    },
+  ),
 ];
 
 const getBuiltin = (id: string): WorkflowDescriptor | undefined =>

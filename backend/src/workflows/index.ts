@@ -2,11 +2,13 @@ import type { IWorkflow } from "../models/WorkflowModel";
 import { materializeWorkflow } from "./materializeWorkflow";
 import { getDemoWorkflowDescriptor } from "./library/demoWorkflow";
 import { getRnaseqPipelineExampleDescriptor } from "./library/rnaseqPipelineExample";
+import { getRnaseqStarSalmonExampleDescriptor } from "./library/rnaseqStarSalmonExample";
 import type { WorkflowDescriptor } from "./types";
 
 const builtinWorkflowFactories = [
   getDemoWorkflowDescriptor,
   getRnaseqPipelineExampleDescriptor,
+  getRnaseqStarSalmonExampleDescriptor,
 ];
 
 export const listBuiltinWorkflows = (): WorkflowDescriptor[] =>
