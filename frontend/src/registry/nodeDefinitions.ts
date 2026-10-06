@@ -2,6 +2,7 @@ import type React from "react";
 import type { Connection, Edge, Node } from "reactflow";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
+import ParametersPanel from "../components/panels/input/ParametersPanel";
 import SamplesheetPanel from "../components/panels/input/SamplesheetPanel";
 import {
   DEFAULT_SAMPLESHEET_FILE_NAME,
@@ -142,6 +143,24 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     },
     panel: SamplesheetPanel,
     executionLabel: "Samplesheet",
+  },
+  {
+    id: "parameters",
+    kind: "input",
+    category: "Input",
+    label: "Parameters",
+    description:
+      "Declares params.* and reference files (genome FASTA, GTF, indexes) that other nodes connect to.",
+    type: "parameters",
+    icon: "Settings2",
+    outputs: [],
+    defaults: {
+      subtitle: "No parameters yet",
+      parameters: [],
+      outputs: [],
+    },
+    panel: ParametersPanel,
+    executionLabel: "Parameters",
   },
   {
     id: "filter",

@@ -3,6 +3,11 @@ import type { FileObject } from "../../components/nodes/BaseNode";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
 import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
 import {
+  generateParameterDeclarations,
+  getNodeParameters,
+  type WorkflowParameter,
+} from "../../registry/params";
+import {
   generateSamplesheetChannel,
   getSamplesheetFileName,
   getSamplesheetMapping,
@@ -68,8 +73,28 @@ export const generateNextflowScript = (
   };
 
   // First pass: Define file inputs and map all node outputs to channel names
+  // `name = value` lines for the exported config's params { } block.
+  const paramConfigLines: string[] = [];
+
   for (const node of nodes) {
-    if (node.type === "samplesheet") {
+    if (node.type === "parameters") {
+      const parameters = getNodeParameters(node.data);
+      const channelNameFor = (parameter: WorkflowParameter) =>
+        sanitizeVarName(`${node.id}_${parameter.name}`);
+      const declarations = generateParameterDeclarations(
+        parameters,
+        channelNameFor
+      );
+      for (const parameter of parameters.filter((entry) => entry.type === "file")) {
+        const channelName = channelNameFor(parameter);
+        channelNameMap.set(`${node.id}.${parameter.name}`, channelName);
+        definedInputChannels.add(channelName);
+      }
+      if (declarations.channels) declareInputDir();
+      paramsScript += declarations.script;
+      paramConfigLines.push(...declarations.config);
+      if (declarations.channels) firstPassScript += `${declarations.channels}\n`;
+    } else if (node.type === "samplesheet") {
       const channelName = sanitizeVarName(`${node.id}_samples`);
       channelNameMap.set(`${node.id}.samples`, channelName);
       channelNameMap.set(`${node.id}.out`, channelName);
@@ -232,18 +257,23 @@ export const generateNextflowScript = (
   finalScript += "// N-WAVE generator: registry-nfcore-v1\n\n";
   finalScript += "nextflow.enable.dsl = 2\n\n";
   finalScript += paramsScript;
-  if (nextflowConfigBlocks.length > 0) {
+  if (nextflowConfigBlocks.length > 0 || paramConfigLines.length > 0) {
     finalScript += "/* N-WAVE_NEXTFLOW_CONFIG\n";
-    finalScript += "process {\n";
-    finalScript += Array.from(new Set(nextflowConfigBlocks))
-      .map((block) =>
-        block
-          .split("\n")
-          .map((line) => `  ${line}`)
-          .join("\n")
-      )
-      .join("\n\n");
-    finalScript += "\n}";
+    if (paramConfigLines.length > 0) {
+      finalScript += `params {\n${paramConfigLines.map((line) => `  ${line}`).join("\n")}\n}\n`;
+    }
+    if (nextflowConfigBlocks.length > 0) {
+      finalScript += "process {\n";
+      finalScript += Array.from(new Set(nextflowConfigBlocks))
+        .map((block) =>
+          block
+            .split("\n")
+            .map((line) => `  ${line}`)
+            .join("\n")
+        )
+        .join("\n\n");
+      finalScript += "\n}";
+    }
     finalScript += "\n*/\n\n";
   }
   const uniqueIncludeStatements = Array.from(new Set(includeStatements));

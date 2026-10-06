@@ -7,6 +7,7 @@ import {
   unregisterDynamicNodeDefinitions,
 } from "./nodeDefinitions";
 import type { NodeGenerator } from "./nodeGeneration";
+import { groovyStringWithParams } from "./params";
 
 export type CustomNodeInputKind = "path" | "val";
 export type CustomNodeSettingType =
@@ -581,9 +582,6 @@ const renameProcess = (
     `process ${nextProcessName}`
   );
 
-const groovyLiteral = (value: string): string =>
-  `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
-
 const groovyLiteralForSetting = (
   value: string,
   setting?: CustomNodeInput
@@ -598,7 +596,7 @@ const groovyLiteralForSetting = (
     const parsed = Number.parseFloat(value);
     return Number.isFinite(parsed) ? String(parsed) : "0";
   }
-  return groovyLiteral(value);
+  return groovyStringWithParams(value);
 };
 
 const toTitle = (value: string): string =>

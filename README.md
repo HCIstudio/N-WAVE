@@ -111,6 +111,17 @@ to a File Input node, or absolute paths and URLs for local runs. The panel previ
 parsed samples and flags problems (missing columns, files that aren't uploaded, sample ids
 with spaces, …). The CSV goes into `inputs/` for runs and exported projects.
 
+### Parameters and reference files
+
+The **Parameters** input node declares named parameters (text, number, true/false) and
+reference files such as a genome FASTA, GTF or a prebuilt index. Each becomes
+`params.<name>`, both in the script and in the exported `nextflow.config`, so it can be
+changed on the command line (`--fasta …`). Every reference file is an output that can be
+connected to any node input; it can be an uploaded file name, an absolute path or a URL
+(for example the nf-core test genome). nf-core inputs that take `[ meta, path ]` get a
+correctly shaped value channel. Node settings can use parameters as `${params.name}`, for
+example in a module's extra arguments; they are filled in when the task runs.
+
 ### Exporting a runnable project
 
 **Export Project** (in the bottom bar, next to the script download) downloads a zip that
