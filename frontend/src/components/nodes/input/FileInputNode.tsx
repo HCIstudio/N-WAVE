@@ -62,7 +62,7 @@ const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
           const existingFiles = data.files || [];
           const updatedFiles = [...existingFiles];
 
-          newFiles.forEach((newFile) => {
+          for (const newFile of newFiles) {
             const existingIndex = updatedFiles.findIndex(
               (f) => f.name === newFile.name
             );
@@ -73,7 +73,7 @@ const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
               // Add new file
               updatedFiles.push(newFile);
             }
-          });
+          }
 
           updateNodeData(id, {
             ...data,

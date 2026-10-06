@@ -571,14 +571,14 @@ const WorkflowPageContent: React.FC = () => {
       // Update node statuses on the canvas based on execution status
       if (status.nodeStatuses.length === 0 && !status.isRunning) {
         // Clear all node statuses when execution is complete and not running
-        nodes.forEach((node) => {
+        for (const node of nodes) {
           if (node.data.status) {
             updateNodeData(node.id, { status: undefined });
           }
-        });
+        }
       } else if (status.nodeStatuses.length > 0) {
         // Update individual node statuses during execution
-        status.nodeStatuses.forEach((nodeStatus: any) => {
+        for (const nodeStatus of status.nodeStatuses) {
           const nodeIndex = nodes.findIndex((n) => n.id === nodeStatus.nodeId);
           if (nodeIndex !== -1) {
             // Map execution status to node status (excluding 'skipped')
@@ -586,7 +586,7 @@ const WorkflowPageContent: React.FC = () => {
               nodeStatus.status === "skipped" ? "waiting" : nodeStatus.status;
             updateNodeData(nodeStatus.nodeId, { status: nodeStatusValue });
           }
-        });
+        }
       }
     },
   });

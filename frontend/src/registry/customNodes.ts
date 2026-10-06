@@ -96,9 +96,9 @@ export const parseCustomNodeSource = (
     }
 
     argumentList.push(argument);
-    argument.fields.forEach((field) => {
-      if (field.meta) return;
-      if (inputMap.has(field.name)) return;
+    for (const field of argument.fields) {
+      if (field.meta) continue;
+      if (inputMap.has(field.name)) continue;
 
       inputMap.set(field.name, {
         name: field.name,
@@ -112,7 +112,7 @@ export const parseCustomNodeSource = (
         settingType:
           field.kind === "val" ? inferSettingType(field.name) : undefined,
       });
-    });
+    }
   });
 
   const outputs = outputDeclarations
@@ -165,9 +165,9 @@ export const createStoredCustomNode = (
 const registeredCustomNodeIds = new Set<string>();
 
 export const registerCustomNodes = (nodes: StoredCustomNode[]): void => {
-  nodes.forEach((node) => {
+  for (const node of nodes) {
     registeredCustomNodeIds.add(node.id);
-  });
+  }
   registerDynamicNodeDefinitions(nodes.map(createNodeDefinitionFromCustomNode));
 };
 
@@ -446,7 +446,7 @@ const parseInputDeclaration = (
   if (!declaration.startsWith("tuple ")) return null;
 
   const fields: CustomNodeArgumentField[] = [];
-  splitTopLevel(declaration.replace(/^tuple\s+/, "")).forEach((token) => {
+  for (const token of splitTopLevel(declaration.replace(/^tuple\s+/, ""))) {
       const valName = token.match(/^val\(([^)]+)\)$/)?.[1]?.trim();
       if (valName) {
         fields.push({
@@ -454,12 +454,12 @@ const parseInputDeclaration = (
           name: valName,
           meta: /^meta\d*$/.test(valName),
         });
-        return;
+        continue;
       }
 
       const pathName = token.match(/^path\(\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
       if (pathName) fields.push({ kind: "path", name: pathName });
-    });
+    }
 
   if (fields.length === 0) return null;
   return {

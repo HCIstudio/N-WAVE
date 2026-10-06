@@ -320,45 +320,45 @@ const buildVisualGraph = (
     });
   };
 
-  workflowBody
+  const workflowLines = workflowBody
     .split(/\r?\n/)
     .map((line) => line.replace(/\/\/.*$/, "").trim())
-    .filter(Boolean)
-    .forEach((line) => {
-      const assignmentMatch = line.match(
-        /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/
-      );
-      if (assignmentMatch?.[1] && assignmentMatch[2]) {
-        const [, outputVariable, processName, args = ""] = assignmentMatch;
-        const targetNode = processNodes.get(processName);
-        if (targetNode) {
-          const sources = resolveSources(args);
-          addEdges(sources, targetNode);
-          variableSources.set(outputVariable, [targetNode.id]);
-          return;
-        }
+    .filter(Boolean);
+  for (const line of workflowLines) {
+    const assignmentMatch = line.match(
+      /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/
+    );
+    if (assignmentMatch?.[1] && assignmentMatch[2]) {
+      const [, outputVariable, processName, args = ""] = assignmentMatch;
+      const targetNode = processNodes.get(processName);
+      if (targetNode) {
+        const sources = resolveSources(args);
+        addEdges(sources, targetNode);
+        variableSources.set(outputVariable, [targetNode.id]);
+        continue;
       }
+    }
 
-      const callMatch = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/);
-      if (callMatch?.[1]) {
-        const [, processName, args = ""] = callMatch;
-        const targetNode = processNodes.get(processName);
-        if (targetNode) {
-          addEdges(resolveSources(args), targetNode);
-          return;
-        }
+    const callMatch = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/);
+    if (callMatch?.[1]) {
+      const [, processName, args = ""] = callMatch;
+      const targetNode = processNodes.get(processName);
+      if (targetNode) {
+        addEdges(resolveSources(args), targetNode);
+        continue;
       }
+    }
 
-      const channelAssignmentMatch = line.match(
-        /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\s\S]+)$/
-      );
-      if (channelAssignmentMatch?.[1] && channelAssignmentMatch[2]) {
-        const sources = resolveSources(channelAssignmentMatch[2]);
-        if (sources.length > 0) {
-          variableSources.set(channelAssignmentMatch[1], sources);
-        }
+    const channelAssignmentMatch = line.match(
+      /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\s\S]+)$/
+    );
+    if (channelAssignmentMatch?.[1] && channelAssignmentMatch[2]) {
+      const sources = resolveSources(channelAssignmentMatch[2]);
+      if (sources.length > 0) {
+        variableSources.set(channelAssignmentMatch[1], sources);
       }
-    });
+    }
+  }
 
   if (processes.length === 0) {
     warnings.push("No Nextflow process blocks were found to visualize.");

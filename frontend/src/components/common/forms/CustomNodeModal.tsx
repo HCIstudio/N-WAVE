@@ -678,9 +678,9 @@ const validateDefinitionsAgainstSource = (
 
   const missingFileInputs = new Set<string>();
   const missingSettings = new Set<string>();
-  parsed.arguments.forEach((argument) => {
-    argument.fields.forEach((field) => {
-      if (field.meta) return;
+  for (const argument of parsed.arguments) {
+    for (const field of argument.fields) {
+      if (field.meta) continue;
       if (field.kind === "val") parsedSettingNames.add(field.name);
       if (field.kind === "path" && !fileInputNames.has(field.name)) {
         missingFileInputs.add(field.name);
@@ -688,8 +688,8 @@ const validateDefinitionsAgainstSource = (
       if (field.kind === "val" && !settingNames.has(field.name)) {
         missingSettings.add(field.name);
       }
-    });
-  });
+    }
+  }
 
   const missingOutputs = parsed.outputs
     .map((output) => output.emit || output.name)

@@ -3,10 +3,10 @@ name: Test
 # The required gate for merging into main. It runs on every pull request (and on
 # main as a safety net): lint, unit tests, typecheck, and build — all blocking.
 #
-# The Biome config (frontend/biome.json) disables several rule groups that the
-# existing vibecoded code violates broadly (a11y, noExplicitAny, array-index
-# keys, exhaustive-deps, etc.). Those are tracked tech debt: re-enable them one
-# at a time as the code is cleaned up.
+# The Biome config (frontend/biome.json) still disables a few rules that the
+# existing code violates broadly (a11y, noExplicitAny, exhaustive-deps). Those
+# are tracked tech debt (#20): re-enable them one at a time as the code is
+# cleaned up.
 on:
   pull_request:
   push:

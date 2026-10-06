@@ -54,7 +54,7 @@ export const generateNextflowScript = (
   const definedInputChannels = new Set<string>();
 
   // First pass: Define file inputs and map all node outputs to channel names
-  nodes.forEach((node) => {
+  for (const node of nodes) {
     if (node.type === "fileInput") {
       const channelName = "ch_files";
       const legacyFileOutputChannelName = sanitizeVarName(
@@ -89,11 +89,11 @@ export const generateNextflowScript = (
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       }
     } else {
-      node.data.outputs?.forEach((output: { name: string }) => {
+      for (const output of node.data.outputs ?? []) {
         // Use the actual output name for better mapping, especially for processes like FastQC
         const channelName = `${node.id.replace(/[\s-]+/g, "_")}_${output.name}`;
         channelNameMap.set(`${node.id}.${output.name}`, channelName);
-      });
+      }
 
       // Also create a fallback mapping for generic output handles that might use different naming
       if (node.data.outputs && node.data.outputs.length > 0) {
@@ -110,15 +110,15 @@ export const generateNextflowScript = (
         channelNameMap.set(`${node.id}.output`, fallbackChannelName);
       }
     }
-  });
+  }
 
   // Track which process nodes have already been invoked
   const invokedNodes = new Set<string>();
 
   // Second pass: Build operator chains and process blocks
   const processedNodes = new Set<string>();
-  nodes.forEach((node) => {
-    if (processedNodes.has(node.id)) return;
+  for (const node of nodes) {
+    if (processedNodes.has(node.id)) continue;
     processedNodes.add(node.id);
 
     if (
@@ -127,7 +127,7 @@ export const generateNextflowScript = (
       node.type === "process" ||
       node.type === "outputDisplay"
     ) {
-      if (invokedNodes.has(node.id)) return;
+      if (invokedNodes.has(node.id)) continue;
       invokedNodes.add(node.id);
       // Robust process name generation
       let type = node.data.processType || node.data.operatorType || node.type;
@@ -137,13 +137,13 @@ export const generateNextflowScript = (
       const incomingEdges = sortIncomingEdges(
         edges.filter((edge) => edge.target === node.id)
       );
-      if (incomingEdges.length === 0) return;
+      if (incomingEdges.length === 0) continue;
 
       const upstreamChannelName = resolveChannelNameForEdge(
         incomingEdges[0],
         channelNameMap
       );
-      if (!upstreamChannelName) return;
+      if (!upstreamChannelName) continue;
 
       // Output display nodes don't have outputs, so skip this check for them
       let outputChannelName = null;
@@ -154,7 +154,7 @@ export const generateNextflowScript = (
           outputChannelName = channelNameMap.get(
             `${node.id}.${node.data.outputs[0].name}`
           );
-          if (!outputChannelName) return;
+          if (!outputChannelName) continue;
         }
       }
 
@@ -176,7 +176,7 @@ export const generateNextflowScript = (
         sanitizeVarName,
       });
 
-      if (!generationResult) return;
+      if (!generationResult) continue;
 
       processScripts[node.id] = generationResult.processScript;
 
@@ -200,7 +200,7 @@ export const generateNextflowScript = (
       outputDisplayCounter +=
         generationResult.outputDisplayCounterIncrement ?? 0;
     }
-  });
+  }
 
   // Final Script Assembly
   let finalScript = `// Workflow Script for ${workflowName}\n`;
@@ -233,11 +233,11 @@ export const generateNextflowScript = (
 
   // Create a map to ensure each process script is only included once
   const uniqueProcessScripts = new Map<string, string>();
-  uniqueExecutionOrder.forEach((id) => {
+  for (const id of uniqueExecutionOrder) {
     if (processScripts[id] && !uniqueProcessScripts.has(id)) {
       uniqueProcessScripts.set(id, processScripts[id]);
     }
-  });
+  }
 
   const orderedProcessScripts = executionOrder
     .filter((id, idx) => executionOrder.indexOf(id) === idx)
@@ -258,33 +258,33 @@ export const generateNextflowScript = (
   const variableDefinitions = new Map<string, string>();
   const variableUsages = new Map<string, string[]>();
 
-  channelDefinitions.forEach((definition) => {
+  for (const definition of channelDefinitions) {
     const { definitions } = parseInvocation(definition);
 
-    definitions.forEach((varName) => {
+    for (const varName of definitions) {
       variableDefinitions.set(varName, definition);
-    });
-  });
+    }
+  }
 
-  processInvocations.forEach((invocation) => {
+  for (const invocation of processInvocations) {
     // Skip comments and empty lines
     if (invocation.trim().startsWith("//") || invocation.trim() === "") {
-      return;
+      continue;
     }
 
     const { definitions, usages } = parseInvocation(invocation);
 
-    definitions.forEach((varName) => {
+    for (const varName of definitions) {
       variableDefinitions.set(varName, invocation);
-    });
+    }
 
-    usages.forEach((usedVar) => {
+    for (const usedVar of usages) {
       if (!variableUsages.has(usedVar)) {
         variableUsages.set(usedVar, []);
       }
       variableUsages.get(usedVar)?.push(invocation);
-    });
-  });
+    }
+  }
 
   // Add invocations in dependency order - variables must be defined before used
   const processed = new Set<string>();
@@ -304,13 +304,13 @@ export const generateNextflowScript = (
 
     processing.add(invocation);
 
-    parseInvocation(invocation).usages.forEach((usedVar) => {
+    for (const usedVar of parseInvocation(invocation).usages) {
       const definingInvocation = variableDefinitions.get(usedVar);
       // If this invocation uses a variable, make sure that variable is defined first
       if (definingInvocation && !processed.has(definingInvocation)) {
         addInvocation(definingInvocation);
       }
-    });
+    }
 
     processing.delete(invocation);
 
@@ -333,20 +333,20 @@ export const generateNextflowScript = (
   }
 
   // Process all invocations
-  processInvocations.forEach((invocation) => {
+  for (const invocation of processInvocations) {
     if (!invocation.trim().startsWith("//") && invocation.trim() !== "") {
       addInvocation(invocation);
     }
-  });
+  }
 
   // Fail fast when an invocation uses an unresolved variable
-  variableUsages.forEach((dependentInvocations, usedVar) => {
+  for (const [usedVar, dependentInvocations] of variableUsages) {
     if (!variableDefinitions.has(usedVar)) {
       // Input channels from file-input nodes are defined at the top of the
       // workflow rather than produced by a process invocation — they're
       // resolved, not missing.
       if (definedInputChannels.has(usedVar)) {
-        return;
+        continue;
       }
 
       if (usedVar.startsWith("ch_") || usedVar.startsWith("node_")) {
@@ -355,7 +355,7 @@ export const generateNextflowScript = (
             " | "
           )}`
         );
-        return;
+        continue;
       }
 
       throw new Error(
@@ -363,10 +363,10 @@ export const generateNextflowScript = (
           `Used in invocation(s): ${dependentInvocations.join(" | ")}`
       );
     }
-  });
+  }
 
   // Add comment lines as-is
-  processInvocations.forEach((invocation) => {
+  for (const invocation of processInvocations) {
     if (invocation.trim().startsWith("//") || invocation.trim() === "") {
       if (
         !sortedInvocations.includes(invocation) &&
@@ -382,7 +382,7 @@ export const generateNextflowScript = (
         }
       }
     }
-  });
+  }
 
   finalScript += sortedInvocations.join(""); // Process calls in dependency order
   finalScript += outputInvocations.join(""); // Output processes last
@@ -403,29 +403,28 @@ function parseInvocation(invocation: string): {
     return { definitions, usages };
   }
 
-  trimmed.split(/\r?\n/).forEach((line) => {
+  for (const line of trimmed.split(/\r?\n/)) {
     const lineTrimmed = line.trim();
-    if (!lineTrimmed || lineTrimmed.startsWith("//")) return;
+    if (!lineTrimmed || lineTrimmed.startsWith("//")) continue;
 
     // Tuple assignment: `(a, b) = process(...)`
     const tupleDefinitionMatch = lineTrimmed.match(
       /^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/
     );
     if (tupleDefinitionMatch) {
-      tupleDefinitionMatch[1]
+      const tupleNames = tupleDefinitionMatch[1]
         .split(",")
         .map((name) => sanitizeVarName(name.trim()))
-        .filter(Boolean)
         .filter(
           (name) =>
             name.includes("_") ||
             name.startsWith("ch_") ||
             name.startsWith("node_")
-        )
-        .forEach((name) => {
-          if (!definitions.includes(name)) definitions.push(name);
-        });
-      return;
+        );
+      for (const name of tupleNames) {
+        if (!definitions.includes(name)) definitions.push(name);
+      }
+      continue;
     }
 
     // Single assignment: `var = process(...)`
@@ -444,14 +443,14 @@ function parseInvocation(invocation: string): {
         definitions.push(varName);
       }
     }
-  });
+  }
 
-  getInvocationArguments(invocation).forEach((arg) => {
+  for (const arg of getInvocationArguments(invocation)) {
     if (!usages.includes(arg)) usages.push(arg);
-  });
-  getChainedChannelRoots(invocation).forEach((arg) => {
+  }
+  for (const arg of getChainedChannelRoots(invocation)) {
     if (!usages.includes(arg)) usages.push(arg);
-  });
+  }
 
   return { definitions, usages };
 }
@@ -524,11 +523,10 @@ function getInvocationArguments(invocation: string): string[] {
   const lhsDefinitions = new Set<string>();
   const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
   if (tupleDefinitionMatch) {
-    tupleDefinitionMatch[1]
-      .split(",")
-      .map((name) => sanitizeVarName(name.trim()))
-      .filter(Boolean)
-      .forEach((name) => lhsDefinitions.add(name));
+    for (const name of tupleDefinitionMatch[1].split(",")) {
+      const sanitized = sanitizeVarName(name.trim());
+      if (sanitized) lhsDefinitions.add(sanitized);
+    }
   } else {
     const definitionMatch = trimmed.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
     if (definitionMatch) {

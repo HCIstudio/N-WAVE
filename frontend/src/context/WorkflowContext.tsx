@@ -169,7 +169,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
 
           // Special handling for zip/html outputs
           if (updatedNode.data.zipOutput || updatedNode.data.htmlOutput) {
-            outgoingEdges.forEach((edge) => {
+            for (const edge of outgoingEdges) {
               const targetNode = updatedNodes.find((n) => n.id === edge.target);
               if (targetNode?.type === "outputDisplay") {
                 // Determine which output we're connected to
@@ -217,7 +217,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
                   }
                 }
               }
-            });
+            }
           }
 
           // Force downstream nodes to refresh when file inputs change
@@ -238,9 +238,9 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
                 .map((edge) => edge.target);
 
               const allDownstream = [...directTargets];
-              directTargets.forEach((target) => {
+              for (const target of directTargets) {
                 allDownstream.push(...findDownstreamNodes(target, visited));
-              });
+              }
 
               return allDownstream;
             };
@@ -248,7 +248,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
             const downstreamNodeIds = findDownstreamNodes(nodeId);
 
             // Update all downstream nodes with a refresh timestamp
-            downstreamNodeIds.forEach((downstreamId) => {
+            for (const downstreamId of downstreamNodeIds) {
               const nodeIndex = updatedNodes.findIndex(
                 (n) => n.id === downstreamId
               );
@@ -261,7 +261,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
                   },
                 };
               }
-            });
+            }
           }
         }
 

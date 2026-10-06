@@ -91,7 +91,7 @@ export const useExecutionStatus = ({
   const parseNextflowOutput = useCallback((output: string) => {
     const lines = output.split("\n");
 
-    lines.forEach((line) => {
+    for (const line of lines) {
       // Parse workflow launch
       if (line.includes("Launching") && line.includes("DSL2")) {
         const launchMatch = line.match(/Launching `([^`]+)`.*\[([^\]]+)\]/);
@@ -301,7 +301,7 @@ export const useExecutionStatus = ({
           });
         }, 10000);
 
-        return; // Stop processing any more lines after completion
+        continue; // Nothing else to parse on a completion line
       }
 
       // Parse errors
@@ -339,7 +339,7 @@ export const useExecutionStatus = ({
           currentStage: line.trim(),
         }));
       }
-    });
+    }
   }, []);
 
   // Complete execution (success or failure)

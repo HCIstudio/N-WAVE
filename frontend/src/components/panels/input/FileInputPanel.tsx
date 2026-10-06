@@ -41,11 +41,11 @@ const FileInputPanel: React.FC<{
     setSelectedForRemoval((prev) => {
       const currentFileNames = new Set(nodeFiles.map((f) => f.name));
       const newSelection = new Set<string>();
-      prev.forEach((fileName) => {
+      for (const fileName of prev) {
         if (currentFileNames.has(fileName)) {
           newSelection.add(fileName);
         }
-      });
+      }
       return newSelection;
     });
   }, [nodeFiles]);
@@ -95,7 +95,7 @@ const FileInputPanel: React.FC<{
 
         // Replace existing files with same name, or add new ones
         const updatedFiles = [...nodeFiles];
-        newFiles.forEach((newFile) => {
+        for (const newFile of newFiles) {
           const existingIndex = updatedFiles.findIndex(
             (f) => f.name === newFile.name
           );
@@ -108,7 +108,7 @@ const FileInputPanel: React.FC<{
             updatedFiles.push(newFile);
             addedFiles.push(newFile.name);
           }
-        });
+        }
 
         // Show success message
         if (replacedFiles.length > 0 || addedFiles.length > 0) {
