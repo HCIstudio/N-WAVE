@@ -38,6 +38,15 @@ pnpm test            # Vitest (pnpm test:coverage for a coverage report)
 pnpm build           # TypeScript typecheck + build
 ```
 
+End-to-end tests (Playwright) cover the canvas flow against the backend-less demo build.
+They run as a separate, non-blocking CI job; locally:
+
+```bash
+cd frontend
+pnpm exec playwright install chromium   # once
+pnpm test:e2e
+```
+
 Guidelines:
 
 - **Add tests with your change.** Tests live next to the code as `*.test.ts(x)`. Backend route
