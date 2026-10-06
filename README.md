@@ -101,6 +101,28 @@ the custom node editor ("Edit custom node", or **Add node → Custom process** f
 and are stored by the backend, or in the browser in the online demo, so new steps don't need
 a code change to N-WAVE.
 
+### Exporting a runnable project
+
+**Export Project** (in the bottom bar, next to the script download) downloads a zip that
+runs on any machine with Nextflow and Docker, without N-WAVE:
+
+```
+<workflow>/
+├─ main.nf            # the generated workflow
+├─ nextflow.config    # module settings and a `docker` profile
+├─ modules/nf-core/   # the nf-core modules it uses, at the catalog's pinned commit
+├─ inputs/            # the File Input files
+└─ README.md          # how to run it and which inputs it expects
+```
+
+```bash
+unzip <workflow>.zip && cd <workflow>
+nextflow run main.nf -profile docker
+```
+
+This works in the online demo too: module files are fetched from GitHub in the browser, so
+a workflow can be built in the demo and run locally.
+
 nf-core modules are installed from the **nf-core Library**. How their inputs become ports
 and settings, and how to fix a module the automatic mapping gets wrong, is described in
 [scripts/README.md](scripts/README.md).

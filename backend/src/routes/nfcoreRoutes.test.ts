@@ -35,6 +35,32 @@ describe("GET /api/nfcore/modules/source", () => {
   );
 });
 
+describe("GET /api/nfcore/modules/files", () => {
+  it("returns the files a bundled module needs to run", async () => {
+    const response = await request(app)
+      .get("/api/nfcore/modules/files")
+      .query({ id: "nf-core/fastqc" })
+      .expect(200);
+    expect(Object.keys(response.body.files).sort()).toEqual([
+      "environment.yml",
+      "main.nf",
+      "meta.yml",
+    ]);
+    expect(response.body.files["main.nf"]).toMatch(/process FASTQC \{/);
+  });
+
+  it("reports modules that are not installed and rejects bad ids", async () => {
+    await request(app)
+      .get("/api/nfcore/modules/files")
+      .query({ id: "nf-core/samtools/sort" })
+      .expect(404);
+    await request(app)
+      .get("/api/nfcore/modules/files")
+      .query({ id: "nf-core/../x" })
+      .expect(400);
+  });
+});
+
 describe("installed nf-core modules", () => {
   const catalog = JSON.parse(
     fs.readFileSync(

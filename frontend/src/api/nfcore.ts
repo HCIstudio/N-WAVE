@@ -127,3 +127,13 @@ export const uninstallNfCoreModule = async (id: string): Promise<void> => {
   await api.post("/nfcore/uninstall", { id });
   await refreshInstalledNfCoreNodes();
 };
+
+/** The files of an nf-core module (main.nf, meta.yml, ...), keyed by name. */
+export const getNfCoreModuleFiles = async (
+  id: string
+): Promise<Record<string, string>> => {
+  const response = await api.get<{ id: string; files: Record<string, string> }>(
+    `/nfcore/modules/files?id=${encodeURIComponent(id)}`
+  );
+  return response.data.files;
+};

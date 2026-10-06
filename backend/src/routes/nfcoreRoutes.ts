@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getNfCoreModuleFiles,
   getNfCoreModuleSource,
   installNfCoreModule,
   listInstalledNfCoreModules,
@@ -14,5 +15,6 @@ router.get("/installed", listInstalledNfCoreModules);
 router.post("/install", installNfCoreModule);
 router.post("/uninstall", uninstallNfCoreModule);
 router.get("/modules/source", getNfCoreModuleSource);
+router.get("/modules/files", getNfCoreModuleFiles);
 
 export default router;

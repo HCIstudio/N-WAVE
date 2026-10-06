@@ -106,6 +106,31 @@ export const fetchNfCoreModuleSource = (id: string): Promise<string> => {
   return request;
 };
 
+/**
+ * The files a module needs to run (main.nf, plus meta.yml and environment.yml
+ * when GitHub has them), for exporting a runnable project.
+ */
+export const fetchNfCoreModuleFiles = async (
+  id: string,
+): Promise<Record<string, string>> => {
+  const [entry, mainNf] = await Promise.all([
+    findModule(id),
+    fetchNfCoreModuleSource(id),
+  ]);
+  const files: Record<string, string> = { "main.nf": mainNf };
+  await Promise.all(
+    ["meta.yml", "environment.yml"].map(async (name) => {
+      try {
+        const response = await fetch(nfCoreModuleFileUrl(entry.source, name));
+        if (response.ok) files[name] = await response.text();
+      } catch {
+        // Optional files: the module runs without them.
+      }
+    }),
+  );
+  return files;
+};
+
 const toInstalledEntry = (
   module: StoredModule,
   catalogCommit: string | undefined,
