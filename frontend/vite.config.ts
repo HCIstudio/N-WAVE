@@ -50,10 +50,32 @@ const gitSha = resolveGitSha();
 // Defaults to "/" for local dev and the Docker/nginx deployment.
 const basePath = process.env.VITE_BASE_PATH?.trim() || "/";
 
+// Long-lived vendor chunks, split from app code so they stay cached across
+// releases. Everything else is chunked by Rollup along the lazy route imports
+// in src/main.tsx.
+const vendorChunks: Record<string, RegExp> = {
+  "vendor-react":
+    /[\\/]node_modules[\\/](\.pnpm[\\/])?(react|react-dom|scheduler|react-router|react-router-dom|@remix-run[\\/+]router)[@\\/]/,
+  "vendor-reactflow":
+    /[\\/]node_modules[\\/](\.pnpm[\\/])?(reactflow|@reactflow[\\/+][^\\/]+|d3-[^\\/@]+|zustand|classcat)[@\\/]/,
+};
+
 // https://vite.dev/config/
 export default defineConfig({
   base: basePath,
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          for (const [chunk, pattern] of Object.entries(vendorChunks)) {
+            if (pattern.test(id)) return chunk;
+          }
+          return undefined;
+        },
+      },
+    },
+  },
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
     __BUILD_DATE__: JSON.stringify(buildDate),

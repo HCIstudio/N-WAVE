@@ -22,6 +22,7 @@ import { FloatingPanel } from "../components/panels";
 import { OutputDisplayPanelContent } from "../components/panels";
 import {
   ConfirmDialog,
+  ErrorBoundary,
   Toast,
   WorkflowExecutionErrorNotification,
 } from "../components/common";
@@ -1556,20 +1557,25 @@ const WorkflowPageContent: React.FC = () => {
             </div>
           </div>
         )}
-        <Canvas
-          nodes={memoizedNodes}
-          edges={memoizedEdges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
-          onConnect={handleConnect}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDrag={onNodeDrag}
-          onNodeDragStop={onNodeDragStop}
-          onNodeDoubleClick={onNodeDoubleClick}
-          isValidConnection={isValidConnection}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
-        />
+        <ErrorBoundary
+          title="The canvas ran into a problem"
+          description="Your last saved version of this workflow is safe. Try again to re-render the canvas, or reload the page."
+        >
+          <Canvas
+            nodes={memoizedNodes}
+            edges={memoizedEdges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
+            onConnect={handleConnect}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDrag={onNodeDrag}
+            onNodeDragStop={onNodeDragStop}
+            onNodeDoubleClick={onNodeDoubleClick}
+            isValidConnection={isValidConnection}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+          />
+        </ErrorBoundary>
         {isTutorialActive && tutorialStepIndex !== null && (
           <TutorialCallout
             text={tutorialSteps[tutorialStepIndex].text}
@@ -1593,7 +1599,13 @@ const WorkflowPageContent: React.FC = () => {
           isDragging={isDragging}
           isHovering={isHoveringDropZone}
         />
-        {renderPanels()}
+        <ErrorBoundary
+          title="A properties panel ran into a problem"
+          description="Your workflow on the canvas is unaffected. Try again, or reload the page."
+          className="absolute bottom-4 right-4 z-50 text-text"
+        >
+          {renderPanels()}
+        </ErrorBoundary>
       </div>
       {workflowImportWarnings.length > 0 && (
         <div className="border-t border-yellow-700/40 bg-yellow-100/90 px-4 py-3 text-sm text-yellow-900">
