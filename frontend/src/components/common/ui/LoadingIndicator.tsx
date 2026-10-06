@@ -10,8 +10,7 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   fullPage,
   label = "Loading...",
 }) => (
-  <div
-    role="status"
+  <output
     aria-live="polite"
     className={
       fullPage
@@ -21,7 +20,7 @@ const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
   >
     <Loader className="animate-spin" aria-hidden />
     <span>{label}</span>
-  </div>
+  </output>
 );
 
 export default LoadingIndicator;

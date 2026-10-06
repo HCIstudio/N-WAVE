@@ -51,6 +51,12 @@ const BottomBar: React.FC<BottomBarProps> = ({
   const [settingsSaved, setSettingsSaved] = useState(true);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus the name field when it switches into edit mode.
+  useEffect(() => {
+    if (isEditingName) nameInputRef.current?.focus();
+  }, [isEditingName]);
 
   // Load settings from localStorage on component mount
   useEffect(() => {
@@ -214,6 +220,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
               <div className="flex items-center gap-3">
                 {/* Save Settings Button */}
                 <button
+                  type="button"
                   onClick={handleSaveSettings}
                   disabled={settingsSaved}
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-md transition-colors text-sm ${
@@ -237,6 +244,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
 
                 {/* Close Button */}
                 <button
+                  type="button"
                   onClick={() => {
                     if (settingsChanged && !settingsSaved) {
                       setShowConfirmDialog(true);
@@ -293,6 +301,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
 
                 <div className="flex gap-3">
                   <button
+                    type="button"
                     onClick={() => {
                       if (settingsChanged && !settingsSaved) {
                         setShowConfirmDialog(true);
@@ -306,6 +315,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
                   </button>
                   {onRun && (
                     <button
+                      type="button"
                       onClick={handleRunAndClose}
                       disabled={isRunning || !canExecute}
                       className="px-4 py-2 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
@@ -358,7 +368,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
               onKeyDown={handleNameKeyDown}
               onBlur={handleNameBlur}
               className="bg-accent text-sm text-text text-center rounded-md p-0.5 outline-none w-32 focus:ring-1 focus:ring-nextflow-green"
-              autoFocus
+              ref={nameInputRef}
             />
           ) : (
             <div
@@ -372,6 +382,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
 
         {/* Execution Settings Button */}
         <button
+          type="button"
           onClick={() => setShowExecutionSettings(true)}
           className="p-1.5 text-text hover:bg-accent rounded-md transition-colors relative"
           aria-label="Execution Settings"
@@ -391,6 +402,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
         {/* Run Button */}
         {onRun && (
           <button
+            type="button"
             onClick={handleRun}
             disabled={isRunning || !canExecute}
             className="p-1.5 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -414,6 +426,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
         )}
 
         <button
+          type="button"
           onClick={onDownload}
           className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
           aria-label="Download Workflow"
@@ -422,6 +435,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
         </button>
 
         <button
+          type="button"
           onClick={onSave}
           disabled={isSaving || isSaved}
           className="p-1.5 text-text hover:bg-accent rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

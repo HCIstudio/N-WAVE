@@ -114,6 +114,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
           {/* Cancel button removed - cancellation not fully working */}
           {onClose && (
             <button
+              type="button"
               onClick={onClose}
               className="text-white hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/20"
               title="Close panel"

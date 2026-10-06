@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useId } from "react";
 import DynamicIcon from "../ui/DynamicIcon";
 import { persistCustomNode } from "../../../api/customNodes";
 import {
@@ -53,6 +53,8 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
   onSaved,
   node,
 }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   const [label, setLabel] = useState(node?.label ?? "Custom Process");
   const [description, setDescription] = useState(
     node?.description ?? "User-defined Nextflow process."
@@ -178,19 +180,20 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-text">
+                <label htmlFor={`${fieldId}-name`} className="mb-1 block text-sm font-medium text-text">
                   Name
                 </label>
                 <input
+                  id={`${fieldId}-name`}
                   value={label}
                   onChange={(event) => setLabel(event.target.value)}
                   className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-text">
+              <fieldset>
+                <legend className="mb-1 block text-sm font-medium text-text">
                   Icon
-                </label>
+                </legend>
                 <div className="grid grid-cols-5 gap-1">
                   {iconOptions.map((option) => (
                     <button
@@ -199,6 +202,7 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
                       onClick={() => setIcon(option)}
                       title={option}
                       aria-label={option}
+                      aria-pressed={icon === option}
                       className={`flex h-9 items-center justify-center rounded-md border ${
                         icon === option
                           ? "border-nextflow-green bg-nextflow-green/10 text-nextflow-green"
@@ -209,14 +213,15 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
                     </button>
                   ))}
                 </div>
-              </div>
+              </fieldset>
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-text">
+              <label htmlFor={`${fieldId}-description`} className="mb-1 block text-sm font-medium text-text">
                 Description
               </label>
               <input
+                id={`${fieldId}-description`}
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
@@ -224,10 +229,11 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
             </div>
 
             <div>
-              <label className="mb-1 block text-sm font-medium text-text">
+              <label htmlFor={`${fieldId}-nextflow-process-code`} className="mb-1 block text-sm font-medium text-text">
                 Nextflow process code
               </label>
               <textarea
+                id={`${fieldId}-nextflow-process-code`}
                 value={source}
                 onChange={(event) => setSource(event.target.value)}
                 rows={18}
@@ -555,10 +561,10 @@ const EditableSettings: React.FC<{
                 <option value="select">Selection</option>
               </select>
             </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
+            <fieldset className="block">
+              <legend className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
                 Default Value
-              </span>
+              </legend>
               <SettingDefaultInput
                 setting={setting}
                 onChange={(value) =>
@@ -571,13 +577,13 @@ const EditableSettings: React.FC<{
                   )
                 }
               />
-            </label>
+            </fieldset>
           </div>
           {setting.settingType === "select" && (
-            <label className="mt-2 block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
+            <fieldset className="mt-2 block">
+              <legend className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
                 Options
-              </span>
+              </legend>
               <SelectOptionsEditor
                 options={setting.options ?? []}
                 onChange={(options) =>
@@ -601,7 +607,7 @@ const EditableSettings: React.FC<{
               <span className="mt-1 block text-xs text-text-light">
                 Enter one selectable option per line.
               </span>
-            </label>
+            </fieldset>
           )}
         </div>
       ))}

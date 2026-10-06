@@ -76,9 +76,13 @@ const InlineEdit: React.FC<InlineEditProps> = ({
   }
 
   return (
-    <div onClick={handleClick} className={`cursor-pointer ${className}`}>
+    <button
+      type="button"
+      onClick={handleClick}
+      className={`block w-full cursor-pointer text-left ${className}`}
+    >
       {value || <span className="text-gray-400">{placeholder}</span>}
-    </div>
+    </button>
   );
 };
 

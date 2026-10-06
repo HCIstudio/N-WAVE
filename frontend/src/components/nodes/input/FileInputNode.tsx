@@ -109,6 +109,7 @@ const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
       <div className="nodrag nopan p-2 text-center">
         {data.files && data.files.length > 0 ? (
           <button
+            type="button"
             onClick={handleButtonClick}
             className="text-xs text-gray-500 hover:text-nextflow-green font-medium"
           >
@@ -116,6 +117,7 @@ const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
           </button>
         ) : (
           <button
+            type="button"
             onClick={handleButtonClick}
             className={clsx(
               "w-full px-4 py-2 text-sm font-medium text-white bg-nextflow-green-dark rounded-md hover:bg-nextflow-green transition-transform duration-150",

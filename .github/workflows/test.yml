@@ -4,7 +4,7 @@ name: Test
 # main as a safety net): lint, unit tests, typecheck, and build — all blocking.
 #
 # The Biome config (frontend/biome.json) still disables a few rules that the
-# existing code violates broadly (a11y, noExplicitAny, exhaustive-deps). Those
+# existing code violates broadly (noExplicitAny, exhaustive-deps). Those
 # are tracked tech debt (#20): re-enable them one at a time as the code is
 # cleaned up.
 on:

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 import { MemoryInput, TimeInput } from "../../common/forms";
@@ -12,6 +12,8 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
   node,
   onSave,
 }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   const supportsExtArgs = Boolean(node.data.nwaveNfCoreSupportsExtArgs);
   const supportsResources = node.data.nwaveNfCoreSupportsResources !== false;
   const extArgNames = Array.isArray(node.data.nwaveNfCoreExtArgNames)
@@ -73,7 +75,7 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
 
       {supportsExtArgs && (
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-text mb-1">
+          <label htmlFor={`${fieldId}-extra-arguments`} className="block text-sm font-medium text-text mb-1">
             Extra arguments
           </label>
           {extArgNames.length > 0 && (
@@ -82,6 +84,7 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
             </p>
           )}
           <textarea
+            id={`${fieldId}-extra-arguments`}
             value={extArgs}
             onChange={(event) => setExtArgs(event.target.value)}
             rows={4}
@@ -132,10 +135,11 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
             <div className="space-y-3">
               <div className="flex flex-row flex-wrap gap-2">
                 <div className="flex-1 min-w-[120px]">
-                  <label className="block text-sm font-medium text-text mb-1">
+                  <label htmlFor={`${fieldId}-cpus`} className="block text-sm font-medium text-text mb-1">
                     CPUs
                   </label>
                   <input
+                    id={`${fieldId}-cpus`}
                     type="number"
                     min="1"
                     value={cpus}
@@ -146,18 +150,20 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
                   />
                 </div>
                 <div className="flex-1 min-w-[120px]">
-                  <label className="block text-sm font-medium text-text mb-1">
+                  <label htmlFor={`${fieldId}-memory`} className="block text-sm font-medium text-text mb-1">
                     Memory
                   </label>
-                  <MemoryInput value={memory} onChange={setMemory} />
+                  <MemoryInput
+                    id={`${fieldId}-memory`} value={memory} onChange={setMemory} />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-text mb-1">
+                <label htmlFor={`${fieldId}-time-limit`} className="block text-sm font-medium text-text mb-1">
                   Time limit
                 </label>
-                <TimeInput value={timeLimit} onChange={setTimeLimit} />
+                <TimeInput
+                  id={`${fieldId}-time-limit`} value={timeLimit} onChange={setTimeLimit} />
               </div>
             </div>
           )}

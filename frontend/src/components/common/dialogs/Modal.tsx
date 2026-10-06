@@ -6,7 +6,7 @@ declare global {
 
 // Resource Management Modal
 import type React from "react";
-import type { FC, PropsWithChildren } from "react";
+import { useId, type FC, type PropsWithChildren } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -23,26 +23,40 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
   children,
   footer,
 }) => {
+  const titleId = useId();
+
   if (!isOpen) {
     return null;
   }
 
   return (
+    // Clicking the backdrop (but not the dialog) or pressing Escape closes.
     <div
       className="fixed inset-0 bg-overlay z-40 flex justify-center items-center"
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
     >
-      <div
-        className="bg-panel-background text-text rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col"
-        onClick={(e) => e.stopPropagation()}
+      <dialog
+        open
+        aria-modal="true"
+        aria-labelledby={titleId}
+        className="relative bg-panel-background text-text rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col"
       >
         <header className="flex items-center justify-between p-4 border-b border-panel-border">
-          <h2 className="text-lg font-semibold">{title}</h2>
+          <h2 id={titleId} className="text-lg font-semibold">
+            {title}
+          </h2>
           <button
+            type="button"
             onClick={onClose}
+            aria-label="Close"
             className="p-1 text-text-light hover:text-text hover:bg-accent-hover rounded-md"
           >
-            <X size={20} />
+            <X size={20} aria-hidden />
           </button>
         </header>
         <main className="p-4 overflow-auto flex-grow">{children}</main>
@@ -51,7 +65,7 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
             {footer}
           </footer>
         )}
-      </div>
+      </dialog>
     </div>
   );
 };

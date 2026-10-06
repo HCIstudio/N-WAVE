@@ -85,6 +85,7 @@ const ProcessNodePanel: React.FC<ProcessNodePanelProps> = ({
                 <option value="path">path</option>
               </select>
               <button
+                type="button"
                 onClick={() => handleRemoveInput(input.id)}
                 className="p-1 text-red-500 hover:text-red-400"
               >
@@ -94,6 +95,7 @@ const ProcessNodePanel: React.FC<ProcessNodePanelProps> = ({
           ))}
         </div>
         <button
+          type="button"
           onClick={handleAddInput}
           className="mt-2 flex items-center text-sm text-nextflow-green hover:underline"
         >

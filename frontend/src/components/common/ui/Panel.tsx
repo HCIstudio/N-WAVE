@@ -190,7 +190,9 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onClick={onFocus}
+      // Bring the panel to the front on pointer or keyboard interaction.
+      onMouseDown={onFocus}
+      onFocus={onFocus}
     >
       <div className={headerClasses} onMouseDown={onDragMouseDown}>
         <div className="flex items-center gap-2">
@@ -202,6 +204,7 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
         <div className="flex items-center gap-1">
           {onDelete && (
             <button
+              type="button"
               onClick={onDelete}
               className="p-1 rounded-full hover:bg-gray-600 text-gray-400 hover:text-red-400"
               aria-label="Delete Node"
@@ -210,6 +213,7 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
             </button>
           )}
           <button
+            type="button"
             onClick={onClose}
             className="p-1 rounded-full hover:bg-gray-600"
             aria-label="Close Panel"
@@ -223,7 +227,13 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
         className="absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize text-gray-500 hover:text-text"
         onMouseDown={onResizeMouseDown}
       >
-        <svg width="100%" height="100%" viewBox="0 0 16 16" fill="currentColor">
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          aria-hidden="true"
+        >
           <path d="M10.53 10.53a.75.75 0 0 1 0 1.06l-4.24 4.24a.75.75 0 1 1-1.06-1.06l4.24-4.24a.75.75 0 0 1 1.06 0zM11.59 5.34a.75.75 0 0 0 0-1.06l-4.24-4.24a.75.75 0 1 0-1.06 1.06l4.24 4.24a.75.75 0 0 0 1.06 0z" />
         </svg>
       </div>

@@ -40,6 +40,7 @@ const Header: React.FC<HeaderProps> = ({
     <header className="absolute top-4 right-4 z-10">
       <div className="relative" ref={dropdownRef}>
         <button
+          type="button"
           onClick={() => {
             setDropdownOpen((prev) => !prev);
           }}
@@ -48,6 +49,7 @@ const Header: React.FC<HeaderProps> = ({
           aria-label="Add node"
         >
           <svg
+            aria-hidden="true"
             xmlns="http://www.w3.org/2000/svg"
             width="24"
             height="24"

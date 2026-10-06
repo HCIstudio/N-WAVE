@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import ResourceSettingsPanel from "../shared/ResourceSettingsPanel";
 import type { Node } from "reactflow";
 import { ClipboardCheck, Info, FileText, Archive } from "lucide-react";
@@ -10,6 +10,8 @@ interface FastQCPanelProps {
 }
 
 const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   // FastQC-specific parameters
   const [adapters, setAdapters] = useState(node.data.adapters || "");
   const [limits, setLimits] = useState(node.data.limits || "");
@@ -83,10 +85,11 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
       {/* Basic Parameters */}
       <div className="space-y-3">
         <div>
-          <label className="block text-sm font-medium text-text mb-1">
+          <label htmlFor={`${fieldId}-format`} className="block text-sm font-medium text-text mb-1">
             Format
           </label>
           <select
+            id={`${fieldId}-format`}
             value={format}
             onChange={(e) => setFormat(e.target.value)}
             className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
@@ -102,10 +105,11 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text mb-1">
+          <label htmlFor={`${fieldId}-threads`} className="block text-sm font-medium text-text mb-1">
             Threads
           </label>
           <input
+            id={`${fieldId}-threads`}
             type="number"
             min="1"
             max="16"
@@ -119,10 +123,11 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text mb-1">
+          <label htmlFor={`${fieldId}-k-mer-size`} className="block text-sm font-medium text-text mb-1">
             K-mer size
           </label>
           <input
+            id={`${fieldId}-k-mer-size`}
             type="number"
             min="2"
             max="10"
@@ -162,10 +167,11 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-adapters-file`} className="block text-sm font-medium text-text mb-1">
               Adapters file
             </label>
             <input
+              id={`${fieldId}-adapters-file`}
               type="text"
               value={adapters}
               onChange={(e) => setAdapters(e.target.value)}
@@ -178,10 +184,11 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-limits-file`} className="block text-sm font-medium text-text mb-1">
               Limits file
             </label>
             <input
+              id={`${fieldId}-limits-file`}
               type="text"
               value={limits}
               onChange={(e) => setLimits(e.target.value)}

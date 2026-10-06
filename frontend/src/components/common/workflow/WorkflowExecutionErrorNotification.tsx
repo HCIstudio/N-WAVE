@@ -195,6 +195,7 @@ const WorkflowExecutionErrorNotification: React.FC<
             <div className="flex items-center space-x-2">
               {!isRetrying && (
                 <button
+                  type="button"
                   onClick={() => setIsExpanded(!isExpanded)}
                   className="p-1 text-text-light hover:text-text transition-colors"
                   title={isExpanded ? "Collapse details" : "Expand details"}
@@ -208,6 +209,7 @@ const WorkflowExecutionErrorNotification: React.FC<
               )}
 
               <button
+                type="button"
                 onClick={onClose}
                 className="p-1 text-text-light hover:text-text transition-colors"
                 disabled={isRetrying}
@@ -308,6 +310,7 @@ const WorkflowExecutionErrorNotification: React.FC<
           {/* Bottom section with Retry button */}
           <div className="flex justify-start pt-3 border-t border-panel-border mt-3">
             <button
+              type="button"
               onClick={handleRetry}
               disabled={isRetrying}
               className="px-4 py-2 text-sm rounded bg-nextflow-green hover:bg-nextflow-green-dark text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"

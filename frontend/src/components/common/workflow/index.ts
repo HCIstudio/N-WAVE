@@ -1,5 +1,4 @@
 // Workflow-specific components
-export { default as DockerSettings } from "./ExecutionSettings";
 export { default as WorkflowExecutionErrorNotification } from "./WorkflowExecutionErrorNotification";
 export { default as ExecutionStatusPanel } from "./ExecutionStatusPanel";
 

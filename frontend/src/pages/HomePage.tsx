@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
@@ -37,6 +37,8 @@ const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 const TUTORIAL_VERSION = "custom-nodes-v3";
 
 const HomePage: React.FC = () => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   const [workflows, setWorkflows] = useState<WorkflowDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
   // Failing to load the library replaces the page with a retry state; failed
@@ -118,6 +120,11 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     fetchWorkflows();
   }, []);
+
+  // Focus the name field when a card enters edit mode.
+  useEffect(() => {
+    if (editingId) nameTextareaRef.current?.focus();
+  }, [editingId]);
 
   useEffect(() => {
     const resizeTextarea = (ref: React.RefObject<HTMLTextAreaElement>) => {
@@ -326,8 +333,7 @@ const HomePage: React.FC = () => {
   if (loading && workflows.length === 0) {
     return (
       <PageLayout>
-        <div
-          role="status"
+        <output
           aria-live="polite"
           className="flex items-center justify-center h-screen"
         >
@@ -335,7 +341,7 @@ const HomePage: React.FC = () => {
             <Loader className="animate-spin text-nextflow-green" aria-hidden />
             <span className="text-nextflow-green">Loading workflows...</span>
           </div>
-        </div>
+        </output>
       </PageLayout>
     );
   }
@@ -428,6 +434,7 @@ const HomePage: React.FC = () => {
           {isEditing ? (
             <>
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -440,6 +447,7 @@ const HomePage: React.FC = () => {
               </button>
               {!isReadOnly && (
                 <button
+                  type="button"
                   onClick={(e) => handleDeleteClick(e, wf._id)}
                   className="p-1 text-text-light hover:text-red-500"
                   aria-label="Delete"
@@ -452,6 +460,7 @@ const HomePage: React.FC = () => {
             <>
               {!isReadOnly && (
                 <button
+                  type="button"
                   onClick={(e) => handleEditClick(e, wf)}
                   className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Edit"
@@ -480,6 +489,7 @@ const HomePage: React.FC = () => {
               )}
               {!isReadOnly && (
                 <button
+                  type="button"
                   onClick={(e) => handleDeleteClick(e, wf._id)}
                   className="p-1 text-text-light hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Delete"
@@ -505,7 +515,6 @@ const HomePage: React.FC = () => {
                 }}
                 className="text-lg font-semibold bg-transparent border border-gray-600 rounded-md text-nextflow-green focus:outline-none focus:border-nextflow-green focus:ring-1 focus:ring-nextflow-green w-full resize-none overflow-hidden p-2"
                 rows={1}
-                autoFocus
               />
             </div>
             <textarea
@@ -600,6 +609,7 @@ const HomePage: React.FC = () => {
                 <span>Wiki</span>
               </a>
               <button
+                type="button"
                 onClick={() => setIsImportModalOpen(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
               >
@@ -698,6 +708,7 @@ const HomePage: React.FC = () => {
           footer={
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   setIsImportModalOpen(false);
                   resetImportForm();
@@ -708,6 +719,7 @@ const HomePage: React.FC = () => {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleImportWorkflow}
                 className="rounded-md bg-nextflow-green px-4 py-2 text-white hover:bg-nextflow-green-dark disabled:opacity-50"
                 disabled={isImporting || !importSource.trim()}
@@ -719,8 +731,9 @@ const HomePage: React.FC = () => {
         >
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm text-text">Name</label>
+              <label htmlFor={`${fieldId}-name`} className="mb-1 block text-sm text-text">Name</label>
               <input
+                id={`${fieldId}-name`}
                 type="text"
                 value={importName}
                 onChange={(e) => setImportName(e.target.value)}
@@ -729,8 +742,9 @@ const HomePage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-text">Description</label>
+              <label htmlFor={`${fieldId}-description`} className="mb-1 block text-sm text-text">Description</label>
               <textarea
+                id={`${fieldId}-description`}
                 value={importDescription}
                 onChange={(e) => setImportDescription(e.target.value)}
                 className="w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none"
@@ -739,11 +753,12 @@ const HomePage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-text">
+              <label htmlFor={`${fieldId}-nextflow-file`} className="mb-1 block text-sm text-text">
                 Nextflow File
               </label>
               <div className="flex gap-2">
                 <input
+                  id={`${fieldId}-nextflow-file`}
                   ref={importFileInputRef}
                   type="file"
                   accept=".nf,.txt,.groovy"
@@ -765,10 +780,11 @@ const HomePage: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-text">
+              <label htmlFor={`${fieldId}-nextflow-source`} className="mb-1 block text-sm text-text">
                 Nextflow Source
               </label>
               <textarea
+                id={`${fieldId}-nextflow-source`}
                 value={importSource}
                 onChange={(e) => setImportSource(e.target.value)}
                 className="min-h-[220px] w-full rounded-md border border-gray-600 bg-accent p-2 font-mono text-sm text-text focus:border-nextflow-green focus:outline-none"

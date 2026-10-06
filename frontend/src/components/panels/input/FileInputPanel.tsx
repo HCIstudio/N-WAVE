@@ -268,12 +268,14 @@ const FileInputPanel: React.FC<{
               {selectedFromFiltered > 0 && (
                 <>
                   <button
+                    type="button"
                     onClick={clearSelection}
                     className="text-xs text-text-light hover:text-text"
                   >
                     Clear ({selectedFromFiltered})
                   </button>
                   <button
+                    type="button"
                     onClick={handleBulkRemove}
                     disabled={isRemoving}
                     className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -286,6 +288,7 @@ const FileInputPanel: React.FC<{
               {selectedFromFiltered === 0 && filteredFiles.length > 1 && (
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={selectAllFiles}
                     className="text-xs text-text-light hover:text-text"
                   >
@@ -293,6 +296,7 @@ const FileInputPanel: React.FC<{
                   </button>
                   {filesWithoutContent.length > 0 && (
                     <button
+                      type="button"
                       onClick={selectFilesWithoutContent}
                       className="text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-300 rounded px-2 py-1"
                     >
@@ -356,7 +360,8 @@ const FileInputPanel: React.FC<{
           {filteredFiles.length > 0 ? (
             <div className="p-3 max-h-64 overflow-y-auto space-y-2">
               {filteredFiles.map((file, index) => (
-                <div
+                // The whole row toggles the checkbox it contains.
+                <label
                   key={`${file.name}-${index}`}
                   className={`flex items-center justify-between bg-background p-3 rounded-md border transition-colors cursor-pointer ${
                     selectedForRemoval.has(file.name)
@@ -365,14 +370,12 @@ const FileInputPanel: React.FC<{
                       ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800"
                       : "border-accent hover:border-nextflow-green/50 hover:bg-background-light"
                   }`}
-                  onClick={() => toggleFileSelection(file.name)}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <input
                       type="checkbox"
                       checked={selectedForRemoval.has(file.name)}
                       onChange={() => toggleFileSelection(file.name)}
-                      onClick={(e) => e.stopPropagation()}
                       className="rounded border-accent flex-shrink-0"
                     />
                     <File
@@ -411,6 +414,7 @@ const FileInputPanel: React.FC<{
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={async (e) => {
                       e.stopPropagation();
                       await handleRemoveFile(file.name);
@@ -420,7 +424,7 @@ const FileInputPanel: React.FC<{
                   >
                     <X size={16} />
                   </button>
-                </div>
+                </label>
               ))}
             </div>
           ) : (
@@ -449,6 +453,7 @@ const FileInputPanel: React.FC<{
                   <File size={24} className="text-text-light" />
                   <p>No files match your search.</p>
                   <button
+                    type="button"
                     onClick={clearSearch}
                     className="text-xs text-nextflow-green hover:underline"
                   >
@@ -464,6 +469,7 @@ const FileInputPanel: React.FC<{
       {/* --- UPLOAD SECTION --- */}
       <div className="space-y-3">
         <button
+          type="button"
           onClick={open}
           disabled={isUploading}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nextflow-green text-white rounded-lg hover:bg-nextflow-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"

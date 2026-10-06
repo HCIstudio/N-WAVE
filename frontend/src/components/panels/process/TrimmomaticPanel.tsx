@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useId } from "react";
 import { Scissors, Info, ChevronDown, ChevronUp } from "lucide-react";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
@@ -14,6 +14,8 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
   node,
   onSave,
 }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   // Trimmomatic-specific parameters (with best-practice defaults)
   const [leading, setLeading] = useState(node.data.leading ?? 3);
   const [trailing, setTrailing] = useState(node.data.trailing ?? 3);
@@ -87,10 +89,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
       <div className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-leading`} className="block text-sm font-medium text-text mb-1">
               Leading
             </label>
             <input
+              id={`${fieldId}-leading`}
               type="number"
               min="0"
               max="40"
@@ -103,10 +106,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-trailing`} className="block text-sm font-medium text-text mb-1">
               Trailing
             </label>
             <input
+              id={`${fieldId}-trailing`}
               type="number"
               min="0"
               max="40"
@@ -121,10 +125,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-sliding-window`} className="block text-sm font-medium text-text mb-1">
               Sliding Window
             </label>
             <input
+              id={`${fieldId}-sliding-window`}
               type="text"
               value={slidingwindow}
               onChange={(e) => setSlidingwindow(e.target.value)}
@@ -136,10 +141,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-min-length`} className="block text-sm font-medium text-text mb-1">
               Min Length
             </label>
             <input
+              id={`${fieldId}-min-length`}
               type="number"
               min="1"
               max="300"
@@ -170,10 +176,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
       {showAdvanced && (
         <div className="border-t border-accent pt-4 space-y-3">
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-adapter-file`} className="block text-sm font-medium text-text mb-1">
               Adapter File
             </label>
             <input
+              id={`${fieldId}-adapter-file`}
               type="text"
               value={adapterFile}
               onChange={(e) => setAdapterFile(e.target.value)}
@@ -185,10 +192,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-custom-steps`} className="block text-sm font-medium text-text mb-1">
               Custom Steps
             </label>
             <textarea
+              id={`${fieldId}-custom-steps`}
               value={customSteps}
               onChange={(e) => setCustomSteps(e.target.value)}
               placeholder="ILLUMINACLIP:adapters.fa:2:30:10"
@@ -200,10 +208,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-phred-score`} className="block text-sm font-medium text-text mb-1">
               Phred Score
             </label>
             <select
+              id={`${fieldId}-phred-score`}
               value={phredScore}
               onChange={(e) => setPhredScore(e.target.value)}
               className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
@@ -225,10 +234,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
         </h4>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-container-image`} className="block text-sm font-medium text-text mb-1">
               Container Image
             </label>
             <select
+              id={`${fieldId}-container-image`}
               value={containerImage}
               onChange={(e) => setContainerImage(e.target.value)}
               className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
@@ -249,10 +259,11 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-text mb-1">
+              <label htmlFor={`${fieldId}-cpus`} className="block text-sm font-medium text-text mb-1">
                 CPUs
               </label>
               <input
+                id={`${fieldId}-cpus`}
                 type="number"
                 min="1"
                 max="16"
@@ -262,17 +273,19 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-text mb-1">
+              <label htmlFor={`${fieldId}-memory`} className="block text-sm font-medium text-text mb-1">
                 Memory
               </label>
-              <MemoryInput value={memory} onChange={setMemory} />
+              <MemoryInput
+                id={`${fieldId}-memory`} value={memory} onChange={setMemory} />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-time-limit`} className="block text-sm font-medium text-text mb-1">
               Time Limit
             </label>
-            <TimeInput value={timeLimit} onChange={setTimeLimit} />
+            <TimeInput
+              id={`${fieldId}-time-limit`} value={timeLimit} onChange={setTimeLimit} />
             <p className="text-xs text-text-light mt-1">
               Maximum execution time before timeout
             </p>
