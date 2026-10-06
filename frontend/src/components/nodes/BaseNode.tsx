@@ -1,5 +1,10 @@
-import { Handle, Position, type NodeProps } from "reactflow";
-import { memo, type ReactNode } from "react";
+import {
+  Handle,
+  Position,
+  type NodeProps,
+  useUpdateNodeInternals,
+} from "reactflow";
+import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
 import type { SelectedFile } from "../../data/types";
@@ -62,6 +67,7 @@ const onMouseDown = (event: React.MouseEvent) => {
 };
 
 const BaseNode = ({
+  id,
   data = {},
   type,
   selected,
@@ -70,6 +76,17 @@ const BaseNode = ({
 }: NodeProps<NodeData> & {
   children?: ReactNode;
 }) => {
+  // Ports can change at runtime (Parameters references, custom node edits);
+  // React Flow has to re-measure the handles to connect to new ones.
+  const updateNodeInternals = useUpdateNodeInternals();
+  const portKey = [...(data.inputs ?? []), ...(data.outputs ?? [])]
+    .map((port) => port.name)
+    .join("|");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: portKey is the change signal.
+  useEffect(() => {
+    updateNodeInternals(id);
+  }, [id, portKey, updateNodeInternals]);
+
   const iconName = data.icon || "DefaultIcon";
   const maxPortCount = Math.max(data.inputs?.length ?? 0, data.outputs?.length ?? 0);
   const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32);

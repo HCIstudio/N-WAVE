@@ -27,6 +27,7 @@ const nodeTypes = {
   default: BaseNode,
   fileInput: FileInputNode,
   samplesheet: BaseNode,
+  parameters: BaseNode,
   outputDisplay: OutputDisplayNode,
   filter: OperatorNode,
   operator: OperatorNode,

@@ -1,5 +1,6 @@
 import type { Edge } from "reactflow";
 import type { NodeData } from "../../components/nodes/BaseNode";
+import { groovyStringWithParams } from "../params";
 
 // Turns the input layout of an nf-core module (one group per process
 // argument, see scripts/nfcoreModuleParser.mjs) into the channel expressions
@@ -108,8 +109,6 @@ const RESERVED_NAMES = new Set([
 const localName = (name: string): string =>
   RESERVED_NAMES.has(name) || /^in\d+$/.test(name) ? `${name}_` : name;
 
-const groovyString = (value: string): string =>
-  `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
 /** The Groovy literal for a value input, from the node's settings. */
 export const valueLiteral = (
@@ -128,7 +127,7 @@ export const valueLiteral = (
       return value !== "" && Number.isFinite(number) ? String(number) : "0";
     }
     case "string":
-      return groovyString(String(value ?? ""));
+      return groovyStringWithParams(String(value ?? ""));
     default:
       return String(value ?? "").trim() || "[]";
   }

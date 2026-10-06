@@ -6,6 +6,7 @@ import type {
   NodeGenerationContext,
   NodeGenerationResult,
 } from "./nodeGeneration";
+import { groovyStringWithParams, referencesParams } from "./params";
 import {
   buildNfCoreGroupChannels,
   type NfCoreModuleInputGroup,
@@ -334,7 +335,12 @@ export const generateNfCoreModuleNode =
     const configLines: string[] = [];
 
     if (extArgs) {
-      configLines.push(`  ext.args = ${groovyString(extArgs)}`);
+      // `${params.x}` references are filled in when the task runs.
+      configLines.push(
+        referencesParams(extArgs)
+          ? `  ext.args = { ${groovyStringWithParams(extArgs)} }`
+          : `  ext.args = ${groovyString(extArgs)}`
+      );
     }
 
     if (node.data.overrideResources) {
