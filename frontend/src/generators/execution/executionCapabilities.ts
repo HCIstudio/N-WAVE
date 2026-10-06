@@ -358,7 +358,7 @@ export class ExecutionSettingsValidator {
    * Validate container settings
    */
   private async validateContainerSettings(
-    container: any,
+    container: Partial<ExecutionSettings["container"]>,
     capabilities: SystemCapabilities,
     errors: ValidationError[],
     warnings: ValidationWarning[]
@@ -401,7 +401,7 @@ export class ExecutionSettingsValidator {
    * Validate resource settings
    */
   private validateResourceSettings(
-    resources: any,
+    resources: Partial<ExecutionSettings["resources"]>,
     errors: ValidationError[],
     warnings: ValidationWarning[]
   ): void {

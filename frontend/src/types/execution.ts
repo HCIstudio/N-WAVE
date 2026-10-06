@@ -109,7 +109,7 @@ export interface ExecutionSettings {
   // Environment and profiles
   environment: {
     profile: string;
-    customParams: Record<string, any>;
+    customParams: Record<string, unknown>;
     environmentVariables: Record<string, string>;
   };
 
@@ -177,7 +177,7 @@ export interface ExecutionLog {
   level: "debug" | "info" | "warn" | "error";
   source: "nextflow" | "docker" | "system";
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 // Configuration profiles for different use cases

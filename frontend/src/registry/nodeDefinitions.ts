@@ -424,8 +424,8 @@ export const getNodePaletteCategories = (): NextflowProcessCategory[] => {
       type: definition.type,
       icon: definition.icon,
       initialData: definition.defaults,
-      operatorType: definition.operatorType as any,
-      processType: definition.processType as any,
+      operatorType: definition.operatorType,
+      processType: definition.processType,
     });
   }
 

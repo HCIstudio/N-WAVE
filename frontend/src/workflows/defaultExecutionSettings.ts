@@ -2,8 +2,10 @@
 // browser (new workflows, Nextflow imports, and the demo store all use this).
 // Mirrors backend/src/workflows/defaultExecutionSettings.ts, which the backend
 // still uses for its built-in workflow and as a materialize fallback.
-export const defaultExecutionSettings = {
-  mode: "docker",
+import { ExecutionMode, type ExecutionSettings } from "../types/execution";
+
+export const defaultExecutionSettings: ExecutionSettings = {
+  mode: ExecutionMode.DOCKER,
   nextflow: {
     version: "25.04.4",
     forceVersion: false,

@@ -179,19 +179,3 @@ export function generateMergeProcess(
     """
   }`;
 }
-
-export function generateOperatorCode(
-  operatorType: string,
-  config: ProcessConfig
-): string {
-  switch (operatorType) {
-    case "filter":
-      return generateFilterProcess(config as any);
-    case "map":
-      return generateMapProcess(config as any);
-    case "merge":
-      return generateMergeProcess(config as any);
-    default:
-      throw new Error(`Unsupported operator type: ${operatorType}`);
-  }
-}

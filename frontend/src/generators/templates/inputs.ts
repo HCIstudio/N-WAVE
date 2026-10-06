@@ -1,8 +1,8 @@
 // Input and channel generation templates for Nextflow script generation
 
 export interface InputConfig {
-  selectedFiles: any[];
-  [key: string]: any;
+  selectedFiles: Array<{ name?: string; originalName?: string }>;
+  [key: string]: unknown;
 }
 
 export function generateFileInputChannels(config: InputConfig): {
@@ -12,7 +12,7 @@ export function generateFileInputChannels(config: InputConfig): {
   const { selectedFiles } = config;
 
   const filenames = selectedFiles.map(
-    (file: any) => file.name || file.originalName || "unknown_file"
+    (file) => file.name || file.originalName || "unknown_file"
   );
 
   let paramsScript = "";
@@ -40,7 +40,7 @@ export function generateFileInputChannels(config: InputConfig): {
 
 export function generateValueInputChannel(config: {
   channelName: string;
-  value: any;
+  value: unknown;
   valueType: string;
 }): string {
   const { channelName, value, valueType } = config;
@@ -63,7 +63,7 @@ export function generateValueInputChannel(config: {
 
 export function generateParameterInput(config: {
   paramName: string;
-  defaultValue: any;
+  defaultValue: unknown;
   paramType: string;
   description?: string;
   required?: boolean;

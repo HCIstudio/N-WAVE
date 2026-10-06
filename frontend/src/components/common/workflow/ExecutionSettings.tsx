@@ -15,6 +15,11 @@ import {
 } from "lucide-react";
 import { MemoryInput } from "../forms";
 import api from "../../../api";
+import type { ExecutionSettings } from "../../../types/execution";
+import {
+  isoDurationToMinutes,
+  minutesToIsoDuration,
+} from "../../../utils/duration";
 import { getErrorMessage, getErrorName } from "../../../utils/errors";
 
 interface DockerStatus {
@@ -32,23 +37,16 @@ interface NextflowStatus {
   note?: string;
 }
 
-export interface ExecutionSettings {
-  useDocker: boolean;
-  containerImage: string;
-  outputDirectory: string;
-  outputNaming: string;
-  maxCpus: number;
-  maxMemory: string;
-  executionTimeout: number;
-  errorStrategy: string;
-  publishMode: string;
-  cleanupOnFailure: boolean;
-  nextflowVersion?: string;
-  output?: {
-    directory: string;
-    namingPattern: string;
-  };
-}
+/** File System Access API (Chromium only; feature-detected before use). */
+type DirectoryPickerWindow = Window & {
+  showDirectoryPicker: (options?: {
+    mode?: "read" | "readwrite";
+    startIn?: string;
+  }) => Promise<{ name: string }>;
+};
+
+/** The object-valued sections of the settings (everything but `mode`). */
+type SettingsSection = Exclude<keyof ExecutionSettings, "mode">;
 
 interface ExecutionSettingsProps {
   settings: ExecutionSettings;
@@ -59,6 +57,16 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   settings,
   onSettingsChange,
 }) => {
+  // Each change replaces one nested section, keeping its other fields.
+  const updateSection = <K extends SettingsSection>(
+    section: K,
+    patch: Partial<ExecutionSettings[K]>
+  ) =>
+    onSettingsChange({
+      [section]: { ...(settings[section] as object), ...patch },
+    } as Partial<ExecutionSettings>);
+  const useDocker = settings.container?.enabled ?? false;
+  const maxCpus = settings.resources?.maxCpus ?? 4;
   // Prefix for label/input id pairs, unique per component instance.
   const fieldId = useId();
   const [dockerStatus, setDockerStatus] = useState<DockerStatus | null>(null);
@@ -164,7 +172,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                     Enable Docker/Container execution
                   </label>
                   <p className="text-xs text-text-light mt-1">
-                    {settings.useDocker
+                    {useDocker
                       ? "Processes run in isolated Docker containers (slower, maximum reproducibility)"
                       : "Processes run locally in the host system (faster, less isolated)"}
                   </p>
@@ -173,9 +181,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   <input
                     id={`${fieldId}-use-docker`}
                     type="checkbox"
-                    checked={settings.useDocker}
+                    checked={useDocker}
                     onChange={(e) =>
-                      onSettingsChange({ useDocker: e.target.checked })
+                      updateSection("container", { enabled: e.target.checked })
                     }
                     className="sr-only peer"
                   />
@@ -184,16 +192,16 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </div>
 
               {/* Container Image Selection */}
-              {settings.useDocker && (
+              {useDocker && (
                 <div className="space-y-3">
                   <label htmlFor={`${fieldId}-default-container-image`} className="block text-sm text-text font-medium">
                     Default Container Image
                   </label>
                   <select
                     id={`${fieldId}-default-container-image`}
-                    value={settings.containerImage}
+                    value={settings.container?.defaultImage ?? ""}
                     onChange={(e) =>
-                      onSettingsChange({ containerImage: e.target.value })
+                      updateSection("container", { defaultImage: e.target.value })
                     }
                     className="w-full px-3 py-2 text-sm bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
                   >
@@ -209,9 +217,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   </select>
                   <input
                     type="text"
-                    value={settings.containerImage}
+                    value={settings.container?.defaultImage ?? ""}
                     onChange={(e) =>
-                      onSettingsChange({ containerImage: e.target.value })
+                      updateSection("container", { defaultImage: e.target.value })
                     }
                     placeholder="Or enter custom container image..."
                     className="w-full px-3 py-2 text-sm bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
@@ -376,6 +384,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   onChange={(e) =>
                     onSettingsChange({
                       output: {
+                        ...settings.output,
                         directory: e.target.value.replace(/\\/g, "/"),
                         namingPattern:
                           settings.output?.namingPattern ||
@@ -394,7 +403,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                       if ("showDirectoryPicker" in window) {
                         try {
                           const directoryHandle = await (
-                            window as any
+                            window as DirectoryPickerWindow
                           ).showDirectoryPicker({
                             mode: "readwrite",
                             startIn: "downloads", // Start in a safe location
@@ -408,16 +417,13 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                               : directoryHandle.name;
                           onSettingsChange({
                             output: {
+                              ...settings.output,
                               directory: selectedPath.replace(/\\/g, "/"),
                               namingPattern:
                                 settings.output?.namingPattern ||
                                 "{workflow_name}_{timestamp}",
                             },
                           });
-
-                          // Store the actual handle for later use (if needed)
-                          (window as any).selectedDirectoryHandle =
-                            directoryHandle;
 
                           // Show success feedback
                           alert(
@@ -476,6 +482,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                       if (userPath?.trim()) {
                         onSettingsChange({
                           output: {
+                            ...settings.output,
                             directory: userPath.trim().replace(/\\/g, "/"),
                             namingPattern:
                               settings.output?.namingPattern ||
@@ -566,6 +573,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 onChange={(e) =>
                   onSettingsChange({
                     output: {
+                      ...settings.output,
                       directory: settings.output?.directory || "results",
                       namingPattern: e.target.value,
                     },
@@ -599,21 +607,21 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   type="range"
                   min="1"
                   max="32"
-                  value={settings.maxCpus}
+                  value={maxCpus}
                   onChange={(e) =>
-                    onSettingsChange({ maxCpus: Number.parseInt(e.target.value) })
+                    updateSection("resources", { maxCpus: Number.parseInt(e.target.value) })
                   }
                   className="flex-1 h-2 bg-accent rounded-lg appearance-none cursor-pointer slider"
                   style={{
                     background: `linear-gradient(to right, #00A878 0%, #00A878 ${
-                      ((settings.maxCpus - 1) / 31) * 100
+                      ((maxCpus - 1) / 31) * 100
                     }%, #3A3A3A ${
-                      ((settings.maxCpus - 1) / 31) * 100
+                      ((maxCpus - 1) / 31) * 100
                     }%, #3A3A3A 100%)`,
                   }}
                 />
                 <span className="text-sm font-medium text-nextflow-green bg-panel-background px-3 py-1 rounded-md min-w-[3rem] text-center">
-                  {settings.maxCpus}
+                  {maxCpus}
                 </span>
               </div>
               <p className="text-xs text-text-light mt-2">
@@ -629,8 +637,8 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </label>
               <MemoryInput
                 id={`${fieldId}-max-memory`}
-                value={settings.maxMemory}
-                onChange={(val) => onSettingsChange({ maxMemory: val })}
+                value={settings.resources?.maxMemory ?? "4.GB"}
+                onChange={(val) => updateSection("resources", { maxMemory: val })}
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
               />
               <p className="text-xs text-text-light mt-2">
@@ -648,18 +656,20 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 type="number"
                 min="0"
                 max="1440"
-                value={settings.executionTimeout}
+                value={isoDurationToMinutes(settings.resources?.maxTime)}
                 onChange={(e) =>
-                  onSettingsChange({
-                    executionTimeout: Number.parseInt(e.target.value) || 0,
+                  updateSection("resources", {
+                    maxTime: minutesToIsoDuration(
+                      Number.parseInt(e.target.value) || 0
+                    ),
                   })
                 }
-                placeholder="0 = no timeout"
+                placeholder="0 = backend default"
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
               />
               <p className="text-xs text-text-light mt-2">
-                Maximum time the workflow can run before being terminated. Set
-                to 0 for no timeout.
+                Maximum time the workflow can run before being terminated. 0
+                uses the backend default (10 minutes).
               </p>
             </div>
           </div>
@@ -675,9 +685,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </label>
               <select
                 id={`${fieldId}-nextflow-version`}
-                value={settings.nextflowVersion || "25.04.4"}
+                value={settings.nextflow?.version || "25.04.4"}
                 onChange={(e) =>
-                  onSettingsChange({ nextflowVersion: e.target.value })
+                  updateSection("nextflow", { version: e.target.value })
                 }
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
               >
@@ -700,9 +710,12 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </label>
               <select
                 id={`${fieldId}-error-handling-strategy`}
-                value={settings.errorStrategy}
+                value={settings.errorHandling?.strategy ?? "terminate"}
                 onChange={(e) =>
-                  onSettingsChange({ errorStrategy: e.target.value })
+                  updateSection("errorHandling", {
+                    strategy: e.target
+                      .value as ExecutionSettings["errorHandling"]["strategy"],
+                  })
                 }
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
               >
@@ -735,9 +748,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 <input
                   id={`${fieldId}-cleanup-on-failure`}
                   type="checkbox"
-                  checked={settings.cleanupOnFailure}
+                  checked={settings.cleanup?.onFailure ?? false}
                   onChange={(e) =>
-                    onSettingsChange({ cleanupOnFailure: e.target.checked })
+                    updateSection("cleanup", { onFailure: e.target.checked })
                   }
                   className="sr-only peer"
                 />
@@ -765,7 +778,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </div>
             )}
 
-            {settings.useDocker && !dockerStatus?.dockerAvailable && (
+            {useDocker && !dockerStatus?.dockerAvailable && (
               <div className="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-md">
                 <p className="text-sm text-yellow-300 flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4" />

@@ -13,7 +13,10 @@ export interface BaseOperatorPanelProps {
 // Props that get injected into children components
 export interface InjectedOperatorProps {
   nodeData?: NodeData;
-  handleDataChange?: (field: keyof NodeData, value: any) => void;
+  handleDataChange?: <K extends keyof NodeData>(
+    field: K,
+    value: NodeData[K]
+  ) => void;
   incomingFiles?: FileObject[];
   node?: Node<NodeData>;
   onSave?: (nodeId: string, data: Partial<NodeData>) => void;

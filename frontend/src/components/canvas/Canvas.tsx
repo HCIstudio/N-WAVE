@@ -10,6 +10,8 @@ import type {
   OnNodesChange,
   OnEdgesChange,
   OnConnect,
+  OnConnectEnd,
+  OnConnectStart,
   Connection,
 } from "reactflow";
 
@@ -46,8 +48,8 @@ interface CanvasProps {
   onNodeDragStart: (event: React.MouseEvent, node: Node) => void;
   onNodeDrag: (event: React.MouseEvent, node: Node) => void;
   onNodeDragStop: (event: React.MouseEvent, node: Node) => void;
-  onConnectStart: (event: any, params: any) => void;
-  onConnectEnd: (event: any) => void;
+  onConnectStart: OnConnectStart;
+  onConnectEnd: OnConnectEnd;
 }
 
 const Canvas: FC<CanvasProps> = ({

@@ -20,18 +20,20 @@ const InlineEdit: React.FC<InlineEditProps> = ({
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentValue, setCurrentValue] = useState(value);
-  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setCurrentValue(value);
   }, [value]);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    const field = isTextarea ? textareaRef.current : inputRef.current;
+    if (isEditing && field) {
+      field.focus();
+      field.select();
     }
-  }, [isEditing]);
+  }, [isEditing, isTextarea]);
 
   const handleClick = () => {
     setIsEditing(true);
@@ -58,7 +60,6 @@ const InlineEdit: React.FC<InlineEditProps> = ({
   };
 
   const commonInputProps = {
-    ref: inputRef as any,
     value: currentValue,
     onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       setCurrentValue(e.target.value),
@@ -69,9 +70,9 @@ const InlineEdit: React.FC<InlineEditProps> = ({
 
   if (isEditing) {
     return isTextarea ? (
-      <textarea {...commonInputProps} rows={1} />
+      <textarea ref={textareaRef} {...commonInputProps} rows={1} />
     ) : (
-      <input type="text" {...commonInputProps} />
+      <input ref={inputRef} type="text" {...commonInputProps} />
     );
   }
 

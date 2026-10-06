@@ -79,7 +79,7 @@ export const generateFilterNode: NodeGenerator = ({
     };
   }
 
-  const selectedFileNames = selectedFiles.map((file: any) => file.name);
+  const selectedFileNames = selectedFiles.map((file) => file.name);
   const fileNameFilter = selectedFileNames
     .map((name: string) => `file.name == '${name}'`)
     .join(" || ");
@@ -156,7 +156,7 @@ export const generateMergeNode: NodeGenerator = ({
       containerImage,
       mergeOperation: "join",
       joinType: node.data.joinType || "txt",
-    } as any),
+    }),
     processInvocations: [
       `    ${mergeInputChannelName} = ${buildMixedChannelExpression(
         upstreamChannelNames

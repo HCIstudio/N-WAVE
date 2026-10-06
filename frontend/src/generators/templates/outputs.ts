@@ -5,7 +5,7 @@ export interface OutputConfig {
   cpuCount: number;
   memoryAmount: string;
   containerImage?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export function generateOutputDisplayProcess(

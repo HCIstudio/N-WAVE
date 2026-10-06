@@ -14,6 +14,8 @@ import {
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
+  type OnConnectEnd,
+  type OnConnectStart,
   type Connection,
   useEdgesState,
   useReactFlow,
@@ -41,8 +43,8 @@ interface IWorkflowContext {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  onConnectStart: (event: React.MouseEvent, params: any) => void;
-  onConnectEnd: () => void;
+  onConnectStart: OnConnectStart;
+  onConnectEnd: OnConnectEnd;
   isValidConnection: (connection: Connection) => boolean;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   showToast: (message: string, type: ToastType) => void;
@@ -282,7 +284,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
     [getEdges]
   );
 
-  const onConnectStart = (_: React.MouseEvent, _params: any) => {
+  const onConnectStart: OnConnectStart = () => {
     // This logic can be simplified or removed if not causing issues,
     // as isValidConnection now handles the primary validation.
   };

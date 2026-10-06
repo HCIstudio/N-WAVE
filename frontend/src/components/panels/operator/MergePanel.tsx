@@ -22,7 +22,7 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
 }) => {
   const { mergeOperation = "join", mergeJoinSeparator = "\\n" } = nodeData;
   const [joinType, setJoinType] = useState(nodeData.joinType || "txt");
-  const { getEdges, getNodes } = useReactFlow();
+  const { getEdges, getNodes } = useReactFlow<NodeData>();
 
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
 
@@ -38,11 +38,11 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
       if (!srcNode) continue;
 
       const files =
-        (srcNode.data as any)?.files ||
-        (srcNode.data as any)?.selectedFiles ||
-        (srcNode.data as any)?.filteredFiles ||
-        (srcNode.data as any)?.mappedFiles ||
-        (srcNode.data as any)?.joinedFiles ||
+        srcNode.data?.files ||
+        srcNode.data?.selectedFiles ||
+        srcNode.data?.filteredFiles ||
+        srcNode.data?.mappedFiles ||
+        srcNode.data?.joinedFiles ||
         [];
 
       for (const f of files) {

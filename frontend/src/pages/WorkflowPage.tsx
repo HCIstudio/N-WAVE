@@ -9,7 +9,7 @@ import {
 import { useNavigate, useParams } from "react-router-dom";
 import { ReactFlowProvider, useReactFlow } from "reactflow";
 import type { Node } from "reactflow";
-import type { NodeData } from "../components/nodes/BaseNode";
+import type { FileObject, NodeData } from "../components/nodes/BaseNode";
 import Canvas from "../components/canvas/Canvas";
 import { PropertiesPanel } from "../components/panels";
 import Header from "../components/layout/Header";
@@ -40,6 +40,7 @@ import {
   refreshCustomNodes,
 } from "../api/customNodes";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
+import { isoDurationToMinutes } from "../utils/duration";
 import {
   getApiErrorMessage,
   getResponseData,
@@ -642,7 +643,7 @@ const WorkflowPageContent: React.FC = () => {
       const loadedNodes = fetchedNodes || [];
       setNodes(loadedNodes);
 
-      const hydratedEdges = (fetchedEdges || []).map((edge: any) => {
+      const hydratedEdges = (fetchedEdges || []).map((edge) => {
         const sourceNode = loadedNodes.find((node) => node.id === edge.source);
         const targetNode = loadedNodes.find((node) => node.id === edge.target);
         const legacyMergeInputMatch = String(edge.targetHandle ?? "").match(
@@ -933,12 +934,13 @@ const WorkflowPageContent: React.FC = () => {
 
         // Remove file content but keep metadata for file input nodes
         if (sanitizedData.files) {
-          sanitizedData.files = sanitizedData.files.map((file: any) => ({
+          // Content is dropped: files live in the browser and are re-uploaded
+          // after a reload (an empty content marks them as needing that).
+          sanitizedData.files = sanitizedData.files.map((file: FileObject) => ({
             name: file.name,
             size: file.size,
             fileType: file.fileType,
-            _id: file._id,
-            // Note: content is removed - files are handled in browser storage
+            content: "",
           }));
         }
 
@@ -949,11 +951,11 @@ const WorkflowPageContent: React.FC = () => {
         // Sanitize selectedFilterFiles - keep selection metadata but remove content
         if (sanitizedData.selectedFilterFiles) {
           sanitizedData.selectedFilterFiles =
-            sanitizedData.selectedFilterFiles.map((file: any) => ({
+            sanitizedData.selectedFilterFiles.map((file: FileObject) => ({
               name: file.name,
               size: file.size,
               fileType: file.fileType,
-              _id: file._id,
+              content: "",
             }));
         }
 
@@ -1123,7 +1125,8 @@ const WorkflowPageContent: React.FC = () => {
           settings.output?.namingPattern ?? "{workflow_name}_{timestamp}",
         maxCpus: settings.resources?.maxCpus ?? 4,
         maxMemory: settings.resources?.maxMemory ?? "4 GB",
-        executionTimeout: 0, // Default value
+        // Minutes; 0 lets the backend apply its default.
+        executionTimeout: isoDurationToMinutes(settings.resources?.maxTime),
         errorStrategy: settings.errorHandling?.strategy ?? "terminate",
         cleanupOnFailure: settings.cleanup?.onFailure ?? true,
         nextflowVersion: settings.nextflow?.version ?? "25.04.4",

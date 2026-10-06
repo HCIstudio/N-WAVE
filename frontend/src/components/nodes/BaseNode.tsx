@@ -18,6 +18,7 @@ export interface FileObject {
   size: number;
   fileType?: string; // Detected file type
   order?: number; // Stable display/merge ordering metadata
+  originalName?: string; // Legacy name field in older saved workflows
 }
 
 // Define the shape of the node's data
@@ -44,7 +45,12 @@ export interface NodeData {
   _hasWarning?: boolean; // Warning state (e.g., missing file content)
   previewUnavailable?: boolean;
   previewUnavailableReason?: string;
-  [key: string]: any; // Allow other properties
+  // Node-type-specific settings (operator options, process parameters,
+  // nf-core and custom-node values, ...) are still read and written through
+  // this untyped index signature by many panels. Replacing it with per-node
+  // data types is a larger refactor; this is the one allowed explicit any.
+  // biome-ignore lint/suspicious/noExplicitAny: see comment above.
+  [key: string]: any;
 
   // Process-specific properties
   processInputs?: { type: string; name: string }[];

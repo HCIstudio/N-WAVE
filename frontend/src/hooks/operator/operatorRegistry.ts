@@ -32,7 +32,7 @@ type OperatorHook = (
   incomingFiles: FileObject[],
   nodeData: NodeData,
   onSave: (data: Partial<NodeData>) => void
-) => any;
+) => unknown;
 
 // Runtime overrides support incremental extension without changing node definitions.
 const operatorRegistryOverrides: Record<string, OperatorHook> = {};
