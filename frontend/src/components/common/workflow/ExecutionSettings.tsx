@@ -22,6 +22,13 @@ import {
 } from "../../../utils/duration";
 import { getErrorMessage, getErrorName } from "../../../utils/errors";
 
+/** GET /execute/limits: the most a run may use on this server. */
+interface ServerLimits {
+  maxCpus: number;
+  maxMemory: string;
+  defaultTimeoutMinutes: number;
+}
+
 interface DockerStatus {
   dockerAvailable: boolean;
   version?: string;
@@ -74,6 +81,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     null
   );
   const [loading, setLoading] = useState(false);
+  const [serverLimits, setServerLimits] = useState<ServerLimits | null>(null);
   const [activeTab, setActiveTab] = useState<string>("execution");
   const [showDirectoryHelp, setShowDirectoryHelp] = useState(false);
 
@@ -106,6 +114,20 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
+
+  // What this server allows (NWAVE_MAX_CPUS / NWAVE_MAX_MEMORY); the demo
+  // has no backend, so there is nothing to show there.
+  useEffect(() => {
+    let cancelled = false;
+    api.get<ServerLimits>("/execute/limits").then(
+      (response) => !cancelled && setServerLimits(response.data),
+      () => !cancelled && setServerLimits(null),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const cpuSliderMax = Math.max(serverLimits?.maxCpus ?? 32, maxCpus);
 
   const commonContainerImages = [
     { value: "ubuntu:22.04", label: "Ubuntu 22.04 (Recommended)" },
@@ -606,7 +628,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   id={`${fieldId}-max-cpus`}
                   type="range"
                   min="1"
-                  max="32"
+                  max={cpuSliderMax}
                   value={maxCpus}
                   onChange={(e) =>
                     updateSection("resources", { maxCpus: Number.parseInt(e.target.value) })
@@ -614,9 +636,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   className="flex-1 h-2 bg-accent rounded-lg appearance-none cursor-pointer slider"
                   style={{
                     background: `linear-gradient(to right, #00A878 0%, #00A878 ${
-                      ((maxCpus - 1) / 31) * 100
+                      ((maxCpus - 1) / Math.max(1, cpuSliderMax - 1)) * 100
                     }%, #3A3A3A ${
-                      ((maxCpus - 1) / 31) * 100
+                      ((maxCpus - 1) / Math.max(1, cpuSliderMax - 1)) * 100
                     }%, #3A3A3A 100%)`,
                   }}
                 />
@@ -625,8 +647,8 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 </span>
               </div>
               <p className="text-xs text-text-light mt-2">
-                Maximum number of CPU cores that can be used by any single
-                process.
+                Maximum number of CPU cores any single process can use. Steps
+                that ask for more are capped to this.
               </p>
             </div>
 
@@ -642,9 +664,23 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
               />
               <p className="text-xs text-text-light mt-2">
-                Maximum amount of memory that can be used by any single process.
+                Maximum memory any single process can use; steps that ask for
+                more are capped to this. nf-core/rnaseq needs about 6–15 GB
+                even with its test data.
               </p>
             </div>
+
+            {serverLimits && (
+              <p
+                aria-label="Server limits"
+                className="rounded-md border border-panel-border p-3 text-xs text-text-light"
+              >
+                This server allows up to {serverLimits.maxCpus} CPU cores and{" "}
+                {serverLimits.maxMemory.replace(".", " ")} of memory per run
+                (set with NWAVE_MAX_CPUS / NWAVE_MAX_MEMORY); higher values
+                are lowered to these.
+              </p>
+            )}
 
             {/* Execution Timeout */}
             <div>
@@ -655,7 +691,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 id={`${fieldId}-execution-timeout-minutes`}
                 type="number"
                 min="0"
-                max="1440"
+                max="10080"
                 value={isoDurationToMinutes(settings.resources?.maxTime)}
                 onChange={(e) =>
                   updateSection("resources", {
@@ -664,12 +700,18 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                     ),
                   })
                 }
-                placeholder="0 = backend default"
+                placeholder="0 = server default"
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
               />
               <p className="text-xs text-text-light mt-2">
-                Maximum time the workflow can run before being terminated. 0
-                uses the backend default (10 minutes).
+                Maximum time the workflow can run before it is stopped. 0 uses
+                the server default
+                {serverLimits
+                  ? serverLimits.defaultTimeoutMinutes > 0
+                    ? ` (${serverLimits.defaultTimeoutMinutes} minutes)`
+                    : " (no limit)"
+                  : " (24 hours unless NWAVE_EXECUTION_TIMEOUT says otherwise)"}
+                .
               </p>
             </div>
           </div>

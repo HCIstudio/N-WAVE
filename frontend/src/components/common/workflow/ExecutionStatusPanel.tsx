@@ -48,16 +48,25 @@ interface ExecutionStatusPanelProps {
   status: WorkflowExecutionStatus;
   nodes: Node<NodeData>[];
   onCancel?: () => void;
+  /** False until the run's id is known (it's the first line of output). */
+  canCancel?: boolean;
   onClose?: () => void;
   isVisible: boolean;
 }
 
 const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   status,
+  onCancel,
+  canCancel = true,
   onClose,
   isVisible,
 }) => {
   if (!isVisible) return null;
+  const isCancelled = status.currentStage === "Workflow cancelled";
+  const isFailed =
+    !status.isRunning &&
+    !isCancelled &&
+    (status.failedNodes > 0 || /failed/i.test(status.currentStage ?? ""));
 
   const getStatusIcon = (nodeStatus: NodeExecutionStatus["status"]) => {
     switch (nodeStatus) {
@@ -103,15 +112,33 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
         <div className="flex items-center gap-2">
           {status.isRunning ? (
             <Activity className="w-5 h-5 animate-pulse" />
+          ) : isCancelled || isFailed ? (
+            <XCircle className="w-5 h-5" />
           ) : (
             <CheckCircle className="w-5 h-5" />
           )}
           <h3 className="font-semibold">
-            {status.isRunning ? "Workflow Running" : "Workflow Complete"}
+            {status.isRunning
+              ? "Workflow Running"
+              : isCancelled
+                ? "Workflow Cancelled"
+                : isFailed
+                  ? "Workflow Failed"
+                  : "Workflow Complete"}
           </h3>
         </div>
         <div className="flex items-center gap-2">
-          {/* Cancel button removed - cancellation not fully working */}
+          {status.isRunning && onCancel && (
+            <button
+              type="button"
+              onClick={onCancel}
+              disabled={!canCancel}
+              className="rounded px-2 py-0.5 text-sm text-white ring-1 ring-white/60 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+              title="Stop the run, its tasks and containers"
+            >
+              Cancel run
+            </button>
+          )}
           {onClose && (
             <button
               type="button"

@@ -52,6 +52,11 @@ import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes"
 import { isoDurationToMinutes } from "../utils/duration";
 import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
+  createLineReader,
+  findResourceProblem,
+  parseRunId,
+} from "../utils/streamLines";
+import {
   buildPipelineLaunch,
   pipelineLaunchScript,
 } from "../registry/pipelines/launch";
@@ -1285,6 +1290,14 @@ const WorkflowPageContent: React.FC = () => {
         nextflowVersion: settings.nextflow?.version ?? "25.04.4",
       };
 
+      // The output is read while the run goes: progress updates live, and
+      // the run id (first line) makes Cancel work for long runs.
+      const lineReader = createLineReader((line) => {
+        const runId = parseRunId(line);
+        if (runId) setCurrentExecutionId(runId);
+        executionStatus.parseNextflowOutput(line);
+      });
+
       // Execute the workflow with file content
       const response = await api.post(
         "/execute/execute",
@@ -1309,27 +1322,35 @@ const WorkflowPageContent: React.FC = () => {
         {
           responseType: "text", // Handle as streaming text
           transformResponse: [(data) => data], // Don't parse as JSON
+          // No client-side timeout: runs can take hours.
+          timeout: 0,
+          onDownloadProgress: (progressEvent) => {
+            const request = progressEvent.event?.target as
+              | XMLHttpRequest
+              | undefined;
+            if (typeof request?.responseText === "string") {
+              lineReader.feed(request.responseText);
+            }
+          },
         }
       );
 
       // Handle streaming response
       if (typeof response.data === "string") {
-        // Parse the streaming output line by line in real-time
-        const lines = response.data.split("\n").filter((l) => l.trim());
-
-        lines.forEach((line, index) => {
-          // Parse each line immediately
-          setTimeout(() => {
-            executionStatus.parseNextflowOutput(line);
-          }, index * 10);
-        });
+        // Lines not seen while streaming (e.g. the last one)
+        lineReader.flush(response.data);
+        setCurrentExecutionId(null);
 
         const normalizedOutput = response.data.toLowerCase();
+        const isCancelled = /^Execution cancelled$/m.test(response.data);
+        const resourceProblem = findResourceProblem(response.data);
         const isExecutionFailure =
-          normalizedOutput.includes("nextflow execution failed with exit code") ||
-          normalizedOutput.includes("execution error:") ||
-          normalizedOutput.includes("failed to setup workflow execution") ||
-          normalizedOutput.includes("error ~");
+          !isCancelled &&
+          (normalizedOutput.includes("nextflow execution failed with exit code") ||
+            normalizedOutput.includes("execution error:") ||
+            normalizedOutput.includes("failed to setup workflow execution") ||
+            normalizedOutput.includes("error ~") ||
+            resourceProblem !== null);
 
         // Remember the run on the Pipeline node, to show its reports.
         const runId = response.data.match(/^N-WAVE run: (\S+)$/m)?.[1];
@@ -1343,14 +1364,19 @@ const WorkflowPageContent: React.FC = () => {
           });
         }
 
-        const completionDelay = Math.max(lines.length * 10 + 100, 250);
+        if (isCancelled) {
+          setExecutionResult({
+            success: false,
+            output: response.data,
+            error: "Workflow cancelled",
+          });
+          return;
+        }
 
-        setTimeout(() => {
-          executionStatus.completeExecution(
-            !isExecutionFailure,
-            isExecutionFailure ? response.data : undefined
-          );
-        }, completionDelay);
+        executionStatus.completeExecution(
+          !isExecutionFailure,
+          isExecutionFailure ? response.data : undefined
+        );
 
         setExecutionResult({
           success: !isExecutionFailure,
@@ -1359,7 +1385,12 @@ const WorkflowPageContent: React.FC = () => {
         });
 
         if (workflowContext.showToast) {
-          if (isExecutionFailure) {
+          if (resourceProblem) {
+            workflowContext.showToast(
+              `The run hit its resource limits: ${resourceProblem}`,
+              "error"
+            );
+          } else if (isExecutionFailure) {
             workflowContext.showToast(
               "Workflow execution failed. Check the execution panel/log output for details.",
               "error"
@@ -1374,7 +1405,9 @@ const WorkflowPageContent: React.FC = () => {
 
         if (isExecutionFailure) {
           setExecutionError({
-            message: "Workflow execution failed",
+            message: resourceProblem
+              ? `The run hit its resource limits. ${resourceProblem}`
+              : "Workflow execution failed",
             output: response.data,
           });
           setShowErrorDialog(true);
@@ -1915,6 +1948,7 @@ const WorkflowPageContent: React.FC = () => {
         status={executionStatus.status}
         nodes={memoizedNodes}
         onCancel={executionStatus.cancelExecution}
+        canCancel={Boolean(currentExecutionId)}
         onClose={executionStatus.hideStatus}
         isVisible={executionStatus.isVisible}
       />

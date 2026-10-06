@@ -4,6 +4,7 @@ import {
   checkDockerStatus,
   checkNextflowStatus,
   cancelExecution,
+  getExecutionLimits,
   getRunResultFile,
   listRunResultFiles,
 } from "../controllers/executeController";
@@ -14,6 +15,7 @@ router.post("/execute", executeProcess);
 router.post("/cancel", cancelExecution);
 router.get("/docker-status", checkDockerStatus);
 router.get("/nextflow-status", checkNextflowStatus);
+router.get("/limits", getExecutionLimits);
 router.get("/runs/:id/files", listRunResultFiles);
 router.get("/runs/:id/file", getRunResultFile);
 

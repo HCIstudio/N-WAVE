@@ -294,8 +294,10 @@ const BottomBar: React.FC<BottomBarProps> = ({
                       {executionSettings.resources?.maxMemory || "2.GB"}
                     </span>
                     <span className="ml-2">
-                      • {executionSettings.resources?.maxTime || "PT30M"}{" "}
-                      timeout
+                      •{" "}
+                      {executionSettings.resources?.maxTime
+                        ? `${executionSettings.resources.maxTime} timeout`
+                        : "server default timeout"}
                     </span>
                   </div>
                   <div className="mt-1">
