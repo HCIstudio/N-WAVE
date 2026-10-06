@@ -111,8 +111,8 @@ describe("generateParameterDeclarations", () => {
     ]);
     expect(channels).toBe(
       [
-        'refs_fasta = Channel.of(file(params.fasta ==~ /^(\\/|[A-Za-z][A-Za-z0-9+.-]*:\\/\\/).*/ ? params.fasta : "${params.inputdir}/${params.fasta}", checkIfExists: true))',
-        'refs_gtf = Channel.of(file(params.gtf ==~ /^(\\/|[A-Za-z][A-Za-z0-9+.-]*:\\/\\/).*/ ? params.gtf : "${params.inputdir}/${params.gtf}", checkIfExists: true))',
+        "refs_fasta = Channel.of(nwaveInputFile(params.fasta))",
+        "refs_gtf = Channel.of(nwaveInputFile(params.gtf))",
         "",
       ].join("\n"),
     );
@@ -236,7 +236,9 @@ describe("Parameters node in an rnaseq-style workflow", () => {
   });
 
   it("feeds the FASTA and GTF to genome preparation and the GTF to alignment", () => {
-    expect(script).toContain("refs_fasta = Channel.of(file(params.fasta");
+    expect(script).toContain("    refs_fasta = Channel.of(nwaveInputFile(params.fasta))");
+    // Input files resolve through one top-level helper (strict syntax).
+    expect(script).toContain("def nwaveInputFile(path) {");
     expect(script).toMatch(/ch_\w+_genome_fasta_nfcore = refs_fasta\n/);
     expect(script).toMatch(/ch_\w+_genome_gtf_nfcore = refs_gtf\.first\(\)/);
     expect(script).toMatch(

@@ -3,6 +3,8 @@ import type { Connection, Edge, Node } from "reactflow";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
 import ParametersPanel from "../components/panels/input/ParametersPanel";
+import ChannelOperatorPanel from "../components/panels/operator/ChannelOperatorPanel";
+import { generateChannelOperatorNode } from "./channelOperator";
 import SamplesheetPanel from "../components/panels/input/SamplesheetPanel";
 import {
   DEFAULT_SAMPLESHEET_FILE_NAME,
@@ -232,6 +234,31 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     previewHook: useMergeOperator,
     generateNextflow: generateMergeNode,
     executionLabel: "Merge",
+  },
+  {
+    id: "channelOperator",
+    kind: "operator",
+    category: "Operators",
+    label: "Channel Operator",
+    description:
+      "Nextflow channel code between nodes: join, mix, map, branch, combine, groupTuple, collect or your own.",
+    type: "channelOperator",
+    icon: "GitMerge",
+    inputs: [{ name: "left" }, { name: "right" }],
+    outputs: [{ name: "joined", isConnectable: true }],
+    defaults: {
+      subtitle: "Join by sample",
+      channelOperatorTemplate: "join",
+      channelOperatorCode: "output.joined = input.left.join(input.right)",
+      inputs: [
+        { name: "left", label: "left", isConnectable: true },
+        { name: "right", label: "right", isConnectable: true },
+      ],
+      outputs: [{ name: "joined", label: "joined", isConnectable: true }],
+    },
+    panel: ChannelOperatorPanel,
+    generateNextflow: generateChannelOperatorNode,
+    executionLabel: "Channel Operator",
   },
   {
     id: "process",

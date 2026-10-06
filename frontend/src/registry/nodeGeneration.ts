@@ -34,6 +34,12 @@ export interface NodeGenerationResult {
   nextflowConfigBlocks?: string[];
   includeInExecutionOrder?: boolean;
   outputDisplayCounterIncrement?: number;
+  /**
+   * The workflow variables the invocations define and use, for ordering.
+   * Without it they are guessed from the code, which only suits generated
+   * code (free-form code has closure variables that look like channels).
+   */
+  dependencies?: { defines: string[]; uses: string[] };
 }
 
 export type NodeGenerator = (

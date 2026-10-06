@@ -122,6 +122,21 @@ connected to any node input; it can be an uploaded file name, an absolute path o
 correctly shaped value channel. Node settings can use parameters as `${params.name}`, for
 example in a module's extra arguments; they are filled in when the task runs.
 
+### Channel operators
+
+Steps are often connected by channel logic rather than a plain edge: joining a BAM with
+its index by sample, mixing QC outputs for MultiQC, merging technical replicates. The
+**Channel Operator** node holds that Nextflow code. It starts from a template (join by
+sample, mix, map `[ meta, files ]`, branch, combine, group by sample id, collect) and can
+be edited freely: the code refers to the connected channels as `input.<port>`, assigns
+every `output.<port>`, and names helper variables `local.<name>`. Ports are configurable,
+the panel flags references to ports that don't exist, and the Code tab shows the
+generated statements.
+
+Generated scripts follow Nextflow's strict syntax: input channels are defined inside the
+`workflow` block and shared helpers are top-level functions, so `nextflow lint` accepts
+them.
+
 ### Exporting a runnable project
 
 **Export Project** (in the bottom bar, next to the script download) downloads a zip that
