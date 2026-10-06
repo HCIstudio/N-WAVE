@@ -190,6 +190,7 @@ const WorkflowPageContent: React.FC = () => {
     Record<string, { x: number; y: number; width: number; height: number }>
   >({});
   const [isRunning, setIsRunning] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(
     null
   );
@@ -1081,6 +1082,50 @@ const WorkflowPageContent: React.FC = () => {
     handleSaveWorkflowRef,
   ]);
 
+  const handleExportProject = async () => {
+    setIsExporting(true);
+    try {
+      const script =
+        workflowSourceFormat === "nextflow" &&
+        workflowRawSource &&
+        nodes.length === 0
+          ? workflowRawSource
+          : generateNextflowScript(
+              nodes,
+              edges,
+              workflowName || "workflow",
+              "results",
+              executionSettings?.output?.namingPattern ??
+                "{workflow_name}_{timestamp}"
+            );
+      const { exportWorkflowProject } = await import(
+        "../export/exportWorkflow"
+      );
+      const { fileName, blob } = await exportWorkflowProject({
+        workflowName: workflowName || "workflow",
+        script,
+        nodes,
+        nextflowVersion: executionSettings?.nextflow?.version,
+      });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      showToast(
+        `Exported ${fileName}. Unzip it and see README.md for how to run it.`,
+        "success"
+      );
+    } catch (error: unknown) {
+      showError(getApiErrorMessage(error, "Failed to export the project."));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const handleDownloadScript = () => {
     try {
       if (
@@ -1747,6 +1792,8 @@ const WorkflowPageContent: React.FC = () => {
         onWorkflowNameChange={handleWorkflowNameChange}
         onSave={handleSaveWorkflow}
         onDownload={handleDownloadScript}
+        onExportProject={handleExportProject}
+        isExporting={isExporting}
         onRun={handleRunWorkflow}
         isSaved={isSaved}
         isSaving={isSaving}

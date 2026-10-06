@@ -305,6 +305,49 @@ export const getNfCoreModuleSource = (req: Request, res: Response): void => {
   }
 };
 
+// Files of a module that a workflow needs to run it; tests/ and other
+// directories are left out.
+const MODULE_FILE_NAMES = ["main.nf", "meta.yml", "environment.yml"];
+
+/**
+ * The files of an installed or bundled module, for exporting a runnable
+ * project: `{ id, files: { "main.nf": "...", ... } }`.
+ */
+export const getNfCoreModuleFiles = (req: Request, res: Response): void => {
+  const parsed = nfCoreModuleSourceQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      message: "Invalid module id",
+      error: parsed.error.issues[0]?.message ?? "Invalid module id",
+    });
+    return;
+  }
+
+  const moduleDir = findNfCoreModuleDir(parsed.data.id.replace(/^nf-core\//, ""));
+  if (!moduleDir) {
+    res.status(404).json({
+      message: `nf-core module ${parsed.data.id} is not installed`,
+    });
+    return;
+  }
+
+  try {
+    const files: Record<string, string> = {};
+    for (const name of MODULE_FILE_NAMES) {
+      const filePath = path.join(moduleDir, name);
+      if (fs.existsSync(filePath)) {
+        files[name] = fs.readFileSync(filePath, "utf8");
+      }
+    }
+    res.json({ id: parsed.data.id, files });
+  } catch (error: unknown) {
+    res.status(500).json({
+      message: "Failed to read nf-core module files",
+      error: getErrorMessage(error),
+    });
+  }
+};
+
 const loadCatalog = (): NfCoreCatalog => {
   if (catalogCache.value) return catalogCache.value;
 

@@ -245,7 +245,8 @@ export const generateNextflowScript = (
   }
 
   finalScript += "\nworkflow {\n";
-  finalScript += channelDefinitions.join(""); // Channel definitions first
+  // Channel definitions are ordered with the process calls below: one built
+  // from another node's output must come after the call that defines it.
 
   // FIXED: Sort process invocations to ensure variables are defined before they're used
   const sortedInvocations: string[] = [];
@@ -312,6 +313,9 @@ export const generateNextflowScript = (
     processing.delete(invocation);
 
     if (channelDefinitionSet.has(invocation)) {
+      if (!sortedInvocations.includes(invocation)) {
+        sortedInvocations.push(invocation);
+      }
       processed.add(invocation);
       return;
     }
@@ -329,8 +333,8 @@ export const generateNextflowScript = (
     processed.add(invocation);
   }
 
-  // Process all invocations
-  for (const invocation of processInvocations) {
+  // Process all invocations, then any channel definition nothing uses
+  for (const invocation of [...processInvocations, ...channelDefinitions]) {
     if (!invocation.trim().startsWith("//") && invocation.trim() !== "") {
       addInvocation(invocation);
     }
@@ -597,7 +601,7 @@ function getChainedChannelRoots(invocation: string): string[] {
 
   const rhs = getInvocationExpression(trimmed);
   const chainRootPattern =
-    /\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:map|filter|collect|concat|mix|flatten|view|set)\b/g;
+    /\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:map|filter|collect|concat|mix|flatten|view|set|first|combine|join|groupTuple|unique|toList)\b/g;
   const roots: string[] = [];
   let match = chainRootPattern.exec(rhs);
   while (match !== null) {

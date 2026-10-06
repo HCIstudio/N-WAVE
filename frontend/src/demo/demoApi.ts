@@ -86,6 +86,16 @@ const demoApi = {
         async () => (await loadNfCore()).demoNfCore.installed() as Promise<T>
       );
     }
+    if (path === "/nfcore/modules/files") {
+      const id = new URL(url, "http://demo").searchParams.get("id") ?? "";
+      return loadNfCore()
+        .then(({ fetchNfCoreModuleFiles }) => fetchNfCoreModuleFiles(id))
+        .then(
+          (files) => ok({ id, files } as T),
+          (error: unknown) =>
+            fail(404, error instanceof Error ? error.message : String(error))
+        );
+    }
     if (path === "/nfcore/modules/source") {
       const id = new URL(url, "http://demo").searchParams.get("id") ?? "";
       return loadNfCore()

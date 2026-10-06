@@ -10,6 +10,7 @@ import {
   Play,
   Settings,
   Container,
+  FolderDown,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
@@ -20,6 +21,9 @@ interface BottomBarProps {
   onWorkflowNameChange: (newName: string) => void;
   onSave: () => void;
   onDownload: () => void;
+  /** Download a runnable project (zip with modules, config and inputs). */
+  onExportProject?: () => void;
+  isExporting?: boolean;
   onRun?: (settings: ExecutionSettings) => void;
   isSaved: boolean;
   isSaving: boolean;
@@ -35,6 +39,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
   onWorkflowNameChange,
   onSave,
   onDownload,
+  onExportProject,
+  isExporting = false,
   onRun,
   isSaved,
   isSaving,
@@ -430,9 +436,27 @@ const BottomBar: React.FC<BottomBarProps> = ({
           onClick={onDownload}
           className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
           aria-label="Download Workflow"
+          title="Download the Nextflow script"
         >
           <Download className="w-4 h-4" />
         </button>
+
+        {onExportProject && (
+          <button
+            type="button"
+            onClick={onExportProject}
+            disabled={isExporting}
+            className="p-1.5 text-text hover:bg-accent rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Export Project"
+            title="Export a runnable project (script, config, modules and inputs)"
+          >
+            {isExporting ? (
+              <Loader className="w-4 h-4 animate-spin" />
+            ) : (
+              <FolderDown className="w-4 h-4" />
+            )}
+          </button>
+        )}
 
         <button
           type="button"
