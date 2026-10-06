@@ -3,13 +3,15 @@ import path from "node:path";
 import axios from "axios";
 import {
 	findNfCoreModuleDir,
+	findNfCoreSubworkflowDir,
 	getNwaveDataRoot,
 } from "../execution/nfcoreModules";
 
-// The nf-core module library: the catalog, installed modules (files under
-// the N-WAVE data dir plus an index), and installing modules from
-// nf-core/modules at the catalog's pinned commit. Used by the /api/nfcore
-// routes and by workflow execution, which installs missing modules on demand.
+// The nf-core module library: the catalog, installed modules and
+// subworkflows (files under the N-WAVE data dir plus an index), and
+// installing them from nf-core/modules at the catalog's pinned commit. Used
+// by the /api/nfcore routes and by workflow execution, which installs
+// missing modules and subworkflows on demand.
 
 export type SupportLevel =
 	| "full"
@@ -79,6 +81,39 @@ export interface NfCoreCatalogEntry {
 	};
 }
 
+/** A `take` of a subworkflow: a channel (node input) or a value (setting). */
+export interface NfCoreSubworkflowTake {
+	name: string;
+	kind: "channel" | "value";
+	type: string;
+	description: string;
+	/** Value setting default, or the expression for an unconnected channel. */
+	defaultValue: string | number | boolean;
+}
+
+export interface NfCoreSubworkflowEntry {
+	/** "nf-core/subworkflows/<name>" */
+	id: string;
+	kind: "subworkflow";
+	name: string;
+	label: string;
+	description: string;
+	workflowName: string;
+	source: NfCoreCatalogEntry["source"];
+	files: { paths: string[] };
+	keywords: string[];
+	takes: NfCoreSubworkflowTake[];
+	emits: Array<{ name: string; description: string }>;
+	/** What the subworkflow includes directly. */
+	components: { modules: string[]; subworkflows: string[] };
+	support: SupportLevel;
+	installability: {
+		automatic: boolean;
+		requiresReview: boolean;
+		reasons: string[];
+	};
+}
+
 export interface NfCoreCatalog {
 	schemaVersion: number;
 	generatedAt: string;
@@ -89,10 +124,14 @@ export interface NfCoreCatalog {
 	};
 	counts: Record<string, number>;
 	modules: NfCoreCatalogEntry[];
+	/** Catalog schema 3+. */
+	subworkflows?: NfCoreSubworkflowEntry[];
 }
 
 export interface InstalledModuleIndexEntry {
 	id: string;
+	/** Missing for modules installed before subworkflows existed. */
+	kind?: "module" | "subworkflow";
 	installedAt: string;
 	moduleDir: string;
 	manifestPath: string;
@@ -157,6 +196,45 @@ export const loadCatalog = (): NfCoreCatalog => {
 export const findCatalogEntry = (id: string): NfCoreCatalogEntry | undefined =>
 	loadCatalog().modules.find((entry) => entry.id === id);
 
+const SUBWORKFLOW_ID_PREFIX = "nf-core/subworkflows/";
+
+/** Subworkflow ids look like "nf-core/subworkflows/bam_stats_samtools". */
+export const isSubworkflowId = (id: string): boolean =>
+	id.startsWith(SUBWORKFLOW_ID_PREFIX);
+
+export const findSubworkflowEntry = (
+	id: string,
+): NfCoreSubworkflowEntry | undefined =>
+	(loadCatalog().subworkflows ?? []).find((entry) => entry.id === id);
+
+/** Every module and subworkflow a subworkflow needs, nested ones included. */
+export const resolveSubworkflowComponents = (
+	entry: NfCoreSubworkflowEntry,
+): { modules: string[]; subworkflows: string[] } => {
+	const modules = new Set<string>();
+	const subworkflows = new Set<string>();
+	const visit = (current: NfCoreSubworkflowEntry) => {
+		for (const module of current.components.modules) modules.add(module);
+		for (const name of current.components.subworkflows) {
+			if (subworkflows.has(name)) continue;
+			subworkflows.add(name);
+			const nested = findSubworkflowEntry(`${SUBWORKFLOW_ID_PREFIX}${name}`);
+			if (!nested) {
+				throw new NfCoreLibraryError(
+					404,
+					`${entry.id} includes ${name}, which is not in the catalog`,
+				);
+			}
+			visit(nested);
+		}
+	};
+	visit(entry);
+	return {
+		modules: Array.from(modules).sort(),
+		subworkflows: Array.from(subworkflows).sort(),
+	};
+};
+
 const getInstalledIndexPath = (): string =>
 	path.join(getNwaveDataRoot(), "nf-core", "installed.json");
 
@@ -168,6 +246,11 @@ export const getInstalledModuleRoot = (entry: NfCoreCatalogEntry): string =>
 		"nf-core",
 		...entry.modulePath.split("/"),
 	);
+
+export const getInstalledSubworkflowRoot = (
+	entry: NfCoreSubworkflowEntry,
+): string =>
+	path.join(getNwaveDataRoot(), "nf-core", "subworkflows", "nf-core", entry.name);
 
 export const loadInstalledIndex = (): Record<
 	string,
@@ -265,6 +348,46 @@ export const buildAdapterManifest = (entry: NfCoreCatalogEntry) => ({
 	},
 });
 
+// Mirrored in the frontend by buildNfCoreSubworkflowManifest
+// (frontend/src/registry/nfcore/subworkflow.ts).
+export const buildSubworkflowManifest = (entry: NfCoreSubworkflowEntry) => ({
+	schemaVersion: 3,
+	kind: "subworkflow" as const,
+	generatedAt: new Date().toISOString(),
+	id: entry.id,
+	label: entry.label,
+	description: entry.description,
+	processType: `nfcore_subworkflow_${entry.name}`,
+	modulePath: `./subworkflows/nf-core/${entry.name}/main`,
+	processName: entry.workflowName,
+	support: entry.support,
+	needsReview: false,
+	installability: entry.installability,
+	source: entry.source,
+	takes: entry.takes,
+	components: entry.components,
+	inputs: entry.takes
+		.filter((take) => take.kind === "channel")
+		.map((take) => ({
+			handle: take.name,
+			nfcoreName: take.name,
+			adapter: "path",
+			label: toTitle(take.name),
+		})),
+	outputs: entry.emits.map((emit) => ({
+		handle: emit.name,
+		emit: emit.name,
+		label: toTitle(emit.name),
+	})),
+	defaults: {
+		label: entry.label,
+		subtitle: "nf-core subworkflow",
+		note: "Imported from nf-core catalog",
+		nwaveExecutionBackend: "nf-core",
+		nwaveNfCoreModuleId: entry.id,
+	},
+});
+
 /** A safe relative file path: "main.nf", "templates/tx2gene.py". */
 const isSafeRelativePath = (filePath: string): boolean =>
 	filePath
@@ -280,7 +403,7 @@ const moduleFilePaths = (entry: NfCoreCatalogEntry): string[] =>
 
 /** raw.githubusercontent.com URL of a module file at the catalog commit. */
 export const moduleFileUrl = (
-	entry: NfCoreCatalogEntry,
+	entry: Pick<NfCoreCatalogEntry, "source">,
 	filePath: string,
 ): string => {
 	const repo = entry.source.repository.match(
@@ -309,7 +432,9 @@ const downloadFile = async (url: string): Promise<Buffer | null> => {
 };
 
 /** Check that the catalog lets a module be installed automatically. */
-export const assertInstallable = (entry: NfCoreCatalogEntry): void => {
+export const assertInstallable = (
+	entry: Pick<NfCoreCatalogEntry, "id" | "support" | "installability">,
+): void => {
 	if (
 		entry.support === "unsupported" ||
 		entry.installability?.automatic === false
@@ -319,6 +444,27 @@ export const assertInstallable = (entry: NfCoreCatalogEntry): void => {
 			`${entry.id} cannot be installed automatically`,
 			entry.installability?.reasons ?? [],
 		);
+	}
+};
+
+/** Download files of a module or subworkflow into `targetRoot`. */
+const downloadEntryFiles = async (
+	entry: Pick<NfCoreCatalogEntry, "id" | "source">,
+	filePaths: string[],
+	targetRoot: string,
+): Promise<void> => {
+	for (const filePath of filePaths) {
+		const content = await downloadFile(moduleFileUrl(entry, filePath));
+		if (!content) {
+			if (filePath === "main.nf") {
+				throw new Error(`${entry.id} has no main.nf at ${entry.source.commit}`);
+			}
+			continue;
+		}
+		const target = path.join(targetRoot, ...filePath.split("/"));
+		ensureInside(targetRoot, target);
+		fs.mkdirSync(path.dirname(target), { recursive: true });
+		fs.writeFileSync(target, content);
 	}
 };
 
@@ -336,21 +482,7 @@ export const installModule = async (entry: NfCoreCatalogEntry) => {
 	fs.mkdirSync(tempRoot, { recursive: true });
 
 	try {
-		for (const filePath of moduleFilePaths(entry)) {
-			const content = await downloadFile(moduleFileUrl(entry, filePath));
-			if (!content) {
-				if (filePath === "main.nf") {
-					throw new Error(
-						`${entry.id} has no main.nf at ${entry.source.commit}`,
-					);
-				}
-				continue;
-			}
-			const target = path.join(tempRoot, ...filePath.split("/"));
-			ensureInside(tempRoot, target);
-			fs.mkdirSync(path.dirname(target), { recursive: true });
-			fs.writeFileSync(target, content);
-		}
+		await downloadEntryFiles(entry, moduleFilePaths(entry), tempRoot);
 
 		const manifest = buildAdapterManifest(entry);
 		fs.writeFileSync(
@@ -364,6 +496,7 @@ export const installModule = async (entry: NfCoreCatalogEntry) => {
 
 		const installed: InstalledModuleIndexEntry = {
 			id: entry.id,
+			kind: "module",
 			installedAt: new Date().toISOString(),
 			moduleDir: installRoot,
 			manifestPath: path.join(installRoot, "nwave.adapter.json"),
@@ -406,6 +539,114 @@ export const ensureModulesInstalled = async (
 };
 
 /**
+ * Install a subworkflow: first the modules and subworkflows it includes
+ * (those not installed yet), then its own files, manifest and index entry.
+ */
+export const installSubworkflow = async (
+	entry: NfCoreSubworkflowEntry,
+): Promise<{
+	installed: InstalledModuleIndexEntry;
+	manifest: ReturnType<typeof buildSubworkflowManifest>;
+	/** Ids of the modules and subworkflows installed along with it. */
+	dependencies: string[];
+}> => {
+	assertInstallable(entry);
+	const components = resolveSubworkflowComponents(entry);
+	const dependencies = await ensureModulesInstalled(components.modules);
+	for (const name of components.subworkflows) {
+		if (findNfCoreSubworkflowDir(name)) continue;
+		const nested = findSubworkflowEntry(`${SUBWORKFLOW_ID_PREFIX}${name}`);
+		if (!nested) continue;
+		// Its own components are part of `components` and installed above.
+		await writeSubworkflow(nested);
+		dependencies.push(nested.id);
+	}
+	return { ...(await writeSubworkflow(entry)), dependencies };
+};
+
+/** Download a subworkflow's own files, manifest and index entry. */
+const writeSubworkflow = async (entry: NfCoreSubworkflowEntry) => {
+	assertInstallable(entry);
+	const installRoot = getInstalledSubworkflowRoot(entry);
+	const tempRoot = `${installRoot}.tmp`;
+	ensureInside(getNwaveDataRoot(), installRoot);
+	fs.rmSync(tempRoot, { recursive: true, force: true });
+	fs.mkdirSync(tempRoot, { recursive: true });
+
+	try {
+		await downloadEntryFiles(
+			entry,
+			entry.files.paths.filter(isSafeRelativePath),
+			tempRoot,
+		);
+		const manifest = buildSubworkflowManifest(entry);
+		fs.writeFileSync(
+			path.join(tempRoot, "nwave.adapter.json"),
+			`${JSON.stringify(manifest, null, 2)}\n`,
+		);
+
+		fs.rmSync(installRoot, { recursive: true, force: true });
+		fs.mkdirSync(path.dirname(installRoot), { recursive: true });
+		fs.renameSync(tempRoot, installRoot);
+
+		const installed: InstalledModuleIndexEntry = {
+			id: entry.id,
+			kind: "subworkflow",
+			installedAt: new Date().toISOString(),
+			moduleDir: installRoot,
+			manifestPath: path.join(installRoot, "nwave.adapter.json"),
+			sourceCommit: entry.source.commit,
+			support: entry.support,
+		};
+		const index = loadInstalledIndex();
+		index[entry.id] = installed;
+		writeInstalledIndex(index);
+		return { installed, manifest };
+	} catch (error: unknown) {
+		fs.rmSync(tempRoot, { recursive: true, force: true });
+		throw error;
+	}
+};
+
+/**
+ * Make sure every subworkflow a workflow includes ("bam_stats_samtools") is
+ * installed, with the modules and subworkflows it needs. Returns the ids of
+ * everything it installed.
+ */
+export const ensureSubworkflowsInstalled = async (
+	names: string[],
+): Promise<string[]> => {
+	const installed: string[] = [];
+	for (const name of names) {
+		const entry = findSubworkflowEntry(`${SUBWORKFLOW_ID_PREFIX}${name}`);
+		if (findNfCoreSubworkflowDir(name)) {
+			// Installed earlier; its includes may have been removed since.
+			if (entry) {
+				const components = resolveSubworkflowComponents(entry);
+				installed.push(...(await ensureModulesInstalled(components.modules)));
+				installed.push(
+					...(await ensureSubworkflowsInstalled(
+						components.subworkflows.filter(
+							(nested) => !findNfCoreSubworkflowDir(nested),
+						),
+					)),
+				);
+			}
+			continue;
+		}
+		if (!entry) {
+			throw new NfCoreLibraryError(
+				404,
+				`nf-core subworkflow "${name}" is not installed and not in the catalog`,
+			);
+		}
+		const result = await installSubworkflow(entry);
+		installed.push(...result.dependencies, entry.id);
+	}
+	return installed;
+};
+
+/**
  * A module's files keyed by relative path: from its installed copy, or, when
  * it isn't installed, from GitHub at the catalog commit.
  */
@@ -414,12 +655,17 @@ export const readModuleFiles = async (
 	/** Only these files, e.g. ["main.nf"]; default: all of them. */
 	only?: string[],
 ): Promise<Record<string, string>> => {
-	const moduleName = id.replace(/^nf-core\//, "");
-	const entry = findCatalogEntry(id);
-	const moduleDir = findNfCoreModuleDir(moduleName);
-	const paths = (entry ? moduleFilePaths(entry) : DEFAULT_MODULE_FILES).filter(
-		(filePath) => !only || only.includes(filePath),
-	);
+	const isSubworkflow = isSubworkflowId(id);
+	const name = id.replace(isSubworkflow ? SUBWORKFLOW_ID_PREFIX : /^nf-core\//, "");
+	const entry = isSubworkflow ? findSubworkflowEntry(id) : findCatalogEntry(id);
+	const moduleDir = isSubworkflow
+		? findNfCoreSubworkflowDir(name)
+		: findNfCoreModuleDir(name);
+	const paths = (
+		entry
+			? (entry.files.paths ?? DEFAULT_MODULE_FILES).filter(isSafeRelativePath)
+			: DEFAULT_MODULE_FILES
+	).filter((filePath) => !only || only.includes(filePath));
 	const files: Record<string, string> = {};
 
 	if (moduleDir) {
@@ -434,7 +680,10 @@ export const readModuleFiles = async (
 	}
 
 	if (!entry) {
-		throw new NfCoreLibraryError(404, `Unknown nf-core module: ${id}`);
+		throw new NfCoreLibraryError(
+			404,
+			`Unknown nf-core ${isSubworkflow ? "subworkflow" : "module"}: ${id}`,
+		);
 	}
 	for (const filePath of paths) {
 		const content = await downloadFile(moduleFileUrl(entry, filePath));

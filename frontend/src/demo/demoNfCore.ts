@@ -1,16 +1,22 @@
 // nf-core support for the backend-less demo. Mirrors the backend's
 // /api/nfcore responses: the catalog is a static asset fetched on first use,
-// module sources come straight from GitHub at the catalog's pinned commit,
-// and installed modules (adapter manifest + main.nf) live in localStorage.
+// module and subworkflow sources come straight from GitHub at the catalog's
+// pinned commit, and installed ones (adapter manifest + main.nf) live in
+// localStorage.
 
 import type {
   InstalledNfCoreModule,
   InstalledNfCoreResponse,
   NfCoreCatalogModule,
   NfCoreCatalogResponse,
+  NfCoreCatalogSubworkflow,
 } from "../api/nfcore";
 import catalogUrl from "../registry/nfcore/catalog.json?url";
 import { buildNfCoreManifest } from "../registry/nfcore/manifest";
+import {
+  buildNfCoreSubworkflowManifest,
+  isNfCoreSubworkflowId,
+} from "../registry/nfcore/subworkflow";
 import type { NfCoreAdapterManifest } from "../registry/nfcoreModuleAdapters";
 import { DemoStoreError } from "./demoStore";
 
@@ -52,11 +58,46 @@ const loadCatalog = (): Promise<NfCoreCatalogResponse> => {
   return catalogPromise;
 };
 
-const findModule = async (id: string): Promise<NfCoreCatalogModule> => {
+/** A module or subworkflow from the catalog. */
+const findEntry = async (
+  id: string,
+): Promise<NfCoreCatalogModule | NfCoreCatalogSubworkflow> => {
   const catalog = await loadCatalog();
-  const entry = catalog.modules.find((module) => module.id === id);
-  if (!entry) throw new DemoStoreError(404, `Unknown nf-core module: ${id}`);
+  const entry = isNfCoreSubworkflowId(id)
+    ? catalog.subworkflows?.find((subworkflow) => subworkflow.id === id)
+    : catalog.modules.find((module) => module.id === id);
+  if (!entry) {
+    throw new DemoStoreError(
+      404,
+      `Unknown nf-core ${isNfCoreSubworkflowId(id) ? "subworkflow" : "module"}: ${id}`,
+    );
+  }
   return entry;
+};
+
+/** Every module and subworkflow a subworkflow includes, nested ones too. */
+const resolveComponents = async (
+  entry: NfCoreCatalogSubworkflow,
+): Promise<{ modules: string[]; subworkflows: string[] }> => {
+  const modules = new Set<string>();
+  const subworkflows = new Set<string>();
+  const visit = async (current: NfCoreCatalogSubworkflow) => {
+    for (const module of current.components.modules) modules.add(module);
+    for (const name of current.components.subworkflows) {
+      if (subworkflows.has(name)) continue;
+      subworkflows.add(name);
+      await visit(
+        (await findEntry(
+          `nf-core/subworkflows/${name}`,
+        )) as NfCoreCatalogSubworkflow,
+      );
+    }
+  };
+  await visit(entry);
+  return {
+    modules: Array.from(modules).sort(),
+    subworkflows: Array.from(subworkflows).sort(),
+  };
 };
 
 const read = (): StoredModule[] => {
@@ -81,8 +122,9 @@ export const nfCoreModuleFileUrl = (source: CatalogSource, file: string) =>
 const sourceCache = new Map<string, Promise<string>>();
 
 /**
- * `main.nf` of an nf-core module (e.g. "nf-core/fastqc"): the stored copy of
- * an installed module, otherwise fetched from GitHub once per session.
+ * `main.nf` of an nf-core module or subworkflow (e.g. "nf-core/fastqc"): the
+ * stored copy of an installed one, otherwise fetched from GitHub once per
+ * session.
  */
 export const fetchNfCoreModuleSource = (id: string): Promise<string> => {
   const installed = read().find((module) => module.id === id);
@@ -91,7 +133,7 @@ export const fetchNfCoreModuleSource = (id: string): Promise<string> => {
   const cached = sourceCache.get(id);
   if (cached) return cached;
 
-  const request = findModule(id).then(async (entry) => {
+  const request = findEntry(id).then(async (entry) => {
     const response = await fetch(nfCoreModuleFileUrl(entry.source, "main.nf"));
     if (!response.ok) {
       throw new Error(
@@ -108,17 +150,22 @@ export const fetchNfCoreModuleSource = (id: string): Promise<string> => {
 
 // Files a module runs without; everything else (main.nf, templates/...) is
 // required.
-const OPTIONAL_MODULE_FILES = new Set(["meta.yml", "environment.yml"]);
+const OPTIONAL_MODULE_FILES = new Set([
+  "meta.yml",
+  "environment.yml",
+  "nextflow.config",
+]);
 
 /**
- * Every file a module needs to run (main.nf, templates/..., plus meta.yml and
- * environment.yml when GitHub has them), for exporting a runnable project.
+ * Every file a module or subworkflow needs to run (main.nf, templates/...,
+ * plus meta.yml and environment.yml when GitHub has them), for exporting a
+ * runnable project.
  */
 export const fetchNfCoreModuleFiles = async (
   id: string,
 ): Promise<Record<string, string>> => {
   const [entry, mainNf] = await Promise.all([
-    findModule(id),
+    findEntry(id),
     fetchNfCoreModuleSource(id),
   ]);
   const paths = (
@@ -166,6 +213,10 @@ export const demoNfCore = {
         ...module,
         installed: installedIds.has(module.id),
       })),
+      subworkflows: catalog.subworkflows?.map((subworkflow) => ({
+        ...subworkflow,
+        installed: installedIds.has(subworkflow.id),
+      })),
     };
   },
 
@@ -183,13 +234,18 @@ export const demoNfCore = {
     };
   },
 
-  /** Fetch the module's main.nf and keep it with its adapter manifest. */
+  /**
+   * Fetch the main.nf of a module or subworkflow and keep it with its
+   * adapter manifest. A subworkflow brings in the modules and subworkflows
+   * it includes that aren't installed yet (listed in `dependencies`).
+   */
   async install(id: string): Promise<{
-    module: NfCoreCatalogModule;
+    module: NfCoreCatalogModule | NfCoreCatalogSubworkflow;
     installed: InstalledNfCoreModule;
     manifest: NfCoreAdapterManifest;
+    dependencies: string[];
   }> {
-    const entry = await findModule(id);
+    const entry = await findEntry(id);
     if (
       entry.support === "unsupported" ||
       entry.installability?.automatic === false
@@ -197,25 +253,26 @@ export const demoNfCore = {
       throw new DemoStoreError(400, `${id} cannot be installed automatically`);
     }
 
-    const source = await fetchNfCoreModuleSource(id);
-    const manifest = buildNfCoreManifest(entry);
-    const stored: StoredModule = {
-      id,
-      installedAt: new Date().toISOString(),
-      sourceCommit: entry.source.commit,
-      support: entry.support,
-      manifest,
-      source,
-    };
-    write([...read().filter((module) => module.id !== id), stored]);
-    return {
-      module: entry,
-      installed: toInstalledEntry(stored, entry.source.commit),
-      manifest,
-    };
+    const dependencies: string[] = [];
+    if ("kind" in entry && entry.kind === "subworkflow") {
+      const components = await resolveComponents(entry);
+      const installedIds = new Set(read().map((module) => module.id));
+      for (const dependency of [
+        ...components.modules.map((module) => `nf-core/${module}`),
+        ...components.subworkflows.map(
+          (name) => `nf-core/subworkflows/${name}`,
+        ),
+      ]) {
+        if (installedIds.has(dependency)) continue;
+        // Nested subworkflows' own includes are part of `components`.
+        await storeEntry(dependency);
+        dependencies.push(dependency);
+      }
+    }
+    return { ...(await storeEntry(id)), dependencies };
   },
 
-  /** Remove an installed module. */
+  /** Remove an installed module or subworkflow. */
   async uninstall(id: string): Promise<{ id: string }> {
     const modules = read();
     if (!modules.some((module) => module.id === id)) {
@@ -225,4 +282,34 @@ export const demoNfCore = {
     sourceCache.delete(id);
     return { id };
   },
+};
+
+/** Fetch an entry's main.nf and store it with its manifest. */
+const storeEntry = async (
+  id: string,
+): Promise<{
+  module: NfCoreCatalogModule | NfCoreCatalogSubworkflow;
+  installed: InstalledNfCoreModule;
+  manifest: NfCoreAdapterManifest;
+}> => {
+  const entry = await findEntry(id);
+  const source = await fetchNfCoreModuleSource(id);
+  const manifest =
+    "kind" in entry && entry.kind === "subworkflow"
+      ? buildNfCoreSubworkflowManifest(entry)
+      : buildNfCoreManifest(entry as NfCoreCatalogModule);
+  const stored: StoredModule = {
+    id,
+    installedAt: new Date().toISOString(),
+    sourceCommit: entry.source.commit,
+    support: entry.support,
+    manifest,
+    source,
+  };
+  write([...read().filter((module) => module.id !== id), stored]);
+  return {
+    module: entry,
+    installed: toInstalledEntry(stored, entry.source.commit),
+    manifest,
+  };
 };

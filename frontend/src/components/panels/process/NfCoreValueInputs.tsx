@@ -8,6 +8,8 @@ interface NfCoreValueInputsProps {
   inputs: NfCoreValueInput[];
   values: ValueMap;
   onChange: (values: ValueMap) => void;
+  legend?: string;
+  hint?: React.ReactNode;
 }
 
 const inputClassName =
@@ -18,6 +20,12 @@ const NfCoreValueInputs: React.FC<NfCoreValueInputsProps> = ({
   inputs,
   values,
   onChange,
+  legend = "Module inputs",
+  hint = (
+    <>
+      Values passed to the module&apos;s <code>val</code> inputs.
+    </>
+  ),
 }) => {
   const fieldId = useId();
   if (inputs.length === 0) return null;
@@ -27,10 +35,8 @@ const NfCoreValueInputs: React.FC<NfCoreValueInputsProps> = ({
 
   return (
     <fieldset className="space-y-3 border-t border-accent pt-4">
-      <legend className="text-sm font-semibold text-text">Module inputs</legend>
-      <p className="text-xs text-text-light">
-        Values passed to the module&apos;s <code>val</code> inputs.
-      </p>
+      <legend className="text-sm font-semibold text-text">{legend}</legend>
+      <p className="text-xs text-text-light">{hint}</p>
       {inputs.map((input) => {
         const id = `${fieldId}-${input.name}`;
         const value = values[input.name] ?? input.defaultValue;

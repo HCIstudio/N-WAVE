@@ -107,7 +107,9 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
   const handleSave = async () => {
     setError(null);
     if (!parsed.processName) {
-      setError("The Nextflow code must contain a process declaration.");
+      setError(
+        "The Nextflow code must contain a process or named workflow declaration."
+      );
       return;
     }
     if (fileInputs.length === 0) {
@@ -252,7 +254,8 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
                 <div>
                   <p className="text-sm font-semibold text-text">{label}</p>
                   <p className="text-xs text-text-light">
-                    Process: {parsed.processName || "not inferred"}
+                    {parsed.kind === "workflow" ? "Workflow" : "Process"}:{" "}
+                    {parsed.processName || "not inferred"}
                   </p>
                 </div>
               </div>
@@ -561,6 +564,7 @@ const EditableSettings: React.FC<{
                 <option value="float">Float</option>
                 <option value="boolean">Boolean</option>
                 <option value="select">Selection</option>
+                <option value="expression">Groovy expression</option>
               </select>
             </label>
             <fieldset className="block">

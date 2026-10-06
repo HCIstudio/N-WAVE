@@ -132,6 +132,70 @@ describe("demo nf-core library", () => {
     expect(entry.manifest?.outdated).toBe(true);
   });
 
+  it("installs a subworkflow with the modules and subworkflows it includes", async () => {
+    const { data } = await demoApi.post<{
+      manifest: NfCoreAdapterManifest;
+      dependencies: string[];
+    }>("/nfcore/install", {
+      id: "nf-core/subworkflows/bam_sort_stats_samtools",
+    });
+    expect(data.manifest).toMatchObject({
+      kind: "subworkflow",
+      processName: "BAM_SORT_STATS_SAMTOOLS",
+    });
+    expect(data.dependencies).toEqual([
+      "nf-core/samtools/flagstat",
+      "nf-core/samtools/idxstats",
+      "nf-core/samtools/index",
+      "nf-core/samtools/sort",
+      "nf-core/samtools/stats",
+      "nf-core/subworkflows/bam_stats_samtools",
+    ]);
+    expect(
+      githubRequests.some((url) =>
+        url.endsWith("/subworkflows/nf-core/bam_sort_stats_samtools/main.nf"),
+      ),
+    ).toBe(true);
+    expect((await installed()).map((entry) => entry.id).sort()).toEqual(
+      [...data.dependencies, "nf-core/subworkflows/bam_sort_stats_samtools"].sort(),
+    );
+
+    const catalog = await demoApi.get<NfCoreCatalogResponse>("/nfcore/catalog");
+    expect(
+      catalog.data.subworkflows?.find(
+        (subworkflow) =>
+          subworkflow.id === "nf-core/subworkflows/bam_sort_stats_samtools",
+      )?.installed,
+    ).toBe(true);
+
+    // Installed dependencies aren't fetched again.
+    githubRequests.length = 0;
+    const again = await demoApi.post<{ dependencies: string[] }>(
+      "/nfcore/install",
+      { id: "nf-core/subworkflows/bam_stats_samtools" },
+    );
+    expect(again.data.dependencies).toEqual([]);
+  });
+
+  it("fetches a subworkflow's files for an export", async () => {
+    const { data } = await demoApi.get<{ files: Record<string, string> }>(
+      `/nfcore/modules/files?id=${encodeURIComponent("nf-core/subworkflows/quantify_pseudo_alignment")}`,
+    );
+    expect(Object.keys(data.files).sort()).toEqual([
+      "main.nf",
+      "meta.yml",
+      "nextflow.config",
+    ]);
+  });
+
+  it("rejects subworkflows that need a plugin", async () => {
+    await expect(
+      demoApi.post("/nfcore/install", {
+        id: "nf-core/subworkflows/utils_nfschema_plugin",
+      }),
+    ).rejects.toMatchObject({ response: { status: 400 } });
+  });
+
   it("rejects unknown and missing ids", async () => {
     await expect(
       demoApi.post("/nfcore/install", { id: "nf-core/does-not-exist" }),

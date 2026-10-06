@@ -3,6 +3,7 @@ import {
   buildExecutionConfig,
   extractNwaveNextflowAssets,
   getReferencedNfCoreModules,
+  getReferencedNfCoreSubworkflows,
   normalizeLegacyGeneratedScript,
   stabilizeWorkflowInvocations,
 } from "./nextflowScript";
@@ -70,6 +71,25 @@ describe("getReferencedNfCoreModules", () => {
     expect(
       getReferencedNfCoreModules("include { X } from './modules/local/x/main'")
     ).toEqual([]);
+  });
+});
+
+describe("getReferencedNfCoreSubworkflows", () => {
+  it("collects nf-core subworkflow includes", () => {
+    expect(
+      getReferencedNfCoreSubworkflows(
+        lines(
+          "include { FASTQC } from './modules/nf-core/fastqc/main'",
+          "include { BAM_STATS_SAMTOOLS } from './subworkflows/nf-core/bam_stats_samtools/main'",
+          "include { BAM_STATS_SAMTOOLS as STATS2 } from './subworkflows/nf-core/bam_stats_samtools/main'"
+        )
+      )
+    ).toEqual(["bam_stats_samtools"]);
+    expect(() =>
+      getReferencedNfCoreSubworkflows(
+        "include { X } from './subworkflows/nf-core/../x/main'"
+      )
+    ).toThrow("Invalid nf-core subworkflow name");
   });
 });
 

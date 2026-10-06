@@ -162,6 +162,24 @@ export const getReferencedNfCoreModules = (script: string): string[] => {
   return Array.from(modules);
 };
 
+/**
+ * nf-core subworkflows a script includes, by name: `include { X } from
+ * './subworkflows/nf-core/bam_stats_samtools/main'` -> "bam_stats_samtools".
+ */
+export const getReferencedNfCoreSubworkflows = (script: string): string[] => {
+  const subworkflows = new Set<string>();
+  for (const match of script.matchAll(
+    /from\s+['"]\.\/subworkflows\/nf-core\/([^'"]+?)\/main['"]/g
+  )) {
+    const name = match[1] ?? "";
+    if (!/^[A-Za-z0-9_-]+$/.test(name)) {
+      throw new Error(`Invalid nf-core subworkflow name: ${name}`);
+    }
+    subworkflows.add(name);
+  }
+  return Array.from(subworkflows);
+};
+
 export const stabilizeWorkflowInvocations = (script: string): string => {
   if (script.includes("N-WAVE generator: registry-nfcore-v1")) {
     return script;

@@ -91,7 +91,7 @@ volumes. Both are set up in the compose files.
 
 Every node on the canvas has a **Code** tab in its panel. It shows, read-only, the Nextflow
 code that node adds to the generated script: its process (or, for nf-core nodes, the
-module's `main.nf` and the `include` line), any `process { withName: ... }` configuration,
+module's or subworkflow's `main.nf` and the `include` line), any `process { withName: ... }` configuration,
 and its lines in the `workflow` block.
 
 To change that code, use **Convert to custom node** on the Code tab. The node is replaced in
@@ -137,6 +137,17 @@ Generated scripts follow Nextflow's strict syntax: input channels are defined in
 `workflow` block and shared helpers are top-level functions, so `nextflow lint` accepts
 them.
 
+### nf-core subworkflows
+
+The **nf-core Library** also lists the subworkflows from nf-core/modules (Subworkflows
+tab), such as `quantify_pseudo_alignment` or `bam_sort_stats_samtools`. A subworkflow node
+has an input port per channel it takes and a setting per value (an aligner name, a skip
+flag); its outputs are the channels it emits. Installing one brings in the modules and
+subworkflows it includes, at the catalog's pinned commit. Inputs left unconnected get an
+empty placeholder that nf-core reads as "no file", editable in the panel, and a **Process
+config** setting adds `withName` selectors for the processes inside. Details are in
+[scripts/README.md](scripts/README.md#subworkflows).
+
 ### Exporting a runnable project
 
 **Export Project** (in the bottom bar, next to the script download) downloads a zip that
@@ -147,6 +158,7 @@ runs on any machine with Nextflow and Docker, without N-WAVE:
 ├─ main.nf            # the generated workflow
 ├─ nextflow.config    # module settings and a `docker` profile
 ├─ modules/nf-core/   # the nf-core modules it uses, at the catalog's pinned commit
+├─ subworkflows/nf-core/  # the nf-core subworkflows it uses, if any
 ├─ inputs/            # the File Input files
 └─ README.md          # how to run it and which inputs it expects
 ```
@@ -156,8 +168,8 @@ unzip <workflow>.zip && cd <workflow>
 nextflow run main.nf -profile docker
 ```
 
-This works in the online demo too: module files are fetched from GitHub in the browser, so
-a workflow can be built in the demo and run locally.
+This works in the online demo too: module and subworkflow files are fetched from GitHub in
+the browser, so a workflow can be built in the demo and run locally.
 
 nf-core modules are installed from the **nf-core Library**. How their inputs become ports
 and settings, and how to fix a module the automatic mapping gets wrong, is described in

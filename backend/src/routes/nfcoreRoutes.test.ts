@@ -6,21 +6,25 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app";
 import {
   ensureModulesInstalled,
+  ensureSubworkflowsInstalled,
   findCatalogEntry,
   installModule,
   NfCoreLibraryError,
 } from "../nfcore/library";
 
-// nf-core module files are fetched from raw.githubusercontent.com; serve
-// stand-ins: "<file> of <module path>", and a 404 for salmon/quant's meta.yml.
+// nf-core module and subworkflow files are fetched from
+// raw.githubusercontent.com; serve stand-ins: "<file> of <path>", and a 404
+// for salmon/quant's meta.yml.
 const githubRequests: string[] = [];
 vi.mock("axios", async (importOriginal) => {
   const actual = await importOriginal<typeof import("axios")>();
   const get = vi.fn(async (url: string) => {
     githubRequests.push(url);
-    const match = url.match(/\/modules\/nf-core\/(.+?)\/([^/]+(?:\/[^/]+)?)$/);
-    const parts = url.split("/modules/nf-core/")[1] ?? "";
-    if (!match || parts === "salmon/quant/meta.yml") {
+    const parts =
+      url.split("/modules/nf-core/")[1] ??
+      url.split("/subworkflows/nf-core/")[1] ??
+      "";
+    if (!parts || parts === "salmon/quant/meta.yml") {
       throw Object.assign(new actual.AxiosError("Not Found"), {
         response: { status: 404 },
       });
@@ -49,6 +53,8 @@ afterEach(() => {
 
 const moduleDir = (modulePath: string) =>
   path.join(dataDir, "nf-core/modules/nf-core", modulePath);
+const subworkflowDir = (name: string) =>
+  path.join(dataDir, "nf-core/subworkflows/nf-core", name);
 
 describe("GET /api/nfcore/modules/source", () => {
   it("fetches the main.nf of a module that isn't installed from GitHub", async () => {
@@ -292,5 +298,144 @@ describe("installed nf-core modules", () => {
     expect(manifest.inputs).toEqual([
       { handle: "meta", nfcoreName: "meta", adapter: "path" },
     ]);
+  });
+});
+
+describe("nf-core subworkflows", () => {
+  const installedIds = async () =>
+    (await request(app).get("/api/nfcore/installed").expect(200)).body.installed
+      .map((entry: { id: string }) => entry.id)
+      .sort();
+
+  it("lists subworkflows in the catalog", async () => {
+    const response = await request(app).get("/api/nfcore/catalog").expect(200);
+    const entry = response.body.subworkflows.find(
+      (candidate: { id: string }) =>
+        candidate.id === "nf-core/subworkflows/bam_sort_stats_samtools"
+    );
+    expect(entry).toMatchObject({
+      kind: "subworkflow",
+      workflowName: "BAM_SORT_STATS_SAMTOOLS",
+      installed: false,
+      components: {
+        modules: ["samtools/index", "samtools/sort"],
+        subworkflows: ["bam_stats_samtools"],
+      },
+    });
+    expect(entry.takes.map((take: { name: string }) => take.name)).toEqual([
+      "ch_bam",
+      "ch_fasta_fai",
+    ]);
+  });
+
+  it("installs a subworkflow with the modules and subworkflows it includes", async () => {
+    const response = await request(app)
+      .post("/api/nfcore/install")
+      .send({ id: "nf-core/subworkflows/bam_sort_stats_samtools" })
+      .expect(201);
+    expect(response.body.manifest).toMatchObject({
+      kind: "subworkflow",
+      processName: "BAM_SORT_STATS_SAMTOOLS",
+      modulePath: "./subworkflows/nf-core/bam_sort_stats_samtools/main",
+      inputs: [{ handle: "ch_bam" }, { handle: "ch_fasta_fai" }],
+    });
+    expect(response.body.dependencies.sort()).toEqual([
+      "nf-core/samtools/flagstat",
+      "nf-core/samtools/idxstats",
+      "nf-core/samtools/index",
+      "nf-core/samtools/sort",
+      "nf-core/samtools/stats",
+      "nf-core/subworkflows/bam_stats_samtools",
+    ]);
+    expect(
+      fs.readFileSync(
+        path.join(subworkflowDir("bam_sort_stats_samtools"), "main.nf"),
+        "utf8"
+      )
+    ).toBe("main.nf of bam_sort_stats_samtools/main.nf");
+    expect(fs.existsSync(path.join(moduleDir("samtools/stats"), "main.nf"))).toBe(
+      true
+    );
+    expect(await installedIds()).toEqual([
+      "nf-core/samtools/flagstat",
+      "nf-core/samtools/idxstats",
+      "nf-core/samtools/index",
+      "nf-core/samtools/sort",
+      "nf-core/samtools/stats",
+      "nf-core/subworkflows/bam_sort_stats_samtools",
+      "nf-core/subworkflows/bam_stats_samtools",
+    ]);
+
+    await request(app)
+      .post("/api/nfcore/uninstall")
+      .send({ id: "nf-core/subworkflows/bam_sort_stats_samtools" })
+      .expect(200);
+    expect(fs.existsSync(subworkflowDir("bam_sort_stats_samtools"))).toBe(false);
+    // What it brought in stays installed.
+    expect(fs.existsSync(subworkflowDir("bam_stats_samtools"))).toBe(true);
+  });
+
+  it("serves a subworkflow's source and files", async () => {
+    const source = await request(app)
+      .get("/api/nfcore/modules/source")
+      .query({ id: "nf-core/subworkflows/bam_stats_samtools" })
+      .expect(200);
+    expect(source.body.source).toBe("main.nf of bam_stats_samtools/main.nf");
+    expect(githubRequests[0]).toMatch(
+      /\/[0-9a-f]{40}\/subworkflows\/nf-core\/bam_stats_samtools\/main\.nf$/
+    );
+
+    const files = await request(app)
+      .get("/api/nfcore/modules/files")
+      .query({ id: "nf-core/subworkflows/quantify_pseudo_alignment" })
+      .expect(200);
+    expect(Object.keys(files.body.files).sort()).toEqual([
+      "main.nf",
+      "meta.yml",
+      "nextflow.config",
+    ]);
+  });
+
+  it("refuses subworkflows that need a plugin", async () => {
+    const response = await request(app)
+      .post("/api/nfcore/install")
+      .send({ id: "nf-core/subworkflows/utils_nfschema_plugin" })
+      .expect(400);
+    expect(response.body.reasons).toEqual([
+      "Includes from a plugin: plugin/nf-schema",
+    ]);
+    await request(app)
+      .post("/api/nfcore/install")
+      .send({ id: "nf-core/subworkflows/nope" })
+      .expect(404);
+  });
+
+  it("installs missing subworkflows and their includes before a run", async () => {
+    // Installed earlier, but a module it includes was removed since.
+    fs.mkdirSync(subworkflowDir("bam_stats_samtools"), { recursive: true });
+    fs.writeFileSync(
+      path.join(subworkflowDir("bam_stats_samtools"), "main.nf"),
+      "workflow BAM_STATS_SAMTOOLS {}"
+    );
+    for (const module of ["samtools/stats", "samtools/flagstat"]) {
+      fs.mkdirSync(moduleDir(module), { recursive: true });
+      fs.writeFileSync(path.join(moduleDir(module), "main.nf"), "process X {}");
+    }
+
+    expect(await ensureSubworkflowsInstalled(["bam_stats_samtools"])).toEqual([
+      "nf-core/samtools/idxstats",
+    ]);
+    expect(
+      (await ensureSubworkflowsInstalled(["quantify_pseudo_alignment"])).sort()
+    ).toEqual(
+      expect.arrayContaining([
+        "nf-core/salmon/quant",
+        "nf-core/subworkflows/quant_tximport_summarizedexperiment",
+        "nf-core/subworkflows/quantify_pseudo_alignment",
+      ])
+    );
+    await expect(ensureSubworkflowsInstalled(["nope"])).rejects.toThrow(
+      "not in the catalog"
+    );
   });
 });

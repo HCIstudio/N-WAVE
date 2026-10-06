@@ -3,6 +3,7 @@ import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import type { Node } from "reactflow";
 import { getNfCoreModuleSource } from "../../../api/nfcore";
+import { isNfCoreSubworkflowId } from "../../../registry/nfcore/subworkflow";
 import { getNodeCode } from "../../../registry/nodeCode";
 import { getErrorMessage } from "../../../utils/errors";
 import CodeBlock from "../../common/data/CodeBlock";
@@ -44,6 +45,8 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
 }) => {
   const code = useMemo(() => getNodeCode(node), [node]);
   const moduleId = code?.nfCoreModule?.id;
+  const moduleKind =
+    moduleId && isNfCoreSubworkflowId(moduleId) ? "subworkflow" : "module";
   const [moduleSource, setModuleSource] = useState<ModuleSourceState>({
     status: "idle",
   });
@@ -64,7 +67,7 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
             status: "error",
             message: getErrorMessage(
               error,
-              "Could not load the module source.",
+              `Could not load the ${moduleKind} source.`,
             ),
           });
         }
@@ -73,7 +76,7 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [moduleId]);
+  }, [moduleId, moduleKind]);
 
   if (!code) {
     return (
@@ -121,7 +124,7 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
         <Section
           title={
             <>
-              nf-core module{" "}
+              nf-core {moduleKind}{" "}
               <span className="font-mono normal-case">
                 {code.nfCoreModule.id}
               </span>
@@ -129,12 +132,15 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
           }
         >
           {moduleSource.status === "loaded" && (
-            <CodeBlock code={moduleSource.source} label="Module code" />
+            <CodeBlock
+              code={moduleSource.source}
+              label={moduleKind === "module" ? "Module code" : "Subworkflow code"}
+            />
           )}
           {moduleSource.status === "loading" && (
             <p className="flex items-center gap-2 text-sm text-text-light">
               <Loader size={14} className="animate-spin" aria-hidden />
-              Loading module source…
+              Loading {moduleKind} source…
             </p>
           )}
           {moduleSource.status === "error" && (
@@ -150,6 +156,12 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
       ) : (
         <Section title="Process">
           <CodeBlock code={code.processSource} label="Process code" />
+          {code.includeStatements.length > 0 && (
+            <CodeBlock
+              code={code.includeStatements.join("\n")}
+              label="Include statements"
+            />
+          )}
         </Section>
       )}
 

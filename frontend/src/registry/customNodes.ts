@@ -6,6 +6,11 @@ import {
   registerDynamicNodeDefinitions,
   unregisterDynamicNodeDefinitions,
 } from "./nodeDefinitions";
+import {
+  emptyChannelFor,
+  extractRootIncludes,
+  parseWorkflowSignature,
+} from "./nfcore/subworkflowSource";
 import type { NodeGenerator } from "./nodeGeneration";
 import { groovyStringWithParams } from "./params";
 
@@ -15,7 +20,9 @@ export type CustomNodeSettingType =
   | "integer"
   | "float"
   | "boolean"
-  | "select";
+  | "select"
+  /** Passed as written, e.g. `[]` or `['a', 'b']`. */
+  | "expression";
 
 export interface CustomNodeInput {
   name: string;
@@ -28,6 +35,11 @@ export interface CustomNodeInput {
   options?: string[];
   /** Pass all upstream files to one task (`.collect()`), like Merge does. */
   collect?: boolean;
+  /**
+   * Workflow nodes: the expression passed for a channel input while nothing
+   * is connected, e.g. `Channel.value([])`.
+   */
+  emptyValue?: string;
 }
 
 export interface CustomNodeOutput {
@@ -52,6 +64,11 @@ export interface CustomNodeArgument {
 
 export interface StoredCustomNode {
   id: string;
+  /**
+   * "workflow" when the source is a named Nextflow workflow (e.g. a
+   * converted nf-core subworkflow) instead of a process.
+   */
+  kind?: "process" | "workflow";
   label: string;
   description: string;
   icon: string;
@@ -63,7 +80,8 @@ export interface StoredCustomNode {
   arguments: CustomNodeArgument[];
   /**
    * Process config statements (e.g. `ext.args = '--nogroup'`), emitted as a
-   * `withName` block. Used when converting nf-core nodes.
+   * `withName` block. Used when converting nf-core nodes. For workflow nodes
+   * these are whole config lines (selectors included), emitted as written.
    */
   config?: string[];
   createdAt: string;
@@ -78,6 +96,8 @@ export interface CustomNodeDraft {
 }
 
 export interface ParsedCustomNodeSource {
+  kind?: "process" | "workflow";
+  /** The process name, or the workflow name for workflow sources. */
   processName: string;
   inputs: CustomNodeInput[];
   outputs: CustomNodeOutput[];
@@ -85,9 +105,73 @@ export interface ParsedCustomNodeSource {
   warnings: string[];
 }
 
+// Take comments (`// val: ...`, `// bool: ...`) that mark a workflow take
+// as a value setting rather than a channel.
+const VALUE_TAKE_TYPES: Record<string, CustomNodeSettingType> = {
+  val: "text",
+  value: "text",
+  string: "text",
+  bool: "boolean",
+  boolean: "boolean",
+  integer: "integer",
+  int: "integer",
+  float: "float",
+  number: "float",
+};
+
+/**
+ * Parse a named workflow (an nf-core subworkflow, say): channel takes become
+ * input ports, value takes settings and emits outputs.
+ */
+const parseWorkflowSource = (source: string): ParsedCustomNodeSource => {
+  const signature = parseWorkflowSignature(source);
+  const inputs: CustomNodeInput[] = signature.takes.map(({ name, comment }) => {
+    const settingType =
+      VALUE_TAKE_TYPES[comment.match(/^([A-Za-z]+)/)?.[1]?.toLowerCase() ?? ""];
+    return settingType
+      ? {
+          name,
+          kind: "val",
+          label: toTitle(name),
+          settingType,
+          defaultValue: settingType === "boolean" ? "false" : "",
+        }
+      : {
+          name,
+          kind: "path",
+          label: toTitle(name),
+          fileType: inferFileType(comment),
+          emptyValue: emptyChannelFor(comment),
+        };
+  });
+  return {
+    kind: "workflow",
+    processName: signature.name,
+    inputs,
+    outputs: signature.emits.map((emit) => ({
+      name: emit,
+      emit,
+      label: toTitle(emit),
+    })),
+    arguments: inputs.map((input) => ({
+      kind: input.kind,
+      name: input.name,
+      fields: [{ kind: input.kind, name: input.name }],
+    })),
+    warnings:
+      signature.emits.length === 0 ? ["The workflow emits no channels."] : [],
+  };
+};
+
 export const parseCustomNodeSource = (
   source: string
 ): ParsedCustomNodeSource => {
+  if (
+    !/\bprocess\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(source) &&
+    /^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/m.test(source)
+  ) {
+    return parseWorkflowSource(source);
+  }
   const processName =
     source.match(/\bprocess\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/m)?.[1] ?? "";
   const inputDeclarations = getSectionLines(source, "input");
@@ -154,20 +238,30 @@ export const createStoredCustomNode = (
     `custom_${slugify(draft.label || parsed.processName || "node")}_${Date.now()}`;
   const stored: StoredCustomNode = {
     id,
+    ...(parsed.kind === "workflow" ? { kind: "workflow" as const } : {}),
     label: draft.label || parsed.processName || "Custom Node",
-    description: draft.description || "User-defined Nextflow process.",
+    description:
+      draft.description ||
+      (parsed.kind === "workflow"
+        ? "User-defined Nextflow workflow."
+        : "User-defined Nextflow process."),
     icon: draft.icon || "Code",
     processType: id,
     processName: parsed.processName,
     source: draft.source,
-    // Keep settings the editor doesn't expose (collect, config) on edit.
+    // Keep settings the editor doesn't expose (collect, placeholders,
+    // config) on edit.
     inputs: overrides.inputs.map((input) => {
       const previous = existingNode?.inputs.find(
         (candidate) => candidate.name === input.name
       );
-      return input.collect === undefined && previous?.collect
-        ? { ...input, collect: true }
-        : input;
+      const kept =
+        input.collect === undefined && previous?.collect
+          ? { ...input, collect: true }
+          : input;
+      return input.kind === "path" && previous?.emptyValue !== undefined
+        ? { ...kept, emptyValue: previous.emptyValue }
+        : kept;
     }),
     outputs: overrides.outputs,
     arguments: parsed.arguments,
@@ -255,7 +349,18 @@ const generateCustomNode =
   (context) => {
     const { node, processName, incomingEdges, resolveChannelNameForEdge, channelNameMap } =
       context;
-    const source = renameProcess(customNode.source, customNode.processName, processName);
+    const isWorkflow = customNode.kind === "workflow";
+    // A workflow's includes are relative to its nf-core folder; move them to
+    // the top of the script, relative to main.nf.
+    const { includes, source: body } = isWorkflow
+      ? extractRootIncludes(customNode.source)
+      : { includes: [], source: customNode.source };
+    const source = renameProcess(
+      body,
+      customNode.processName,
+      processName,
+      isWorkflow ? "workflow" : "process"
+    );
     const argumentChannels = buildArgumentChannels({
       customNode,
       node,
@@ -290,20 +395,23 @@ const generateCustomNode =
 
     return {
       processScript: source,
+      ...(includes.length > 0 ? { includeStatements: includes } : {}),
       channelDefinitions: argumentChannels
         .map((channel) => channel.definition)
         .filter((definition): definition is string => Boolean(definition)),
       processInvocations: [invocation],
       nextflowConfigBlocks:
-        configStatements.length > 0
-          ? [
-              [
-                `withName: '${processName}' {`,
-                ...configStatements.map((statement) => `  ${statement.trim()}`),
-                "}",
-              ].join("\n"),
-            ]
-          : undefined,
+        configStatements.length === 0
+          ? undefined
+          : isWorkflow
+            ? [customNode.config?.join("\n").trim() ?? ""]
+            : [
+                [
+                  `withName: '${processName}' {`,
+                  ...configStatements.map((statement) => `  ${statement.trim()}`),
+                  "}",
+                ].join("\n"),
+              ],
     };
   };
 
@@ -334,6 +442,38 @@ const buildArgumentChannels = ({
       .map((input) => [input.name, input])
   );
   const channels: Array<{ name: string; definition?: string }> = [];
+
+  if (customNode.kind === "workflow") {
+    // Workflow takes: connected channels, or the input's placeholder while
+    // unconnected; needs at least one connection.
+    const inputsByName = new Map(
+      customNode.inputs.map((input) => [input.name, input])
+    );
+    let connected = 0;
+    for (const argument of customNode.arguments) {
+      const input = inputsByName.get(argument.name);
+      if (argument.kind === "val") {
+        channels.push({
+          name: groovyLiteralForSetting(
+            String(valueInputs[argument.name] ?? input?.defaultValue ?? ""),
+            input
+          ),
+        });
+        continue;
+      }
+      const upstream = resolvePathInput(
+        argument.name,
+        incomingEdges,
+        resolveChannelNameForEdge,
+        channelNameMap
+      );
+      if (upstream) connected += 1;
+      channels.push({
+        name: upstream ?? input?.emptyValue ?? "Channel.empty()",
+      });
+    }
+    return connected > 0 ? channels : null;
+  }
 
   for (const argument of customNode.arguments) {
     if (argument.kind === "val") {
@@ -575,11 +715,12 @@ export const stripLineComment = (value: string): string => {
 const renameProcess = (
   source: string,
   originalProcessName: string,
-  nextProcessName: string
+  nextProcessName: string,
+  keyword: "process" | "workflow" = "process"
 ): string =>
   source.replace(
-    new RegExp(`\\bprocess\\s+${escapeRegExp(originalProcessName)}\\b`),
-    `process ${nextProcessName}`
+    new RegExp(`\\b${keyword}\\s+${escapeRegExp(originalProcessName)}\\b`),
+    `${keyword} ${nextProcessName}`
   );
 
 const groovyLiteralForSetting = (
@@ -588,6 +729,7 @@ const groovyLiteralForSetting = (
 ): string => {
   const type = setting?.settingType ?? "text";
   if (type === "boolean") return value === "true" ? "true" : "false";
+  if (type === "expression") return value.trim() || "[]";
   if (type === "integer") {
     const parsed = Number.parseInt(value, 10);
     return Number.isFinite(parsed) ? String(parsed) : "0";

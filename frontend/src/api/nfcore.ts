@@ -4,6 +4,10 @@ import type {
   NfCoreValueInput,
 } from "../registry/nfcore/inputChannels";
 import {
+  createNodeDefinitionFromNfCoreSubworkflowManifest,
+  type NfCoreSubworkflowCatalogEntry,
+} from "../registry/nfcore/subworkflow";
+import {
   createNodeDefinitionFromNfCoreManifest,
   type NfCoreAdapterManifest,
 } from "../registry/nfcoreModuleAdapters";
@@ -68,12 +72,22 @@ export interface NfCoreCatalogModule {
   };
 }
 
+/** An nf-core subworkflow in the catalog (schema 3+). */
+export interface NfCoreCatalogSubworkflow extends NfCoreSubworkflowCatalogEntry {
+  kind: "subworkflow";
+  source: NfCoreCatalogModule["source"];
+  files?: { paths?: string[] };
+  keywords: string[];
+  installed?: boolean;
+}
+
 export interface NfCoreCatalogResponse {
   schemaVersion: number;
   generatedAt: string;
   source?: { repository: string; ref: string; commit: string };
   counts: Record<string, number>;
   modules: NfCoreCatalogModule[];
+  subworkflows?: NfCoreCatalogSubworkflow[];
 }
 
 export const refreshInstalledNfCoreNodes = async (): Promise<number> => {
@@ -94,7 +108,9 @@ const syncNfCoreNodeDefinitions = (manifests: NfCoreAdapterManifest[]) => {
   unregisterDynamicNodeDefinitions(Array.from(registeredNfCoreIds));
   registeredNfCoreIds.clear();
   const definitions = manifests.map((manifest) =>
-    createNodeDefinitionFromNfCoreManifest(manifest)
+    manifest.kind === "subworkflow"
+      ? createNodeDefinitionFromNfCoreSubworkflowManifest(manifest)
+      : createNodeDefinitionFromNfCoreManifest(manifest)
   );
   for (const definition of definitions) {
     registeredNfCoreIds.add(definition.id);
@@ -107,17 +123,28 @@ export const getNfCoreCatalog = async (): Promise<NfCoreCatalogResponse> => {
   return response.data;
 };
 
+/**
+ * Install a module or subworkflow. `dependencies` lists the modules and
+ * subworkflows a subworkflow brought in.
+ */
 export const installNfCoreModule = async (
   id: string
-): Promise<NfCoreAdapterManifest> => {
+): Promise<{ manifest: NfCoreAdapterManifest; dependencies: string[] }> => {
   const response = await api.post<{
     manifest: NfCoreAdapterManifest;
+    dependencies?: string[];
   }>("/nfcore/install", { id });
 
-  return response.data.manifest;
+  return {
+    manifest: response.data.manifest,
+    dependencies: response.data.dependencies ?? [],
+  };
 };
 
-/** `main.nf` of an nf-core module, e.g. getNfCoreModuleSource("nf-core/fastqc"). */
+/**
+ * `main.nf` of an nf-core module or subworkflow, e.g.
+ * getNfCoreModuleSource("nf-core/fastqc").
+ */
 export const getNfCoreModuleSource = async (id: string): Promise<string> => {
   const response = await api.get<{ id: string; source: string }>(
     `/nfcore/modules/source?id=${encodeURIComponent(id)}`
@@ -125,13 +152,16 @@ export const getNfCoreModuleSource = async (id: string): Promise<string> => {
   return response.data.source;
 };
 
-/** Remove an installed module. */
+/** Remove an installed module or subworkflow. */
 export const uninstallNfCoreModule = async (id: string): Promise<void> => {
   await api.post("/nfcore/uninstall", { id });
   await refreshInstalledNfCoreNodes();
 };
 
-/** The files of an nf-core module (main.nf, meta.yml, ...), keyed by name. */
+/**
+ * The files of an nf-core module or subworkflow (main.nf, meta.yml, ...),
+ * keyed by name.
+ */
 export const getNfCoreModuleFiles = async (
   id: string
 ): Promise<Record<string, string>> => {

@@ -1,11 +1,15 @@
 import type { Edge, Node } from "reactflow";
 import type { NodeData } from "../components/nodes/BaseNode";
 import {
-  type StoredCustomNode,
+  type CustomNodeInput,
+  type CustomNodeSettingType,
   createNodeDefinitionFromCustomNode,
   createStoredCustomNode,
+  type ParsedCustomNodeSource,
   parseCustomNodeSource,
+  type StoredCustomNode,
 } from "./customNodes";
+import type { NfCoreSubworkflowTake } from "./nfcore/subworkflow";
 import type { NodeCode } from "./nodeCode";
 
 /** Old port name -> new port name, for inputs and outputs. */
@@ -43,6 +47,61 @@ const configStatements = (configBlocks: string[]): string[] =>
       .map((line) => line.trim())
       .filter(Boolean),
   );
+
+/**
+ * For an nf-core subworkflow node, type the takes like the node does (the
+ * catalog knows which are values from meta.yml) and carry over its settings:
+ * values become setting defaults, placeholders the unconnected-input values.
+ */
+const withSubworkflowSettings = (
+  parsed: ParsedCustomNodeSource,
+  node: Node<NodeData>,
+): ParsedCustomNodeSource => {
+  const takes: NfCoreSubworkflowTake[] = Array.isArray(
+    node.data.nfcoreSubworkflowTakes,
+  )
+    ? node.data.nfcoreSubworkflowTakes
+    : [];
+  if (parsed.kind !== "workflow" || takes.length === 0) return parsed;
+
+  const values = (node.data.nfcoreValues ?? {}) as Record<string, unknown>;
+  const settingTypes: Record<string, CustomNodeSettingType> = {
+    boolean: "boolean",
+    integer: "integer",
+    float: "float",
+    string: "text",
+    expression: "expression",
+  };
+  const inputs = parsed.inputs.map((input): CustomNodeInput => {
+    const take = takes.find((candidate) => candidate.name === input.name);
+    if (!take) return input;
+    const value = String(values[take.name] ?? take.defaultValue);
+    return take.kind === "channel"
+      ? {
+          name: input.name,
+          kind: "path",
+          label: input.label,
+          fileType: input.fileType,
+          emptyValue: value,
+        }
+      : {
+          name: input.name,
+          kind: "val",
+          label: input.label,
+          settingType: settingTypes[take.type] ?? "text",
+          defaultValue: value,
+        };
+  });
+  return {
+    ...parsed,
+    inputs,
+    arguments: inputs.map((input) => ({
+      kind: input.kind,
+      name: input.name,
+      fields: [{ kind: input.kind, name: input.name }],
+    })),
+  };
+};
 
 /**
  * Map each old port to a new one: same name first, then a name that extends
@@ -103,7 +162,8 @@ export const buildCustomNodeFromNode = (
     throw new Error(`No Nextflow code available for "${label}".`);
   }
 
-  const parsed = parseCustomNodeSource(source);
+  const parsed = withSubworkflowSettings(parseCustomNodeSource(source), node);
+  const isWorkflow = parsed.kind === "workflow";
   if (!parsed.processName) {
     throw new Error(`Could not find a process declaration for "${label}".`);
   }
@@ -111,7 +171,7 @@ export const buildCustomNodeFromNode = (
   // Bundled operators like Merge pass all upstream files to one task.
   const collectsInputs = /\.collect\(\)\)/.test(code.workflowSnippet);
   const inputs = parsed.inputs.map((input) =>
-    collectsInputs && input.kind === "path"
+    collectsInputs && input.kind === "path" && !isWorkflow
       ? { ...input, collect: true }
       : input,
   );
@@ -121,7 +181,7 @@ export const buildCustomNodeFromNode = (
       {
         label: `${label} (custom)`,
         description: code.nfCoreModule
-          ? `Editable copy of the nf-core module ${code.nfCoreModule.id}.`
+          ? `Editable copy of the nf-core ${isWorkflow ? "subworkflow" : "module"} ${code.nfCoreModule.id}.`
           : `Editable copy of the ${label} node.`,
         icon: typeof node.data.icon === "string" ? node.data.icon : "Code",
         source,
@@ -129,7 +189,10 @@ export const buildCustomNodeFromNode = (
       parsed,
       { inputs, outputs: parsed.outputs },
     ),
-    config: configStatements(code.configBlocks),
+    // A subworkflow's config holds whole selectors; keep them as written.
+    config: isWorkflow
+      ? code.configBlocks.join("\n").split("\n").filter((line) => line.trim())
+      : configStatements(code.configBlocks),
   };
 
   const portNames = (key: "inputs" | "outputs") =>

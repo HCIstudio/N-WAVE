@@ -10,7 +10,14 @@ import {
   toProcessName,
 } from "./convertToCustomNode";
 import { registerCustomNodes, stripLineComment } from "./customNodes";
+import catalog from "./nfcore/catalog.json";
+import {
+  buildNfCoreSubworkflowManifest,
+  createNodeDefinitionFromNfCoreSubworkflowManifest,
+  type NfCoreSubworkflowCatalogEntry,
+} from "./nfcore/subworkflow";
 import { getNodeCode } from "./nodeCode";
+import { registerDynamicNodeDefinitions } from "./nodeDefinitions";
 
 const convert = (definitionId: string, moduleSource?: string) => {
   const node = makeNode(definitionId);
@@ -78,6 +85,77 @@ describe("convert to custom node", () => {
     expect(() => buildCustomNodeFromNode(node, code)).toThrow(
       /No Nextflow code/,
     );
+  });
+});
+
+describe("convert an nf-core subworkflow to a custom node", () => {
+  const entry = (
+    catalog as unknown as { subworkflows: NfCoreSubworkflowCatalogEntry[] }
+  ).subworkflows.find(
+    (subworkflow) => subworkflow.name === "bam_sort_stats_samtools",
+  );
+  if (!entry) throw new Error("bam_sort_stats_samtools is not in the catalog");
+  const definition = createNodeDefinitionFromNfCoreSubworkflowManifest(
+    buildNfCoreSubworkflowManifest(entry),
+  );
+  registerDynamicNodeDefinitions([definition]);
+  const moduleSource = readFileSync(
+    join(__dirname, "../test/fixtures/nfcore-bam_sort_stats_samtools.main.nf"),
+    "utf8",
+  );
+
+  it("keeps the takes, emits, placeholders and process config", () => {
+    const node = makeNode(definition.id, {
+      nfcoreValues: { ch_fasta_fai: "ch_ref" },
+      nfcoreProcessConfig: "withName: '.*:SAMTOOLS_SORT' {\n  ext.prefix = 'x'\n}",
+    });
+    const code = getNodeCode(node);
+    if (!code) throw new Error("no code");
+    expect(code.nfCoreModule?.id).toBe(
+      "nf-core/subworkflows/bam_sort_stats_samtools",
+    );
+    const { customNode, ports } = buildCustomNodeFromNode(
+      node,
+      code,
+      moduleSource,
+    );
+    registerCustomNodes([customNode]);
+
+    expect(customNode).toMatchObject({
+      kind: "workflow",
+      processName: "BAM_SORT_STATS_SAMTOOLS",
+      inputs: [
+        { name: "ch_bam", kind: "path" },
+        { name: "ch_fasta_fai", kind: "path", emptyValue: "ch_ref" },
+      ],
+      config: ["withName: '.*:SAMTOOLS_SORT' {", "  ext.prefix = 'x'", "}"],
+    });
+    expect(ports.outputs).toEqual({
+      bam: "bam",
+      index: "index",
+      stats: "stats",
+      flagstat: "flagstat",
+      idxstats: "idxstats",
+    });
+
+    const convertedCode = getNodeCode(buildConvertedNode(node, customNode));
+    const name = convertedCode?.processName ?? "";
+    // The workflow is defined inline, renamed, with includes from the root.
+    expect(convertedCode?.processSource).toMatch(
+      new RegExp(`^//[\\s\\S]*workflow ${name} \\{`),
+    );
+    expect(convertedCode?.processSource).not.toContain("include");
+    expect(convertedCode?.includeStatements).toEqual([
+      "include { SAMTOOLS_SORT } from './modules/nf-core/samtools/sort/main'",
+      "include { SAMTOOLS_INDEX } from './modules/nf-core/samtools/index/main'",
+      "include { BAM_STATS_SAMTOOLS } from './subworkflows/nf-core/bam_stats_samtools/main'",
+    ]);
+    expect(convertedCode?.workflowSnippet).toContain(
+      `${name}(ch_bam_ch, ch_fasta_fai_ch)`,
+    );
+    expect(convertedCode?.configBlocks).toEqual([
+      "withName: '.*:SAMTOOLS_SORT' {\n  ext.prefix = 'x'\n}",
+    ]);
   });
 });
 

@@ -10,6 +10,12 @@ import {
   getMetaInputs,
   getValueInputs,
 } from "./nfcoreModuleParser.mjs";
+import {
+  getEmits as getSubworkflowEmits,
+  getIncludes,
+  getTakes,
+  getWorkflowSections,
+} from "./nfcoreSubworkflowParser.mjs";
 
 const repoUrl = "https://github.com/nf-core/modules.git";
 const repoRef = process.env.NFCORE_MODULES_REF || "master";
@@ -57,6 +63,8 @@ function output(command, args, cwd = workspaceRoot) {
   }).trim();
 }
 
+const sparsePaths = ["modules/nf-core", "subworkflows/nf-core"];
+
 function ensureModulesRepo() {
   fs.mkdirSync(path.dirname(cacheDir), { recursive: true });
 
@@ -72,7 +80,7 @@ function ensureModulesRepo() {
       repoUrl,
       cacheDir,
     ], { stdio: "inherit" });
-    run("git", ["-C", cacheDir, "sparse-checkout", "set", "modules/nf-core"], {
+    run("git", ["-C", cacheDir, "sparse-checkout", "set", ...sparsePaths], {
       stdio: "inherit",
     });
     return;
@@ -84,7 +92,7 @@ function ensureModulesRepo() {
   run("git", ["-C", cacheDir, "checkout", "--detach", "FETCH_HEAD"], {
     stdio: "inherit",
   });
-  run("git", ["-C", cacheDir, "sparse-checkout", "set", "modules/nf-core"], {
+  run("git", ["-C", cacheDir, "sparse-checkout", "set", ...sparsePaths], {
     stdio: "inherit",
   });
 }
@@ -401,8 +409,10 @@ function buildCatalog() {
     };
   });
 
+  const subworkflows = buildSubworkflows(modules, commit);
+
   return {
-    schemaVersion: 2,
+    schemaVersion: 3,
     generatedAt,
     source: {
       repository: repoUrl,
@@ -418,9 +428,115 @@ function buildCatalog() {
         .length,
       unsupported: modules.filter((module) => module.support === "unsupported")
         .length,
+      subworkflows: subworkflows.length,
+      subworkflowsUnsupported: subworkflows.filter(
+        (subworkflow) => subworkflow.support === "unsupported"
+      ).length,
     },
     modules,
+    subworkflows,
   };
+}
+
+/**
+ * nf-core subworkflows (subworkflows/nf-core/<name>): their takes become
+ * node inputs and settings, their emits node outputs. One that includes a
+ * plugin, a local file, or a module or subworkflow N-WAVE can't install is
+ * unsupported.
+ */
+function buildSubworkflows(modules, commit) {
+  const subworkflowsRoot = path.join(cacheDir, "subworkflows", "nf-core");
+  if (!fs.existsSync(subworkflowsRoot)) return [];
+  const installableModules = new Set(
+    modules
+      .filter((module) => module.installability.automatic)
+      .map((module) => module.modulePath)
+  );
+
+  const entries = fs
+    .readdirSync(subworkflowsRoot, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        fs.existsSync(path.join(subworkflowsRoot, entry.name, "main.nf"))
+    )
+    .map((entry) => entry.name)
+    .sort()
+    .map((name) => {
+      const dir = path.join(subworkflowsRoot, name);
+      const mainNf = readText(path.join(dir, "main.nf"));
+      const metaYaml = readText(path.join(dir, "meta.yml"));
+      const sections = getWorkflowSections(mainNf);
+      const takes = getTakes(sections, getMetaInputs(metaYaml));
+      const emits = getSubworkflowEmits(sections);
+      const includes = getIncludes(mainNf);
+
+      const reasons = [];
+      if (!sections.name) reasons.push("Missing workflow declaration");
+      if (emits.length === 0) reasons.push("No emitted channels");
+      for (const plugin of includes.plugins) {
+        reasons.push(`Includes from a plugin: ${plugin}`);
+      }
+      for (const other of includes.other) {
+        reasons.push(`Includes a file outside nf-core: ${other}`);
+      }
+      for (const module of includes.modules) {
+        if (!installableModules.has(module)) {
+          reasons.push(`Includes a module that can't be installed: ${module}`);
+        }
+      }
+
+      return {
+        id: `nf-core/subworkflows/${name}`,
+        kind: "subworkflow",
+        name,
+        label: getTopLevelScalar(metaYaml, "name") || name,
+        description: getTopLevelScalar(metaYaml, "description"),
+        workflowName: sections.name,
+        source: {
+          repository: repoUrl,
+          ref: repoRef,
+          commit,
+          path: `subworkflows/nf-core/${name}`,
+        },
+        files: { paths: listModuleFiles(dir) },
+        keywords: getTopLevelList(metaYaml, "keywords"),
+        takes,
+        emits,
+        components: {
+          modules: includes.modules,
+          subworkflows: includes.subworkflows,
+        },
+        support: reasons.length === 0 ? "candidate" : "unsupported",
+        installability: {
+          automatic: reasons.length === 0,
+          requiresReview: true,
+          reasons,
+        },
+      };
+    });
+
+  // A subworkflow is only as installable as the subworkflows it includes.
+  const byName = new Map(entries.map((entry) => [entry.name, entry]));
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const entry of entries) {
+      if (entry.support === "unsupported") continue;
+      const blocked = entry.components.subworkflows.find(
+        (name) => byName.get(name)?.support !== "candidate"
+      );
+      if (blocked) {
+        entry.support = "unsupported";
+        entry.installability.automatic = false;
+        entry.installability.reasons.push(
+          `Includes a subworkflow that can't be installed: ${blocked}`
+        );
+        changed = true;
+      }
+    }
+  }
+  return entries;
 }
 
 ensureModulesRepo();
@@ -441,5 +557,8 @@ console.log(
 console.log(`Copied backend catalog to ${path.relative(workspaceRoot, backendOutputPath)}`);
 console.log(
   `Support: full=${catalog.counts.full}, candidate=${catalog.counts.candidate}, needs_review=${catalog.counts.needsReview}, unsupported=${catalog.counts.unsupported}`
+);
+console.log(
+  `Subworkflows: ${catalog.counts.subworkflows} (unsupported=${catalog.counts.subworkflowsUnsupported})`
 );
 console.log(`Source: ${catalog.source.repository} ${catalog.source.commit}`);

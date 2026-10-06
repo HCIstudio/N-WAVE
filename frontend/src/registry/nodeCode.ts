@@ -109,9 +109,14 @@ export const getNodeCode = (node: Node<NodeData>): NodeCode | null => {
   if (!result) return null;
 
   const includeStatements = result.includeStatements ?? [];
-  const includeMatch = includeStatements
-    .map((statement) => statement.match(INCLUDE_PATTERN))
-    .find(Boolean);
+  const isCustom = typeof node.data.customNodeId === "string";
+  // Custom nodes define their code inline; a custom workflow's includes are
+  // the modules it calls, not the node's own code.
+  const includeMatch = isCustom
+    ? undefined
+    : includeStatements
+        .map((statement) => statement.match(INCLUDE_PATTERN))
+        .find(Boolean);
   // Bundled nf-core nodes (FastQC, Trimmomatic) don't store their module id,
   // so fall back to the include path: ./modules/nf-core/<path>/main.
   const modulePath = includeMatch?.[2] ?? "";
@@ -139,6 +144,6 @@ export const getNodeCode = (node: Node<NodeData>): NodeCode | null => {
     ]
       .join("")
       .replace(/\n+$/, ""),
-    isCustom: typeof node.data.customNodeId === "string",
+    isCustom,
   };
 };
