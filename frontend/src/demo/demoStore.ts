@@ -13,7 +13,8 @@ import type {
 } from "../types/backend";
 import type { ExecutionSettings } from "../types/execution";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
-import { DEMO_WORKFLOW_ID, demoWorkflowSeed } from "./demoWorkflow";
+import { demoWorkflowSeed } from "./demoWorkflow";
+import { rnaseqExampleSeed } from "./rnaseqExample";
 
 const STORAGE_KEY = "nwave.demo.workflows";
 
@@ -83,14 +84,21 @@ const materialize = (stored: StoredWorkflow): WorkflowDescriptor => ({
   },
 });
 
-/** The read-only built-in demo, materialized. Never persisted. */
-const getBuiltinDemoDescriptor = (): WorkflowDescriptor => ({
-  _id: demoWorkflowSeed.id,
-  name: demoWorkflowSeed.name,
-  description: demoWorkflowSeed.description,
-  nodes: demoWorkflowSeed.nodes,
-  edges: demoWorkflowSeed.edges,
-  executionSettings: defaultExecutionSettings,
+/** A read-only built-in workflow, materialized. Never persisted. */
+const builtinDescriptor = (
+  seed: Pick<
+    WorkflowDescriptor,
+    "name" | "description" | "nodes" | "edges"
+  > & { id: string },
+  sourceKey: string,
+  executionSettings: ExecutionSettings = defaultExecutionSettings,
+): WorkflowDescriptor => ({
+  _id: seed.id,
+  name: seed.name,
+  description: seed.description,
+  nodes: seed.nodes,
+  edges: seed.edges,
+  executionSettings,
   rawSource: null,
   importWarnings: [],
   isBuiltin: true,
@@ -98,23 +106,39 @@ const getBuiltinDemoDescriptor = (): WorkflowDescriptor => ({
   origin: {
     type: "builtin",
     sourceFormat: "visual",
-    sourceKey: "demo/basic",
+    sourceKey,
     readOnly: true,
     canDuplicate: true,
   },
 });
 
-const isBuiltinId = (id: string): boolean => id === DEMO_WORKFLOW_ID;
+/** The built-in workflows, in the order the backend lists them. */
+const getBuiltinDescriptors = (): WorkflowDescriptor[] => [
+  builtinDescriptor(demoWorkflowSeed, "demo/basic"),
+  builtinDescriptor(rnaseqExampleSeed, "examples/rnaseq-pipeline", {
+    ...defaultExecutionSettings,
+    resources: {
+      ...defaultExecutionSettings.resources,
+      ...rnaseqExampleSeed.resources,
+    },
+  }),
+];
+
+const getBuiltin = (id: string): WorkflowDescriptor | undefined =>
+  getBuiltinDescriptors().find((workflow) => workflow._id === id);
+
+const isBuiltinId = (id: string): boolean => getBuiltin(id) !== undefined;
 
 export const demoStore = {
-  /** GET /workflows — built-in first, then the visitor's saved workflows. */
+  /** GET /workflows — built-ins first, then the visitor's saved workflows. */
   list(): WorkflowDescriptor[] {
-    return [getBuiltinDemoDescriptor(), ...readStore().map(materialize)];
+    return [...getBuiltinDescriptors(), ...readStore().map(materialize)];
   },
 
   /** GET /workflows/:id */
   get(id: string): WorkflowDescriptor | null {
-    if (isBuiltinId(id)) return getBuiltinDemoDescriptor();
+    const builtin = getBuiltin(id);
+    if (builtin) return builtin;
     const stored = readStore().find((workflow) => workflow._id === id);
     return stored ? materialize(stored) : null;
   },

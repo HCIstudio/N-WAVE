@@ -186,6 +186,16 @@ report and Nextflow's execution report (served from the run's `results/`). Expor
 writes `params.json`, the inputs, a `run.sh` and a README; the script download is a single
 launch script. The pipeline and its containers are downloaded by Nextflow on the first run.
 
+The built-in **nf-core/rnaseq Example** is a ready-made Pipeline workflow: nf-core/rnaseq
+3.27.0 (STAR + Salmon) on the pipeline's small test data, with a Samplesheet node, the
+reference genome in a Parameters node, and **Note** nodes on the canvas that explain each
+input, how to swap in your own data and what resources it needs (4 CPUs, 6–8 GB of memory).
+It opens and exports in the browser demo and runs on the Docker install; after the run, the
+Pipeline node's panel links the MultiQC report. The wiki page
+[Running the nf-core/rnaseq example](wiki/Running-the-nf-core-rnaseq-Example.md) walks
+through it. Note nodes can be added to any workflow (Add node → Notes); they have no ports
+and add nothing to the generated code.
+
 ### Exporting a runnable project
 
 **Export Project** (in the bottom bar, next to the script download) downloads a zip that
@@ -316,7 +326,7 @@ N-WAVE/
 │     ├─ validation/        # zod request-body schemas
 │     ├─ routes/            # /api/workflows, /api/execute, /api/nfcore, /api/custom-nodes
 │     ├─ models/            # Mongoose models
-│     └─ workflows/         # built-in demo, import & materialize logic
+│     └─ workflows/         # built-in demo and rnaseq example, import & materialize logic
 ├─ scripts/                 # nf-core catalog generator, input parser and module docs
 ├─ frontend/                # React + Vite SPA
 │  └─ src/

@@ -85,7 +85,36 @@ describe("/api/workflows", () => {
 
     const response = await request(app).get("/api/workflows").expect(200);
     expect(response.body[0].isBuiltin).toBe(true);
+    expect(response.body.slice(0, 2).map((workflow: { _id: string }) => workflow._id)).toEqual([
+      "builtin:demo-basic",
+      "builtin:rnaseq-pipeline",
+    ]);
     expect(response.body.at(-1).name).toBe("Saved");
+  });
+
+  it("serves the nf-core/rnaseq example, read-only and with its resources", async () => {
+    const response = await request(app)
+      .get("/api/workflows/builtin:rnaseq-pipeline")
+      .expect(200);
+    expect(response.body).toMatchObject({
+      isBuiltin: true,
+      isReadOnly: true,
+      origin: { type: "builtin", sourceFormat: "visual" },
+      executionSettings: { resources: { maxCpus: 4, maxMemory: "8.GB" } },
+    });
+    const pipeline = response.body.nodes.find(
+      (node: { type: string }) => node.type === "pipeline"
+    );
+    expect(pipeline.data).toMatchObject({
+      pipelineName: "rnaseq",
+      pipelineVersion: "3.27.0",
+      pipelineTestProfile: true,
+    });
+    expect(response.body.edges).toHaveLength(3);
+    await request(app)
+      .put("/api/workflows/builtin:rnaseq-pipeline")
+      .send({ name: "x" })
+      .expect(403);
   });
 
   it.each([

@@ -18,6 +18,7 @@ import type {
 import CustomControls from "./CustomControls";
 import CustomEdge from "./CustomEdge";
 import BaseNode from "../nodes/BaseNode";
+import NoteNode from "../nodes/note/NoteNode";
 import FileInputNode from "../nodes/input/FileInputNode";
 import OutputDisplayNode from "../nodes/output/OutputDisplayNode";
 import OperatorNode from "../nodes/OperatorNode";
@@ -30,6 +31,7 @@ const nodeTypes = {
   parameters: BaseNode,
   channelOperator: BaseNode,
   pipeline: BaseNode,
+  note: NoteNode,
   outputDisplay: OutputDisplayNode,
   filter: OperatorNode,
   operator: OperatorNode,
