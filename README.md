@@ -16,7 +16,7 @@ can then execute the workflow and inspect its results from the browser.
 
 ![The N-WAVE canvas with the bundled demo workflow: a file input feeding two filters, a map and a merge into an output display](.github/assets/screenshot-canvas.png)
 
-- **Live demo:** https://hcistudio.github.io/N-WAVE/ — runs in the browser with no install. Workflows can be built and edited but not executed (that needs the backend).
+- **Live demo:** https://hcistudio.github.io/N-WAVE/ — runs in the browser with no install. Workflows can be built, edited and exported, including nf-core modules from the library and custom nodes (stored in your browser), but not executed (that needs the backend).
 - **Documentation:** the [Wiki](https://github.com/HCIstudio/N-WAVE/wiki) covers authoring workflows, the node reference, and running via Docker.
 
 ## Components

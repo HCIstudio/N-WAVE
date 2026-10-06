@@ -35,7 +35,7 @@ describe("GET /api/nfcore/modules/source", () => {
   );
 });
 
-describe("GET /api/nfcore/installed", () => {
+describe("installed nf-core modules", () => {
   const catalog = JSON.parse(
     fs.readFileSync(
       path.join(__dirname, "../workflows/library/assets/nf-core/catalog.json"),
@@ -101,6 +101,32 @@ describe("GET /api/nfcore/installed", () => {
       }),
     ]);
     expect(manifest.outdated).toBeUndefined();
+  });
+
+  it("uninstalls a module", async () => {
+    install(catalog.source.commit);
+    const moduleDir = path.join(dataDir, "nf-core/modules/nf-core/star/align");
+
+    await request(app)
+      .post("/api/nfcore/uninstall")
+      .send({ id: "nf-core/star/align" })
+      .expect(200, { id: "nf-core/star/align" });
+
+    expect(fs.existsSync(moduleDir)).toBe(false);
+    const response = await request(app).get("/api/nfcore/installed").expect(200);
+    expect(response.body.installed).toEqual([]);
+  });
+
+  it("refuses to uninstall bundled or unknown modules", async () => {
+    await request(app)
+      .post("/api/nfcore/uninstall")
+      .send({ id: "nf-core/fastqc" })
+      .expect(400);
+    await request(app)
+      .post("/api/nfcore/uninstall")
+      .send({ id: "nf-core/salmon/quant" })
+      .expect(404);
+    await request(app).post("/api/nfcore/uninstall").send({}).expect(400);
   });
 
   it("keeps the stored layout of modules installed from another commit", async () => {
