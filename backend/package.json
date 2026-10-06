@@ -44,7 +44,7 @@
     "nodemon": "^3.1.10",
     "supertest": "^7.3.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.3",
+    "typescript": "^7.0.2",
     "vitest": "^2.1.9"
   }
 }
