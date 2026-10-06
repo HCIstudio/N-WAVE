@@ -3,7 +3,8 @@ name: Release
 # Auto-versioning: every push to main steps the patch version (derived from the
 # latest v* tag), and that version is applied everywhere in the same run:
 #   - injected into the Pages demo build (the site footer shows it),
-#   - injected into the Docker images (:<version> + :latest) pushed to Docker Hub,
+#   - injected into the Docker images (:<version> + :latest, linux/amd64 and
+#     linux/arm64) pushed to Docker Hub,
 #   - written back into frontend/ and backend/package.json and committed to main,
 #   - tagged v<version> with a GitHub Release.
 #
@@ -145,6 +146,7 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
             ${{ env.BACKEND_IMAGE }}:latest
@@ -159,6 +161,7 @@ jobs:
           # frontend/package.json and the repo .git directory.
           context: .
           file: ./frontend/Dockerfile
+          platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
             APP_VERSION=${{ needs.version.outputs.version }}
@@ -193,7 +196,7 @@ jobs:
           body: |
             Automated release — the version is stepped automatically on each merge to `main`.
 
-            **Docker images**
+            **Docker images** (linux/amd64 and linux/arm64)
             - `${{ env.BACKEND_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`)
             - `${{ env.FRONTEND_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`)
 

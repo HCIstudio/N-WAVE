@@ -4,6 +4,7 @@ import {
   buildLocalNextflowCommand,
   capMaxMemory,
   normalizeMaxCpus,
+  resolveNextflowPlatform,
   resolveOutputName,
   sanitizeWorkflowName,
   shellQuote,
@@ -85,6 +86,18 @@ describe("normalizeMaxCpus", () => {
   });
 });
 
+describe("resolveNextflowPlatform", () => {
+  it.each([
+    [undefined, "linux/amd64"],
+    ["linux/arm64", "linux/arm64"],
+    ["native", null],
+    ["NATIVE", null],
+    ["", null],
+  ])("%s -> %s", (configured, expected) => {
+    expect(resolveNextflowPlatform(configured)).toBe(expected);
+  });
+});
+
 describe("buildLocalNextflowCommand", () => {
   it("builds a host nextflow invocation", () => {
     expect(
@@ -140,6 +153,15 @@ describe("buildContainerNextflowCommand", () => {
     });
     expect(command).toContain("-v '/srv/results:/srv/results'");
     expect(command).toContain("-w '/srv/results/demo'");
+  });
+
+  it("omits --platform for the native platform", () => {
+    const command = buildContainerNextflowCommand({
+      ...base,
+      platform: null,
+      mount: { type: "volumes-from", container: "nwave-backend" },
+    });
+    expect(command).toMatch(/^docker run --rm --volumes-from /);
   });
 
   it("quotes user-controlled values", () => {

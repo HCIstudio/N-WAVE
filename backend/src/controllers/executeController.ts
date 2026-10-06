@@ -8,6 +8,7 @@ import {
   buildLocalNextflowCommand,
   capMaxMemory,
   normalizeMaxCpus,
+  resolveNextflowPlatform,
   resolveOutputName,
   sanitizeWorkflowName,
   shellQuote,
@@ -262,9 +263,9 @@ const executeNextflowWorkflow = async (
         dockerResultsRoot,
         path.relative("/app/results", mainOutputDir).replace(/\\/g, "/")
       );
-      // Pin the Nextflow container to linux/amd64: the official nextflow/nextflow
-      // tags are amd64-only, so on ARM hosts this runs under emulation instead
-      // of failing with "no matching manifest". Overridable via NEXTFLOW_PLATFORM.
+      // The Nextflow runner platform defaults to linux/amd64 (emulated on ARM
+      // hosts) because many nextflow/nextflow tags are amd64-only; see
+      // resolveNextflowPlatform for the "native" opt-out.
       // When process Docker is enabled, run Nextflow from a path that is also
       // visible to the host Docker daemon. Otherwise sibling task containers
       // receive empty /app/results mounts and cannot see .command.sh.
@@ -273,7 +274,7 @@ const executeNextflowWorkflow = async (
         withModuleConfig,
         maxCpus,
         maxMemory,
-        platform: process.env.NEXTFLOW_PLATFORM || "linux/amd64",
+        platform: resolveNextflowPlatform(process.env.NEXTFLOW_PLATFORM),
         nextflowVersion,
         workDir: dockerMainOutputDir,
         mount: shouldUseProcessDocker

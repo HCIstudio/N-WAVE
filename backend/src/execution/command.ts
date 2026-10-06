@@ -61,6 +61,21 @@ export const capMaxMemory = (maxMemory: string | undefined): string => {
 export const normalizeMaxCpus = (maxCpus: number | undefined): number =>
   Math.max(1, Number(maxCpus) || 4);
 
+/**
+ * Platform for the Nextflow runner container, from NEXTFLOW_PLATFORM.
+ * Defaults to linux/amd64 because many nextflow/nextflow tags are published
+ * for amd64 only (ARM hosts then run it under emulation). "native" (or an
+ * empty value) drops the --platform flag so Docker picks the host
+ * architecture, for Nextflow versions that publish an arm64 image.
+ */
+export const resolveNextflowPlatform = (
+  configured: string | undefined
+): string | null => {
+  if (configured === undefined) return "linux/amd64";
+  const value = configured.trim();
+  return value === "" || value.toLowerCase() === "native" ? null : value;
+};
+
 interface NextflowRunOptions {
   /** Script path relative to the run directory. */
   scriptPath: string;
@@ -85,8 +100,8 @@ export const buildLocalNextflowCommand = (options: NextflowRunOptions): string =
   `NXF_LOG_FILE=nextflow/.nextflow.log ${buildNextflowRunArgs(options)}`;
 
 interface ContainerNextflowOptions extends NextflowRunOptions {
-  /** Docker platform for the runner, e.g. linux/amd64. */
-  platform: string;
+  /** Docker platform for the runner, e.g. linux/amd64; null for native. */
+  platform: string | null;
   nextflowVersion: string;
   /** Run directory as seen from inside the runner container. */
   workDir: string;
@@ -106,5 +121,9 @@ export const buildContainerNextflowCommand = (
       ? `-v ${shellQuote(`${options.mount.source}:${options.mount.target}`)}`
       : `--volumes-from ${shellQuote(options.mount.container)}`;
 
-  return `docker run --rm --platform ${shellQuote(options.platform)} ${mount} -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
+  const platform = options.platform
+    ? ` --platform ${shellQuote(options.platform)}`
+    : "";
+
+  return `docker run --rm${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
 };

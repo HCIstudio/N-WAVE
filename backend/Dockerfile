@@ -1,14 +1,15 @@
-﻿FROM node:20-alpine AS build
+# The build stage runs on the build machine's native platform: it only
+# compiles TypeScript, so its output is architecture-independent. The runtime
+# stage installs production dependencies for the target platform, which keeps
+# multi-arch builds (linux/amd64 + linux/arm64) fast and correct.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
 WORKDIR /app
-
-# Required so backend can call docker CLI for Nextflow/process execution fallback
-RUN apk add --no-cache docker-cli
 
 RUN corepack enable
 
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.json ./
 COPY src ./src
@@ -18,13 +19,15 @@ FROM node:20-alpine AS runtime
 
 WORKDIR /app
 
+# The backend calls the docker CLI to launch the Nextflow runner container.
 RUN apk add --no-cache docker-cli
 RUN corepack enable
 
-COPY --from=build /app/node_modules ./node_modules
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --prod --frozen-lockfile
+
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/workflows/library/assets ./dist/workflows/library/assets
-COPY package.json ./package.json
 
 EXPOSE 5001
 

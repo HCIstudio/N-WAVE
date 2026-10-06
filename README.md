@@ -76,9 +76,12 @@ This is controlled by the `NEXTFLOW_EXECUTION_MODE` environment variable:
 | `local` | Always use a host `nextflow` binary. |
 | `auto` (default) | Prefer a local binary, fall back to the container. Convenient for development. |
 
-The `nextflow/nextflow` tags are published for `linux/amd64` only, so the runner is pinned to
-that platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) — it runs natively on Intel/AMD and
-under emulation on ARM (for example Apple Silicon).
+The N-WAVE images themselves are published for `linux/amd64` and `linux/arm64`, so the
+frontend and backend run natively on Intel/AMD and ARM (for example Apple Silicon). Many
+`nextflow/nextflow` tags are published for `linux/amd64` only, so the runner defaults to that
+platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) — native on Intel/AMD, emulated on ARM.
+If the Nextflow version you use publishes an arm64 image, set `NEXTFLOW_PLATFORM=native` to
+run it natively on ARM hosts.
 
 For the backend to launch containers, the host Docker socket is mounted into it
 (`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
@@ -159,7 +162,7 @@ VITE_DEMO_MODE=true pnpm build && pnpm preview
 | `MONGODB_URI` | `mongodb://localhost:27017/nwave` | MongoDB connection string. |
 | `CORS_ORIGIN` | `http://localhost:5173,http://localhost:8080` | Comma-separated allowed origins. |
 | `NEXTFLOW_EXECUTION_MODE` | `auto` | `docker` \| `local` \| `auto` (see [execution](#how-workflow-execution-works)). |
-| `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform for the Nextflow runner container. |
+| `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform for the Nextflow runner container; `native` uses the host architecture. |
 | `BACKEND_CONTAINER_NAME` | `nwave-backend` | Container name the runner attaches volumes from. |
 
 ### Frontend build variables
@@ -204,7 +207,7 @@ for package-level notes.
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
 | `test.yml` | pull request / push to `main` | The merge gate: lint, unit tests, typecheck, and build for both packages (all blocking). |
-| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
+| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, builds and pushes multi-arch (`linux/amd64`, `linux/arm64`) images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
 
 `main` is protected: changes land only via pull request, and a PR can be merged only once the
 Test workflow passes.
