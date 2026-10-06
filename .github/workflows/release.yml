@@ -132,6 +132,10 @@ jobs:
   release:
     needs: version
     runs-on: ubuntu-latest
+    # A normal release takes a few minutes (the arm64 image half is emulated).
+    # Without a limit a hung build holds the `release` concurrency group for
+    # GitHub's 6-hour default, and every merge in the meantime is cancelled.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
         with:
