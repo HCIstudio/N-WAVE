@@ -14,6 +14,8 @@ workflow by dragging nodes onto a canvas — file inputs, operators, processes, 
 displays — connect them, and N-WAVE generates a runnable Nextflow script from the graph. You
 can then execute the workflow and inspect its results from the browser.
 
+![The N-WAVE canvas with the bundled demo workflow: a file input feeding two filters, a map and a merge into an output display](.github/assets/screenshot-canvas.png)
+
 - **Live demo:** https://hcistudio.github.io/N-WAVE/ — runs in the browser with no install. Workflows can be built and edited but not executed (that needs the backend).
 - **Documentation:** the [Wiki](https://github.com/HCIstudio/N-WAVE/wiki) covers authoring workflows, the node reference, and running via Docker.
 
@@ -219,6 +221,35 @@ repository with Contents: Read and write, and add it as the repository Actions s
 `RELEASE_TOKEN`. A PAT push re-triggers the workflow, so the `release.yml` `version` job
 ignores its own `chore(release):` commits to avoid a release loop. (The GitHub Actions app
 itself cannot be added to a repository ruleset's bypass list, which is why a PAT is used.)
+
+## Security
+
+N-WAVE is built for **local, single-user use** (your own machine or a trusted lab
+workstation). Keep that in mind before exposing it on a network:
+
+- **No authentication.** Every API endpoint is public; anyone who can reach the backend can
+  read, change and delete all workflows.
+- **Execution is code execution by design.** Running a workflow executes arbitrary Nextflow
+  (and therefore shell) code. The backend also has the host Docker socket mounted, which is
+  equivalent to root access on the host.
+- **The backend writes where it is told.** Execution settings choose the output directory on
+  the host.
+
+What N-WAVE does today: request bodies are schema-validated with size limits, input file
+names cannot escape the run directory, and values placed into the Nextflow command line are
+validated and shell-quoted. Those checks keep honest mistakes from doing damage; they are not
+a sandbox.
+
+Therefore: bind the ports to `localhost` (or a trusted network), don't put N-WAVE on the
+public internet, and only run workflows you trust. Authentication, per-user isolation and
+execution sandboxing for shared deployments are tracked in
+[#27](https://github.com/HCIstudio/N-WAVE/issues/27). Please report vulnerabilities
+privately to the maintainers rather than in a public issue.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the checks every pull
+request must pass, and how releases work.
 
 ## License
 
