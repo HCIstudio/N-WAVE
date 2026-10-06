@@ -27,8 +27,8 @@
     "url": "https://github.com/HCIstudio/N-WAVE.git"
   },
   "dependencies": {
-    "axios": "^1.9.0",
-    "cors": "^2.8.5",
+    "axios": "^1.20.0",
+    "cors": "^2.8.6",
     "dotenv": "^16.5.0",
     "express": "4",
     "mongoose": "^8.15.1",
@@ -41,7 +41,7 @@
     "@types/node": "^22.15.29",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "2.1.9",
-    "nodemon": "^3.1.10",
+    "nodemon": "^3.1.14",
     "supertest": "^7.3.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3",

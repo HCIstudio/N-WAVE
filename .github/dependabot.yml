@@ -1,5 +1,7 @@
-# Weekly dependency updates. Minor and patch bumps are grouped per package so
-# they arrive as one pull request each; major bumps come individually.
+# Weekly dependency updates. npm minor and patch bumps are grouped per package
+# so they arrive as one pull request each. npm major versions are not proposed:
+# they need migration work and are planned as issues instead. GitHub Actions
+# and Docker base images keep their major updates (Node majors excepted).
 version: 2
 updates:
   - package-ecosystem: npm
@@ -10,6 +12,9 @@ updates:
     groups:
       frontend-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: /backend
@@ -19,6 +24,9 @@ updates:
     groups:
       backend-minor-and-patch:
         update-types: [minor, patch]
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
