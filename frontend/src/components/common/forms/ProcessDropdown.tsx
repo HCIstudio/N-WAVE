@@ -11,6 +11,7 @@ import {
 import CustomNodeModal from "./CustomNodeModal";
 import DynamicIcon from "../ui/DynamicIcon";
 import NfCoreLibraryModal from "./NfCoreLibraryModal";
+import NodePacksModal from "./NodePacksModal";
 import SearchInput from "./SearchInput";
 
 interface ProcessDropdownProps {
@@ -29,6 +30,7 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
   const [registryVersion, setRegistryVersion] = useState(0);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [isCustomNodeOpen, setIsCustomNodeOpen] = useState(false);
+  const [isPacksOpen, setIsPacksOpen] = useState(false);
   const [editNode, setEditNode] = useState<StoredCustomNode | null>(null);
   const { error, isLoading, refresh } = useInstalledNfCoreNodes();
 
@@ -88,6 +90,14 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
         >
           <DynamicIcon name="FileCode" className="h-4 w-4" />
           Custom process
+        </button>
+        <button
+          type="button"
+          onClick={() => setIsPacksOpen(true)}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
+        >
+          <DynamicIcon name="Boxes" className="h-4 w-4" />
+          Node packs
         </button>
       </div>
       <div className="p-1 overflow-y-auto max-h-96">
@@ -180,6 +190,11 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
             setRegistryVersion((version) => version + 1);
           });
         }}
+      />
+      <NodePacksModal
+        isOpen={isPacksOpen}
+        onClose={() => setIsPacksOpen(false)}
+        onChanged={() => setRegistryVersion((version) => version + 1)}
       />
       <CustomNodeModal
         isOpen={isCustomNodeOpen}
