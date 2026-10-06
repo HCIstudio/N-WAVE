@@ -52,6 +52,32 @@ const runStore = <T>(fn: () => T): Promise<DemoResponse<T>> => {
 // when the library is used, so it is loaded on demand, outside the entry chunk.
 const loadNfCore = () => import("./demoNfCore");
 
+/** A pipeline's nextflow_schema.json, straight from GitHub. */
+const fetchPipelineSchema = async (
+  name: string,
+  version: string,
+): Promise<unknown> => {
+  if (
+    !/^[a-z0-9][a-z0-9_-]*$/.test(name) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(version)
+  ) {
+    throw new DemoStoreError(400, "Invalid pipeline name or version");
+  }
+  const response = await fetch(
+    `https://raw.githubusercontent.com/nf-core/${name}/${version}/nextflow_schema.json`,
+  );
+  if (response.status === 404) {
+    throw new DemoStoreError(
+      404,
+      `nf-core/${name} ${version} has no nextflow_schema.json (check the pipeline name and version).`,
+    );
+  }
+  if (!response.ok) {
+    throw new Error(`Could not load the pipeline schema (HTTP ${response.status}).`);
+  }
+  return response.json();
+};
+
 /** runStore for async handlers: store errors become axios-shaped errors. */
 const runAsync = <T>(fn: () => Promise<T>): Promise<DemoResponse<T>> =>
   fn().then(
@@ -104,6 +130,20 @@ const demoApi = {
         (source) => ok({ id, source } as T),
         (error: unknown) =>
           fail(404, error instanceof Error ? error.message : String(error))
+      );
+    }
+    if (path === "/pipelines/schema") {
+      const query = new URL(url, "http://demo").searchParams;
+      return runAsync(
+        async () =>
+          ({
+            name: query.get("name"),
+            version: query.get("version"),
+            schema: await fetchPipelineSchema(
+              query.get("name") ?? "",
+              query.get("version") ?? "",
+            ),
+          }) as T
       );
     }
     if (path === "/workflows") {

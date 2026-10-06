@@ -148,6 +148,29 @@ empty placeholder that nf-core reads as "no file", editable in the panel, and a 
 config** setting adds `withName` selectors for the processes inside. Details are in
 [scripts/README.md](scripts/README.md#subworkflows).
 
+### Running a whole nf-core pipeline
+
+The **nf-core Pipeline** node runs a complete, unmodified nf-core pipeline (nf-core/rnaseq
+3.27.0 is offered; any other pipeline and version can be typed in). Its settings are built
+from the pipeline's `nextflow_schema.json`: grouped parameters with their types, defaults,
+choices, help text and required fields, filterable by name. A Samplesheet node connects to
+`--input` (its CSV is rewritten so read paths point into `inputs/`), and any file parameter
+can become an input port for a Parameters or File Input node. **Use the pipeline's test
+profile** runs it on the pipeline's own small test data.
+
+A workflow with a Pipeline node runs that pipeline instead of a generated script, so it
+holds the Pipeline node and the input nodes feeding it. Running it executes
+
+```bash
+nextflow run nf-core/<pipeline> -r <version> -profile [test,]docker -params-file params.json --outdir results
+```
+
+in the run directory, with N-WAVE's CPU and memory caps applied as `process.resourceLimits`.
+Pipeline runs have no default time limit. After a run, the node's panel links the MultiQC
+report and Nextflow's execution report (served from the run's `results/`). Export Project
+writes `params.json`, the inputs, a `run.sh` and a README; the script download is a single
+launch script. The pipeline and its containers are downloaded by Nextflow on the first run.
+
 ### Exporting a runnable project
 
 **Export Project** (in the bottom bar, next to the script download) downloads a zip that

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
+  buildPipelineConfig,
   capMaxMemory,
   normalizeMaxCpus,
   resolveNextflowPlatform,
@@ -171,5 +172,48 @@ describe("buildContainerNextflowCommand", () => {
       mount: { type: "volumes-from", container: "nwave-backend" },
     });
     expect(command).toContain("'nextflow/nextflow:1;touch /tmp/pwned'");
+  });
+});
+
+describe("nf-core pipeline runs", () => {
+  const pipeline = {
+    name: "rnaseq",
+    version: "3.27.0",
+    profiles: ["test", "docker"],
+    withParamsFile: true,
+  };
+
+  it("runs the pipeline with its profiles and params file", () => {
+    expect(
+      buildLocalNextflowCommand({
+        scriptPath: "workflow/x.nf",
+        pipeline,
+        withModuleConfig: true,
+        maxCpus: 4,
+        maxMemory: "5GB",
+      })
+    ).toBe(
+      "NXF_LOG_FILE=nextflow/.nextflow.log nextflow -log nextflow/.nextflow.log -c nwave_modules.config run 'nf-core/rnaseq' -r '3.27.0' -profile 'test,docker' -params-file params.json --outdir results -work-dir nextflow/work"
+    );
+    expect(
+      buildContainerNextflowCommand({
+        scriptPath: "workflow/x.nf",
+        pipeline: { ...pipeline, profiles: ["docker"], withParamsFile: false },
+        withModuleConfig: true,
+        maxCpus: 4,
+        maxMemory: "5GB",
+        platform: null,
+        nextflowVersion: "25.04.4",
+        workDir: "/srv/results/run",
+        mount: { type: "bind", source: "/srv/results", target: "/srv/results" },
+      })
+    ).toMatch(/run 'nf-core\/rnaseq' -r '3.27.0' -profile 'docker' --outdir results -work-dir nextflow\/work$/);
+  });
+
+  it("caps resources with process.resourceLimits", () => {
+    expect(buildPipelineConfig(4, "5 GB")).toContain(
+      "resourceLimits = [ cpus: 4, memory: '5GB' ]"
+    );
+    expect(buildPipelineConfig(2, "4GB'; x")).toContain("memory: '4GBx'");
   });
 });

@@ -52,6 +52,10 @@ import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes"
 import { isoDurationToMinutes } from "../utils/duration";
 import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
+  buildPipelineLaunch,
+  pipelineLaunchScript,
+} from "../registry/pipelines/launch";
+import {
   getApiErrorMessage,
   getResponseData,
   getResponseStatus,
@@ -129,6 +133,18 @@ const tutorialSteps = [
     placement: "center" as const,
   },
 ];
+
+/** Save a blob as a file download. */
+const downloadBlob = (blob: Blob, fileName: string) => {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+};
 
 const WorkflowPageContent: React.FC = () => {
   const workflowContext = useContext(WorkflowContext);
@@ -1086,6 +1102,29 @@ const WorkflowPageContent: React.FC = () => {
   const handleExportProject = async () => {
     setIsExporting(true);
     try {
+      const launch = buildPipelineLaunch(nodes, edges);
+      if (launch) {
+        const { buildPipelineProjectFiles, toProjectName, zipProject } =
+          await import("../export/exportProject");
+        const name = workflowName || "workflow";
+        const fileName = `${toProjectName(name)}.zip`;
+        downloadBlob(
+          await zipProject(
+            name,
+            buildPipelineProjectFiles({
+              workflowName: name,
+              launch,
+              nextflowVersion: executionSettings?.nextflow?.version,
+            })
+          ),
+          fileName
+        );
+        showToast(
+          `Exported ${fileName}. Unzip it and see README.md for how to run it.`,
+          "success"
+        );
+        return;
+      }
       const script =
         workflowSourceFormat === "nextflow" &&
         workflowRawSource &&
@@ -1108,14 +1147,7 @@ const WorkflowPageContent: React.FC = () => {
         nodes,
         nextflowVersion: executionSettings?.nextflow?.version,
       });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, fileName);
       showToast(
         `Exported ${fileName}. Unzip it and see README.md for how to run it.`,
         "success"
@@ -1129,6 +1161,16 @@ const WorkflowPageContent: React.FC = () => {
 
   const handleDownloadScript = () => {
     try {
+      const launch = buildPipelineLaunch(nodes, edges);
+      if (launch) {
+        downloadBlob(
+          new Blob([pipelineLaunchScript(launch)], {
+            type: "text/plain;charset=utf-8",
+          }),
+          `${workflowName.replace(/\s+/g, "_") || "workflow"}.sh`
+        );
+        return;
+      }
       if (
         workflowSourceFormat === "nextflow" &&
         workflowRawSource &&
@@ -1199,15 +1241,19 @@ const WorkflowPageContent: React.FC = () => {
         throw new Error(errorMessage);
       }
 
+      // A Pipeline node runs a whole nf-core pipeline instead of a script.
+      const launch = buildPipelineLaunch(nodes, edges);
+
       // Files for the input directory: File Input uploads and samplesheets
       const workflowFiles: { [filename: string]: string } = {};
-      for (const file of getWorkflowInputFiles(nodes)) {
+      for (const file of launch?.inputFiles ?? getWorkflowInputFiles(nodes)) {
         if (file.content) workflowFiles[file.name] = file.content;
       }
 
       // Generate the Nextflow script with execution settings
-      const nextflowScript =
-        workflowSourceFormat === "nextflow" && workflowRawSource && nodes.length === 0
+      const nextflowScript = launch
+        ? ""
+        : workflowSourceFormat === "nextflow" && workflowRawSource && nodes.length === 0
           ? workflowRawSource
           : generateNextflowScript(
               nodes,
@@ -1217,7 +1263,7 @@ const WorkflowPageContent: React.FC = () => {
               settings.output?.namingPattern ?? "{workflow_name}_{timestamp}"
             );
 
-      if (!nextflowScript || nextflowScript.trim() === "") {
+      if (!launch && (!nextflowScript || nextflowScript.trim() === "")) {
         throw new Error(
           "Generated Nextflow script is empty. Please add nodes to your workflow."
         );
@@ -1243,7 +1289,16 @@ const WorkflowPageContent: React.FC = () => {
       const response = await api.post(
         "/execute/execute",
         {
-          nextflowScript,
+          ...(launch
+            ? {
+                pipeline: {
+                  name: launch.name,
+                  version: launch.version,
+                  profiles: launch.profiles,
+                  params: launch.params,
+                },
+              }
+            : { nextflowScript }),
           workflowName: workflowName || "workflow",
           useDocker: settings.container?.enabled,
           containerImage: settings.container?.defaultImage,
@@ -1275,6 +1330,18 @@ const WorkflowPageContent: React.FC = () => {
           normalizedOutput.includes("execution error:") ||
           normalizedOutput.includes("failed to setup workflow execution") ||
           normalizedOutput.includes("error ~");
+
+        // Remember the run on the Pipeline node, to show its reports.
+        const runId = response.data.match(/^N-WAVE run: (\S+)$/m)?.[1];
+        if (launch && runId) {
+          workflowContext.updateNodeData(launch.nodeId, {
+            pipelineLastRun: {
+              id: runId,
+              finishedAt: new Date().toISOString(),
+              success: !isExecutionFailure,
+            },
+          });
+        }
 
         const completionDelay = Math.max(lines.length * 10 + 100, 250);
 
