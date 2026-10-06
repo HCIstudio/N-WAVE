@@ -106,9 +106,13 @@ export const fetchNfCoreModuleSource = (id: string): Promise<string> => {
   return request;
 };
 
+// Files a module runs without; everything else (main.nf, templates/...) is
+// required.
+const OPTIONAL_MODULE_FILES = new Set(["meta.yml", "environment.yml"]);
+
 /**
- * The files a module needs to run (main.nf, plus meta.yml and environment.yml
- * when GitHub has them), for exporting a runnable project.
+ * Every file a module needs to run (main.nf, templates/..., plus meta.yml and
+ * environment.yml when GitHub has them), for exporting a runnable project.
  */
 export const fetchNfCoreModuleFiles = async (
   id: string,
@@ -117,14 +121,21 @@ export const fetchNfCoreModuleFiles = async (
     findModule(id),
     fetchNfCoreModuleSource(id),
   ]);
+  const paths = (
+    entry.files?.paths ?? ["main.nf", "meta.yml", "environment.yml"]
+  ).filter((filePath) => filePath !== "main.nf");
   const files: Record<string, string> = { "main.nf": mainNf };
   await Promise.all(
-    ["meta.yml", "environment.yml"].map(async (name) => {
-      try {
-        const response = await fetch(nfCoreModuleFileUrl(entry.source, name));
-        if (response.ok) files[name] = await response.text();
-      } catch {
-        // Optional files: the module runs without them.
+    paths.map(async (filePath) => {
+      const response = await fetch(
+        nfCoreModuleFileUrl(entry.source, filePath),
+      ).catch(() => null);
+      if (response?.ok) {
+        files[filePath] = await response.text();
+      } else if (!OPTIONAL_MODULE_FILES.has(filePath)) {
+        throw new Error(
+          `Could not load ${filePath} of ${id} from GitHub (HTTP ${response?.status ?? "error"}).`,
+        );
       }
     }),
   );
@@ -153,7 +164,7 @@ export const demoNfCore = {
       ...catalog,
       modules: catalog.modules.map((module) => ({
         ...module,
-        installed: module.installedByDefault || installedIds.has(module.id),
+        installed: installedIds.has(module.id),
       })),
     };
   },
@@ -179,9 +190,6 @@ export const demoNfCore = {
     manifest: NfCoreAdapterManifest;
   }> {
     const entry = await findModule(id);
-    if (entry.installedByDefault) {
-      throw new DemoStoreError(400, `${id} is bundled with N-WAVE`);
-    }
     if (
       entry.support === "unsupported" ||
       entry.installability?.automatic === false
@@ -207,17 +215,11 @@ export const demoNfCore = {
     };
   },
 
-  /** Remove an installed module; bundled modules can't be removed. */
+  /** Remove an installed module. */
   async uninstall(id: string): Promise<{ id: string }> {
     const modules = read();
     if (!modules.some((module) => module.id === id)) {
-      const entry = await findModule(id).catch(() => null);
-      throw entry?.installedByDefault
-        ? new DemoStoreError(
-            400,
-            `${id} is bundled with N-WAVE and can't be removed`,
-          )
-        : new DemoStoreError(404, `nf-core module ${id} is not installed`);
+      throw new DemoStoreError(404, `nf-core module ${id} is not installed`);
     }
     write(modules.filter((module) => module.id !== id));
     sourceCache.delete(id);

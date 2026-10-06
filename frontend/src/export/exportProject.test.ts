@@ -37,7 +37,11 @@ workflow {
 
 const moduleFiles = {
   fastqc: { "main.nf": "process FASTQC {}", "meta.yml": "name: fastqc" },
-  multiqc: { "main.nf": "process MULTIQC {}" },
+  multiqc: {
+    "main.nf": "process MULTIQC {}",
+    "templates/report.py": "print()",
+    "../escape.txt": "x",
+  },
 };
 
 describe("extractNextflowConfig", () => {
@@ -81,6 +85,7 @@ describe("buildProjectFiles", () => {
       "modules/nf-core/fastqc/main.nf",
       "modules/nf-core/fastqc/meta.yml",
       "modules/nf-core/multiqc/main.nf",
+      "modules/nf-core/multiqc/templates/report.py",
       "nextflow.config",
     ]);
     expect(files["main.nf"]).toContain(

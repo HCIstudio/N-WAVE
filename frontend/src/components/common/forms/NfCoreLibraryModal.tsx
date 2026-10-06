@@ -264,7 +264,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                     </div>
                   )}
                 </div>
-                {isInstalled && !module.installedByDefault ? (
+                {isInstalled ? (
                   <button
                     type="button"
                     disabled={isInstalling}
@@ -286,11 +286,9 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                   >
                     {isInstalling
                       ? "Installing..."
-                      : isInstalled
-                        ? "Bundled"
-                        : canInstall
-                          ? "Install"
-                          : "Needs config"}
+                      : canInstall
+                        ? "Install"
+                        : "Needs config"}
                   </button>
                 )}
               </div>

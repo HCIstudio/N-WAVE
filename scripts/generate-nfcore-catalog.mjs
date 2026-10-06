@@ -37,7 +37,9 @@ const backendOutputPath = path.join(
   "catalog.json"
 );
 
-const fullSupportModules = new Set(["fastqc", "trimmomatic"]);
+// Modules with a hand-written N-WAVE node (curated settings panel); their
+// support level is "full". Their files are installed like any other module.
+const curatedAdapterModules = new Set(["fastqc", "trimmomatic"]);
 
 function run(command, args, options = {}) {
   execFileSync(command, args, {
@@ -249,7 +251,7 @@ function applyChannelModeOverrides(modulePath, inputGroups) {
 
 function getInstallability({ modulePath, processName, outputs, emits, hasMeta, inputGroups }) {
   const reasons = [];
-  const isFull = fullSupportModules.has(modulePath);
+  const isFull = curatedAdapterModules.has(modulePath);
 
   if (!hasMeta) reasons.push("Missing meta.yml");
   if (!processName) reasons.push("Missing process declaration");
@@ -276,10 +278,27 @@ function getInstallability({ modulePath, processName, outputs, emits, hasMeta, i
 }
 
 function classifyModule({ modulePath, processName, outputs, emits, hasMeta, installability }) {
-  if (fullSupportModules.has(modulePath)) return "full";
+  if (curatedAdapterModules.has(modulePath)) return "full";
   if (!hasMeta || !processName) return "unsupported";
   if (outputs.length === 0 || emits.length === 0) return "needs_review";
   return installability.automatic ? "candidate" : "needs_review";
+}
+
+function listModuleFiles(moduleDir) {
+  const files = [];
+  function walk(currentDir) {
+    for (const entry of fs.readdirSync(currentDir, { withFileTypes: true })) {
+      const entryPath = path.join(currentDir, entry.name);
+      const relative = path.relative(moduleDir, entryPath).replace(/\\/g, "/");
+      if (entry.isDirectory()) {
+        if (relative !== "tests") walk(entryPath);
+      } else if (entry.isFile()) {
+        files.push(relative);
+      }
+    }
+  }
+  walk(moduleDir);
+  return files.sort();
 }
 
 function findModuleDirs(rootDir) {
@@ -352,6 +371,8 @@ function buildCatalog() {
         main: fs.existsSync(path.join(moduleDir, "main.nf")),
         meta: fs.existsSync(path.join(moduleDir, "meta.yml")),
         environment: fs.existsSync(path.join(moduleDir, "environment.yml")),
+        // Every file a run needs (templates/, resources/, ...), without tests.
+        paths: listModuleFiles(moduleDir),
       },
       keywords: getTopLevelList(metaYaml, "keywords"),
       tools: getTools(metaYaml),
@@ -368,7 +389,6 @@ function buildCatalog() {
         argumentReferences: getReferenceUrls(metaYaml),
         resources: Boolean(processName),
       },
-      installedByDefault: fullSupportModules.has(modulePath),
       support: classifyModule({
         modulePath,
         processName,
@@ -397,8 +417,6 @@ function buildCatalog() {
       needsReview: modules.filter((module) => module.support === "needs_review")
         .length,
       unsupported: modules.filter((module) => module.support === "unsupported")
-        .length,
-      installedByDefault: modules.filter((module) => module.installedByDefault)
         .length,
     },
     modules,

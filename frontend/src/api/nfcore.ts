@@ -38,6 +38,10 @@ export interface NfCoreCatalogModule {
   label: string;
   description: string;
   processName: string;
+  files?: {
+    /** Every file of the module except tests/, relative to its directory. */
+    paths?: string[];
+  };
   keywords: string[];
   tools: string[];
   inputs: string[];
@@ -55,7 +59,6 @@ export interface NfCoreCatalogModule {
     }>;
     resources: boolean;
   };
-  installedByDefault: boolean;
   support: "full" | "candidate" | "needs_review" | "unsupported";
   installed?: boolean;
   installability?: {
@@ -122,7 +125,7 @@ export const getNfCoreModuleSource = async (id: string): Promise<string> => {
   return response.data.source;
 };
 
-/** Remove an installed (not bundled) module. */
+/** Remove an installed module. */
 export const uninstallNfCoreModule = async (id: string): Promise<void> => {
   await api.post("/nfcore/uninstall", { id });
   await refreshInstalledNfCoreNodes();

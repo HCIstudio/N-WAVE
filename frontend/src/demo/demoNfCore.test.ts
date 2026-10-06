@@ -49,12 +49,12 @@ describe("demo nf-core library", () => {
     githubRequests.length = 0;
   });
 
-  it("lists the catalog with bundled modules installed", async () => {
+  it("lists the catalog with nothing installed", async () => {
     const { data } =
       await demoApi.get<NfCoreCatalogResponse>("/nfcore/catalog");
     expect(data.modules.length).toBeGreaterThan(2000);
     const byId = new Map(data.modules.map((module) => [module.id, module]));
-    expect(byId.get("nf-core/fastqc")?.installed).toBe(true);
+    expect(byId.get("nf-core/fastqc")?.installed).toBe(false);
     expect(byId.get("nf-core/star/align")?.installed).toBe(false);
   });
 
@@ -90,6 +90,25 @@ describe("demo nf-core library", () => {
     expect(await installed()).toEqual([]);
   });
 
+  it("installs FastQC like any other module", async () => {
+    await demoApi.post("/nfcore/install", { id: "nf-core/fastqc" });
+    expect((await installed()).map((entry) => entry.id)).toEqual([
+      "nf-core/fastqc",
+    ]);
+  });
+
+  it("fetches every module file for an export, templates included", async () => {
+    const { data } = await demoApi.get<{ files: Record<string, string> }>(
+      `/nfcore/modules/files?id=${encodeURIComponent("nf-core/tximeta/tximport")}`,
+    );
+    expect(Object.keys(data.files).sort()).toEqual([
+      "environment.yml",
+      "main.nf",
+      "meta.yml",
+      "templates/tximport.r",
+    ]);
+  });
+
   it("serves an installed module's source from storage", async () => {
     await demoApi.post("/nfcore/install", { id: "nf-core/salmon/quant" });
     githubRequests.length = 0;
@@ -113,16 +132,10 @@ describe("demo nf-core library", () => {
     expect(entry.manifest?.outdated).toBe(true);
   });
 
-  it("rejects bundled, unknown and missing ids", async () => {
-    await expect(
-      demoApi.post("/nfcore/install", { id: "nf-core/fastqc" }),
-    ).rejects.toMatchObject({ response: { status: 400 } });
+  it("rejects unknown and missing ids", async () => {
     await expect(
       demoApi.post("/nfcore/install", { id: "nf-core/does-not-exist" }),
     ).rejects.toMatchObject({ response: { status: 404 } });
-    await expect(
-      demoApi.post("/nfcore/uninstall", { id: "nf-core/fastqc" }),
-    ).rejects.toMatchObject({ response: { status: 400 } });
     await expect(
       demoApi.post("/nfcore/uninstall", { id: "nf-core/salmon/quant" }),
     ).rejects.toMatchObject({ response: { status: 404 } });

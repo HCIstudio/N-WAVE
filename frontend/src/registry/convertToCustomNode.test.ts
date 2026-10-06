@@ -53,10 +53,8 @@ describe("convert to custom node", () => {
 
   it("converts an nf-core node from its module source", () => {
     const moduleSource = readFileSync(
-      join(
-        __dirname,
-        "../../../backend/src/workflows/library/assets/nf-core/modules/nf-core/fastqc/main.nf",
-      ),
+      // nf-core/modules fastqc at the catalog's pinned commit.
+      join(__dirname, "../test/fixtures/nfcore-fastqc.main.nf"),
       "utf8",
     );
     const { conversion, convertedCode } = convert("fastqc", moduleSource);

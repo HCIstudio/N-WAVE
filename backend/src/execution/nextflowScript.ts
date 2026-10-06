@@ -12,6 +12,9 @@ export const buildExecutionConfig = (
       [
         "docker {",
         "  enabled = true",
+        "  // Run as the calling user, like exported projects and nf-core",
+        "  // pipelines, so images with a non-root user can write task files.",
+        "  runOptions = '-u $(id -u):$(id -g)'",
         "}",
         "",
         "process {",

@@ -22,6 +22,7 @@ import {
   stabilizeWorkflowInvocations,
 } from "../execution/nextflowScript";
 import { resolveNfCoreModuleDir } from "../execution/nfcoreModules";
+import { ensureModulesInstalled } from "../nfcore/library";
 import type { ExecutionSettings } from "../execution/types";
 import { getErrorMessage } from "../utils/errors";
 import { cancelExecutionSchema, executeRequestSchema } from "../validation/schemas";
@@ -170,6 +171,11 @@ const executeNextflowWorkflow = async (
       console.log(`Created module config: ${configPath}`);
     }
 
+    // Install modules the workflow uses but that aren't installed yet (e.g.
+    // FastQC on a fresh install), from the catalog's pinned commit.
+    await ensureModulesInstalled(
+      getReferencedNfCoreModules(extractedNextflowAssets.script)
+    );
     materializeNfCoreModules(extractedNextflowAssets.script, [
       path.join(mainOutputDir, "modules"),
       path.join(workflowDir, "modules"),
