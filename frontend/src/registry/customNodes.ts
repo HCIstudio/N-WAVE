@@ -84,6 +84,8 @@ export interface StoredCustomNode {
    * these are whole config lines (selectors included), emitted as written.
    */
   config?: string[];
+  /** The node pack the node was imported from (see nodePacks.ts). */
+  pack?: { id: string; name: string; version: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -266,6 +268,7 @@ export const createStoredCustomNode = (
     outputs: overrides.outputs,
     arguments: parsed.arguments,
     ...(existingNode?.config ? { config: existingNode.config } : {}),
+    ...(existingNode?.pack ? { pack: existingNode.pack } : {}),
     createdAt: existingNode?.createdAt ?? now,
     updatedAt: now,
   };
@@ -316,7 +319,8 @@ export const createNodeDefinitionFromCustomNode = (
   return {
     id: customNode.id,
     kind: "process",
-    category: "Custom",
+    // Nodes from a pack are listed under the pack's name.
+    category: customNode.pack ? `Pack: ${customNode.pack.name}` : "Custom",
     label: customNode.label,
     description: customNode.description,
     type: "process",

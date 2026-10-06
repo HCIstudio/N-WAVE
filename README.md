@@ -116,6 +116,26 @@ the custom node editor ("Edit custom node", or **Add node → Custom process** f
 and are stored by the backend, or in the browser in the online demo, so new steps don't need
 a code change to N-WAVE.
 
+### Node packs
+
+Custom nodes can be shared as **node packs**: versioned JSON files (`*.nwave-pack.json`)
+holding one or more nodes with their source, ports, settings, metadata and the nf-core
+modules and subworkflows they include. **Add node → Node packs** has three tabs:
+
+- **Export**: pick custom nodes, name and version the pack, and download it.
+- **Import**: load a pack from a file, a URL, or the community index. Every node is checked
+  against its source on import (process or workflow name, declared inputs and outputs,
+  settings), and errors are shown per node; nodes with errors are skipped. When a node id is
+  already installed you choose to replace it, keep both (the new one is renamed) or skip it.
+  nf-core components the nodes include are installed first.
+- **Installed**: the installed packs, with their nodes; removing a pack deletes its nodes.
+
+Imported nodes are stored like other custom nodes (backend, or browser storage in the demo),
+listed in the node menu under "Pack: &lt;name&gt;", and generate the same code as in the
+install they came from. The community index is a JSON file in a separate data repository
+(`VITE_NODE_PACK_INDEX_URL`), so contributing a node is a pull request there, not to N-WAVE.
+The format is described in [wiki/Node-Packs.md](wiki/Node-Packs.md).
+
 ### Samplesheets
 
 Most nf-core modules take `[ meta, [ reads ] ]` tuples. The **Samplesheet** input node builds
@@ -311,6 +331,7 @@ VITE_DEMO_MODE=true pnpm build && pnpm preview
 | `VITE_DEMO_MODE` | `false` | `true` builds the backend-less demo (in-browser storage). |
 | `VITE_BASE_PATH` | `/` | Base path for sub-path hosting (for example `/N-WAVE/` on GitHub Pages). |
 | `VITE_API_BASE_URL` | `/api` | Where the frontend sends API requests. |
+| `VITE_NODE_PACK_INDEX_URL` | `https://raw.githubusercontent.com/HCIstudio/N-WAVE-node-packs/main/index.json` | The community node pack index listed under **Node packs → Import**. |
 
 Copy [`.env.example`](.env.example) as a starting point for the from-source Docker build.
 
