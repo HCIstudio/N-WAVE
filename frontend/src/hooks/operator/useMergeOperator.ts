@@ -57,7 +57,6 @@ export const useMergeOperator = (
     incomingFiles,
     mergeOperation,
     mergeJoinSeparator,
-    nodeData._refreshTimestamp,
   ]);
 
   useProcessOperatorLogic(mergedFiles, "merge", onSave, incomingFiles);

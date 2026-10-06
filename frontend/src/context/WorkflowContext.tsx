@@ -14,11 +14,14 @@ import {
   type OnNodesChange,
   type OnEdgesChange,
   type OnConnect,
+  type OnConnectEnd,
+  type OnConnectStart,
   type Connection,
   useEdgesState,
   useReactFlow,
 } from "reactflow";
 import type { NodeData } from "../components/nodes/BaseNode";
+import { isNodeDataPatchNoop } from "../utils/nodeData";
 import type { ToastType } from "../components/common";
 import { validateConnectionWithNodeDefinitions } from "../registry";
 
@@ -40,8 +43,8 @@ interface IWorkflowContext {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  onConnectStart: (event: React.MouseEvent, params: any) => void;
-  onConnectEnd: () => void;
+  onConnectStart: OnConnectStart;
+  onConnectEnd: OnConnectEnd;
   isValidConnection: (connection: Connection) => boolean;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   showToast: (message: string, type: ToastType) => void;
@@ -78,7 +81,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
       setNodes((nds) => applyNodeChanges(changes, nds));
       setIsDirty(true);
     },
-    [setNodes]
+    []
   );
 
   const showToast = useCallback(
@@ -150,6 +153,16 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
   const updateNodeData = useCallback(
     (nodeId: string, data: Partial<NodeData>) => {
       setNodes((currentNodes) => {
+        // Returning the same array makes React skip the update, which breaks
+        // the write-back loops of nodes that save derived data on every render.
+        const targetNode = currentNodes.find((node) => node.id === nodeId);
+        if (!targetNode || isNodeDataPatchNoop(targetNode.data, data)) {
+          return currentNodes;
+        }
+        // Mark dirty only for real changes (repeating this is harmless if the
+        // updater runs twice in StrictMode).
+        setIsDirty(true);
+
         const updatedNodes = currentNodes.map((node) => {
           if (node.id === nodeId) {
             return { ...node, data: { ...node.data, ...data } };
@@ -267,12 +280,11 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
 
         return updatedNodes;
       });
-      setIsDirty(true);
     },
-    [setNodes, getEdges]
+    [getEdges]
   );
 
-  const onConnectStart = (_: React.MouseEvent, _params: any) => {
+  const onConnectStart: OnConnectStart = () => {
     // This logic can be simplified or removed if not causing issues,
     // as isValidConnection now handles the primary validation.
   };

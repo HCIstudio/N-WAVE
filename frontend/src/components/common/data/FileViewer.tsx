@@ -143,6 +143,8 @@ const TextViewer: React.FC<{ content: string }> = ({ content }) => {
   );
 };
 
+const BINARY_EXTENSIONS = new Set(["bam", "gz", "zip"]);
+
 const FileViewer: React.FC<FileViewerProps> = ({
   content,
   fileName,
@@ -151,7 +153,11 @@ const FileViewer: React.FC<FileViewerProps> = ({
   const extension = fileType || detectFileType(fileName);
 
   // File type mapping
-  const viewerMap: Record<string, React.ComponentType<any>> = {
+  if (BINARY_EXTENSIONS.has(extension)) {
+    return <BinaryViewer fileName={fileName} />;
+  }
+
+  const viewerMap: Record<string, React.ComponentType<{ content: string }>> = {
     // Sequencing
     fastq: FastqViewer,
     fq: FastqViewer,
@@ -172,20 +178,9 @@ const FileViewer: React.FC<FileViewerProps> = ({
     bed: TabularViewer,
     vcf: TabularViewer,
     sam: TabularViewer,
-
-    // Binary
-    bam: BinaryViewer,
-    gz: BinaryViewer,
-    zip: BinaryViewer,
   };
 
   const ViewerComponent = viewerMap[extension] || TextViewer;
-
-  // Pass appropriate props based on viewer type
-  if (ViewerComponent === BinaryViewer) {
-    return <ViewerComponent fileName={fileName} />;
-  }
-
   return <ViewerComponent content={content} />;
 };
 

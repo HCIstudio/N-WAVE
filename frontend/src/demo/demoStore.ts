@@ -6,7 +6,12 @@
 // slice of backend/src/controllers/workflowController.ts that the frontend
 // actually uses, returning the exact same WorkflowDescriptor shape.
 
-import type { WorkflowDescriptor } from "../types/backend";
+import type {
+  WorkflowDescriptor,
+  WorkflowEdge,
+  WorkflowNode,
+} from "../types/backend";
+import type { ExecutionSettings } from "../types/execution";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { DEMO_WORKFLOW_ID, demoWorkflowSeed } from "./demoWorkflow";
 
@@ -17,9 +22,9 @@ interface StoredWorkflow {
   _id: string;
   name: string;
   description: string;
-  nodes: any[];
-  edges: any[];
-  executionSettings: any;
+  nodes: WorkflowNode[];
+  edges: WorkflowEdge[];
+  executionSettings: ExecutionSettings | null;
   rawSource: string | null;
   importWarnings: string[];
   originType: "database" | "imported";
@@ -28,6 +33,9 @@ interface StoredWorkflow {
   createdAt: string;
   updatedAt: string;
 }
+
+/** Body of a create/update request (same shape the backend accepts). */
+export type WorkflowPayload = Partial<StoredWorkflow>;
 
 const generateId = (): string => {
   const cryptoObj = globalThis.crypto;
@@ -112,7 +120,7 @@ export const demoStore = {
   },
 
   /** POST /workflows */
-  create(payload: Partial<StoredWorkflow>): WorkflowDescriptor {
+  create(payload: WorkflowPayload): WorkflowDescriptor {
     const now = new Date().toISOString();
     const stored: StoredWorkflow = {
       _id: generateId(),
@@ -134,7 +142,7 @@ export const demoStore = {
   },
 
   /** PUT /workflows/:id */
-  update(id: string, payload: Partial<StoredWorkflow>): WorkflowDescriptor {
+  update(id: string, payload: WorkflowPayload): WorkflowDescriptor {
     if (isBuiltinId(id)) {
       throw new DemoStoreError(
         403,

@@ -134,7 +134,7 @@ const OutputDisplayNode = (props: NodeProps<NodeData>) => {
     return `${data.files.length} file${
       data.files.length !== 1 ? "s" : ""
     } received`;
-  }, [data.files]);
+  }, [data.files, data.previewUnavailable]);
 
   const nodeData = {
     ...data,

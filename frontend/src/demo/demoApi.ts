@@ -6,9 +6,9 @@
 // status) don't change — they still get `{ data }` responses and axios-shaped
 // errors (`error.response.status`, `error.response.data.message`).
 
-import { demoStore, DemoStoreError } from "./demoStore";
+import { demoStore, DemoStoreError, type WorkflowPayload } from "./demoStore";
 
-interface DemoResponse<T = any> {
+interface DemoResponse<T = unknown> {
   data: T;
   status: number;
 }
@@ -51,7 +51,7 @@ const EXECUTION_DISABLED_MESSAGE =
   "Workflow execution is disabled in the hosted demo. Download the Docker version to run workflows for real. You can still build, edit, import and inspect the generated Nextflow script here.";
 
 const demoApi = {
-  get<T = any>(url: string): Promise<DemoResponse<T>> {
+  get<T = unknown>(url: string): Promise<DemoResponse<T>> {
     const path = normalize(url);
     if (path === "/workflows") {
       return ok(demoStore.list() as T);
@@ -84,11 +84,12 @@ const demoApi = {
     return fail(404, `No demo handler for GET ${path}`);
   },
 
-  post<T = any>(url: string, data?: any): Promise<DemoResponse<T>> {
+  post<T = unknown>(url: string, data?: unknown): Promise<DemoResponse<T>> {
     const path = normalize(url);
 
     if (path === "/workflows") {
-      return runStore(() => demoStore.create(data) as T);
+      // Callers send the same bodies the real API validates.
+      return runStore(() => demoStore.create(data as WorkflowPayload) as T);
     }
     const duplicateMatch = path.match(/^\/workflows\/([^/]+)\/duplicate$/);
     if (duplicateMatch) {
@@ -108,18 +109,22 @@ const demoApi = {
     return fail(404, `No demo handler for POST ${path}`);
   },
 
-  put<T = any>(url: string, data?: any): Promise<DemoResponse<T>> {
+  put<T = unknown>(url: string, data?: unknown): Promise<DemoResponse<T>> {
     const path = normalize(url);
     const workflowMatch = path.match(/^\/workflows\/([^/]+)$/);
     if (workflowMatch) {
       return runStore(
-        () => demoStore.update(decodeURIComponent(workflowMatch[1]), data) as T
+        () =>
+          demoStore.update(
+            decodeURIComponent(workflowMatch[1]),
+            data as WorkflowPayload
+          ) as T
       );
     }
     return fail(404, `No demo handler for PUT ${path}`);
   },
 
-  delete<T = any>(url: string): Promise<DemoResponse<T>> {
+  delete<T = unknown>(url: string): Promise<DemoResponse<T>> {
     const path = normalize(url);
     const workflowMatch = path.match(/^\/workflows\/([^/]+)$/);
     if (workflowMatch) {

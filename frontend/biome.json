@@ -10,14 +10,10 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off",
         "noConsole": {
           "level": "error",
           "options": { "allow": ["error", "warn"] }
         }
-      },
-      "correctness": {
-        "useExhaustiveDependencies": "off"
       }
     }
   },

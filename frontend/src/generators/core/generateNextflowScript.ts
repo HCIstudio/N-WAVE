@@ -1,4 +1,5 @@
 import type { Node, Edge } from "reactflow";
+import type { FileObject } from "../../components/nodes/BaseNode";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
 import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
 
@@ -67,7 +68,7 @@ export const generateNextflowScript = (
       // Extract selected filenames from the node data
       const selectedFiles = node.data.files || [];
       const filenames = selectedFiles.map(
-        (file: any) => file.name || file.originalName || "unknown_file"
+        (file: FileObject) => file.name || file.originalName || "unknown_file"
       );
 
       if (filenames.length > 0) {

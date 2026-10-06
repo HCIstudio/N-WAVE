@@ -466,7 +466,7 @@ export const useExecutionStatus = ({
     setTimeout(() => {
       setIsVisible(false);
     }, 10000); // Hide panel after 2 seconds for cancellation
-  }, [executionId]);
+  }, [executionId, onStatusChange]);
 
   // Hide status panel
   const hideStatus = useCallback(() => {

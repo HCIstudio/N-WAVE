@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState, useEffect } from "react";
+import { useLatestRef } from "../../../hooks";
 import type { Node as RFNode } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 import { useReactFlow } from "reactflow";
@@ -21,7 +22,7 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
 }) => {
   const { mergeOperation = "join", mergeJoinSeparator = "\\n" } = nodeData;
   const [joinType, setJoinType] = useState(nodeData.joinType || "txt");
-  const { getEdges, getNodes } = useReactFlow();
+  const { getEdges, getNodes } = useReactFlow<NodeData>();
 
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
 
@@ -37,11 +38,11 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
       if (!srcNode) continue;
 
       const files =
-        (srcNode.data as any)?.files ||
-        (srcNode.data as any)?.selectedFiles ||
-        (srcNode.data as any)?.filteredFiles ||
-        (srcNode.data as any)?.mappedFiles ||
-        (srcNode.data as any)?.joinedFiles ||
+        srcNode.data?.files ||
+        srcNode.data?.selectedFiles ||
+        srcNode.data?.filteredFiles ||
+        srcNode.data?.mappedFiles ||
+        srcNode.data?.joinedFiles ||
         [];
 
       for (const f of files) {
@@ -53,17 +54,18 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
 
     if (exts.size > 0) {
       setAvailableTypes(Array.from(exts));
-      if (!exts.has(joinType)) {
-        // reset joinType if current selection not available
-        const first = Array.from(exts)[0];
-        setJoinType(first);
-      }
+      // Reset joinType if the current selection is no longer available.
+      const first = Array.from(exts)[0];
+      setJoinType((current: string) => (exts.has(current) ? current : first));
     }
   }, [getEdges, getNodes, node?.id]);
 
+  // handleDataChange may get a new identity on every render; only a changed
+  // joinType should be saved.
+  const handleDataChangeRef = useLatestRef(handleDataChange);
   useEffect(() => {
-    handleDataChange("joinType", joinType);
-  }, [joinType]);
+    handleDataChangeRef.current("joinType", joinType);
+  }, [joinType, handleDataChangeRef]);
 
   return (
     <>

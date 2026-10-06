@@ -15,7 +15,7 @@ export const useOperatorPanel = (
   }, [edges, nodes, node.id]);
 
   const handleDataChange = useCallback(
-    (field: keyof NodeData, value: any) => {
+    <K extends keyof NodeData>(field: K, value: NodeData[K]) => {
       onSave(node.id, { [field]: value });
     },
     [node.id, onSave]

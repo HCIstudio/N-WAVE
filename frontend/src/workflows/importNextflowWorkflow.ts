@@ -7,6 +7,8 @@
 // graph logic (generation and import), the backend owns persistence and
 // execution.
 
+import type { NodeData } from "../components/nodes/BaseNode";
+import type { ExecutionSettings } from "../types/execution";
 import { defaultExecutionSettings } from "./defaultExecutionSettings";
 
 interface ImportNextflowWorkflowInput {
@@ -19,9 +21,9 @@ interface ImportNextflowWorkflowInput {
 export interface ImportedWorkflowDraft {
   name: string;
   description: string;
-  nodes: any[];
-  edges: any[];
-  executionSettings: any;
+  nodes: VisualNodeDraft[];
+  edges: VisualEdgeDraft[];
+  executionSettings: ExecutionSettings;
   originType: "imported";
   sourceFormat: "nextflow";
   sourceKey: string | null;
@@ -54,7 +56,7 @@ interface VisualNodeDraft {
   id: string;
   type: string;
   position: { x: number; y: number };
-  data: Record<string, any>;
+  data: NodeData;
 }
 
 interface VisualEdgeDraft {

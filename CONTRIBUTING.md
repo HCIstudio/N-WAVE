@@ -52,9 +52,10 @@ Guidelines:
 - **Add tests with your change.** Tests live next to the code as `*.test.ts(x)`. Backend route
   tests use `supertest` against `createApp()` with the Mongoose model mocked, so they need no
   database or Docker.
-- **Keep lint green; don't add new rule exceptions.** Several Biome rules are still disabled in
-  `frontend/biome.json` while the existing code is cleaned up (tracked in
-  [#20](https://github.com/HCIstudio/N-WAVE/issues/20)). Re-enabling one is a welcome PR.
+- **Keep lint green; don't disable rules.** Both packages run Biome's recommended rules
+  in full. A `biome-ignore` comment needs a stated reason: for hooks, use it only for
+  deliberate re-run triggers, and prefer `useLatestRef` for callbacks an effect should call
+  without re-running. Avoid `any`; the only allowed one is the `NodeData` index signature.
 - **No debug logging.** `console.log`/`console.info` fail lint; use `console.warn` or
   `console.error` for messages that should stay.
 - **Validate API input.** New or changed request bodies get a zod schema in
@@ -66,8 +67,9 @@ Guidelines:
 - Branch from `main` with a short descriptive name (`fix/canvas-crash`, `feat/arm-images`).
 - Keep pull requests focused, describe what changed and why, and link the issue
   (`Closes #123`). The pull request template has a short checklist.
-- **Don't bump versions.** Every merge to `main` is released automatically by `release.yml`
-  (version, Docker images, demo site and GitHub Release). See
+- **Don't bump patch versions.** Every merge to `main` is released automatically by
+  `release.yml` (version, Docker images, demo site and GitHub Release). Only a new minor or
+  major version is set by hand, in both `package.json` files. See
   [CI and releases](README.md#ci-and-releases).
 
 ## Reporting bugs and requesting features

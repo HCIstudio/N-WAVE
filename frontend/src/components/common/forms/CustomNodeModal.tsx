@@ -95,6 +95,8 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
     setOutputs(parsed.outputs);
   }, [isOpen, node, parsed, source]);
 
+  // Any edit to the draft invalidates a previously shown save warning.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the draft fields are change triggers.
   useEffect(() => {
     setSaveWarning(null);
     setWarningAcknowledged(false);

@@ -35,6 +35,8 @@ const toastConfig = {
 const Toast: React.FC<ToastProps> = ({ message, type, onClose }) => {
   const [visible, setVisible] = useState(false);
 
+  // Restart the show/auto-dismiss cycle whenever a new message arrives.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: message and type restart the timer.
   useEffect(() => {
     setVisible(true); // Animate in
     const timer = setTimeout(() => {

@@ -40,6 +40,9 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
     });
   }, [refresh]);
 
+  // getNextflowProcesses() reads a mutable registry; registryVersion is bumped
+  // after (re)loading custom/nf-core nodes to recompute this list.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: registryVersion is the invalidation signal.
   const filteredProcesses = useMemo(() => {
     const nextflowProcesses = getNextflowProcesses();
 

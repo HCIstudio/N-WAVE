@@ -43,9 +43,8 @@ const router = createBrowserRouter(
     // Pages). BASE_URL is "/" for local dev and Docker, so basename is "".
     basename: import.meta.env.BASE_URL.replace(/\/$/, ""),
     future: {
-      v7_startTransition: true,
       v7_relativeSplatPath: true,
-    } as any,
+    },
   }
 );
 
@@ -59,6 +58,7 @@ ReactDOM.createRoot(rootElement).render(
     <RouterProvider
       router={router}
       fallbackElement={<LoadingIndicator fullPage />}
+      future={{ v7_startTransition: true }}
     />
   </React.StrictMode>
 );

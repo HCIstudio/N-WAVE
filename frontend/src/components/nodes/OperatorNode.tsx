@@ -5,6 +5,7 @@ import BaseNode, { type NodeData } from "./BaseNode";
 import { useWorkflowContext } from "../../context/WorkflowContext";
 import { useOperatorLogic } from "../../hooks";
 import { getIncomingFiles } from "../../utils/workflowConnections";
+import { useLatestRef } from "../../hooks";
 
 const portsEqual = (
   current: NodeData["inputs"] | NodeData["outputs"],
@@ -68,8 +69,17 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
     }
   }, [data.subtitle, data.operatorType, id, updateNodeData]);
 
+  // The subtitle effect below must react to connection/file changes only; it
+  // reads the current subtitle and filter text without re-running on them
+  // (it writes the subtitle itself).
+  const subtitleInputsRef = useLatestRef({
+    subtitle: data.subtitle,
+    filterText: data.filterText,
+  });
+
   // Update node when incoming files change (triggers visual refresh)
   useEffect(() => {
+    const { subtitle, filterText } = subtitleInputsRef.current;
     const isConnected = edges.some((edge) => edge.target === id);
 
     if (isConnected) {
@@ -88,7 +98,6 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
           // Files exist but missing content - need reupload
           updateNodeData(id, {
             subtitle: "Waiting for reupload",
-            lastUpdated: Date.now(),
           });
         } else {
           // Files have content - use subtitle from operator logic if available
@@ -98,19 +107,18 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
           // 2. Subtitle is just the operator name (default), OR
           // 3. Subtitle is "Waiting for files" (not reupload - let operator logic handle reupload case)
           if (
-            !data.subtitle ||
-            data.subtitle === `${operatorName}` ||
-            data.subtitle === `${operatorName}: Waiting for files`
+            !subtitle ||
+            subtitle === `${operatorName}` ||
+            subtitle === `${operatorName}: Waiting for files`
           ) {
             const fileCount = incomingFiles.length;
-            const isUnedited = operatorType === "filter" && !data.filterText;
+            const isUnedited = operatorType === "filter" && !filterText;
             const uneditedStatus = isUnedited ? " (unedited)" : "";
             updateNodeData(id, {
               subtitle: `${operatorName}: ${fileCount} file${
                 fileCount === 1 ? "" : "s"
               }${uneditedStatus}`,
-              lastUpdated: Date.now(),
-            });
+              });
           }
           // If operator logic has already set a subtitle, don't override it
         }
@@ -123,7 +131,6 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
 
         updateNodeData(id, {
           subtitle: `${operatorName}: Waiting for files`,
-          lastUpdated: Date.now(),
         });
       }
     } else {
@@ -134,10 +141,17 @@ const OperatorNode = (props: NodeProps<NodeData>) => {
 
       updateNodeData(id, {
         subtitle: `${operatorName}`,
-        lastUpdated: Date.now(),
       });
     }
-  }, [incomingFiles, data.operatorType, id, updateNodeData, edges]);
+  }, [
+    incomingFiles,
+    data.operatorType,
+    operatorType,
+    id,
+    updateNodeData,
+    edges,
+    subtitleInputsRef,
+  ]);
 
   const nodeData = { ...data, icon: data.icon || "Function" };
   return <BaseNode {...props} data={nodeData} />;

@@ -18,6 +18,8 @@ const DemoBanner = () => {
   const [bottomOffset, setBottomOffset] = useState(GAP);
   const location = useLocation();
 
+  // Re-measure after navigation: each route has a different footer.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: location.pathname is the re-measure trigger.
   useEffect(() => {
     const measure = () => {
       const footer = document.querySelector("footer");

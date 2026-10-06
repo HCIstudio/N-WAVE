@@ -262,8 +262,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
               <ExecutionSettingsComponent
-                settings={executionSettings as any}
-                onSettingsChange={handleSettingsChange as any}
+                settings={executionSettings}
+                onSettingsChange={handleSettingsChange}
               />
             </div>
 

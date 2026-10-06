@@ -212,10 +212,15 @@ for package-level notes.
 `main` is protected: changes land only via pull request, and a PR can be merged only once the
 Test workflow passes.
 
-Versioning is automatic — you never set a version by hand. On every merge to `main`,
-`release.yml` steps the patch version (from the latest `v*` tag) and applies that number
-everywhere in the same run: the Pages demo footer, the Docker images, and both `package.json`
-files.
+Versioning is automatic for patch releases. On every merge to `main`, `release.yml` steps the
+patch version (from the latest `v*` tag) and applies that number everywhere in the same run:
+the Pages demo footer, the Docker images, and both `package.json` files.
+
+To release a new minor or major version (for example when closing a milestone), set it by hand
+in the pull request: change `"version"` in both `frontend/package.json` and
+`backend/package.json` to the new number (e.g. `1.2.0`). When that version is newer than the
+latest tag, the merge releases exactly that version; later merges continue with patch steps
+from it (`1.2.1`, ...). The two files must match, or the release fails.
 
 One-time setup — `RELEASE_TOKEN`: the version-bump commit is pushed back to `main`, which is
 pull-request-only, so CI needs to push as an actor that bypasses the ruleset (repo/org admins

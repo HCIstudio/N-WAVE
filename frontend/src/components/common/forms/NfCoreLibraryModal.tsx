@@ -84,10 +84,6 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
     currentPage * pageSize + pageSize
   );
 
-  useEffect(() => {
-    setPage(0);
-  }, [searchTerm]);
-
   const handleInstall = async (module: NfCoreCatalogModule) => {
     setInstallingId(module.id);
     setError(null);
@@ -134,7 +130,10 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
         <div className="border-b border-accent p-3">
           <SearchInput
             value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
+            onChange={(event) => {
+              setSearchTerm(event.target.value);
+              setPage(0);
+            }}
             placeholder="Search nf-core modules..."
           />
           <div className="mt-2 flex items-center justify-between text-xs text-text-light">

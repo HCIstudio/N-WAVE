@@ -5,10 +5,7 @@ import {
   type ProcessConfig,
 } from "../templates/processes";
 
-import {
-  generateOutputDisplayProcess,
-  type OutputConfig,
-} from "../templates/outputs";
+import { generateOutputDisplayProcess } from "../templates/outputs";
 import {
   generateFilterProcess,
   generateMapProcess,
@@ -34,24 +31,44 @@ export function generateProcessCode(
   }
 }
 
+export type FilterProcessConfig = Parameters<typeof generateFilterProcess>[0];
+export type MapProcessConfig = Parameters<typeof generateMapProcess>[0];
+export type MergeProcessConfig = Parameters<typeof generateMergeProcess>[0];
+export type OutputDisplayConfig = Parameters<
+  typeof generateOutputDisplayProcess
+>[0];
+
 export function generateOperatorCode(
-  operatorType: string,
-  config: ProcessConfig
+  operatorType: "filter",
+  config: FilterProcessConfig
+): string;
+export function generateOperatorCode(
+  operatorType: "map",
+  config: MapProcessConfig
+): string;
+export function generateOperatorCode(
+  operatorType: "merge",
+  config: MergeProcessConfig
+): string;
+export function generateOperatorCode(
+  operatorType: "filter" | "map" | "merge",
+  config: FilterProcessConfig | MapProcessConfig | MergeProcessConfig
 ): string {
+  // The overloads tie each operator type to its config shape.
   switch (operatorType) {
     case "filter":
-      return generateFilterProcess(config as any);
+      return generateFilterProcess(config as FilterProcessConfig);
     case "map":
-      return generateMapProcess(config as any);
+      return generateMapProcess(config as MapProcessConfig);
     case "merge":
-      return generateMergeProcess(config as any);
+      return generateMergeProcess(config as MergeProcessConfig);
     default:
       throw new Error(`Unknown operator type: ${operatorType}`);
   }
 }
 
-export function generateOutputCode(config: OutputConfig): string {
-  return generateOutputDisplayProcess(config as any);
+export function generateOutputCode(config: OutputDisplayConfig): string {
+  return generateOutputDisplayProcess(config);
 }
 
 // Advanced input template functions - not currently used in main script generator
@@ -69,53 +86,3 @@ export function generateOutputCode(config: OutputConfig): string {
 //       throw new Error(`Unknown input type: ${inputType}`);
 //   }
 // }
-
-export function generateWorkflowScript(
-  processes: Array<{ type: string; config: ProcessConfig }>
-): string {
-  const processDefinitions = processes
-    .map((p) => generateProcessCode(p.type, p.config))
-    .join("\n\n");
-
-  // Simple workflow structure
-  const workflow = `
-workflow {
-    // Input channels
-    ch_input = Channel.fromPath(params.inputdir + "/*.fastq*")
-    
-    // Process chain based on connections
-    ${generateWorkflowLogic(processes)}
-}
-  `;
-
-  return `#!/usr/bin/env nextflow
-
-nextflow.enable.dsl = 2
-
-params.outdir = 'results'
-params.inputdir = 'inputs'
-params.max_cpus = 8
-params.max_memory = '16 GB'
-
-${processDefinitions}
-
-${workflow}
-  `;
-}
-
-function generateWorkflowLogic(processes: any[]): string {
-  // Simple logic - just chain the processes for now
-  const processNames = processes.map((p) => p.config.processName);
-
-  if (processNames.length === 0) return "";
-  if (processNames.length === 1) return `${processNames[0]}(ch_input)`;
-
-  let logic = `${processNames[0]}(ch_input)\n`;
-  for (let i = 1; i < processNames.length; i++) {
-    const prevProcess = processNames[i - 1];
-    const currentProcess = processNames[i];
-    logic += `    ${currentProcess}(${prevProcess}.out)\n`;
-  }
-
-  return logic;
-}
