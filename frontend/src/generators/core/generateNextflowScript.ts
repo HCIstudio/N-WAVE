@@ -2,6 +2,11 @@ import type { Node, Edge } from "reactflow";
 import type { FileObject } from "../../components/nodes/BaseNode";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
 import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
+import {
+  generateSamplesheetChannel,
+  getSamplesheetFileName,
+  getSamplesheetMapping,
+} from "../../registry/samplesheet";
 
 /**
  * Generates a Nextflow script from the current workflow nodes.
@@ -54,9 +59,32 @@ export const generateNextflowScript = (
   // recognised as "resolved" during dependency validation.
   const definedInputChannels = new Set<string>();
 
+  // Input nodes read from the input directory; declare it once.
+  let inputDirDeclared = false;
+  const declareInputDir = () => {
+    if (inputDirDeclared) return;
+    inputDirDeclared = true;
+    paramsScript += `params.inputdir = "./inputs"\n`;
+  };
+
   // First pass: Define file inputs and map all node outputs to channel names
   for (const node of nodes) {
-    if (node.type === "fileInput") {
+    if (node.type === "samplesheet") {
+      const channelName = sanitizeVarName(`${node.id}_samples`);
+      channelNameMap.set(`${node.id}.samples`, channelName);
+      channelNameMap.set(`${node.id}.out`, channelName);
+      definedInputChannels.add(channelName);
+
+      declareInputDir();
+      const { params, channel } = generateSamplesheetChannel({
+        channelName,
+        paramName: sanitizeVarName(`samplesheet_${node.id}`),
+        fileName: getSamplesheetFileName(node.data),
+        mapping: getSamplesheetMapping(node.data),
+      });
+      paramsScript += params;
+      firstPassScript += `${channel}\n`;
+    } else if (node.type === "fileInput") {
       const channelName = "ch_files";
       const legacyFileOutputChannelName = sanitizeVarName(
         `${node.id}_ch_files_out`
@@ -73,7 +101,7 @@ export const generateNextflowScript = (
 
       if (filenames.length > 0) {
         // Add parameters for input directory and selected files
-        paramsScript += `params.inputdir = "./inputs"\n`;
+        declareInputDir();
         paramsScript += `params.selected_files = [${filenames
           .map((name: string) => `'${name}'`)
           .join(", ")}]\n\n`;
@@ -84,7 +112,7 @@ export const generateNextflowScript = (
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       } else {
         // Fallback if no files
-        paramsScript += `params.inputdir = "./inputs"\n`;
+        declareInputDir();
         paramsScript += "params.selected_files = []\n\n";
         firstPassScript += `${channelName} = Channel.empty()\n\n`;
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;

@@ -50,6 +50,7 @@ import {
 } from "../registry/convertToCustomNode";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
 import { isoDurationToMinutes } from "../utils/duration";
+import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
   getApiErrorMessage,
   getResponseData,
@@ -1198,19 +1199,10 @@ const WorkflowPageContent: React.FC = () => {
         throw new Error(errorMessage);
       }
 
-      // Extract file content from File Input nodes
-      const fileInputNodes = nodes.filter((node) => node.type === "fileInput");
+      // Files for the input directory: File Input uploads and samplesheets
       const workflowFiles: { [filename: string]: string } = {};
-
-      for (const node of fileInputNodes) {
-        if (node.data.files && Array.isArray(node.data.files)) {
-          for (const file of node.data.files) {
-            if (file.content) {
-              workflowFiles[file.name || file.originalName || "unknown_file"] =
-                file.content;
-            }
-          }
-        }
+      for (const file of getWorkflowInputFiles(nodes)) {
+        if (file.content) workflowFiles[file.name] = file.content;
       }
 
       // Generate the Nextflow script with execution settings
