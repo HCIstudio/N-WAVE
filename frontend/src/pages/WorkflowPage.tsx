@@ -13,7 +13,7 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import Canvas from "../components/canvas/Canvas";
 import { PropertiesPanel } from "../components/panels";
 import Header from "../components/layout/Header";
-import api from "../api";
+import api, { isDemoMode } from "../api";
 import type { NextflowProcess } from "../data/types";
 import BottomBar from "../components/canvas/BottomBar";
 import DeleteDropZone from "../components/canvas/DeleteDropZone";
@@ -23,6 +23,7 @@ import { OutputDisplayPanelContent } from "../components/panels";
 import {
   ConfirmDialog,
   ErrorBoundary,
+  ErrorFallback,
   Toast,
   WorkflowExecutionErrorNotification,
 } from "../components/common";
@@ -39,6 +40,11 @@ import {
   refreshCustomNodes,
 } from "../api/customNodes";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
+import {
+  getApiErrorMessage,
+  getResponseData,
+  getResponseStatus,
+} from "../utils/errors";
 
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
@@ -133,7 +139,11 @@ const WorkflowPageContent: React.FC = () => {
     onConnectEnd,
     toast,
     closeToast,
+    showToast,
   } = workflowContext;
+  // Errors from user actions (save, duplicate, script generation) are shown as
+  // toasts so the editor stays usable.
+  const showError = (message: string) => showToast(message, "error");
 
   const [openPanelNodeIds, setOpenPanelNodeIds] = useState<string[]>([]);
   const [workflowName, setWorkflowName] = useState("");
@@ -146,7 +156,11 @@ const WorkflowPageContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // A workflow that can't be loaded replaces the editor with an error screen.
+  const [loadError, setLoadError] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHoveringDropZone, setIsHoveringDropZone] = useState(false);
   const [nodeToDelete, setNodeToDelete] = useState<Node<NodeData> | null>(null);
@@ -359,11 +373,9 @@ const WorkflowPageContent: React.FC = () => {
       purgeCustomNodeFromCurrentWorkflow(customNodeDeleteCandidate.id);
       await refreshCustomNodes();
       setCustomNodeDeleteCandidate(null);
-    } catch (deleteError: any) {
+    } catch (deleteError: unknown) {
       setCustomNodeDeleteError(
-        deleteError?.response?.data?.message ||
-          deleteError?.message ||
-          "Failed to delete custom node."
+        getApiErrorMessage(deleteError, "Failed to delete custom node.")
       );
     }
   }, [customNodeDeleteCandidate, purgeCustomNodeFromCurrentWorkflow]);
@@ -393,7 +405,7 @@ const WorkflowPageContent: React.FC = () => {
         navigate("/");
       }
     } catch (err) {
-      setError("Failed to remove tutorial workflow copy.");
+      showError("Failed to remove tutorial workflow copy.");
       console.error(err);
     }
   }, [navigate, workflowId]);
@@ -453,7 +465,9 @@ const WorkflowPageContent: React.FC = () => {
       navigate(`/workflow/${response.data._id}`);
       return true;
     } catch (err) {
-      setError("Failed to duplicate read-only workflow.");
+      showError(
+        `Failed to duplicate read-only workflow. ${getApiErrorMessage(err, "")}`.trim()
+      );
       console.error(err);
       setIsDuplicatingReadOnly(false);
       return false;
@@ -593,8 +607,10 @@ const WorkflowPageContent: React.FC = () => {
 
   const fetchWorkflow = useCallback(async () => {
     if (!workflowId) {
-      setError("No workflow ID provided.");
-      setWorkflowName("New Workflow"); // Set default name when no ID
+      setLoadError({
+        title: "No workflow selected",
+        detail: "The address doesn't include a workflow ID.",
+      });
       setIsLoading(false);
       return;
     }
@@ -691,10 +707,24 @@ const WorkflowPageContent: React.FC = () => {
 
       setIsDirty(false);
     } catch (err) {
-      setError("Failed to fetch workflow.");
-      setWorkflowName("Untitled Workflow"); // Set default name on error
-      setWorkflowReadOnly(false);
       console.error(err);
+      const status = getResponseStatus(err);
+      setLoadError(
+        status === 404 || status === 400
+          ? {
+              title: "Workflow not found",
+              detail:
+                "This workflow doesn't exist or was deleted. Pick another one from the library.",
+            }
+          : {
+              title: "Couldn't load this workflow",
+              detail: `${
+                isDemoMode
+                  ? "The demo's browser storage could not be read."
+                  : "The N-WAVE backend did not respond. Make sure it is running and try again."
+              } (${getApiErrorMessage(err, "Unknown error")})`,
+            }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -885,7 +915,7 @@ const WorkflowPageContent: React.FC = () => {
 
   const handleSaveWorkflow = async () => {
     if (!workflowId) {
-      setError("No workflow ID provided.");
+      showError("No workflow ID provided.");
       return;
     }
     if (workflowReadOnly) {
@@ -893,7 +923,6 @@ const WorkflowPageContent: React.FC = () => {
       return;
     }
     setIsSaving(true);
-    setError(null);
     try {
       // Strip file content from nodes before saving to avoid payload too large errors
       const sanitizedNodes = nodes.map((node) => {
@@ -945,7 +974,9 @@ const WorkflowPageContent: React.FC = () => {
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000); // Show checkmark for 2 seconds
     } catch (err) {
-      setError("Failed to save workflow.");
+      showError(
+        `Failed to save workflow. ${getApiErrorMessage(err, "")}`.trim()
+      );
       console.error(err);
     } finally {
       setIsSaving(false);
@@ -1003,9 +1034,9 @@ const WorkflowPageContent: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (e) {
       if (e instanceof Error) {
-        setError(e.message); // Display cycle detection errors to the user
+        showError(e.message); // Display cycle detection errors to the user
       } else {
-        setError("An unknown error occurred during script generation.");
+        showError("An unknown error occurred during script generation.");
       }
     }
   };
@@ -1013,7 +1044,6 @@ const WorkflowPageContent: React.FC = () => {
   const handleRunWorkflow = async (settings: ExecutionSettings) => {
     setIsRunning(true);
     setExecutionResult(null);
-    setError(null);
     setExecutionSettings(settings);
 
     // Start execution status tracking
@@ -1270,15 +1300,21 @@ const WorkflowPageContent: React.FC = () => {
       // Close the error dialog on successful execution
       setShowErrorDialog(false);
       setExecutionError(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Workflow execution failed:", error);
+      const responseData = getResponseData(error);
+      // The execute endpoint reports the specific problem in `error`.
       const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Unknown error occurred during workflow execution";
+        typeof responseData?.error === "string" && responseData.error
+          ? responseData.error
+          : getApiErrorMessage(
+              error,
+              "Unknown error occurred during workflow execution"
+            );
 
-      const errorOutput =
-        error.response?.data?.stdout || error.response?.data?.stderr || "";
+      const errorOutput = String(
+        responseData?.stdout || responseData?.stderr || ""
+      );
 
       setExecutionResult({
         success: false,
@@ -1293,7 +1329,9 @@ const WorkflowPageContent: React.FC = () => {
       setExecutionError({
         message: errorMessage,
         output: errorOutput,
-        code: error.response?.status || error.code,
+        code:
+          getResponseStatus(error) ??
+          (error as { code?: string | number } | undefined)?.code,
       });
 
       setShowErrorDialog(true);
@@ -1524,17 +1562,18 @@ const WorkflowPageContent: React.FC = () => {
     });
   };
 
-  // Only show simple error display for critical loading errors
-  if (
-    error &&
-    (isLoading ||
-      error.includes("No workflow ID") ||
-      error.includes("Failed to fetch"))
-  ) {
+  if (loadError) {
     return (
-      <div className="text-red-500 p-4 text-center">
-        Error: {error}. Please try refreshing the page.
-      </div>
+      <ErrorFallback
+        fullPage
+        title={loadError.title}
+        description={loadError.detail}
+        onRetry={() => {
+          setLoadError(null);
+          setIsLoading(true);
+          void fetchWorkflow();
+        }}
+      />
     );
   }
 

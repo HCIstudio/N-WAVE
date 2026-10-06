@@ -11,6 +11,7 @@ import {
   type ParsedCustomNodeSource,
   type StoredCustomNode,
 } from "../../../registry/customNodes";
+import { getErrorMessage } from "../../../utils/errors";
 
 interface CustomNodeModalProps {
   isOpen: boolean;
@@ -144,8 +145,8 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
       const savedNode = await persistCustomNode(storedNode);
       onSaved(savedNode);
       onClose();
-    } catch (saveError: any) {
-      setError(saveError?.message || "Failed to save custom node.");
+    } catch (saveError: unknown) {
+      setError(getErrorMessage(saveError, "Failed to save custom node."));
     } finally {
       setIsSaving(false);
     }

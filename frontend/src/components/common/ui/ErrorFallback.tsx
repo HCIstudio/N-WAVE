@@ -2,7 +2,8 @@ import type React from "react";
 import { AlertTriangle } from "lucide-react";
 
 export interface ErrorFallbackProps {
-  error: unknown;
+  /** Shown under "Technical details" when provided. */
+  error?: unknown;
   /** Heading shown above the message. */
   title?: string;
   /** Short explanation of what the user lost (or didn't). */
@@ -50,14 +51,16 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
         <h2 className="text-lg font-semibold">{title}</h2>
       </div>
       <p className="mt-3 text-sm text-text-light">{description}</p>
-      <details className="mt-4 text-sm">
-        <summary className="cursor-pointer text-text-light">
-          Technical details
-        </summary>
-        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-background p-3 text-xs text-danger">
-          {errorMessage(error)}
-        </pre>
-      </details>
+      {error !== undefined && (
+        <details className="mt-4 text-sm">
+          <summary className="cursor-pointer text-text-light">
+            Technical details
+          </summary>
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-background p-3 text-xs text-danger">
+            {errorMessage(error)}
+          </pre>
+        </details>
+      )}
       <div className="mt-6 flex flex-wrap gap-2">
         {onRetry && (
           <button

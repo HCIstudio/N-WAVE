@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { MemoryInput } from "../forms";
 import api from "../../../api";
+import { getErrorMessage, getErrorName } from "../../../utils/errors";
 
 interface DockerStatus {
   dockerAvailable: boolean;
@@ -416,13 +417,13 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                           alert(
                             `✅ Directory selected: ${selectedPath}\n\nNote: Due to browser security, you can only select user folders (Downloads, Documents, etc.). To save anywhere, type the full path manually.`
                           );
-                        } catch (fsError: any) {
-                          if (fsError.name === "AbortError") {
+                        } catch (fsError: unknown) {
+                          if (getErrorName(fsError) === "AbortError") {
                             // User cancelled, do nothing
                             return;
                           }if (
-                            fsError.name === "NotAllowedError" ||
-                            fsError.message.includes("system files")
+                            getErrorName(fsError) === "NotAllowedError" ||
+                            getErrorMessage(fsError, "").includes("system files")
                           ) {
                             // Show helpful error message for system folder blocking
                             showSystemFolderError();

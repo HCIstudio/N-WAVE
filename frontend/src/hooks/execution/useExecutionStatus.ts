@@ -424,7 +424,7 @@ export const useExecutionStatus = ({
 
       // Call backend to cancel the actual process
       await api.post("/execute/cancel", { executionId });
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error cancelling execution:", error);
       // Still update UI even if backend cancel fails
     }
