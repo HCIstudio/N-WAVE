@@ -198,10 +198,14 @@ export const generateOutputDisplayNode: NodeGenerator = ({
   const selectedFileName = node.data.selectedFileName || "all";
   const { containerImage, cpus, memory } = getResourceSettings(node);
 
+  // One file per emission: `[meta, files...]` items (nf-core outputs, e.g.
+  // paired-end FastQC reports) contribute all their files.
   const normalizeToPathChannel = (channelExpr: string): string =>
-    `${channelExpr}.map { item ->
-        def value = item instanceof List && item.size() > 1 ? item[-1] : item
-        file(value instanceof String ? "\${params.inputdir}/\${value}" : value)
+    `${channelExpr}.flatMap { item ->
+        def value = item instanceof List && item.size() > 1 ? (item[0] instanceof Map ? item[1..-1] : item[-1]) : item
+        (value instanceof List ? value.flatten() : [value]).collect { entry ->
+            file(entry instanceof String ? "\${params.inputdir}/\${entry}" : entry)
+        }
     }`;
 
   const outputInvocationArg =

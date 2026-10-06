@@ -2,6 +2,12 @@ import type React from "react";
 import type { Connection, Edge, Node } from "reactflow";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
+import SamplesheetPanel from "../components/panels/input/SamplesheetPanel";
+import {
+  DEFAULT_SAMPLESHEET_FILE_NAME,
+  DEFAULT_SAMPLESHEET_MAPPING,
+  RNASEQ_SAMPLESHEET_TEMPLATE,
+} from "./samplesheet";
 import FileInputPanel from "../components/panels/input/FileInputPanel";
 import FilterPanel from "../components/panels/operator/FilterPanel";
 import MapPanel from "../components/panels/operator/MapPanel";
@@ -116,6 +122,26 @@ const builtinNodeDefinitions: NodeDefinition[] = [
 
       return { valid: true };
     },
+  },
+  {
+    id: "samplesheet",
+    kind: "input",
+    category: "Input",
+    label: "Samplesheet",
+    description:
+      "Reads an nf-core-style samplesheet (sample, fastq_1, fastq_2, ...) into [ meta, [ reads ] ] for nf-core modules.",
+    type: "samplesheet",
+    icon: "Sheet",
+    outputs: [{ name: "samples", label: "Samples", isConnectable: true }],
+    defaults: {
+      subtitle: "No samples yet",
+      samplesheet: RNASEQ_SAMPLESHEET_TEMPLATE,
+      samplesheetFileName: DEFAULT_SAMPLESHEET_FILE_NAME,
+      samplesheetMapping: DEFAULT_SAMPLESHEET_MAPPING,
+      outputs: [{ name: "samples", label: "Samples", isConnectable: true }],
+    },
+    panel: SamplesheetPanel,
+    executionLabel: "Samplesheet",
   },
   {
     id: "filter",

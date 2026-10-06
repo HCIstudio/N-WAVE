@@ -1,6 +1,7 @@
 import type { Node } from "reactflow";
 import { getNfCoreModuleFiles } from "../api/nfcore";
 import type { NodeData } from "../components/nodes/BaseNode";
+import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
   buildProjectFiles,
   extractNextflowConfig,
@@ -10,27 +11,10 @@ import {
   zipProject,
 } from "./exportProject";
 
-/** Input files of the workflow's File Input nodes, deduplicated by name. */
+/** Input files of the workflow (File Input uploads, samplesheets). */
 export const collectInputFiles = (
   nodes: Node<NodeData>[],
-): ProjectInputFile[] => {
-  const files = new Map<string, ProjectInputFile>();
-  for (const node of nodes) {
-    if (node.type !== "fileInput" || !Array.isArray(node.data.files)) continue;
-    for (const file of node.data.files) {
-      const name = file.name || file.originalName;
-      if (!name) continue;
-      const existing = files.get(name);
-      if (!existing || existing.content === undefined) {
-        files.set(name, {
-          name,
-          content: typeof file.content === "string" ? file.content : undefined,
-        });
-      }
-    }
-  }
-  return Array.from(files.values());
-};
+): ProjectInputFile[] => getWorkflowInputFiles(nodes);
 
 /**
  * Build the project zip for a workflow: fetches the nf-core module files the

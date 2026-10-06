@@ -26,6 +26,7 @@ import ProcessNode from "../nodes/process/ProcessNode";
 const nodeTypes = {
   default: BaseNode,
   fileInput: FileInputNode,
+  samplesheet: BaseNode,
   outputDisplay: OutputDisplayNode,
   filter: OperatorNode,
   operator: OperatorNode,

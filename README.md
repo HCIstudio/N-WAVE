@@ -101,6 +101,16 @@ the custom node editor ("Edit custom node", or **Add node → Custom process** f
 and are stored by the backend, or in the browser in the online demo, so new steps don't need
 a code change to N-WAVE.
 
+### Samplesheets
+
+Most nf-core modules take `[ meta, [ reads ] ]` tuples. The **Samplesheet** input node builds
+them from an nf-core-style CSV (`sample,fastq_1,fastq_2,…`; the rnaseq header is one click
+away, and the id and read columns can be mapped): each row becomes one sample with
+`meta.id`, `meta.single_end` and the other columns. Read paths are names of files uploaded
+to a File Input node, or absolute paths and URLs for local runs. The panel previews the
+parsed samples and flags problems (missing columns, files that aren't uploaded, sample ids
+with spaces, …). The CSV goes into `inputs/` for runs and exported projects.
+
 ### Exporting a runnable project
 
 **Export Project** (in the bottom bar, next to the script download) downloads a zip that
