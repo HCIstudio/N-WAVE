@@ -38,6 +38,12 @@ pnpm test            # Vitest (pnpm test:coverage for a coverage report)
 pnpm build           # TypeScript typecheck + build
 ```
 
+The nf-core catalog parser has its own tests (run from the repository root):
+
+```bash
+node --test scripts/nfcoreModuleParser.test.mjs
+```
+
 End-to-end tests (Playwright) cover the canvas flow against the backend-less demo build.
 They run as a separate, non-blocking CI job; locally:
 

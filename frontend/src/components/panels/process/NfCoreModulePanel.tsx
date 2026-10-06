@@ -2,6 +2,8 @@ import React, { useState, useId } from "react";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 import { MemoryInput, TimeInput } from "../../common/forms";
+import type { NfCoreValueInput } from "../../../registry/nfcore/inputChannels";
+import NfCoreValueInputs from "./NfCoreValueInputs";
 
 interface NfCoreModulePanelProps {
   node: Node<NodeData>;
@@ -31,6 +33,11 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
   const [overrideResources, setOverrideResources] = useState(
     Boolean(node.data.overrideResources)
   );
+  const valueInputs: NfCoreValueInput[] = Array.isArray(
+    node.data.nfcoreValueInputs
+  )
+    ? node.data.nfcoreValueInputs
+    : [];
 
   React.useEffect(() => {
     onSave(node.id, {
@@ -72,6 +79,20 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
           before production use.
         </div>
       )}
+
+      {node.data.nwaveNfCoreOutdated && (
+        <div className="rounded-md border border-yellow-500/40 bg-yellow-900/20 p-3 text-sm text-yellow-100">
+          This module was installed from an older nf-core/modules version.
+          Reinstall it from the nf-core Library to use the current input
+          layout.
+        </div>
+      )}
+
+      <NfCoreValueInputs
+        inputs={valueInputs}
+        values={node.data.nfcoreValues ?? {}}
+        onChange={(nfcoreValues) => onSave(node.id, { nfcoreValues })}
+      />
 
       {supportsExtArgs && (
         <div className="space-y-2">

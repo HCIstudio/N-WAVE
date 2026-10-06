@@ -12,6 +12,17 @@ import { parseBody } from "../validation/validate";
 
 type SupportLevel = "full" | "candidate" | "needs_review" | "unsupported";
 
+interface NfCoreInputGroup {
+  argumentIndex: number;
+  handle: string;
+  tuple: boolean;
+  metaName: string | null;
+  /** Path field names (the node's input ports). */
+  fields: string[];
+  /** Full argument layout (meta, path and val items); catalog schema 2+. */
+  items?: Array<{ kind: "meta" | "path" | "val"; name: string }>;
+}
+
 interface NfCoreCatalogEntry {
   id: string;
   moduleName: string;
@@ -34,12 +45,12 @@ interface NfCoreCatalogEntry {
   tools: string[];
   inputs: string[];
   inputDeclarations?: string[];
-  inputGroups?: Array<{
-    argumentIndex: number;
-    handle: string;
-    tuple: boolean;
-    metaName: string | null;
-    fields: string[];
+  inputGroups?: NfCoreInputGroup[];
+  valueInputs?: Array<{
+    name: string;
+    type: string;
+    description?: string;
+    defaultValue: string | number | boolean;
   }>;
   outputs: string[];
   emits: string[];
@@ -144,7 +155,8 @@ export const listInstalledNfCoreModules = (
         ...entry,
         manifest: enrichInstalledManifest(
           readJsonIfExists(entry.manifestPath),
-          catalog.modules.find((moduleEntry) => moduleEntry.id === entry.id)
+          catalog.modules.find((moduleEntry) => moduleEntry.id === entry.id),
+          entry.sourceCommit
         ),
       })),
     });
@@ -317,12 +329,22 @@ const readJsonIfExists = (filePath: string): unknown | null => {
   return JSON.parse(fs.readFileSync(filePath, "utf8"));
 };
 
+/**
+ * Refresh an installed module's manifest from the current catalog. The input
+ * layout is only taken over when the installed files are from the catalog's
+ * commit; otherwise the module's signature may differ, so the stored layout
+ * is kept and the module is marked as outdated (reinstall to update).
+ */
 const enrichInstalledManifest = (
   manifest: unknown | null,
-  catalogEntry?: NfCoreCatalogEntry
+  catalogEntry?: NfCoreCatalogEntry,
+  installedCommit?: string
 ): unknown | null => {
   if (!manifest || !catalogEntry || typeof manifest !== "object") {
     return manifest;
+  }
+  if (installedCommit && installedCommit !== catalogEntry.source.commit) {
+    return { ...(manifest as Record<string, unknown>), outdated: true };
   }
 
   const currentManifest = manifest as Record<string, unknown>;
@@ -336,6 +358,8 @@ const enrichInstalledManifest = (
     settings: refreshedManifest.settings,
     source: refreshedManifest.source,
     inputGroups: refreshedManifest.inputGroups,
+    valueInputs: refreshedManifest.valueInputs,
+    inputs: refreshedManifest.inputs,
     defaults: {
       ...(currentManifest.defaults as Record<string, unknown> | undefined),
       nwaveNfCoreSupportsExtArgs:
@@ -424,8 +448,23 @@ const downloadGitHubContents = async ({
   }
 };
 
+/**
+ * Ports of a module: every path field of its inputs, in declaration order.
+ * Older catalog entries without input groups fall back to meta.yml names.
+ */
+const getInputPorts = (entry: NfCoreCatalogEntry): string[] =>
+  entry.inputGroups
+    ? entry.inputGroups.flatMap((group) =>
+        group.items
+          ? group.items.flatMap((item) => (item.kind === "path" ? [item.name] : []))
+          : group.fields
+      )
+    : entry.inputs;
+
+// Mirrored in the frontend by buildNfCoreManifest
+// (frontend/src/registry/nfcore/manifest.ts).
 const buildAdapterManifest = (entry: NfCoreCatalogEntry) => ({
-  schemaVersion: 1,
+  schemaVersion: 2,
   generatedAt: new Date().toISOString(),
   id: entry.id,
   label: entry.label,
@@ -439,10 +478,12 @@ const buildAdapterManifest = (entry: NfCoreCatalogEntry) => ({
   settings: entry.settings,
   source: entry.source,
   inputGroups: entry.inputGroups,
-  inputs: entry.inputs.map((inputName) => ({
+  valueInputs: entry.valueInputs ?? [],
+  inputs: getInputPorts(entry).map((inputName) => ({
     handle: inputName,
     nfcoreName: inputName,
-    adapter: inputName === "reads" ? "fastq_reads_with_meta" : "path",
+    adapter:
+      !entry.inputGroups && inputName === "reads" ? "fastq_reads_with_meta" : "path",
     label: toTitle(inputName),
   })),
   outputs: entry.emits.map((emit) => ({

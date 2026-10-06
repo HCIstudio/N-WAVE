@@ -4,6 +4,12 @@ import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import {
+  getInputDeclarations,
+  getInputGroups,
+  getMetaInputs,
+  getValueInputs,
+} from "./nfcoreModuleParser.mjs";
 
 const repoUrl = "https://github.com/nf-core/modules.git";
 const repoRef = process.env.NFCORE_MODULES_REF || "master";
@@ -220,138 +226,25 @@ function getExtArgNames(mainNf) {
   );
 }
 
-function getInputDeclarations(mainNf) {
-  const inputBlock = mainNf.match(/^\s*input:\s*$([\s\S]*?)(?=^\s*(output|when|script|shell|stub):\s*$)/m)?.[1] ?? "";
-  return inputBlock
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => /^(tuple|path|val|env|stdin)\b/.test(line));
-}
+/**
+ * Per-module corrections where the generic heuristics in
+ * nfcoreModuleParser.mjs pick the wrong channel mode for a path field.
+ */
+const channelModeOverrides = {
+  // MultiQC reports on every upstream QC file in a single task.
+  multiqc: { multiqc_files: "collect" },
+};
 
-function splitTopLevel(value) {
-  const parts = [];
-  let current = "";
-  let depth = 0;
-  let quote = "";
-
-  for (const char of value) {
-    if (quote) {
-      current += char;
-      if (char === quote) quote = "";
-      continue;
-    }
-
-    if (char === "'" || char === '"') {
-      quote = char;
-      current += char;
-      continue;
-    }
-
-    if (char === "(") depth += 1;
-    if (char === ")") depth = Math.max(0, depth - 1);
-
-    if (char === "," && depth === 0) {
-      parts.push(current.trim());
-      current = "";
-      continue;
-    }
-
-    current += char;
-  }
-
-  if (current.trim()) parts.push(current.trim());
-  return parts;
-}
-
-function stripLineComment(value) {
-  let quote = "";
-  for (let index = 0; index < value.length - 1; index += 1) {
-    const char = value[index];
-    if (quote) {
-      if (char === quote) quote = "";
-      continue;
-    }
-    if (char === "'" || char === '"') {
-      quote = char;
-      continue;
-    }
-    if (char === "/" && value[index + 1] === "/") {
-      return value.slice(0, index).trim();
-    }
-  }
-  return value.trim();
-}
-
-function getInputGroups(inputDeclarations) {
-  return inputDeclarations.map((declaration, index) =>
-    parseInputDeclaration(declaration, index)
-  );
-}
-
-function parseInputDeclaration(declaration, index) {
-  const clean = stripLineComment(declaration);
-
-  if (clean.startsWith("path ")) {
-    const field = clean.match(/^path\s+([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
-    return {
-      argumentIndex: index,
-      handle: field || `input_${index + 1}`,
-      tuple: false,
-      metaName: null,
-      fields: field ? [field] : [],
-      unsupported: field ? [] : [`Could not parse path input declaration: ${declaration}`],
-    };
-  }
-
-  if (!clean.startsWith("tuple ")) {
-    return {
-      argumentIndex: index,
-      handle: `input_${index + 1}`,
-      tuple: false,
-      metaName: null,
-      fields: [],
-      unsupported: [`Unsupported input declaration: ${declaration}`],
-    };
-  }
-
-  const tokens = splitTopLevel(clean.replace(/^tuple\s+/, ""));
-  const fields = [];
-  const unsupported = [];
-  let metaName = null;
-
-  tokens.forEach((token, tokenIndex) => {
-    const valMatch = token.match(/^val\(([^)]+)\)$/);
-    if (valMatch) {
-      const name = valMatch[1].trim();
-      if (tokenIndex === 0 && /^meta\d*$/.test(name)) {
-        metaName = name;
-      } else {
-        unsupported.push(`Unsupported tuple value input: ${token}`);
+function applyChannelModeOverrides(modulePath, inputGroups) {
+  const overrides = channelModeOverrides[modulePath] ?? {};
+  for (const group of inputGroups) {
+    for (const item of group.items) {
+      if (item.kind === "path" && overrides[item.name]) {
+        item.mode = overrides[item.name];
       }
-      return;
     }
-
-    const pathMatch = token.match(/^path\(\s*([A-Za-z_][A-Za-z0-9_]*)/);
-    if (pathMatch) {
-      fields.push(pathMatch[1]);
-      return;
-    }
-
-    unsupported.push(`Unsupported tuple token: ${token}`);
-  });
-
-  if (fields.length === 0) {
-    unsupported.push(`No path fields parsed from tuple declaration: ${declaration}`);
   }
-
-  return {
-    argumentIndex: index,
-    handle: fields[0] || `input_${index + 1}`,
-    tuple: true,
-    metaName,
-    fields,
-    unsupported,
-  };
+  return inputGroups;
 }
 
 function getInstallability({ modulePath, processName, outputs, emits, hasMeta, inputGroups }) {
@@ -368,9 +261,7 @@ function getInstallability({ modulePath, processName, outputs, emits, hasMeta, i
       reasons.push(`meta.yml outputs without matching emit: ${missingEmits.join(", ")}`);
     }
   }
-  if (inputGroups.length === 0) {
-    reasons.push("No supported process input declarations");
-  }
+  // Modules without inputs (e.g. database downloads) become source nodes.
 
   const unsupportedInputs = inputGroups.flatMap((group) => group.unsupported);
   if (unsupportedInputs.length > 0) {
@@ -431,7 +322,10 @@ function buildCatalog() {
     const emits = getEmits(mainNf);
     const extArgNames = getExtArgNames(mainNf);
     const inputDeclarations = getInputDeclarations(mainNf);
-    const inputGroups = getInputGroups(inputDeclarations);
+    const inputGroups = applyChannelModeOverrides(
+      modulePath,
+      getInputGroups(inputDeclarations)
+    );
     const installability = getInstallability({
       modulePath,
       processName,
@@ -464,6 +358,7 @@ function buildCatalog() {
       inputs: getInputNames(metaYaml),
       inputDeclarations,
       inputGroups: inputGroups.map(({ unsupported, ...group }) => group),
+      valueInputs: getValueInputs(inputGroups, getMetaInputs(metaYaml)),
       outputs,
       emits,
       containers: getContainerNames(metaYaml),
@@ -487,7 +382,7 @@ function buildCatalog() {
   });
 
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     generatedAt,
     source: {
       repository: repoUrl,
