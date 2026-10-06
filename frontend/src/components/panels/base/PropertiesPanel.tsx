@@ -6,6 +6,9 @@ import type { NodeData } from "../../nodes/BaseNode";
 import ConfirmDialog from "../../common/dialogs/ConfirmDialog";
 import OperatorNodePanel from "../operator/OperatorNodePanel";
 import { getNodeDefinitionForNode } from "../../../registry";
+import NodeCodeView from "./NodeCodeView";
+
+type PanelTab = "settings" | "code";
 
 interface PropertiesPanelProps {
   node: Node<NodeData>;
@@ -17,6 +20,11 @@ interface PropertiesPanelProps {
   onFocus?: () => void;
   style?: React.CSSProperties;
   recenterTrigger?: number;
+  onConvertToCustom?: (
+    node: Node<NodeData>,
+    moduleSource?: string
+  ) => Promise<void>;
+  onEditCustomNode?: (customNodeId: string) => void;
 }
 
 const PANEL_HEADER_HEIGHT = 45;
@@ -33,10 +41,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onFocus,
   style,
   recenterTrigger,
+  onConvertToCustom,
+  onEditCustomNode,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
   const [label, setLabel] = useState(node.data.label || "");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<PanelTab>("settings");
 
   const [position, setPosition] = useState({
     x: window.innerWidth - 580,
@@ -221,30 +232,88 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         </div>
       </div>
 
-      <div className="p-4 overflow-auto flex-grow">
-        <div className="space-y-4">
-          <div>
-            <label
-              htmlFor="node-label"
-              className="block text-sm font-medium text-text-light mb-1"
-            >
-              Label
-            </label>
-            <input
-              id="node-label"
-              type="text"
-              value={label}
-              onChange={handleLabelChange}
-              className="w-full rounded-md border-accent bg-background text-text shadow-sm p-2 focus:border-nextflow-green focus:ring-nextflow-green"
-              placeholder="Enter node label..."
-            />
-          </div>
-
-          <hr className="border-accent" />
-
-          {renderNodeSpecificFields()}
-        </div>
+      <div
+        role="tablist"
+        aria-label="Node panel views"
+        className="flex gap-1 border-b border-panel-border px-2"
+      >
+        {(
+          [
+            ["settings", "Settings"],
+            ["code", "Code"],
+          ] as const
+        ).map(([tab, title]) => (
+          <button
+            key={tab}
+            type="button"
+            role="tab"
+            id={`node-panel-tab-${tab}`}
+            aria-selected={activeTab === tab}
+            aria-controls={`node-panel-${tab}`}
+            tabIndex={activeTab === tab ? 0 : -1}
+            onClick={() => setActiveTab(tab)}
+            onKeyDown={(e) => {
+              if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+                const next = tab === "settings" ? "code" : "settings";
+                setActiveTab(next);
+                document.getElementById(`node-panel-tab-${next}`)?.focus();
+              }
+            }}
+            className={`-mb-px border-b-2 px-3 py-2 text-sm ${
+              activeTab === tab
+                ? "border-nextflow-green text-text"
+                : "border-transparent text-text-light hover:text-text"
+            }`}
+          >
+            {title}
+          </button>
+        ))}
       </div>
+
+      {activeTab === "code" ? (
+        <div
+          id="node-panel-code"
+          role="tabpanel"
+          aria-labelledby="node-panel-tab-code"
+          className="p-4 overflow-auto flex-grow"
+        >
+          <NodeCodeView
+            node={node}
+            onConvertToCustom={onConvertToCustom}
+            onEditCustomNode={onEditCustomNode}
+          />
+        </div>
+      ) : (
+        <div
+          id="node-panel-settings"
+          role="tabpanel"
+          aria-labelledby="node-panel-tab-settings"
+          className="p-4 overflow-auto flex-grow"
+        >
+          <div className="space-y-4">
+            <div>
+              <label
+                htmlFor="node-label"
+                className="block text-sm font-medium text-text-light mb-1"
+              >
+                Label
+              </label>
+              <input
+                id="node-label"
+                type="text"
+                value={label}
+                onChange={handleLabelChange}
+                className="w-full rounded-md border-accent bg-background text-text shadow-sm p-2 focus:border-nextflow-green focus:ring-nextflow-green"
+                placeholder="Enter node label..."
+              />
+            </div>
+
+            <hr className="border-accent" />
+
+            {renderNodeSpecificFields()}
+          </div>
+        </div>
+      )}
       <div
         className="absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize text-gray-500 hover:text-text"
         onMouseDown={onResizeMouseDown}

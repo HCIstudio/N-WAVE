@@ -92,3 +92,11 @@ export const installNfCoreModule = async (
 
   return response.data.manifest;
 };
+
+/** `main.nf` of an nf-core module, e.g. getNfCoreModuleSource("nf-core/fastqc"). */
+export const getNfCoreModuleSource = async (id: string): Promise<string> => {
+  const response = await api.get<{ id: string; source: string }>(
+    `/nfcore/modules/source?id=${encodeURIComponent(id)}`
+  );
+  return response.data.source;
+};

@@ -25,6 +25,8 @@ export interface CustomNodeInput {
   defaultValue?: string;
   settingType?: CustomNodeSettingType;
   options?: string[];
+  /** Pass all upstream files to one task (`.collect()`), like Merge does. */
+  collect?: boolean;
 }
 
 export interface CustomNodeOutput {
@@ -58,6 +60,11 @@ export interface StoredCustomNode {
   inputs: CustomNodeInput[];
   outputs: CustomNodeOutput[];
   arguments: CustomNodeArgument[];
+  /**
+   * Process config statements (e.g. `ext.args = '--nogroup'`), emitted as a
+   * `withName` block. Used when converting nf-core nodes.
+   */
+  config?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -152,9 +159,18 @@ export const createStoredCustomNode = (
     processType: id,
     processName: parsed.processName,
     source: draft.source,
-    inputs: overrides.inputs,
+    // Keep settings the editor doesn't expose (collect, config) on edit.
+    inputs: overrides.inputs.map((input) => {
+      const previous = existingNode?.inputs.find(
+        (candidate) => candidate.name === input.name
+      );
+      return input.collect === undefined && previous?.collect
+        ? { ...input, collect: true }
+        : input;
+    }),
     outputs: overrides.outputs,
     arguments: parsed.arguments,
+    ...(existingNode?.config ? { config: existingNode.config } : {}),
     createdAt: existingNode?.createdAt ?? now,
     updatedAt: now,
   };
@@ -182,7 +198,7 @@ export const unregisterCustomNode = (id: string): void => {
   unregisterDynamicNodeDefinitions([id]);
 };
 
-const createNodeDefinitionFromCustomNode = (
+export const createNodeDefinitionFromCustomNode = (
   customNode: StoredCustomNode
 ): NodeDefinition => {
   const pathInputs = customNode.inputs.filter((input) => input.kind === "path");
@@ -267,12 +283,26 @@ const generateCustomNode =
       ...outputAssignments,
     ].join("");
 
+    const configStatements = (customNode.config ?? []).filter(
+      (statement) => statement.trim() !== ""
+    );
+
     return {
       processScript: source,
       channelDefinitions: argumentChannels
         .map((channel) => channel.definition)
         .filter((definition): definition is string => Boolean(definition)),
       processInvocations: [invocation],
+      nextflowConfigBlocks:
+        configStatements.length > 0
+          ? [
+              [
+                `withName: '${processName}' {`,
+                ...configStatements.map((statement) => `  ${statement.trim()}`),
+                "}",
+              ].join("\n"),
+            ]
+          : undefined,
     };
   };
 
@@ -321,7 +351,10 @@ const buildArgumentChannels = ({
         channelNameMap
       );
       if (!upstream) return null;
-      channels.push({ name: upstream });
+      const collect = customNode.inputs.some(
+        (input) => input.name === argument.name && input.collect
+      );
+      channels.push({ name: collect ? `${upstream}.collect()` : upstream });
       continue;
     }
 
@@ -519,9 +552,23 @@ const splitTopLevel = (value: string): string[] => {
   return parts;
 };
 
-const stripLineComment = (value: string): string => {
-  const index = value.indexOf("//");
-  return index === -1 ? value : value.slice(0, index);
+/** Drop a trailing `// comment`, ignoring `//` inside quoted strings. */
+export const stripLineComment = (value: string): string => {
+  let quote = "";
+  for (let index = 0; index < value.length; index += 1) {
+    const char = value[index];
+    if (quote) {
+      if (char === "\\") index += 1;
+      else if (char === quote) quote = "";
+      continue;
+    }
+    if (char === "'" || char === '"') {
+      quote = char;
+    } else if (char === "/" && value[index + 1] === "/") {
+      return value.slice(0, index);
+    }
+  }
+  return value;
 };
 
 const renameProcess = (

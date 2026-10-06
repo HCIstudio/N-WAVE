@@ -173,3 +173,12 @@ export const installNfCoreModuleSchema = z.object({
     .min(1, "Module id is required")
     .max(MAX_NAME_LENGTH),
 });
+
+export const nfCoreModuleSourceQuerySchema = z.object({
+  id: z
+    .string({ required_error: "Module id is required" })
+    .regex(
+      /^nf-core\/[A-Za-z0-9_-]+(\/[A-Za-z0-9_-]+)*$/,
+      'must look like "nf-core/fastqc"'
+    ),
+});

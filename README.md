@@ -87,6 +87,20 @@ For the backend to launch containers, the host Docker socket is mounted into it
 (`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
 volumes. Both are set up in the compose files.
 
+### Node code and custom nodes
+
+Every node on the canvas has a **Code** tab in its panel. It shows, read-only, the Nextflow
+code that node adds to the generated script: its process (or, for nf-core nodes, the
+module's `main.nf` and the `include` line), any `process { withName: ... }` configuration,
+and its lines in the `workflow` block.
+
+To change that code, use **Convert to custom node** on the Code tab. The node is replaced in
+place by a custom node holding a copy of its process (including settings such as nf-core
+`ext.args`), and connections to ports that still exist are kept. Custom nodes are edited with
+the custom node editor ("Edit custom node", or **Add node → Custom process** for a new one)
+and are stored by the backend, or in the browser in the online demo, so new steps don't need
+a code change to N-WAVE.
+
 ## Running N-WAVE
 
 ### With published images (Docker)

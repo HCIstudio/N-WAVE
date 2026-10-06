@@ -28,6 +28,7 @@ import {
   WorkflowExecutionErrorNotification,
 } from "../components/common";
 import ExecutionStatusPanel from "../components/common/workflow/ExecutionStatusPanel";
+import CustomNodeModal from "../components/common/forms/CustomNodeModal";
 import { useExecutionStatus, useLatestRef } from "../hooks";
 import { generateNextflowScript } from "../generators";
 import { Loader } from "lucide-react";
@@ -37,8 +38,15 @@ import TutorialCallout from "../components/tutorial/TutorialCallout";
 import {
   deleteCustomNode,
   migrateLegacyCustomNodes,
+  persistCustomNode,
   refreshCustomNodes,
 } from "../api/customNodes";
+import { getNodeCode } from "../registry/nodeCode";
+import {
+  buildConvertedNode,
+  buildCustomNodeFromNode,
+  remapEdges,
+} from "../registry/convertToCustomNode";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
 import { isoDurationToMinutes } from "../utils/duration";
 import {
@@ -268,6 +276,8 @@ const WorkflowPageContent: React.FC = () => {
   const [customNodeDeleteError, setCustomNodeDeleteError] = useState<
     string | null
   >(null);
+  const [editingCustomNode, setEditingCustomNode] =
+    useState<StoredCustomNode | null>(null);
 
   const applyCustomNodeDefinitionToPlacedNodes = useCallback(
     (customNode: StoredCustomNode, markDirty = true) => {
@@ -816,6 +826,62 @@ const WorkflowPageContent: React.FC = () => {
   useEffect(() => {
     fetchWorkflow();
   }, [fetchWorkflow]);
+
+  // Replace a bundled or nf-core node with an editable custom copy, keeping
+  // its id, position and the connections whose ports still exist.
+  const handleConvertToCustomNode = useCallback(
+    async (node: Node<NodeData>, moduleSource?: string) => {
+      if (!(await ensureEditableWorkflow())) return;
+      const code = getNodeCode(node);
+      if (!code) {
+        throw new Error("This node has no process code to convert.");
+      }
+      const { customNode, ports } = buildCustomNodeFromNode(
+        node,
+        code,
+        moduleSource
+      );
+      const saved = await persistCustomNode(customNode);
+      const converted = buildConvertedNode(node, saved);
+      const { edges: nextEdges, removed } = remapEdges(edges, node.id, ports);
+
+      setNodes((currentNodes) =>
+        currentNodes.map((current) =>
+          current.id === node.id ? converted : current
+        )
+      );
+      setEdges(nextEdges);
+      setIsDirty(true);
+      const label = converted.data.label;
+      showToast(
+        removed.length > 0
+          ? `Converted "${label}" to a custom node. ${removed.length} connection${removed.length === 1 ? " had" : "s had"} no matching port and ${removed.length === 1 ? "was" : "were"} removed.`
+          : `Converted "${label}" to a custom node.`,
+        removed.length > 0 ? "warning" : "success"
+      );
+    },
+    [edges, ensureEditableWorkflow, setNodes, setEdges, setIsDirty, showToast]
+  );
+
+  const handleEditCustomNode = useCallback(
+    async (customNodeId: string) => {
+      try {
+        const stored = await refreshCustomNodes();
+        const customNode =
+          stored.find((candidate) => candidate.id === customNodeId) ??
+          (nodes.find((node) => node.data.customNodeId === customNodeId)?.data
+            .customNodeDefinition as StoredCustomNode | undefined);
+        if (!customNode) {
+          showError("This custom node is no longer in the node library.");
+          return;
+        }
+        setEditingCustomNode(customNode);
+      } catch (error: unknown) {
+        showError(getApiErrorMessage(error, "Failed to load the custom node."));
+      }
+    },
+    [nodes, showError]
+  );
 
   // Initialize execution settings in localStorage if not present
   useEffect(() => {
@@ -1575,6 +1641,8 @@ const WorkflowPageContent: React.FC = () => {
             onFocus={() => bringPanelToFront(node.id)}
             style={style}
             recenterTrigger={recenterTrigger}
+            onConvertToCustom={handleConvertToCustomNode}
+            onEditCustomNode={handleEditCustomNode}
           />
         );
     });
@@ -1711,6 +1779,15 @@ const WorkflowPageContent: React.FC = () => {
           }}
         />
       )}
+      <CustomNodeModal
+        isOpen={editingCustomNode !== null}
+        node={editingCustomNode}
+        onClose={() => setEditingCustomNode(null)}
+        onSaved={(savedNode) => {
+          applyCustomNodeDefinitionToPlacedNodes(savedNode);
+          refreshCustomNodes().catch(() => 0);
+        }}
+      />
       {toast && (
         <Toast message={toast.message} type={toast.type} onClose={closeToast} />
       )}

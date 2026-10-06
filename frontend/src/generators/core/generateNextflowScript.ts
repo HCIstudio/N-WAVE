@@ -130,11 +130,7 @@ export const generateNextflowScript = (
     ) {
       if (invokedNodes.has(node.id)) continue;
       invokedNodes.add(node.id);
-      // Robust process name generation
-      let type = node.data.processType || node.data.operatorType || node.type;
-      if (!type || typeof type !== "string" || type === "undefined")
-        type = "process";
-      const processName = `${type}_${node.id.replace(/[\s-]+/g, "_")}`;
+      const processName = getProcessNameForNode(node);
       const incomingEdges = sortIncomingEdges(
         edges.filter((edge) => edge.target === node.id)
       );
@@ -503,7 +499,16 @@ function resolveChannelNameForEdge(
   return null;
 }
 
-function buildMixedChannelExpression(channelNames: string[]): string {
+/** Process name the generator uses for a node, e.g. "filter_node_123". */
+export function getProcessNameForNode(node: Node): string {
+  let type = node.data.processType || node.data.operatorType || node.type;
+  if (!type || typeof type !== "string" || type === "undefined") {
+    type = "process";
+  }
+  return `${type}_${node.id.replace(/[\s-]+/g, "_")}`;
+}
+
+export function buildMixedChannelExpression(channelNames: string[]): string {
   if (channelNames.length === 1) {
     return channelNames[0];
   }
@@ -628,7 +633,7 @@ function getInvocationExpression(trimmedInvocation: string): string {
   return trimmedInvocation;
 }
 
-function sanitizeVarName(name: string): string {
+export function sanitizeVarName(name: string): string {
   if (typeof name !== "string") return "";
   let sanitized = name.replace(/[-\s]+/g, "_");
   if (/^[0-9]/.test(sanitized)) {

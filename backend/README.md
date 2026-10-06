@@ -32,7 +32,7 @@ All routes are under `/api`:
 
 - `workflows` — `GET`/`POST` `/workflows`, `GET`/`PUT`/`DELETE` `/workflows/:id`
 - `execute` — `POST` `/execute/execute`, `POST` `/execute/cancel`, `GET` `/execute/docker-status`, `GET` `/execute/nextflow-status`
-- `nfcore`, `custom-nodes` — node catalog and custom node definitions
+- `nfcore`, `custom-nodes` — node catalog and custom node definitions; `GET /nfcore/modules/source?id=nf-core/<module>` returns an installed or bundled module's `main.nf`
 
 Request bodies are validated with [zod](https://zod.dev) schemas in
 `src/validation/schemas.ts`. Invalid requests get a `400` with
