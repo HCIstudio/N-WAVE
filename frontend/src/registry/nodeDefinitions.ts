@@ -74,6 +74,8 @@ export interface NodeDefinition {
   executionLabel?: string;
   generateNextflow?: NodeGenerator;
   validateConnection?: NodeConnectionValidator;
+  /** Kept for loading older workflows but not offered in the node palette. */
+  hiddenFromPalette?: boolean;
 }
 
 const withPorts = (
@@ -202,6 +204,8 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     panel: ProcessNodePanel,
     generateNextflow: generateGenericProcessNode,
     executionLabel: "Process",
+    // Superseded by "Custom process" (a custom node with real code).
+    hiddenFromPalette: true,
   },
   {
     id: "fastqc",
@@ -409,6 +413,7 @@ export const getNodePaletteCategories = (): NextflowProcessCategory[] => {
   const categories = new Map<string, NextflowProcessCategory>();
 
   for (const definition of nodeDefinitions) {
+    if (definition.hiddenFromPalette) continue;
     let category = categories.get(definition.category);
     if (!category) {
       category = {

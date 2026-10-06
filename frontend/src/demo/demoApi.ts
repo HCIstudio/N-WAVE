@@ -6,6 +6,8 @@
 // status) don't change — they still get `{ data }` responses and axios-shaped
 // errors (`error.response.status`, `error.response.data.message`).
 
+import { demoCustomNodes } from "./demoCustomNodes";
+import { fetchNfCoreModuleSource } from "./demoNfCore";
 import { demoStore, DemoStoreError, type WorkflowPayload } from "./demoStore";
 
 interface DemoResponse<T = unknown> {
@@ -53,6 +55,17 @@ const EXECUTION_DISABLED_MESSAGE =
 const demoApi = {
   get<T = unknown>(url: string): Promise<DemoResponse<T>> {
     const path = normalize(url);
+    if (path === "/custom-nodes") {
+      return ok(demoCustomNodes.list() as T);
+    }
+    if (path === "/nfcore/modules/source") {
+      const id = new URL(url, "http://demo").searchParams.get("id") ?? "";
+      return fetchNfCoreModuleSource(id).then(
+        (source) => ok({ id, source } as T),
+        (error: unknown) =>
+          fail(404, error instanceof Error ? error.message : String(error))
+      );
+    }
     if (path === "/workflows") {
       return ok(demoStore.list() as T);
     }
@@ -98,6 +111,15 @@ const demoApi = {
       );
     }
 
+    if (path === "/custom-nodes") {
+      return runStore(
+        () =>
+          demoCustomNodes.save(
+            (data as { node: Parameters<typeof demoCustomNodes.save>[0] }).node
+          ) as T
+      );
+    }
+
     // Execution can't run in a static, backend-less demo.
     if (path === "/execute/execute") {
       return fail(501, EXECUTION_DISABLED_MESSAGE);
@@ -132,6 +154,13 @@ const demoApi = {
         demoStore.remove(decodeURIComponent(workflowMatch[1]));
         return { message: "Workflow deleted successfully" } as T;
       });
+    }
+    const customNodeMatch = path.match(/^\/custom-nodes\/([^/]+)$/);
+    if (customNodeMatch) {
+      const id = decodeURIComponent(customNodeMatch[1]);
+      return demoCustomNodes.remove(id)
+        ? ok({ id } as T)
+        : fail(404, "Custom node not found");
     }
     return fail(404, `No demo handler for DELETE ${path}`);
   },

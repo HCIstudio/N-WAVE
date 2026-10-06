@@ -2,8 +2,12 @@ import type { Request, Response } from "express";
 import axios from "axios";
 import fs from "node:fs";
 import path from "node:path";
+import { findNfCoreModuleDir, getNwaveDataRoot } from "../execution/nfcoreModules";
 import { getErrorMessage } from "../utils/errors";
-import { installNfCoreModuleSchema } from "../validation/schemas";
+import {
+  installNfCoreModuleSchema,
+  nfCoreModuleSourceQuerySchema,
+} from "../validation/schemas";
 import { parseBody } from "../validation/validate";
 
 type SupportLevel = "full" | "candidate" | "needs_review" | "unsupported";
@@ -222,6 +226,38 @@ export const installNfCoreModule = async (
   }
 };
 
+export const getNfCoreModuleSource = (req: Request, res: Response): void => {
+  const parsed = nfCoreModuleSourceQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({
+      message: "Invalid module id",
+      error: parsed.error.issues[0]?.message ?? "Invalid module id",
+    });
+    return;
+  }
+
+  const moduleName = parsed.data.id.replace(/^nf-core\//, "");
+  const moduleDir = findNfCoreModuleDir(moduleName);
+  if (!moduleDir) {
+    res.status(404).json({
+      message: `nf-core module ${parsed.data.id} is not installed`,
+    });
+    return;
+  }
+
+  try {
+    res.json({
+      id: parsed.data.id,
+      source: fs.readFileSync(path.join(moduleDir, "main.nf"), "utf8"),
+    });
+  } catch (error: unknown) {
+    res.status(500).json({
+      message: "Failed to read nf-core module source",
+      error: getErrorMessage(error),
+    });
+  }
+};
+
 const loadCatalog = (): NfCoreCatalog => {
   if (catalogCache.value) return catalogCache.value;
 
@@ -245,8 +281,6 @@ const resolveCatalogPath = (): string => {
   return catalogPath;
 };
 
-const getNwaveDataRoot = (): string =>
-  path.resolve(process.env.NWAVE_DATA_DIR || path.join(process.cwd(), "results", ".nwave"));
 
 const getInstalledIndexPath = (): string =>
   path.join(getNwaveDataRoot(), "nf-core", "installed.json");

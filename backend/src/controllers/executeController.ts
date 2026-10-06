@@ -21,6 +21,7 @@ import {
   normalizeLegacyGeneratedScript,
   stabilizeWorkflowInvocations,
 } from "../execution/nextflowScript";
+import { resolveNfCoreModuleDir } from "../execution/nfcoreModules";
 import type { ExecutionSettings } from "../execution/types";
 import { getErrorMessage } from "../utils/errors";
 import { cancelExecutionSchema, executeRequestSchema } from "../validation/schemas";
@@ -573,7 +574,7 @@ const materializeNfCoreModules = (
   if (moduleNames.length === 0) return;
 
   for (const moduleName of moduleNames) {
-    const sourceDir = resolveNfCoreModuleSourceDir(moduleName);
+    const sourceDir = resolveNfCoreModuleDir(moduleName);
 
     for (const targetRoot of targetModuleRoots) {
       const targetDir = path.join(targetRoot, "nf-core", ...moduleName.split("/"));
@@ -591,59 +592,6 @@ const materializeNfCoreModules = (
       console.log(`Materialized nf-core module ${moduleName}: ${targetDir}`);
     }
   }
-};
-
-const resolveNfCoreModuleSourceDir = (moduleName: string): string => {
-  const sourceRoots = [
-    ...resolveInstalledNfCoreModuleRoots(),
-    ...resolveBundledNfCoreModuleRoots(),
-  ];
-  const sourceDir = sourceRoots
-    .map((sourceRoot) => path.join(sourceRoot, ...moduleName.split("/")))
-    .find((candidate) => fs.existsSync(candidate));
-
-  if (!sourceDir) {
-    throw new Error(
-      `nf-core module "${moduleName}" is not installed or bundled. Checked roots: ${sourceRoots.join(", ")}`
-    );
-  }
-
-  return sourceDir;
-};
-
-const resolveInstalledNfCoreModuleRoots = (): string[] => {
-  const dataRoot = path.resolve(
-    process.env.NWAVE_DATA_DIR || path.join(process.cwd(), "results", ".nwave")
-  );
-  const installedRoot = path.join(dataRoot, "nf-core", "modules", "nf-core");
-  return fs.existsSync(installedRoot) ? [installedRoot] : [];
-};
-
-const resolveBundledNfCoreModuleRoots = (): string[] => {
-  const candidates = [
-    path.join(
-      process.cwd(),
-      "dist",
-      "workflows",
-      "library",
-      "assets",
-      "nf-core",
-      "modules",
-      "nf-core"
-    ),
-    path.join(
-      process.cwd(),
-      "src",
-      "workflows",
-      "library",
-      "assets",
-      "nf-core",
-      "modules",
-      "nf-core"
-    ),
-  ];
-
-  return candidates.filter((candidate) => fs.existsSync(candidate));
 };
 
 export const cancelExecution = (req: Request, res: Response): void => {

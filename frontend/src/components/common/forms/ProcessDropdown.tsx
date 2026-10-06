@@ -87,7 +87,7 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
         >
           <DynamicIcon name="FileCode" className="h-4 w-4" />
-          Add Custom Node
+          Custom process
         </button>
       </div>
       <div className="p-1 overflow-y-auto max-h-96">
