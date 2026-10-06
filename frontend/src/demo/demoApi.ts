@@ -7,7 +7,6 @@
 // errors (`error.response.status`, `error.response.data.message`).
 
 import { demoCustomNodes } from "./demoCustomNodes";
-import { fetchNfCoreModuleSource } from "./demoNfCore";
 import { demoStore, DemoStoreError, type WorkflowPayload } from "./demoStore";
 
 interface DemoResponse<T = unknown> {
@@ -49,6 +48,25 @@ const runStore = <T>(fn: () => T): Promise<DemoResponse<T>> => {
   }
 };
 
+// The nf-core support (manifest building, catalog loading) is only needed
+// when the library is used, so it is loaded on demand, outside the entry chunk.
+const loadNfCore = () => import("./demoNfCore");
+
+/** runStore for async handlers: store errors become axios-shaped errors. */
+const runAsync = <T>(fn: () => Promise<T>): Promise<DemoResponse<T>> =>
+  fn().then(
+    (data) => ({ data, status: 200 }),
+    (error: unknown) => {
+      if (error instanceof DemoStoreError) {
+        return fail(error.status, error.message);
+      }
+      return fail(
+        500,
+        error instanceof Error ? error.message : "Demo store error"
+      );
+    }
+  );
+
 const EXECUTION_DISABLED_MESSAGE =
   "Workflow execution is disabled in the hosted demo. Download the Docker version to run workflows for real. You can still build, edit, import and inspect the generated Nextflow script here.";
 
@@ -58,9 +76,21 @@ const demoApi = {
     if (path === "/custom-nodes") {
       return ok(demoCustomNodes.list() as T);
     }
+    if (path === "/nfcore/catalog") {
+      return runAsync(
+        async () => (await loadNfCore()).demoNfCore.catalog() as Promise<T>
+      );
+    }
+    if (path === "/nfcore/installed") {
+      return runAsync(
+        async () => (await loadNfCore()).demoNfCore.installed() as Promise<T>
+      );
+    }
     if (path === "/nfcore/modules/source") {
       const id = new URL(url, "http://demo").searchParams.get("id") ?? "";
-      return fetchNfCoreModuleSource(id).then(
+      return loadNfCore()
+        .then(({ fetchNfCoreModuleSource }) => fetchNfCoreModuleSource(id))
+        .then(
         (source) => ok({ id, source } as T),
         (error: unknown) =>
           fail(404, error instanceof Error ? error.message : String(error))
@@ -109,6 +139,19 @@ const demoApi = {
       return runStore(
         () => demoStore.duplicate(decodeURIComponent(duplicateMatch[1])) as T
       );
+    }
+
+    if (path === "/nfcore/install" || path === "/nfcore/uninstall") {
+      const id = (data as { id?: unknown } | undefined)?.id;
+      if (typeof id !== "string" || id.trim() === "") {
+        return fail(400, "Module id is required");
+      }
+      return runAsync(async () => {
+        const { demoNfCore } = await loadNfCore();
+        return (path === "/nfcore/install"
+          ? demoNfCore.install(id.trim())
+          : demoNfCore.uninstall(id.trim())) as Promise<T>;
+      });
     }
 
     if (path === "/custom-nodes") {

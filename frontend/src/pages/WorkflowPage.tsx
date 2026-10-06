@@ -41,6 +41,7 @@ import {
   persistCustomNode,
   refreshCustomNodes,
 } from "../api/customNodes";
+import { refreshInstalledNfCoreNodes } from "../api/nfcore";
 import { getNodeCode } from "../registry/nodeCode";
 import {
   buildConvertedNode,
@@ -394,7 +395,10 @@ const WorkflowPageContent: React.FC = () => {
     }
   }, [customNodeDeleteCandidate, purgeCustomNodeFromCurrentWorkflow]);
 
+  // Register installed nf-core modules and custom nodes, so saved
+  // workflows that use them generate code without opening the node menu.
   useEffect(() => {
+    refreshInstalledNfCoreNodes().catch(() => 0);
     migrateLegacyCustomNodes()
       .catch(() => 0)
       .finally(() => {

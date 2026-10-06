@@ -238,6 +238,41 @@ export const installNfCoreModule = async (
   }
 };
 
+/** Remove an installed module's files and its entry in the install index. */
+export const uninstallNfCoreModule = (req: Request, res: Response): void => {
+  const body = parseBody(installNfCoreModuleSchema, req, res);
+  if (!body) return;
+
+  try {
+    const index = loadInstalledIndex();
+    const installed = index[body.id];
+    if (!installed) {
+      const bundled = loadCatalog().modules.some(
+        (entry) => entry.id === body.id && entry.installedByDefault
+      );
+      res.status(bundled ? 400 : 404).json({
+        message: bundled
+          ? `${body.id} is bundled with N-WAVE and can't be removed`
+          : `nf-core module ${body.id} is not installed`,
+      });
+      return;
+    }
+
+    const moduleRoot = path.resolve(installed.moduleDir);
+    ensureInside(path.join(getNwaveDataRoot(), "nf-core", "modules"), moduleRoot);
+    fs.rmSync(moduleRoot, { recursive: true, force: true });
+    delete index[body.id];
+    writeInstalledIndex(index);
+
+    res.json({ id: body.id });
+  } catch (error: unknown) {
+    res.status(500).json({
+      message: "Failed to uninstall nf-core module",
+      error: getErrorMessage(error),
+    });
+  }
+};
+
 export const getNfCoreModuleSource = (req: Request, res: Response): void => {
   const parsed = nfCoreModuleSourceQuerySchema.safeParse(req.query);
   if (!parsed.success) {

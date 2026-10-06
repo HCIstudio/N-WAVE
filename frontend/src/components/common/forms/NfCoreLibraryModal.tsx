@@ -1,11 +1,14 @@
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
+import { isDemoMode } from "../../../api";
 import {
   getNfCoreCatalog,
   installNfCoreModule,
   refreshInstalledNfCoreNodes,
+  uninstallNfCoreModule,
   type NfCoreCatalogModule,
 } from "../../../api/nfcore";
+import { getNfCoreInputPorts } from "../../../registry/nfcore/manifest";
 import DynamicIcon from "../ui/DynamicIcon";
 import SearchInput from "./SearchInput";
 import { getErrorMessage } from "../../../utils/errors";
@@ -34,6 +37,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [page, setPage] = useState(0);
 
   useEffect(() => {
@@ -84,19 +88,40 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
     currentPage * pageSize + pageSize
   );
 
+  const setInstalled = (id: string, installed: boolean) =>
+    setCatalog((current) =>
+      current.map((candidate) =>
+        candidate.id === id ? { ...candidate, installed } : candidate
+      )
+    );
+
+  const handleUninstall = async (module: NfCoreCatalogModule) => {
+    setInstallingId(module.id);
+    setError(null);
+    setNotice(null);
+    try {
+      await uninstallNfCoreModule(module.id);
+      setInstalled(module.id, false);
+      setNotice(
+        `Removed ${module.id}. Workflows that use it need it reinstalled to generate code.`
+      );
+      onInstalled();
+    } catch (uninstallError: unknown) {
+      setError(getErrorMessage(uninstallError, `Failed to remove ${module.id}`));
+    } finally {
+      setInstallingId(null);
+    }
+  };
+
   const handleInstall = async (module: NfCoreCatalogModule) => {
     setInstallingId(module.id);
     setError(null);
+    setNotice(null);
     try {
       await installNfCoreModule(module.id);
       await refreshInstalledNfCoreNodes();
-      setCatalog((current) =>
-        current.map((candidate) =>
-          candidate.id === module.id
-            ? { ...candidate, installed: true }
-            : candidate
-        )
-      );
+      setInstalled(module.id, true);
+      setNotice(`Installed ${module.id}. It is now in the node menu.`);
       onInstalled();
     } catch (installError: unknown) {
       setError(getErrorMessage(installError, `Failed to install ${module.id}`));
@@ -114,7 +139,9 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
           <div>
             <h2 className="text-base font-semibold text-text">nf-core Library</h2>
             <p className="text-xs text-text-light">
-              Install local module adapters from the pinned catalog.
+              {isDemoMode
+                ? "Modules install into this browser. Build workflows with them and export the code here; run them with the Docker version of N-WAVE."
+                : "Install local module adapters from the pinned catalog."}
             </p>
           </div>
           <button
@@ -143,9 +170,17 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
             {isLoading && <span>Loading catalog...</span>}
           </div>
           {error && (
-            <div className="mt-2 rounded-md border border-red-500/40 bg-red-900/20 px-3 py-2 text-sm text-red-200">
+            <div
+              role="alert"
+              className="mt-2 rounded-md border border-red-500/40 bg-red-900/20 px-3 py-2 text-sm text-red-200"
+            >
               {error}
             </div>
+          )}
+          {notice && (
+            <output className="mt-2 block rounded-md border border-nextflow-green/40 bg-nextflow-green/10 px-3 py-2 text-sm text-text">
+              {notice}
+            </output>
           )}
         </div>
 
@@ -200,7 +235,11 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                   </p>
                   <p className="mt-1 text-xs text-text-light">
                     {module.processName || "No process"} - inputs{" "}
-                    {module.inputs.length} - outputs {module.outputs.length}
+                    {getNfCoreInputPorts(module).length}
+                    {module.valueInputs?.length
+                      ? ` - settings ${module.valueInputs.length}`
+                      : ""}{" "}
+                    - outputs {module.emits.length}
                   </p>
                   {module.installability?.automatic === false &&
                     module.installability.reasons.length > 0 && (
@@ -225,20 +264,35 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                     </div>
                   )}
                 </div>
-                <button
-                  type="button"
-                  disabled={!canInstall || isInstalling}
-                  onClick={() => handleInstall(module)}
-                  className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isInstalling
-                    ? "Installing..."
-                    : isInstalled
-                      ? "Installed"
-                      : canInstall
-                        ? "Install"
-                        : "Needs config"}
-                </button>
+                {isInstalled && !module.installedByDefault ? (
+                  <button
+                    type="button"
+                    disabled={isInstalling}
+                    onClick={() => handleUninstall(module)}
+                    aria-label={`Remove ${module.id}`}
+                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isInstalling ? "Removing..." : "Remove"}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!canInstall || isInstalling}
+                    onClick={() => handleInstall(module)}
+                    aria-label={
+                      canInstall ? `Install ${module.id}` : undefined
+                    }
+                    className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isInstalling
+                      ? "Installing..."
+                      : isInstalled
+                        ? "Bundled"
+                        : canInstall
+                          ? "Install"
+                          : "Needs config"}
+                  </button>
+                )}
               </div>
             );
           })}

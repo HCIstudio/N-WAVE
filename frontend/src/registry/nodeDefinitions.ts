@@ -367,11 +367,6 @@ export const unregisterDynamicNodeDefinitions = (ids: string[]): void => {
   nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
 };
 
-export const clearDynamicNodeDefinitions = (): void => {
-  dynamicNodeDefinitions.clear();
-  nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
-};
-
 export const getNodeDefinitionById = (
   id: string
 ): NodeDefinition | undefined => nodeDefinitions.find((definition) => definition.id === id);

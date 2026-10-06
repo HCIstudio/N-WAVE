@@ -4,6 +4,7 @@ import {
   installNfCoreModule,
   listInstalledNfCoreModules,
   listNfCoreCatalog,
+  uninstallNfCoreModule,
 } from "../controllers/nfcoreController";
 
 const router: Router = Router();
@@ -11,6 +12,7 @@ const router: Router = Router();
 router.get("/catalog", listNfCoreCatalog);
 router.get("/installed", listInstalledNfCoreModules);
 router.post("/install", installNfCoreModule);
+router.post("/uninstall", uninstallNfCoreModule);
 router.get("/modules/source", getNfCoreModuleSource);
 
 export default router;

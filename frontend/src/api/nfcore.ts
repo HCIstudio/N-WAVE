@@ -1,25 +1,38 @@
 import api from "../api";
+import type {
+  NfCoreModuleInputGroup,
+  NfCoreValueInput,
+} from "../registry/nfcore/inputChannels";
 import {
   createNodeDefinitionFromNfCoreManifest,
   type NfCoreAdapterManifest,
 } from "../registry/nfcoreModuleAdapters";
 import {
-  clearDynamicNodeDefinitions,
   registerDynamicNodeDefinitions,
+  unregisterDynamicNodeDefinitions,
 } from "../registry/nodeDefinitions";
 
-interface InstalledNfCoreModule {
+export interface InstalledNfCoreModule {
   id: string;
+  installedAt?: string;
+  sourceCommit?: string;
+  support?: NfCoreCatalogModule["support"];
   manifest?: NfCoreAdapterManifest;
 }
 
-interface InstalledNfCoreResponse {
+export interface InstalledNfCoreResponse {
   dataRoot?: string;
   installed: InstalledNfCoreModule[];
 }
 
 export interface NfCoreCatalogModule {
   id: string;
+  source: {
+    repository: string;
+    ref: string;
+    commit: string;
+    path: string;
+  };
   moduleName: string;
   modulePath: string;
   label: string;
@@ -29,13 +42,8 @@ export interface NfCoreCatalogModule {
   tools: string[];
   inputs: string[];
   inputDeclarations?: string[];
-  inputGroups?: Array<{
-    argumentIndex: number;
-    handle: string;
-    tuple: boolean;
-    metaName: string | null;
-    fields: string[];
-  }>;
+  inputGroups?: NfCoreModuleInputGroup[];
+  valueInputs?: NfCoreValueInput[];
   outputs: string[];
   emits: string[];
   settings?: {
@@ -60,6 +68,7 @@ export interface NfCoreCatalogModule {
 export interface NfCoreCatalogResponse {
   schemaVersion: number;
   generatedAt: string;
+  source?: { repository: string; ref: string; commit: string };
   counts: Record<string, number>;
   modules: NfCoreCatalogModule[];
 }
@@ -70,12 +79,24 @@ export const refreshInstalledNfCoreNodes = async (): Promise<number> => {
     .map((entry) => entry.manifest)
     .filter((manifest): manifest is NfCoreAdapterManifest => Boolean(manifest));
 
-  clearDynamicNodeDefinitions();
-  registerDynamicNodeDefinitions(
-    manifests.map((manifest) => createNodeDefinitionFromNfCoreManifest(manifest))
-  );
-
+  syncNfCoreNodeDefinitions(manifests);
   return manifests.length;
+};
+
+// Ids of the installed nf-core definitions in the registry, so a refresh
+// replaces only those and leaves custom nodes registered.
+const registeredNfCoreIds = new Set<string>();
+
+const syncNfCoreNodeDefinitions = (manifests: NfCoreAdapterManifest[]) => {
+  unregisterDynamicNodeDefinitions(Array.from(registeredNfCoreIds));
+  registeredNfCoreIds.clear();
+  const definitions = manifests.map((manifest) =>
+    createNodeDefinitionFromNfCoreManifest(manifest)
+  );
+  for (const definition of definitions) {
+    registeredNfCoreIds.add(definition.id);
+  }
+  registerDynamicNodeDefinitions(definitions);
 };
 
 export const getNfCoreCatalog = async (): Promise<NfCoreCatalogResponse> => {
@@ -99,4 +120,10 @@ export const getNfCoreModuleSource = async (id: string): Promise<string> => {
     `/nfcore/modules/source?id=${encodeURIComponent(id)}`
   );
   return response.data.source;
+};
+
+/** Remove an installed (not bundled) module. */
+export const uninstallNfCoreModule = async (id: string): Promise<void> => {
+  await api.post("/nfcore/uninstall", { id });
+  await refreshInstalledNfCoreNodes();
 };

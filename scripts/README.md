@@ -96,7 +96,13 @@ Installed modules live in `$NWAVE_DATA_DIR/nf-core/modules/nf-core/<module>` wit
 `nwave.adapter.json` manifest. When the catalog is regenerated, modules installed from the
 same commit pick up the new input layout automatically. Modules installed from an older
 commit keep their stored layout and show a notice in the node panel: reinstall them from the
-nf-core Library so their files and layout match.
+nf-core Library so their files and layout match. Installed modules can be removed from the
+library again (`POST /api/nfcore/uninstall`); bundled modules can't.
+
+In the online demo there is no backend: the library installs modules into the browser
+(`localStorage`), keeping each module's adapter manifest and its `main.nf`, fetched from
+GitHub at the catalog's commit. The catalog itself is a static asset loaded the first time
+the library is opened.
 
 ## Manual adapters
 
