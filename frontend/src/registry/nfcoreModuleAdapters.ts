@@ -6,6 +6,16 @@ import type {
   NodeGenerationContext,
   NodeGenerationResult,
 } from "./nodeGeneration";
+import {
+  buildNfCoreGroupChannels,
+  type NfCoreModuleInputGroup,
+  type NfCoreValueInput,
+} from "./nfcore/inputChannels";
+
+export type {
+  NfCoreModuleInputGroup,
+  NfCoreValueInput,
+} from "./nfcore/inputChannels";
 
 export type NfCoreInputAdapter = "path" | "fastq_reads_with_meta";
 
@@ -23,14 +33,6 @@ export interface NfCoreModuleOutput {
   isConnectable?: boolean;
 }
 
-export interface NfCoreModuleInputGroup {
-  argumentIndex: number;
-  handle: string;
-  tuple: boolean;
-  metaName: string | null;
-  fields: string[];
-}
-
 export interface NfCoreModuleAdapter {
   id: string;
   label: string;
@@ -42,6 +44,7 @@ export interface NfCoreModuleAdapter {
   processName: string;
   inputs: NfCoreModuleInput[];
   inputGroups?: NfCoreModuleInputGroup[];
+  valueInputs?: NfCoreValueInput[];
   outputs: NfCoreModuleOutput[];
   defaults?: Partial<NodeData>;
   buildExtArgs?: (node: Node<NodeData>) => string;
@@ -57,6 +60,8 @@ export interface NfCoreAdapterManifest {
   processName: string;
   support: "full" | "candidate" | "needs_review" | "unsupported";
   needsReview?: boolean;
+  /** Installed from an older catalog commit; reinstall to update. */
+  outdated?: boolean;
   settings?: {
     extArgs: boolean;
     extArgNames?: string[];
@@ -78,6 +83,7 @@ export interface NfCoreAdapterManifest {
     label?: string;
   }>;
   inputGroups?: NfCoreModuleInputGroup[];
+  valueInputs?: NfCoreValueInput[];
   outputs: Array<{
     handle: string;
     emit: string;
@@ -258,9 +264,17 @@ export const createNodeDefinitionFromNfCoreManifest = (
     processName: manifest.processName,
     inputs: manifest.inputs,
     inputGroups: manifest.inputGroups,
+    valueInputs: manifest.valueInputs,
     outputs: manifest.outputs,
     defaults: {
       ...manifest.defaults,
+      nfcoreValueInputs: manifest.valueInputs ?? [],
+      nfcoreValues: Object.fromEntries(
+        (manifest.valueInputs ?? []).map((input) => [
+          input.name,
+          input.defaultValue,
+        ])
+      ),
       processType: manifest.processType,
       label: manifest.label,
       subtitle: "nf-core module",
@@ -277,6 +291,7 @@ export const createNodeDefinitionFromNfCoreManifest = (
       nwaveExecutionBackend: "nf-core",
       nwaveNfCoreModuleId: manifest.id,
       nwaveNfCoreNeedsReview: manifest.needsReview,
+      nwaveNfCoreOutdated: manifest.outdated ?? false,
       nwaveNfCoreSupportsExtArgs: manifest.settings?.extArgs ?? false,
       nwaveNfCoreExtArgNames: manifest.settings?.extArgNames ?? [],
       nwaveNfCoreArgumentReferences:
@@ -298,6 +313,7 @@ export const generateNfCoreModuleNode =
     const includeStatement = `include { ${adapter.processName} as ${moduleAlias} } from '${adapter.modulePath}'`;
     const inputChannels = buildNfCoreInputChannels({
       adapter,
+      data: node.data,
       processName,
       incomingEdges,
       resolveChannelNameForEdge,
@@ -391,6 +407,7 @@ function buildAdaptedInputChannel({
 
 function buildNfCoreInputChannels({
   adapter,
+  data,
   processName,
   incomingEdges,
   resolveChannelNameForEdge,
@@ -398,6 +415,7 @@ function buildNfCoreInputChannels({
   sanitizeVarName,
 }: {
   adapter: NfCoreModuleAdapter;
+  data: NodeData;
   processName: string;
   incomingEdges: NodeGenerationContext["incomingEdges"];
   resolveChannelNameForEdge: NodeGenerationContext["resolveChannelNameForEdge"];
@@ -429,59 +447,15 @@ function buildNfCoreInputChannels({
     return inputChannels.length === adapter.inputs.length ? inputChannels : null;
   }
 
-  const inputsByHandle = new Map(
-    adapter.inputs.map((input) => [input.handle, input])
-  );
-  const inputChannels: Array<{ name: string; definition?: string }> = [];
-
-  for (const group of adapter.inputGroups
-    .slice()
-    .sort((left, right) => left.argumentIndex - right.argumentIndex)) {
-    const fields = group.fields
-      .map((field, fieldIndex) => {
-        const input = inputsByHandle.get(field);
-        const edge = findIncomingEdgeForHandle(incomingEdges, field, fieldIndex);
-        if (!input || !edge) return null;
-
-        const upstream = resolveChannelNameForEdge(edge, channelNameMap);
-        if (!upstream) return null;
-
-        return { input, upstream };
-      })
-      .filter(
-        (field): field is { input: NfCoreModuleInput; upstream: string } =>
-          field !== null
-      );
-
-    if (fields.length !== group.fields.length) return null;
-
-    if (!group.tuple && fields.length === 1) {
-      inputChannels.push(
-        buildAdaptedInputChannel({
-          adapter: fields[0].input.adapter,
-          processName,
-          handle: fields[0].input.handle,
-          upstream: fields[0].upstream,
-          sanitizeVarName,
-        })
-      );
-      continue;
-    }
-
-    const channelName = sanitizeVarName(
-      `ch_${processName}_${group.handle}_nfcore_group`
-    );
-    inputChannels.push({
-      name: channelName,
-      definition: buildTupleInputGroupDefinition({
-        channelName,
-        fields,
-        metaName: group.metaName,
-      }),
-    });
-  }
-
-  return inputChannels;
+  return buildNfCoreGroupChannels({
+    groups: adapter.inputGroups,
+    valueInputs: adapter.valueInputs ?? [],
+    data,
+    processName,
+    incomingEdges,
+    resolveUpstream: (edge) => resolveChannelNameForEdge(edge, channelNameMap),
+    sanitizeVarName,
+  });
 }
 
 function findIncomingEdgeForHandle(
@@ -495,46 +469,6 @@ function findIncomingEdgeForHandle(
       return candidate.targetHandle === handle;
     }) ?? incomingEdges[fallbackIndex]
   );
-}
-
-function buildTupleInputGroupDefinition({
-  channelName,
-  fields,
-  metaName,
-}: {
-  channelName: string;
-  fields: Array<{ input: NfCoreModuleInput; upstream: string }>;
-  metaName: string | null;
-}): string {
-  const expression = fields
-    .slice(1)
-    .reduce(
-      (current, field) => `${current}.combine(${field.upstream})`,
-      fields[0].upstream
-    );
-  const args = fields.map((_, index) => `item${index}`);
-  const valueLines = fields.map(
-    (field, index) =>
-      `        def ${field.input.handle} = extractNwavePath(item${index})`
-  );
-  const firstHandle = fields[0].input.handle;
-  const tupleValues = [
-    metaName ? "meta" : undefined,
-    ...fields.map((field) => field.input.handle),
-  ].filter(Boolean);
-
-  return [
-    `    ${channelName} = ${expression}.map { ${args.join(", ")} ->`,
-    "        def extractNwavePath = { item -> item instanceof List && item.size() > 0 ? item[-1] : item }",
-    ...valueLines,
-    metaName
-      ? `        def meta = [id: ${firstHandle}.baseName]`
-      : undefined,
-    `        tuple(${tupleValues.join(", ")})`,
-    "    }\n",
-  ]
-    .filter((line): line is string => Boolean(line))
-    .join("\n");
 }
 
 function sanitizeProcessName(name: string): string {

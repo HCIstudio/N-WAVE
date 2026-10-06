@@ -101,6 +101,10 @@ the custom node editor ("Edit custom node", or **Add node → Custom process** f
 and are stored by the backend, or in the browser in the online demo, so new steps don't need
 a code change to N-WAVE.
 
+nf-core modules are installed from the **nf-core Library**. How their inputs become ports
+and settings, and how to fix a module the automatic mapping gets wrong, is described in
+[scripts/README.md](scripts/README.md).
+
 ## Running N-WAVE
 
 ### With published images (Docker)
@@ -202,6 +206,7 @@ N-WAVE/
 │     ├─ routes/            # /api/workflows, /api/execute, /api/nfcore, /api/custom-nodes
 │     ├─ models/            # Mongoose models
 │     └─ workflows/         # built-in demo, import & materialize logic
+├─ scripts/                 # nf-core catalog generator, input parser and module docs
 ├─ frontend/                # React + Vite SPA
 │  └─ src/
 │     ├─ components/        # canvas, nodes, panels, dialogs

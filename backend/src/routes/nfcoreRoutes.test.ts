@@ -1,5 +1,8 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import request from "supertest";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app";
 
 const app = createApp();
@@ -30,4 +33,84 @@ describe("GET /api/nfcore/modules/source", () => {
         .expect(400);
     }
   );
+});
+
+describe("GET /api/nfcore/installed", () => {
+  const catalog = JSON.parse(
+    fs.readFileSync(
+      path.join(__dirname, "../workflows/library/assets/nf-core/catalog.json"),
+      "utf8"
+    )
+  ) as { source: { commit: string } };
+  let dataDir: string;
+
+  const install = (sourceCommit: string) => {
+    const moduleDir = path.join(dataDir, "nf-core/modules/nf-core/star/align");
+    fs.mkdirSync(moduleDir, { recursive: true });
+    const manifestPath = path.join(moduleDir, "nwave.adapter.json");
+    // A manifest written by an older N-WAVE: ports from meta.yml, no values.
+    fs.writeFileSync(
+      manifestPath,
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "nf-core/star/align",
+        inputs: [{ handle: "meta", nfcoreName: "meta", adapter: "path" }],
+        defaults: {},
+      })
+    );
+    fs.writeFileSync(
+      path.join(dataDir, "nf-core/installed.json"),
+      JSON.stringify({
+        "nf-core/star/align": {
+          id: "nf-core/star/align",
+          installedAt: "2026-01-01T00:00:00.000Z",
+          moduleDir,
+          manifestPath,
+          sourceCommit,
+          support: "candidate",
+        },
+      })
+    );
+  };
+
+  beforeEach(() => {
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-nfcore-"));
+    vi.stubEnv("NWAVE_DATA_DIR", dataDir);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("refreshes the input layout of modules installed from the catalog commit", async () => {
+    install(catalog.source.commit);
+    const response = await request(app).get("/api/nfcore/installed").expect(200);
+    const manifest = response.body.installed[0].manifest;
+
+    expect(manifest.inputs.map((input: { handle: string }) => input.handle)).toEqual([
+      "reads",
+      "index",
+      "gtf",
+    ]);
+    expect(manifest.valueInputs).toEqual([
+      expect.objectContaining({
+        name: "star_ignore_sjdbgtf",
+        type: "boolean",
+        defaultValue: false,
+      }),
+    ]);
+    expect(manifest.outdated).toBeUndefined();
+  });
+
+  it("keeps the stored layout of modules installed from another commit", async () => {
+    install("0000000");
+    const response = await request(app).get("/api/nfcore/installed").expect(200);
+    const manifest = response.body.installed[0].manifest;
+
+    expect(manifest.outdated).toBe(true);
+    expect(manifest.inputs).toEqual([
+      { handle: "meta", nfcoreName: "meta", adapter: "path" },
+    ]);
+  });
 });
