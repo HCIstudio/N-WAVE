@@ -73,6 +73,7 @@ const FileInput: React.FC<FileInputProps> = ({
         disabled={isUploading}
       />
       <button
+        type="button"
         onClick={handleSelectFileClick}
         className="w-full flex items-center justify-center px-4 py-2 border border-dashed border-gray-500 rounded-md text-sm font-medium text-gray-300 hover:border-blue-500 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         disabled={isUploading}

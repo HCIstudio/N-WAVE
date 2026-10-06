@@ -9,18 +9,21 @@ const CustomControls: React.FC = () => {
   return (
     <div className="absolute bottom-4 left-4 flex flex-row gap-2 z-10">
       <button
+        type="button"
         onClick={() => fitView()}
         className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
       >
         <Maximize size={16} />
       </button>
       <button
+        type="button"
         onClick={() => zoomOut()}
         className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
       >
         <ZoomOut size={16} />
       </button>
       <button
+        type="button"
         onClick={() => zoomIn()}
         className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
       >

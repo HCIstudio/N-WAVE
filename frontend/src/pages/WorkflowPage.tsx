@@ -13,7 +13,7 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import Canvas from "../components/canvas/Canvas";
 import { PropertiesPanel } from "../components/panels";
 import Header from "../components/layout/Header";
-import api from "../api";
+import api, { isDemoMode } from "../api";
 import type { NextflowProcess } from "../data/types";
 import BottomBar from "../components/canvas/BottomBar";
 import DeleteDropZone from "../components/canvas/DeleteDropZone";
@@ -22,6 +22,8 @@ import { FloatingPanel } from "../components/panels";
 import { OutputDisplayPanelContent } from "../components/panels";
 import {
   ConfirmDialog,
+  ErrorBoundary,
+  ErrorFallback,
   Toast,
   WorkflowExecutionErrorNotification,
 } from "../components/common";
@@ -38,6 +40,11 @@ import {
   refreshCustomNodes,
 } from "../api/customNodes";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
+import {
+  getApiErrorMessage,
+  getResponseData,
+  getResponseStatus,
+} from "../utils/errors";
 
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
@@ -132,7 +139,11 @@ const WorkflowPageContent: React.FC = () => {
     onConnectEnd,
     toast,
     closeToast,
+    showToast,
   } = workflowContext;
+  // Errors from user actions (save, duplicate, script generation) are shown as
+  // toasts so the editor stays usable.
+  const showError = (message: string) => showToast(message, "error");
 
   const [openPanelNodeIds, setOpenPanelNodeIds] = useState<string[]>([]);
   const [workflowName, setWorkflowName] = useState("");
@@ -145,7 +156,11 @@ const WorkflowPageContent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  // A workflow that can't be loaded replaces the editor with an error screen.
+  const [loadError, setLoadError] = useState<{
+    title: string;
+    detail: string;
+  } | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isHoveringDropZone, setIsHoveringDropZone] = useState(false);
   const [nodeToDelete, setNodeToDelete] = useState<Node<NodeData> | null>(null);
@@ -358,11 +373,9 @@ const WorkflowPageContent: React.FC = () => {
       purgeCustomNodeFromCurrentWorkflow(customNodeDeleteCandidate.id);
       await refreshCustomNodes();
       setCustomNodeDeleteCandidate(null);
-    } catch (deleteError: any) {
+    } catch (deleteError: unknown) {
       setCustomNodeDeleteError(
-        deleteError?.response?.data?.message ||
-          deleteError?.message ||
-          "Failed to delete custom node."
+        getApiErrorMessage(deleteError, "Failed to delete custom node.")
       );
     }
   }, [customNodeDeleteCandidate, purgeCustomNodeFromCurrentWorkflow]);
@@ -392,7 +405,7 @@ const WorkflowPageContent: React.FC = () => {
         navigate("/");
       }
     } catch (err) {
-      setError("Failed to remove tutorial workflow copy.");
+      showError("Failed to remove tutorial workflow copy.");
       console.error(err);
     }
   }, [navigate, workflowId]);
@@ -452,7 +465,9 @@ const WorkflowPageContent: React.FC = () => {
       navigate(`/workflow/${response.data._id}`);
       return true;
     } catch (err) {
-      setError("Failed to duplicate read-only workflow.");
+      showError(
+        `Failed to duplicate read-only workflow. ${getApiErrorMessage(err, "")}`.trim()
+      );
       console.error(err);
       setIsDuplicatingReadOnly(false);
       return false;
@@ -570,14 +585,14 @@ const WorkflowPageContent: React.FC = () => {
       // Update node statuses on the canvas based on execution status
       if (status.nodeStatuses.length === 0 && !status.isRunning) {
         // Clear all node statuses when execution is complete and not running
-        nodes.forEach((node) => {
+        for (const node of nodes) {
           if (node.data.status) {
             updateNodeData(node.id, { status: undefined });
           }
-        });
+        }
       } else if (status.nodeStatuses.length > 0) {
         // Update individual node statuses during execution
-        status.nodeStatuses.forEach((nodeStatus: any) => {
+        for (const nodeStatus of status.nodeStatuses) {
           const nodeIndex = nodes.findIndex((n) => n.id === nodeStatus.nodeId);
           if (nodeIndex !== -1) {
             // Map execution status to node status (excluding 'skipped')
@@ -585,15 +600,17 @@ const WorkflowPageContent: React.FC = () => {
               nodeStatus.status === "skipped" ? "waiting" : nodeStatus.status;
             updateNodeData(nodeStatus.nodeId, { status: nodeStatusValue });
           }
-        });
+        }
       }
     },
   });
 
   const fetchWorkflow = useCallback(async () => {
     if (!workflowId) {
-      setError("No workflow ID provided.");
-      setWorkflowName("New Workflow"); // Set default name when no ID
+      setLoadError({
+        title: "No workflow selected",
+        detail: "The address doesn't include a workflow ID.",
+      });
       setIsLoading(false);
       return;
     }
@@ -609,12 +626,6 @@ const WorkflowPageContent: React.FC = () => {
         origin,
       } = response.data;
 
-      console.log("Fetched workflow data:", {
-        name,
-        hasNodes: !!fetchedNodes,
-        hasEdges: !!fetchedEdges,
-        hasExecutionSettings: !!executionSettings,
-      });
       const workflowTitle =
         name && name.trim() !== "" ? name : "Untitled Workflow";
       setWorkflowName(workflowTitle);
@@ -675,10 +686,6 @@ const WorkflowPageContent: React.FC = () => {
           // Update the component state with the restored settings
           setExecutionSettings(executionSettings);
 
-          console.log(
-            "Restored execution settings from workflow:",
-            executionSettings
-          );
         } catch (error) {
           console.error("Failed to restore execution settings:", error);
         }
@@ -689,7 +696,6 @@ const WorkflowPageContent: React.FC = () => {
           if (savedSettings) {
             const parsed = JSON.parse(savedSettings);
             setExecutionSettings(parsed);
-            console.log("Loaded execution settings from localStorage:", parsed);
           }
         } catch (error) {
           console.error(
@@ -701,10 +707,24 @@ const WorkflowPageContent: React.FC = () => {
 
       setIsDirty(false);
     } catch (err) {
-      setError("Failed to fetch workflow.");
-      setWorkflowName("Untitled Workflow"); // Set default name on error
-      setWorkflowReadOnly(false);
       console.error(err);
+      const status = getResponseStatus(err);
+      setLoadError(
+        status === 404 || status === 400
+          ? {
+              title: "Workflow not found",
+              detail:
+                "This workflow doesn't exist or was deleted. Pick another one from the library.",
+            }
+          : {
+              title: "Couldn't load this workflow",
+              detail: `${
+                isDemoMode
+                  ? "The demo's browser storage could not be read."
+                  : "The N-WAVE backend did not respond. Make sure it is running and try again."
+              } (${getApiErrorMessage(err, "Unknown error")})`,
+            }
+      );
     } finally {
       setIsLoading(false);
     }
@@ -857,7 +877,6 @@ const WorkflowPageContent: React.FC = () => {
           "executionSettings",
           JSON.stringify(defaultSettings)
         );
-        console.log("Initialized default execution settings in localStorage");
       } catch (error) {
         console.error("Failed to initialize execution settings:", error);
       }
@@ -896,7 +915,7 @@ const WorkflowPageContent: React.FC = () => {
 
   const handleSaveWorkflow = async () => {
     if (!workflowId) {
-      setError("No workflow ID provided.");
+      showError("No workflow ID provided.");
       return;
     }
     if (workflowReadOnly) {
@@ -904,7 +923,6 @@ const WorkflowPageContent: React.FC = () => {
       return;
     }
     setIsSaving(true);
-    setError(null);
     try {
       // Strip file content from nodes before saving to avoid payload too large errors
       const sanitizedNodes = nodes.map((node) => {
@@ -956,7 +974,9 @@ const WorkflowPageContent: React.FC = () => {
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), 2000); // Show checkmark for 2 seconds
     } catch (err) {
-      setError("Failed to save workflow.");
+      showError(
+        `Failed to save workflow. ${getApiErrorMessage(err, "")}`.trim()
+      );
       console.error(err);
     } finally {
       setIsSaving(false);
@@ -967,7 +987,6 @@ const WorkflowPageContent: React.FC = () => {
   useEffect(() => {
     const autoSaveTimer = setTimeout(() => {
       if (workflowContext.isDirty && !isSaving && workflowId && !workflowReadOnly) {
-        console.log("Auto-saving workflow...");
         handleSaveWorkflow();
       }
     }, 2000); // Auto-save 2 seconds after changes
@@ -1015,9 +1034,9 @@ const WorkflowPageContent: React.FC = () => {
       URL.revokeObjectURL(url);
     } catch (e) {
       if (e instanceof Error) {
-        setError(e.message); // Display cycle detection errors to the user
+        showError(e.message); // Display cycle detection errors to the user
       } else {
-        setError("An unknown error occurred during script generation.");
+        showError("An unknown error occurred during script generation.");
       }
     }
   };
@@ -1025,7 +1044,6 @@ const WorkflowPageContent: React.FC = () => {
   const handleRunWorkflow = async (settings: ExecutionSettings) => {
     setIsRunning(true);
     setExecutionResult(null);
-    setError(null);
     setExecutionSettings(settings);
 
     // Start execution status tracking
@@ -1081,11 +1099,6 @@ const WorkflowPageContent: React.FC = () => {
         );
       }
 
-      console.log(
-        `Transferring ${Object.keys(workflowFiles).length} files to server:`,
-        Object.keys(workflowFiles)
-      );
-
       // Flatten the enhanced execution settings to match backend interface
       const flatExecutionSettings = {
         useDocker: settings.container?.enabled ?? false,
@@ -1100,16 +1113,6 @@ const WorkflowPageContent: React.FC = () => {
         cleanupOnFailure: settings.cleanup?.onFailure ?? true,
         nextflowVersion: settings.nextflow?.version ?? "25.04.4",
       };
-
-      console.log(
-        "Sending flattened execution settings:",
-        flatExecutionSettings
-      );
-      console.log("Original settings structure:", {
-        resources: settings.resources,
-        container: settings.container,
-        output: settings.output,
-      });
 
       // Execute the workflow with file content
       const response = await api.post(
@@ -1131,18 +1134,12 @@ const WorkflowPageContent: React.FC = () => {
 
       // Handle streaming response
       if (typeof response.data === "string") {
-        console.log("Received streaming response from backend");
-
         // Parse the streaming output line by line in real-time
         const lines = response.data.split("\n").filter((l) => l.trim());
 
         lines.forEach((line, index) => {
           // Parse each line immediately
           setTimeout(() => {
-            console.log(
-              `Real-time parsing line ${index + 1}/${lines.length}:`,
-              line
-            );
             executionStatus.parseNextflowOutput(line);
           }, index * 10);
         });
@@ -1193,36 +1190,23 @@ const WorkflowPageContent: React.FC = () => {
       } else {
         // Fallback for older JSON response format
         const parseOutputLines = (stdout: string, stderr = "") => {
-          console.log(
-            "🔍 Parsing real Nextflow output from completed execution..."
-          );
-
           // Combine stdout and stderr for comprehensive parsing
           const allOutput = `${stdout}\n${stderr}`;
           const lines = allOutput.split("\n").filter((l) => l.trim());
-
-          console.log(`📊 Total lines to parse: ${lines.length}`);
-          console.log("📄 Full output to parse:", allOutput);
 
           // Parse all lines to simulate the execution progression rapidly
           lines.forEach((line, index) => {
             // Add small delays to simulate real-time parsing for better UX
             setTimeout(() => {
-              console.log(
-                `📄 Parsing line ${index + 1}/${lines.length}:`,
-                line
-              );
               executionStatus.parseNextflowOutput(line);
             }, index * 50); // 50ms delay between each line for visual effect
           });
 
           // Complete execution after all lines are parsed
           setTimeout(() => {
-            console.log(`🔍 Checking for completion in output: "${allOutput}"`);
             if (
               allOutput.includes("Nextflow execution completed successfully")
             ) {
-              console.log("✅ Detected successful completion from output");
               executionStatus.completeExecution(true);
 
               if (workflowContext.showToast) {
@@ -1250,10 +1234,6 @@ const WorkflowPageContent: React.FC = () => {
         // Store execution ID immediately for cancellation
         if (response.data.executionId) {
           setCurrentExecutionId(response.data.executionId);
-          console.log(
-            "Execution ID set for cancellation:",
-            response.data.executionId
-          );
         }
 
         // Set initial execution result
@@ -1270,15 +1250,9 @@ const WorkflowPageContent: React.FC = () => {
           const { stdout, stderr, success } = response.data;
 
           if (stdout) {
-            console.log(
-              "📥 Received stdout from backend:",
-              stdout.length,
-              "characters"
-            );
             parseOutputLines(stdout, stderr);
           } else if (success) {
             // If success but no stdout, complete immediately
-            console.log("✅ Backend reported successful execution (no output)");
             executionStatus.completeExecution(true);
 
             if (workflowContext.showToast) {
@@ -1326,15 +1300,21 @@ const WorkflowPageContent: React.FC = () => {
       // Close the error dialog on successful execution
       setShowErrorDialog(false);
       setExecutionError(null);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Workflow execution failed:", error);
+      const responseData = getResponseData(error);
+      // The execute endpoint reports the specific problem in `error`.
       const errorMessage =
-        error.response?.data?.error ||
-        error.message ||
-        "Unknown error occurred during workflow execution";
+        typeof responseData?.error === "string" && responseData.error
+          ? responseData.error
+          : getApiErrorMessage(
+              error,
+              "Unknown error occurred during workflow execution"
+            );
 
-      const errorOutput =
-        error.response?.data?.stdout || error.response?.data?.stderr || "";
+      const errorOutput = String(
+        responseData?.stdout || responseData?.stderr || ""
+      );
 
       setExecutionResult({
         success: false,
@@ -1349,7 +1329,9 @@ const WorkflowPageContent: React.FC = () => {
       setExecutionError({
         message: errorMessage,
         output: errorOutput,
-        code: error.response?.status || error.code,
+        code:
+          getResponseStatus(error) ??
+          (error as { code?: string | number } | undefined)?.code,
       });
 
       setShowErrorDialog(true);
@@ -1580,17 +1562,18 @@ const WorkflowPageContent: React.FC = () => {
     });
   };
 
-  // Only show simple error display for critical loading errors
-  if (
-    error &&
-    (isLoading ||
-      error.includes("No workflow ID") ||
-      error.includes("Failed to fetch"))
-  ) {
+  if (loadError) {
     return (
-      <div className="text-red-500 p-4 text-center">
-        Error: {error}. Please try refreshing the page.
-      </div>
+      <ErrorFallback
+        fullPage
+        title={loadError.title}
+        description={loadError.detail}
+        onRetry={() => {
+          setLoadError(null);
+          setIsLoading(true);
+          void fetchWorkflow();
+        }}
+      />
     );
   }
 
@@ -1613,20 +1596,25 @@ const WorkflowPageContent: React.FC = () => {
             </div>
           </div>
         )}
-        <Canvas
-          nodes={memoizedNodes}
-          edges={memoizedEdges}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
-          onConnect={handleConnect}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDrag={onNodeDrag}
-          onNodeDragStop={onNodeDragStop}
-          onNodeDoubleClick={onNodeDoubleClick}
-          isValidConnection={isValidConnection}
-          onConnectStart={onConnectStart}
-          onConnectEnd={onConnectEnd}
-        />
+        <ErrorBoundary
+          title="The canvas ran into a problem"
+          description="Your last saved version of this workflow is safe. Try again to re-render the canvas, or reload the page."
+        >
+          <Canvas
+            nodes={memoizedNodes}
+            edges={memoizedEdges}
+            onNodesChange={handleNodesChange}
+            onEdgesChange={handleEdgesChange}
+            onConnect={handleConnect}
+            onNodeDragStart={onNodeDragStart}
+            onNodeDrag={onNodeDrag}
+            onNodeDragStop={onNodeDragStop}
+            onNodeDoubleClick={onNodeDoubleClick}
+            isValidConnection={isValidConnection}
+            onConnectStart={onConnectStart}
+            onConnectEnd={onConnectEnd}
+          />
+        </ErrorBoundary>
         {isTutorialActive && tutorialStepIndex !== null && (
           <TutorialCallout
             text={tutorialSteps[tutorialStepIndex].text}
@@ -1650,7 +1638,13 @@ const WorkflowPageContent: React.FC = () => {
           isDragging={isDragging}
           isHovering={isHoveringDropZone}
         />
-        {renderPanels()}
+        <ErrorBoundary
+          title="A properties panel ran into a problem"
+          description="Your workflow on the canvas is unaffected. Try again, or reload the page."
+          className="absolute bottom-4 right-4 z-50 text-text"
+        >
+          {renderPanels()}
+        </ErrorBoundary>
       </div>
       {workflowImportWarnings.length > 0 && (
         <div className="border-t border-yellow-700/40 bg-yellow-100/90 px-4 py-3 text-sm text-yellow-900">

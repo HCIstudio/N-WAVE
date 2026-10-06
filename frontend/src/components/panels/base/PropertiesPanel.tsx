@@ -34,7 +34,6 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   style,
   recenterTrigger,
 }) => {
-  console.log("[PropertiesPanel] node prop:", node);
   const panelRef = useRef<HTMLDivElement>(null);
   const [label, setLabel] = useState(node.data.label || "");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -162,27 +161,15 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   }`;
 
   const renderNodeSpecificFields = () => {
-    console.log(
-      "[PropertiesPanel] node.type:",
-      node.type,
-      "node.data.processType:",
-      node.data.processType
-    );
     if (node.type === "operator" || node.type === "filter") {
-      console.log("[PropertiesPanel] Rendering OperatorNodePanel");
       return <OperatorNodePanel node={node} onSave={onSave} />;
     }
 
     const PanelComponent = getNodeDefinitionForNode(node)?.panel;
     if (PanelComponent) {
-      console.log("[PropertiesPanel] Rendering registry panel");
       return <PanelComponent node={node} onSave={onSave} />;
     }
 
-    console.log(
-      "[PropertiesPanel] No properties available for this node type:",
-      node.type
-    );
     return (
       <p className="text-sm text-text-light text-center py-4">
         No properties available for this node type.
@@ -203,7 +190,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      onClick={onFocus}
+      // Bring the panel to the front on pointer or keyboard interaction.
+      onMouseDown={onFocus}
+      onFocus={onFocus}
     >
       <div className={headerClasses} onMouseDown={onDragMouseDown}>
         <div className="flex items-center gap-2">
@@ -214,6 +203,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         </div>
         <div className="flex items-center gap-1">
           <button
+            type="button"
             onClick={handleDeleteClick}
             className="p-1 rounded-full hover:bg-gray-600 text-gray-400 hover:text-red-400"
             aria-label="Delete Node"
@@ -221,6 +211,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <Trash2 className="w-4 h-4" />
           </button>
           <button
+            type="button"
             onClick={onClose}
             className="p-1 rounded-full hover:bg-gray-600"
             aria-label="Close Panel"
@@ -258,7 +249,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         className="absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize text-gray-500 hover:text-text"
         onMouseDown={onResizeMouseDown}
       >
-        <svg width="100%" height="100%" viewBox="0 0 16 16" fill="currentColor">
+        <svg
+          width="100%"
+          height="100%"
+          viewBox="0 0 16 16"
+          fill="currentColor"
+          aria-hidden="true"
+        >
           <path d="M10.53 10.53a.75.75 0 0 1 0 1.06l-4.24 4.24a.75.75 0 1 1-1.06-1.06l4.24-4.24a.75.75 0 0 1 1.06 0zM11.59 5.34a.75.75 0 0 0 0-1.06l-4.24-4.24a.75.75 0 1 0-1.06 1.06l4.24 4.24a.75.75 0 0 0 1.06 0z" />
         </svg>
       </div>

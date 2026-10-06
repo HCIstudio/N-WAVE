@@ -32,9 +32,9 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
     const upstreamEdges = edges.filter((e) => e.target === (node?.id || ""));
     const exts = new Set<string>();
 
-    upstreamEdges.forEach((edge) => {
+    for (const edge of upstreamEdges) {
       const srcNode = nodes.find((n) => n.id === edge.source);
-      if (!srcNode) return;
+      if (!srcNode) continue;
 
       const files =
         (srcNode.data as any)?.files ||
@@ -44,12 +44,12 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
         (srcNode.data as any)?.joinedFiles ||
         [];
 
-      files.forEach((f: any) => {
+      for (const f of files) {
         const fname: string = f.name || f.originalName || "";
         const ext = fname.split(".").pop();
         if (ext) exts.add(ext.toLowerCase());
-      });
-    });
+      }
+    }
 
     if (exts.size > 0) {
       setAvailableTypes(Array.from(exts));

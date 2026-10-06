@@ -1,25 +1,26 @@
 import type React from "react";
+import { Loader } from "lucide-react";
 
 interface LoadingIndicatorProps {
   fullPage?: boolean;
+  label?: string;
 }
 
-const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ fullPage }) => {
-  if (fullPage) {
-    return (
-      <div className="flex h-screen w-screen items-center justify-center bg-background">
-        <div className="text-2xl font-semibold text-text">
-          Loading Workflow...
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center justify-center p-4">
-      <div className="text-lg text-text">Loading...</div>
-    </div>
-  );
-};
+const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({
+  fullPage,
+  label = "Loading...",
+}) => (
+  <output
+    aria-live="polite"
+    className={
+      fullPage
+        ? "flex h-screen w-screen items-center justify-center gap-2 bg-background text-xl text-nextflow-green"
+        : "flex items-center justify-center gap-2 p-4 text-lg text-text"
+    }
+  >
+    <Loader className="animate-spin" aria-hidden />
+    <span>{label}</span>
+  </output>
+);
 
 export default LoadingIndicator;

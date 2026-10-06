@@ -1,5 +1,5 @@
 import { defaultExecutionSettings } from "./defaultExecutionSettings";
-import {
+import type {
   MaterializeWorkflowInput,
   WorkflowDescriptor,
 } from "./types";

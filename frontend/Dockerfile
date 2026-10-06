@@ -1,4 +1,6 @@
-﻿FROM node:20-alpine AS build
+# The build stage produces static assets, so it always runs on the build
+# machine's native platform; only the nginx runtime is per-architecture.
+FROM --platform=$BUILDPLATFORM node:20-alpine AS build
 
 WORKDIR /app/frontend
 

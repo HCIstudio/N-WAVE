@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { refreshInstalledNfCoreNodes } from "../../api/nfcore";
+import { getErrorMessage } from "../../utils/errors";
 
 export const useInstalledNfCoreNodes = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -12,8 +13,10 @@ export const useInstalledNfCoreNodes = () => {
     try {
       const count = await refreshInstalledNfCoreNodes();
       setInstalledCount(count);
-    } catch (refreshError: any) {
-      setError(refreshError?.message || "Failed to load installed nf-core nodes");
+    } catch (refreshError: unknown) {
+      setError(
+        getErrorMessage(refreshError, "Failed to load installed nf-core nodes")
+      );
     } finally {
       setIsLoading(false);
     }

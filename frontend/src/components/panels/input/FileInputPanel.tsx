@@ -6,14 +6,12 @@ import { useDropzone } from "react-dropzone";
 import type { NodeData } from "../../nodes/BaseNode";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import { SearchInput, detectFileType } from "../../common";
-import api from "../../../api";
 
 interface FileObject {
   name: string;
   content: string;
   size: number;
   fileType?: string; // Detected file type
-  _id?: string; // Backend metadata ID (optional)
 }
 
 const FileInputPanel: React.FC<{
@@ -43,11 +41,11 @@ const FileInputPanel: React.FC<{
     setSelectedForRemoval((prev) => {
       const currentFileNames = new Set(nodeFiles.map((f) => f.name));
       const newSelection = new Set<string>();
-      prev.forEach((fileName) => {
+      for (const fileName of prev) {
         if (currentFileNames.has(fileName)) {
           newSelection.add(fileName);
         }
-      });
+      }
       return newSelection;
     });
   }, [nodeFiles]);
@@ -97,23 +95,20 @@ const FileInputPanel: React.FC<{
 
         // Replace existing files with same name, or add new ones
         const updatedFiles = [...nodeFiles];
-        newFiles.forEach((newFile) => {
+        for (const newFile of newFiles) {
           const existingIndex = updatedFiles.findIndex(
             (f) => f.name === newFile.name
           );
           if (existingIndex !== -1) {
             // Completely replace existing file (new file has content, so no missing content issue)
-            updatedFiles[existingIndex] = {
-              ...newFile,
-              _id: updatedFiles[existingIndex]._id || newFile._id, // Keep backend ID if exists
-            };
+            updatedFiles[existingIndex] = newFile;
             replacedFiles.push(newFile.name);
           } else {
             // Add new file
             updatedFiles.push(newFile);
             addedFiles.push(newFile.name);
           }
-        });
+        }
 
         // Show success message
         if (replacedFiles.length > 0 || addedFiles.length > 0) {
@@ -144,26 +139,6 @@ const FileInputPanel: React.FC<{
           ).toFixed(2)} KB`,
           outputs: [{ name: "ch_files_out", isConnectable: true }],
         });
-
-        // Optionally register metadata with backend (for persistence across sessions)
-        // This is optional and can be skipped for pure browser-based usage
-        try {
-          for (const file of newFiles) {
-            const formData = new FormData();
-            const originalFile = acceptedFiles.find(
-              (f) => f.name === file.name
-            );
-            if (originalFile) {
-              formData.append("file", originalFile);
-              const response = await api.post("/files/register", formData);
-              // Store the backend ID for future reference (optional)
-              file._id = response.data._id;
-            }
-          }
-        } catch (backendError) {
-          console.warn("Could not register files with backend:", backendError);
-          // This is fine - files still work locally
-        }
       } catch (err) {
         setError("An error occurred during file processing.");
         console.error(err);
@@ -208,11 +183,6 @@ const FileInputPanel: React.FC<{
     setIsRemoving(true);
 
     try {
-      // Find files to remove (for backend deletion)
-      const filesToRemove = nodeFiles.filter((f) =>
-        selectedForRemoval.has(f.name)
-      );
-
       const newFiles = nodeFiles.filter((f) => !selectedForRemoval.has(f.name));
       updateNodeData(node.id, {
         files: newFiles,
@@ -231,27 +201,6 @@ const FileInputPanel: React.FC<{
         outputs: [{ name: "ch_files_out", isConnectable: newFiles.length > 0 }],
       });
       setSelectedForRemoval(new Set());
-
-      // Delete from backend (for files that have backend IDs)
-      const filesToDeleteFromBackend = filesToRemove.filter((f) => f._id);
-      if (filesToDeleteFromBackend.length > 0) {
-        try {
-          await Promise.all(
-            filesToDeleteFromBackend.map((file) =>
-              api.delete(`/files/${file._id}`)
-            )
-          );
-          console.log(
-            `Deleted ${filesToDeleteFromBackend.length} file metadata records from backend`
-          );
-        } catch (error) {
-          console.warn(
-            "Could not delete some file metadata from backend:",
-            error
-          );
-          // This is non-critical - the files are still removed from the UI
-        }
-      }
     } finally {
       setIsRemoving(false);
     }
@@ -319,12 +268,14 @@ const FileInputPanel: React.FC<{
               {selectedFromFiltered > 0 && (
                 <>
                   <button
+                    type="button"
                     onClick={clearSelection}
                     className="text-xs text-text-light hover:text-text"
                   >
                     Clear ({selectedFromFiltered})
                   </button>
                   <button
+                    type="button"
                     onClick={handleBulkRemove}
                     disabled={isRemoving}
                     className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -337,6 +288,7 @@ const FileInputPanel: React.FC<{
               {selectedFromFiltered === 0 && filteredFiles.length > 1 && (
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={selectAllFiles}
                     className="text-xs text-text-light hover:text-text"
                   >
@@ -344,6 +296,7 @@ const FileInputPanel: React.FC<{
                   </button>
                   {filesWithoutContent.length > 0 && (
                     <button
+                      type="button"
                       onClick={selectFilesWithoutContent}
                       className="text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-300 rounded px-2 py-1"
                     >
@@ -407,7 +360,8 @@ const FileInputPanel: React.FC<{
           {filteredFiles.length > 0 ? (
             <div className="p-3 max-h-64 overflow-y-auto space-y-2">
               {filteredFiles.map((file, index) => (
-                <div
+                // The whole row toggles the checkbox it contains.
+                <label
                   key={`${file.name}-${index}`}
                   className={`flex items-center justify-between bg-background p-3 rounded-md border transition-colors cursor-pointer ${
                     selectedForRemoval.has(file.name)
@@ -416,14 +370,12 @@ const FileInputPanel: React.FC<{
                       ? "bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800"
                       : "border-accent hover:border-nextflow-green/50 hover:bg-background-light"
                   }`}
-                  onClick={() => toggleFileSelection(file.name)}
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
                     <input
                       type="checkbox"
                       checked={selectedForRemoval.has(file.name)}
                       onChange={() => toggleFileSelection(file.name)}
-                      onClick={(e) => e.stopPropagation()}
                       className="rounded border-accent flex-shrink-0"
                     />
                     <File
@@ -462,6 +414,7 @@ const FileInputPanel: React.FC<{
                     </div>
                   </div>
                   <button
+                    type="button"
                     onClick={async (e) => {
                       e.stopPropagation();
                       await handleRemoveFile(file.name);
@@ -471,7 +424,7 @@ const FileInputPanel: React.FC<{
                   >
                     <X size={16} />
                   </button>
-                </div>
+                </label>
               ))}
             </div>
           ) : (
@@ -500,6 +453,7 @@ const FileInputPanel: React.FC<{
                   <File size={24} className="text-text-light" />
                   <p>No files match your search.</p>
                   <button
+                    type="button"
                     onClick={clearSearch}
                     className="text-xs text-nextflow-green hover:underline"
                   >
@@ -515,6 +469,7 @@ const FileInputPanel: React.FC<{
       {/* --- UPLOAD SECTION --- */}
       <div className="space-y-3">
         <button
+          type="button"
           onClick={open}
           disabled={isUploading}
           className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-nextflow-green text-white rounded-lg hover:bg-nextflow-green/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"

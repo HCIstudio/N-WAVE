@@ -17,7 +17,6 @@ export interface FileObject {
   content: string;
   size: number;
   fileType?: string; // Detected file type
-  _id?: string; // Backend metadata ID (optional)
   order?: number; // Stable display/merge ordering metadata
 }
 

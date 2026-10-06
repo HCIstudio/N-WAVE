@@ -50,7 +50,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
             }}
             className="nodrag nopan"
           >
-            <button onClick={onEdgeClick} className="edge-delete-button">
+            <button type="button" onClick={onEdgeClick} className="edge-delete-button">
               &times;
             </button>
           </div>

@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 import { MemoryInput, TimeInput } from "../../common/forms";
 
 interface ResourceSettingsPanelProps {
@@ -26,6 +27,8 @@ const ResourceSettingsPanel: React.FC<ResourceSettingsPanelProps> = ({
   overrideResources,
   setOverrideResources,
 }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   return (
     <div className="border-t border-accent pt-4 space-y-3">
       <div className="flex items-center justify-between mb-2">
@@ -46,10 +49,11 @@ const ResourceSettingsPanel: React.FC<ResourceSettingsPanelProps> = ({
       {overrideResources && (
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-container-image`} className="block text-sm font-medium text-text mb-1">
               Container image
             </label>
             <input
+              id={`${fieldId}-container-image`}
               type="text"
               value={containerImage}
               onChange={(e) => setContainerImage(e.target.value)}
@@ -59,10 +63,11 @@ const ResourceSettingsPanel: React.FC<ResourceSettingsPanelProps> = ({
 
           <div className="flex flex-row flex-wrap gap-2 mt-2">
             <div className="flex-1 min-w-[120px]">
-              <label className="block text-sm font-medium text-text mb-1">
+              <label htmlFor={`${fieldId}-cpus`} className="block text-sm font-medium text-text mb-1">
                 CPUs
               </label>
               <input
+                id={`${fieldId}-cpus`}
                 type="number"
                 min="1"
                 value={cpus}
@@ -71,18 +76,20 @@ const ResourceSettingsPanel: React.FC<ResourceSettingsPanelProps> = ({
               />
             </div>
             <div className="flex-1 min-w-[120px]">
-              <label className="block text-sm font-medium text-text mb-1">
+              <label htmlFor={`${fieldId}-memory`} className="block text-sm font-medium text-text mb-1">
                 Memory
               </label>
-              <MemoryInput value={memory} onChange={setMemory} />
+              <MemoryInput
+                id={`${fieldId}-memory`} value={memory} onChange={setMemory} />
             </div>
           </div>
 
           <div className="mt-2">
-            <label className="block text-sm font-medium text-text mb-1">
+            <label htmlFor={`${fieldId}-time-limit`} className="block text-sm font-medium text-text mb-1">
               Time limit
             </label>
-            <TimeInput value={timeLimit} onChange={setTimeLimit} />
+            <TimeInput
+              id={`${fieldId}-time-limit`} value={timeLimit} onChange={setTimeLimit} />
           </div>
         </div>
       )}

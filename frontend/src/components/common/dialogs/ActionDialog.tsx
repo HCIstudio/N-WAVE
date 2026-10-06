@@ -39,6 +39,7 @@ const ActionDialog = ({
     <div className="flex space-x-2">
       {actions.map((action) => (
         <button
+          type="button"
           key={action.text}
           onClick={handleActionClick(action)}
           className={`px-4 py-2 rounded-md ${

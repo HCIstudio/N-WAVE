@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useId } from "react";
 import {
   CheckCircle,
   XCircle,
@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { MemoryInput } from "../forms";
 import api from "../../../api";
+import { getErrorMessage, getErrorName } from "../../../utils/errors";
 
 interface DockerStatus {
   dockerAvailable: boolean;
@@ -58,6 +59,8 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   settings,
   onSettingsChange,
 }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   const [dockerStatus, setDockerStatus] = useState<DockerStatus | null>(null);
   const [nextflowStatus, setNextflowStatus] = useState<NextflowStatus | null>(
     null
@@ -140,6 +143,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   </h4>
                 </div>
                 <button
+                  type="button"
                   onClick={checkStatus}
                   disabled={loading}
                   className="p-1 hover:bg-accent rounded disabled:opacity-50 transition-colors"
@@ -156,7 +160,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               {/* Docker Toggle */}
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <label className="text-sm text-text font-medium">
+                  <label htmlFor={`${fieldId}-use-docker`} className="text-sm text-text font-medium">
                     Enable Docker/Container execution
                   </label>
                   <p className="text-xs text-text-light mt-1">
@@ -167,6 +171,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 </div>
                 <label className="relative inline-flex items-center cursor-pointer">
                   <input
+                    id={`${fieldId}-use-docker`}
                     type="checkbox"
                     checked={settings.useDocker}
                     onChange={(e) =>
@@ -181,10 +186,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               {/* Container Image Selection */}
               {settings.useDocker && (
                 <div className="space-y-3">
-                  <label className="block text-sm text-text font-medium">
+                  <label htmlFor={`${fieldId}-default-container-image`} className="block text-sm text-text font-medium">
                     Default Container Image
                   </label>
                   <select
+                    id={`${fieldId}-default-container-image`}
                     value={settings.containerImage}
                     onChange={(e) =>
                       onSettingsChange({ containerImage: e.target.value })
@@ -359,11 +365,12 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
           <div className="space-y-6">
             {/* Output Directory */}
             <div>
-              <label className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-output-directory`} className="block text-sm font-medium text-text mb-2">
                 Output Directory
               </label>
               <div className="flex gap-2">
                 <input
+                  id={`${fieldId}-output-directory`}
                   type="text"
                   value={settings.output?.directory ?? ""}
                   onChange={(e) =>
@@ -416,13 +423,13 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                           alert(
                             `✅ Directory selected: ${selectedPath}\n\nNote: Due to browser security, you can only select user folders (Downloads, Documents, etc.). To save anywhere, type the full path manually.`
                           );
-                        } catch (fsError: any) {
-                          if (fsError.name === "AbortError") {
+                        } catch (fsError: unknown) {
+                          if (getErrorName(fsError) === "AbortError") {
                             // User cancelled, do nothing
                             return;
                           }if (
-                            fsError.name === "NotAllowedError" ||
-                            fsError.message.includes("system files")
+                            getErrorName(fsError) === "NotAllowedError" ||
+                            getErrorMessage(fsError, "").includes("system files")
                           ) {
                             // Show helpful error message for system folder blocking
                             showSystemFolderError();
@@ -438,10 +445,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                         fallbackToManualInput();
                       }
                     } catch (error) {
-                      console.log(
-                        "Directory selection cancelled or failed:",
-                        error
-                      );
                       fallbackToManualInput();
                     }
 
@@ -553,10 +556,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
             {/* Output Naming Pattern */}
             <div>
-              <label className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-output-naming-pattern`} className="block text-sm font-medium text-text mb-2">
                 Output Naming Pattern
               </label>
               <input
+                id={`${fieldId}-output-naming-pattern`}
                 type="text"
                 value={settings.output?.namingPattern ?? ""}
                 onChange={(e) =>
@@ -586,11 +590,12 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
           <div className="space-y-6">
             {/* CPU Limits */}
             <div>
-              <label className="block text-sm font-medium text-text mb-3">
+              <label htmlFor={`${fieldId}-max-cpus`} className="block text-sm font-medium text-text mb-3">
                 Maximum CPU Cores
               </label>
               <div className="flex items-center gap-4">
                 <input
+                  id={`${fieldId}-max-cpus`}
                   type="range"
                   min="1"
                   max="32"
@@ -619,10 +624,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
             {/* Memory Limits */}
             <div>
-              <label className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-max-memory`} className="block text-sm font-medium text-text mb-2">
                 Maximum Memory
               </label>
               <MemoryInput
+                id={`${fieldId}-max-memory`}
                 value={settings.maxMemory}
                 onChange={(val) => onSettingsChange({ maxMemory: val })}
                 className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
@@ -634,10 +640,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
             {/* Execution Timeout */}
             <div>
-              <label className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-execution-timeout-minutes`} className="block text-sm font-medium text-text mb-2">
                 Execution Timeout (minutes)
               </label>
               <input
+                id={`${fieldId}-execution-timeout-minutes`}
                 type="number"
                 min="0"
                 max="1440"
@@ -663,10 +670,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
           <div className="space-y-6">
             {/* Nextflow Version */}
             <div>
-              <label className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-nextflow-version`} className="block text-sm font-medium text-text mb-2">
                 Nextflow Version
               </label>
               <select
+                id={`${fieldId}-nextflow-version`}
                 value={settings.nextflowVersion || "25.04.4"}
                 onChange={(e) =>
                   onSettingsChange({ nextflowVersion: e.target.value })
@@ -687,10 +695,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
             {/* Error Strategy */}
             <div>
-              <label className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-error-handling-strategy`} className="block text-sm font-medium text-text mb-2">
                 Error Handling Strategy
               </label>
               <select
+                id={`${fieldId}-error-handling-strategy`}
                 value={settings.errorStrategy}
                 onChange={(e) =>
                   onSettingsChange({ errorStrategy: e.target.value })
@@ -715,7 +724,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
             {/* Cleanup on Failure */}
             <div className="flex items-start justify-between">
               <div className="flex-1">
-                <label className="text-sm font-medium text-text">
+                <label htmlFor={`${fieldId}-cleanup-on-failure`} className="text-sm font-medium text-text">
                   Cleanup on Failure
                 </label>
                 <p className="text-xs text-text-light mt-1">
@@ -724,6 +733,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </div>
               <label className="relative inline-flex items-center cursor-pointer ml-4">
                 <input
+                  id={`${fieldId}-cleanup-on-failure`}
                   type="checkbox"
                   checked={settings.cleanupOnFailure}
                   onChange={(e) =>
@@ -781,6 +791,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
             const Icon = tab.icon;
             return (
               <button
+                type="button"
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors ${

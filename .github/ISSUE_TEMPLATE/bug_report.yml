@@ -1,0 +1,43 @@
+name: Bug report
+description: Something in N-WAVE doesn't work as expected
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the Demo Workflow
+        2. Connect ...
+        3. Click Run
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: How do you run N-WAVE?
+      options:
+        - Published Docker images (latest.yml)
+        - From source with Docker Compose
+        - Local development servers
+        - Online demo (GitHub Pages)
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Shown in the footer of the workflow library (for example v1.0.14).
+  - type: textarea
+    id: logs
+    attributes:
+      label: Errors and logs
+      description: Browser console errors, backend logs (`docker compose logs backend`), or the generated Nextflow script if relevant.
+      render: shell

@@ -34,7 +34,8 @@ common/
 │   ├── JsonViewer.tsx          # JSON structure viewer
 │   └── index.ts                # Data component exports
 ├── workflow/              # Workflow-specific complex components
-│   ├── DockerSettings.tsx      # Docker execution settings
+│   ├── ExecutionSettings.tsx   # Execution (Docker, output, resources) settings
+│   ├── ExecutionStatusPanel.tsx # Live execution progress
 │   ├── WorkflowExecutionErrorNotification.tsx # Error notifications
 │   └── index.ts                # Workflow component exports
 ├── index.ts               # Main module exports
@@ -121,7 +122,7 @@ common/
 
 **Key Components**:
 
-- `DockerSettings`: Comprehensive Docker execution configuration
+- `ExecutionSettings` (default export of `workflow/ExecutionSettings.tsx`): execution configuration (Docker, output, resources)
 - `WorkflowExecutionErrorNotification`: Detailed error display for workflow execution
 
 **Use Cases**:
@@ -238,13 +239,13 @@ import { FileViewer, CsvViewer, detectFileType } from '@/components/common';
 ### Workflow Components
 
 ```typescript
-import { DockerSettings, WorkflowExecutionErrorNotification } from '@/components/common';
+import ExecutionSettings from '@/components/common/workflow/ExecutionSettings';
+import { WorkflowExecutionErrorNotification } from '@/components/common';
 
 // Execution configuration
-<DockerSettings
+<ExecutionSettings
   settings={executionSettings}
   onSettingsChange={updateSettings}
-  capabilities={systemCapabilities}
 />
 
 // Error display

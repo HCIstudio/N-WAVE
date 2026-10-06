@@ -51,12 +51,14 @@ const ConfirmDialog = ({
   const footer = (
     <div className="flex space-x-2">
       <button
+        type="button"
         onClick={handleClose}
         className="px-4 py-2 rounded-md bg-accent hover:bg-accent-hover text-text"
       >
         {cancelText}
       </button>
       <button
+        type="button"
         onClick={handleConfirm}
         className={`px-4 py-2 rounded-md ${confirmButtonClasses}`}
       >

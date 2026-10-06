@@ -14,6 +14,8 @@ workflow by dragging nodes onto a canvas — file inputs, operators, processes, 
 displays — connect them, and N-WAVE generates a runnable Nextflow script from the graph. You
 can then execute the workflow and inspect its results from the browser.
 
+![The N-WAVE canvas with the bundled demo workflow: a file input feeding two filters, a map and a merge into an output display](.github/assets/screenshot-canvas.png)
+
 - **Live demo:** https://hcistudio.github.io/N-WAVE/ — runs in the browser with no install. Workflows can be built and edited but not executed (that needs the backend).
 - **Documentation:** the [Wiki](https://github.com/HCIstudio/N-WAVE/wiki) covers authoring workflows, the node reference, and running via Docker.
 
@@ -50,7 +52,7 @@ can then execute the workflow and inspect its results from the browser.
 - The frontend owns the canvas and turns the node graph into a Nextflow script
   (`frontend/src/generators/`). The script is generated in the browser.
 - The backend persists workflows to MongoDB and executes them. It exposes a small REST API
-  under `/api` (`workflows`, `files`, `execute`).
+  under `/api` (`workflows`, `execute`, `nfcore`, `custom-nodes`).
 - The frontend talks to the backend only through `frontend/src/api.ts`. In the online demo
   that client is swapped for an in-browser store (`frontend/src/demo/`), which is why the
   demo needs no backend.
@@ -74,9 +76,12 @@ This is controlled by the `NEXTFLOW_EXECUTION_MODE` environment variable:
 | `local` | Always use a host `nextflow` binary. |
 | `auto` (default) | Prefer a local binary, fall back to the container. Convenient for development. |
 
-The `nextflow/nextflow` tags are published for `linux/amd64` only, so the runner is pinned to
-that platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) — it runs natively on Intel/AMD and
-under emulation on ARM (for example Apple Silicon).
+The N-WAVE images themselves are published for `linux/amd64` and `linux/arm64`, so the
+frontend and backend run natively on Intel/AMD and ARM (for example Apple Silicon). Many
+`nextflow/nextflow` tags are published for `linux/amd64` only, so the runner defaults to that
+platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) — native on Intel/AMD, emulated on ARM.
+If the Nextflow version you use publishes an arm64 image, set `NEXTFLOW_PLATFORM=native` to
+run it natively on ARM hosts.
 
 For the backend to launch containers, the host Docker socket is mounted into it
 (`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
@@ -157,7 +162,7 @@ VITE_DEMO_MODE=true pnpm build && pnpm preview
 | `MONGODB_URI` | `mongodb://localhost:27017/nwave` | MongoDB connection string. |
 | `CORS_ORIGIN` | `http://localhost:5173,http://localhost:8080` | Comma-separated allowed origins. |
 | `NEXTFLOW_EXECUTION_MODE` | `auto` | `docker` \| `local` \| `auto` (see [execution](#how-workflow-execution-works)). |
-| `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform for the Nextflow runner container. |
+| `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform for the Nextflow runner container; `native` uses the host architecture. |
 | `BACKEND_CONTAINER_NAME` | `nwave-backend` | Container name the runner attaches volumes from. |
 
 ### Frontend build variables
@@ -178,7 +183,9 @@ N-WAVE/
 │  └─ src/
 │     ├─ config/            # database and server configuration
 │     ├─ controllers/       # workflow CRUD, execution
-│     ├─ routes/            # /api/workflows, /api/files, /api/execute
+│     ├─ execution/         # Nextflow script normalization + command building
+│     ├─ validation/        # zod request-body schemas
+│     ├─ routes/            # /api/workflows, /api/execute, /api/nfcore, /api/custom-nodes
 │     ├─ models/            # Mongoose models
 │     └─ workflows/         # built-in demo, import & materialize logic
 ├─ frontend/                # React + Vite SPA
@@ -199,8 +206,8 @@ for package-level notes.
 
 | Workflow | Trigger | What it does |
 |----------|---------|--------------|
-| `test.yml` | pull request / push to `main` | The merge gate: lint, unit tests, typecheck, and build for both packages (all blocking). |
-| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, builds and pushes images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
+| `test.yml` | pull request / push to `main` | The merge gate: lint, unit tests, typecheck, and build for both packages (all blocking), plus Playwright E2E tests of the canvas flow (non-blocking for now). |
+| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, builds and pushes multi-arch (`linux/amd64`, `linux/arm64`) images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
 
 `main` is protected: changes land only via pull request, and a PR can be merged only once the
 Test workflow passes.
@@ -217,6 +224,35 @@ repository with Contents: Read and write, and add it as the repository Actions s
 `RELEASE_TOKEN`. A PAT push re-triggers the workflow, so the `release.yml` `version` job
 ignores its own `chore(release):` commits to avoid a release loop. (The GitHub Actions app
 itself cannot be added to a repository ruleset's bypass list, which is why a PAT is used.)
+
+## Security
+
+N-WAVE is built for **local, single-user use** (your own machine or a trusted lab
+workstation). Keep that in mind before exposing it on a network:
+
+- **No authentication.** Every API endpoint is public; anyone who can reach the backend can
+  read, change and delete all workflows.
+- **Execution is code execution by design.** Running a workflow executes arbitrary Nextflow
+  (and therefore shell) code. The backend also has the host Docker socket mounted, which is
+  equivalent to root access on the host.
+- **The backend writes where it is told.** Execution settings choose the output directory on
+  the host.
+
+What N-WAVE does today: request bodies are schema-validated with size limits, input file
+names cannot escape the run directory, and values placed into the Nextflow command line are
+validated and shell-quoted. Those checks keep honest mistakes from doing damage; they are not
+a sandbox.
+
+Therefore: bind the ports to `localhost` (or a trusted network), don't put N-WAVE on the
+public internet, and only run workflows you trust. Authentication, per-user isolation and
+execution sandboxing for shared deployments are tracked in
+[#27](https://github.com/HCIstudio/N-WAVE/issues/27). Please report vulnerabilities
+privately to the maintainers rather than in a public issue.
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the checks every pull
+request must pass, and how releases work.
 
 ## License
 

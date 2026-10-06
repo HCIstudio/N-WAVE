@@ -8,6 +8,7 @@ import {
 } from "../../../api/nfcore";
 import DynamicIcon from "../ui/DynamicIcon";
 import SearchInput from "./SearchInput";
+import { getErrorMessage } from "../../../utils/errors";
 
 interface NfCoreLibraryModalProps {
   isOpen: boolean;
@@ -42,8 +43,8 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
     setError(null);
     getNfCoreCatalog()
       .then((response) => setCatalog(response.modules))
-      .catch((catalogError: any) => {
-        setError(catalogError?.message || "Failed to load nf-core catalog");
+      .catch((catalogError: unknown) => {
+        setError(getErrorMessage(catalogError, "Failed to load nf-core catalog"));
       })
       .finally(() => setIsLoading(false));
   }, [isOpen]);
@@ -101,8 +102,8 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
         )
       );
       onInstalled();
-    } catch (installError: any) {
-      setError(installError?.message || `Failed to install ${module.id}`);
+    } catch (installError: unknown) {
+      setError(getErrorMessage(installError, `Failed to install ${module.id}`));
     } finally {
       setInstallingId(null);
     }

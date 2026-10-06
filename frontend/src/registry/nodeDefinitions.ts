@@ -350,16 +350,16 @@ export const nodeDefinitions: NodeDefinition[] = getAllNodeDefinitions();
 export const registerDynamicNodeDefinitions = (
   definitions: NodeDefinition[]
 ): void => {
-  definitions.forEach((definition) => {
+  for (const definition of definitions) {
     dynamicNodeDefinitions.set(definition.id, definition);
-  });
+  }
   nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
 };
 
 export const unregisterDynamicNodeDefinitions = (ids: string[]): void => {
-  ids.forEach((id) => {
+  for (const id of ids) {
     dynamicNodeDefinitions.delete(id);
-  });
+  }
   nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
 };
 
@@ -408,7 +408,7 @@ export const getRegisteredOperatorTypes = (): string[] =>
 export const getNodePaletteCategories = (): NextflowProcessCategory[] => {
   const categories = new Map<string, NextflowProcessCategory>();
 
-  nodeDefinitions.forEach((definition) => {
+  for (const definition of nodeDefinitions) {
     let category = categories.get(definition.category);
     if (!category) {
       category = {
@@ -427,7 +427,7 @@ export const getNodePaletteCategories = (): NextflowProcessCategory[] => {
       operatorType: definition.operatorType as any,
       processType: definition.processType as any,
     });
-  });
+  }
 
   return Array.from(categories.values());
 };

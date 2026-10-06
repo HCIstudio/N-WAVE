@@ -2,8 +2,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import App from "./App";
-import HomePage from "./pages/HomePage";
-import WorkflowPage from "./pages/WorkflowPage";
+import LoadingIndicator from "./components/common/ui/LoadingIndicator";
+import RouteErrorFallback from "./components/common/ui/RouteErrorFallback";
 import "reactflow/dist/style.css";
 import "./index.css";
 
@@ -12,9 +12,29 @@ const router = createBrowserRouter(
     {
       path: "/",
       element: <App />,
+      errorElement: <RouteErrorFallback />,
       children: [
-        { index: true, element: <HomePage /> },
-        { path: "workflow/:id", element: <WorkflowPage /> },
+        {
+          // Pathless layout route so page errors render inside <App /> (keeping
+          // the demo banner) instead of replacing the whole tree.
+          errorElement: <RouteErrorFallback />,
+          children: [
+            // Pages are loaded on demand so the library page doesn't pay for
+            // the canvas editor (React Flow, panels, generators) up front.
+            {
+              index: true,
+              lazy: async () => ({
+                Component: (await import("./pages/HomePage")).default,
+              }),
+            },
+            {
+              path: "workflow/:id",
+              lazy: async () => ({
+                Component: (await import("./pages/WorkflowPage")).default,
+              }),
+            },
+          ],
+        },
       ],
     },
   ],
@@ -36,6 +56,9 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <RouterProvider
+      router={router}
+      fallbackElement={<LoadingIndicator fullPage />}
+    />
   </React.StrictMode>
 );

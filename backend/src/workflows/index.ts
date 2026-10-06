@@ -1,7 +1,7 @@
-import { IWorkflow } from "../models/WorkflowModel";
+import type { IWorkflow } from "../models/WorkflowModel";
 import { materializeWorkflow } from "./materializeWorkflow";
 import { getDemoWorkflowDescriptor, demoWorkflowId } from "./library/demoWorkflow";
-import { WorkflowDescriptor } from "./types";
+import type { WorkflowDescriptor } from "./types";
 
 const builtinWorkflowFactories = [getDemoWorkflowDescriptor];
 

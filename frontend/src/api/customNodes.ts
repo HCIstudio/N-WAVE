@@ -5,6 +5,7 @@ import {
   unregisterCustomNode,
   type StoredCustomNode,
 } from "../registry/customNodes";
+import { getResponseStatus } from "../utils/errors";
 
 const LEGACY_STORAGE_KEY = "nwave.customNodes.v1";
 
@@ -33,8 +34,8 @@ export const persistCustomNode = async (
 export const deleteCustomNode = async (nodeId: string): Promise<void> => {
   try {
     await api.delete(`/custom-nodes/${encodeURIComponent(nodeId)}`);
-  } catch (error: any) {
-    if (error?.response?.status !== 404) {
+  } catch (error: unknown) {
+    if (getResponseStatus(error) !== 404) {
       throw error;
     }
   }

@@ -91,10 +91,7 @@ export const useExecutionStatus = ({
   const parseNextflowOutput = useCallback((output: string) => {
     const lines = output.split("\n");
 
-    lines.forEach((line) => {
-      // Debug: Log each line to see what we're parsing
-      console.log("Parsing line:", JSON.stringify(line));
-
+    for (const line of lines) {
       // Parse workflow launch
       if (line.includes("Launching") && line.includes("DSL2")) {
         const launchMatch = line.match(/Launching `([^`]+)`.*\[([^\]]+)\]/);
@@ -116,14 +113,8 @@ export const useExecutionStatus = ({
         }));
       }
 
-      // Parse process discovery phase - processes being listed
-      const processListMatch = line.match(/\[-\s+\]\s+([^\s]+)\s+-?$/);
-      if (processListMatch) {
-        // DO NOT CREATE NODES HERE - only update canvas nodes from execution data
-        console.log(
-          `🔍 Discovered Nextflow process: ${processListMatch[1]} (will map to canvas node later)`
-        );
-      }
+      // Process discovery lines ("[-        ] NAME -") are intentionally
+      // ignored: nodes are only updated from execution data below.
 
       // Parse process execution with progress - Main pattern
       const executionMatch = line.match(
@@ -176,9 +167,6 @@ export const useExecutionStatus = ({
               progress: (completedNum / totalNum) * 100,
             };
             nodeStatuses.push(newNodeStatus);
-            console.log(
-              `➕ Created Nextflow process: ${displayName} (${nextflowProcessName})`
-            );
           } else {
             // Update existing process
             const existingNode = nodeStatuses[existingIndex];
@@ -209,9 +197,6 @@ export const useExecutionStatus = ({
               }
 
               nodeStatuses[existingIndex] = updatedNode;
-              console.log(
-                `🔄 Updated Nextflow process: ${displayName} (${newProgress}%)`
-              );
             }
           }
 
@@ -273,8 +258,6 @@ export const useExecutionStatus = ({
       );
 
       if (isCompleted) {
-        console.log("🎉 Detected workflow completion:", line);
-
         // Clear runtime timer immediately
         if (runtimeTimer.current) {
           clearInterval(runtimeTimer.current);
@@ -318,7 +301,7 @@ export const useExecutionStatus = ({
           });
         }, 10000);
 
-        return; // Stop processing any more lines after completion
+        continue; // Nothing else to parse on a completion line
       }
 
       // Parse errors
@@ -356,7 +339,7 @@ export const useExecutionStatus = ({
           currentStage: line.trim(),
         }));
       }
-    });
+    }
   }, []);
 
   // Complete execution (success or failure)
@@ -440,10 +423,8 @@ export const useExecutionStatus = ({
       const { default: api } = await import("../../api");
 
       // Call backend to cancel the actual process
-      const response = await api.post("/execute/cancel", { executionId });
-
-      console.log("Execution cancelled successfully:", response.data);
-    } catch (error: any) {
+      await api.post("/execute/cancel", { executionId });
+    } catch (error: unknown) {
       console.error("Error cancelling execution:", error);
       // Still update UI even if backend cancel fails
     }

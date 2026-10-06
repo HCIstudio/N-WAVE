@@ -1,8 +1,8 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { defaultExecutionSettings } from "../defaultExecutionSettings";
 import { materializeWorkflow } from "../materializeWorkflow";
-import { WorkflowDescriptor } from "../types";
+import type { WorkflowDescriptor } from "../types";
 
 const resolveDemoAssetPath = (...relativePathSegments: string[]): string => {
   const candidateDirectories = [

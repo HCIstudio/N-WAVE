@@ -96,11 +96,11 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
         : "translateY(-50%)";
 
   return (
-    <div
+    <section
+      aria-label="Tutorial"
+      aria-live="polite"
       className="fixed z-50 w-[320px] rounded-lg border border-nextflow-green/60 bg-background p-4 text-text shadow-2xl"
       style={{ top: position.top, left: position.left, transform }}
-      role="dialog"
-      aria-live="polite"
     >
       <p className="text-sm leading-5">{text}</p>
       <div className="mt-3 flex items-center justify-between">
@@ -131,7 +131,7 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
           </button>
         )}
       </div>
-    </div>
+    </section>
   );
 };
 

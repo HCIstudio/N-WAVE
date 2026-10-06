@@ -202,6 +202,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
               </option>
             </select>
             <button
+              type="button"
               onClick={handleDownload}
               className="p-2 text-text bg-accent hover:bg-accent-hover rounded-r-md"
               aria-label="Download Output"

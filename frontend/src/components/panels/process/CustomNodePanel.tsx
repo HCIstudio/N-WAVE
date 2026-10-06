@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 import type { CustomNodeInput } from "../../../registry/customNodes";
@@ -9,6 +10,8 @@ interface CustomNodePanelProps {
 }
 
 const CustomNodePanel: React.FC<CustomNodePanelProps> = ({ node, onSave }) => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   const valueInputs = Array.isArray(node.data.customNodeValueInputs)
     ? (node.data.customNodeValueInputs as CustomNodeInput[])
     : [];
@@ -39,10 +42,14 @@ const CustomNodePanel: React.FC<CustomNodePanelProps> = ({ node, onSave }) => {
           <h4 className="text-sm font-semibold text-text">Settings</h4>
           {valueInputs.map((input) => (
             <div key={input.name}>
-              <label className="mb-1 block text-sm font-medium text-text">
+              <label
+                htmlFor={`${fieldId}-${input.name}`}
+                className="mb-1 block text-sm font-medium text-text"
+              >
                 {input.label || input.name}
               </label>
               <CustomSettingControl
+                id={`${fieldId}-${input.name}`}
                 input={input}
                 value={String(values[input.name] ?? input.defaultValue ?? "")}
                 onChange={(value) => handleValueChange(input.name, value)}
@@ -60,10 +67,11 @@ const CustomNodePanel: React.FC<CustomNodePanelProps> = ({ node, onSave }) => {
 };
 
 const CustomSettingControl: React.FC<{
+  id: string;
   input: CustomNodeInput;
   value: string;
   onChange: (value: string) => void;
-}> = ({ input, value, onChange }) => {
+}> = ({ id, input, value, onChange }) => {
   const className =
     "w-full rounded-md border border-accent bg-background p-2 text-sm text-text focus:border-nextflow-green focus:ring-nextflow-green";
 
@@ -71,6 +79,7 @@ const CustomSettingControl: React.FC<{
     return (
       <label className="flex items-center gap-2 rounded-md border border-accent bg-background p-2 text-sm text-text">
         <input
+          id={id}
           type="checkbox"
           checked={value === "true"}
           onChange={(event) => onChange(event.target.checked ? "true" : "false")}
@@ -84,6 +93,7 @@ const CustomSettingControl: React.FC<{
   if (input.settingType === "select") {
     return (
       <select
+        id={id}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className={className}
@@ -99,6 +109,7 @@ const CustomSettingControl: React.FC<{
 
   return (
     <input
+      id={id}
       type={input.settingType === "integer" || input.settingType === "float" ? "number" : "text"}
       step={input.settingType === "integer" ? "1" : input.settingType === "float" ? "any" : undefined}
       value={value}

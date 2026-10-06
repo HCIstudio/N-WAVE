@@ -1,14 +1,26 @@
 import type React from "react";
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { BookOpen, Pencil, Trash2, Save, Copy, Upload } from "lucide-react";
+import {
+  AlertTriangle,
+  BookOpen,
+  Copy,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Save,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import api, { isDemoMode } from "../api";
 import {
   ConfirmDialog,
   ActionDialog,
   Modal,
+  Toast,
   type ActionButtonProps,
 } from "../components/common";
+import { getApiErrorMessage } from "../utils/errors";
 import PageLayout from "../components/layout/PageLayout";
 import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
@@ -25,9 +37,16 @@ const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 const TUTORIAL_VERSION = "custom-nodes-v3";
 
 const HomePage: React.FC = () => {
+  // Prefix for label/input id pairs, unique per component instance.
+  const fieldId = useId();
   const [workflows, setWorkflows] = useState<WorkflowDescriptor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Failing to load the library replaces the page with a retry state; failed
+  // actions (create, delete, ...) only show a toast and keep the page usable.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  // The action currently waiting on the backend, to disable its controls.
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<{
     name: string;
@@ -78,15 +97,21 @@ const HomePage: React.FC = () => {
     setIsTutorialIntroVisible(true);
   };
 
+  const reportActionError = (message: string, err: unknown) => {
+    console.error(err);
+    const detail = getApiErrorMessage(err, "");
+    setActionError(detail ? `${message} ${detail}` : message);
+  };
+
   const fetchWorkflows = async () => {
     try {
       setLoading(true);
       const response = await api.get("/workflows");
       setWorkflows(response.data);
-      setError(null);
+      setLoadError(null);
     } catch (err) {
-      setError("Failed to fetch workflows.");
       console.error(err);
+      setLoadError(getApiErrorMessage(err, "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -95,6 +120,11 @@ const HomePage: React.FC = () => {
   useEffect(() => {
     fetchWorkflows();
   }, []);
+
+  // Focus the name field when a card enters edit mode.
+  useEffect(() => {
+    if (editingId) nameTextareaRef.current?.focus();
+  }, [editingId]);
 
   useEffect(() => {
     const resizeTextarea = (ref: React.RefObject<HTMLTextAreaElement>) => {
@@ -134,8 +164,7 @@ const HomePage: React.FC = () => {
       setEditingId(null);
       setOriginalEditData(null);
     } catch (err) {
-      setError("Failed to update workflow.");
-      console.error(err);
+      reportActionError("Failed to update workflow.", err);
     }
   };
 
@@ -189,30 +218,36 @@ const HomePage: React.FC = () => {
   const handleDuplicate = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
     e.stopPropagation();
+    if (pendingAction) return;
+    setPendingAction(`duplicate:${id}`);
     try {
       const response = await api.post(`/workflows/${id}/duplicate`);
       navigate(`/workflow/${response.data._id}`);
     } catch (err) {
-      setError("Failed to duplicate workflow.");
-      console.error(err);
+      reportActionError("Failed to duplicate workflow.", err);
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const confirmDelete = async () => {
     if (!workflowToDelete) return;
+    setPendingAction(`delete:${workflowToDelete}`);
     try {
       await api.delete(`/workflows/${workflowToDelete}`);
       setWorkflows((prev) => prev.filter((wf) => wf._id !== workflowToDelete));
     } catch (err) {
-      setError("Failed to delete workflow.");
-      console.error(err);
+      reportActionError("Failed to delete workflow.", err);
     } finally {
+      setPendingAction(null);
       setIsDeleteModalOpen(false);
       setWorkflowToDelete(null);
     }
   };
 
   const handleNewWorkflow = async () => {
+    if (pendingAction) return;
+    setPendingAction("create");
     try {
       const response = await api.post("/workflows", {
         name: "Untitled Workflow",
@@ -223,8 +258,9 @@ const HomePage: React.FC = () => {
       });
       navigate(`/workflow/${response.data._id}`);
     } catch (err) {
-      setError("Failed to create new workflow.");
-      console.error(err);
+      reportActionError("Failed to create new workflow.", err);
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -252,14 +288,13 @@ const HomePage: React.FC = () => {
         setImportName(file.name.replace(/\.[^.]+$/, ""));
       }
     } catch (err) {
-      setError("Failed to read import file.");
-      console.error(err);
+      reportActionError("Failed to read import file.", err);
     }
   };
 
   const handleImportWorkflow = async () => {
     if (!importSource.trim()) {
-      setError("Nextflow source is required for import.");
+      setActionError("Nextflow source is required for import.");
       return;
     }
 
@@ -278,8 +313,7 @@ const HomePage: React.FC = () => {
       resetImportForm();
       navigate(`/workflow/${response.data._id}`);
     } catch (err) {
-      setError("Failed to import workflow.");
-      console.error(err);
+      reportActionError("Failed to import workflow.", err);
     } finally {
       setIsImporting(false);
     }
@@ -296,23 +330,57 @@ const HomePage: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading && workflows.length === 0) {
     return (
       <PageLayout>
-        <div className="flex items-center justify-center h-screen">
+        <output
+          aria-live="polite"
+          className="flex items-center justify-center h-screen"
+        >
           <div className="text-text-light text-xl flex items-center gap-2">
-            <Loader className="animate-spin text-nextflow-green" />
+            <Loader className="animate-spin text-nextflow-green" aria-hidden />
             <span className="text-nextflow-green">Loading workflows...</span>
           </div>
-        </div>
+        </output>
       </PageLayout>
     );
   }
 
-  if (error) {
+  if (loadError) {
     return (
       <PageLayout>
-        <div className="p-8 text-center text-red-500">{error}</div>
+        <div className="flex min-h-screen items-center justify-center p-6">
+          <div
+            role="alert"
+            className="w-full max-w-md rounded-lg border border-panel-border bg-panel-background p-6 text-text shadow-lg"
+          >
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-6 w-6 text-warning" aria-hidden />
+              <h1 className="text-lg font-semibold">
+                Couldn&apos;t load your workflows
+              </h1>
+            </div>
+            <p className="mt-3 text-sm text-text-light">
+              {isDemoMode
+                ? "The demo's browser storage could not be read."
+                : "The N-WAVE backend did not respond. Make sure it is running (see the README) and try again."}
+            </p>
+            <p className="mt-2 text-xs text-text-light">Details: {loadError}</p>
+            <button
+              type="button"
+              onClick={fetchWorkflows}
+              disabled={loading}
+              className="mt-5 inline-flex items-center gap-2 rounded-md bg-nextflow-green px-4 py-2 text-white hover:bg-nextflow-green-dark disabled:opacity-50"
+            >
+              <RefreshCw
+                size={16}
+                className={loading ? "animate-spin" : undefined}
+                aria-hidden
+              />
+              {loading ? "Retrying..." : "Try again"}
+            </button>
+          </div>
+        </div>
       </PageLayout>
     );
   }
@@ -348,6 +416,9 @@ const HomePage: React.FC = () => {
     (wf) => wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin
   );
   const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
+  const hasUserWorkflows = workflows.some(
+    (wf) => !(wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin)
+  );
 
   const renderWorkflowCard = (wf: WorkflowDescriptor) => {
     const isEditing = editingId === wf._id;
@@ -363,6 +434,7 @@ const HomePage: React.FC = () => {
           {isEditing ? (
             <>
               <button
+                type="button"
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -375,6 +447,7 @@ const HomePage: React.FC = () => {
               </button>
               {!isReadOnly && (
                 <button
+                  type="button"
                   onClick={(e) => handleDeleteClick(e, wf._id)}
                   className="p-1 text-text-light hover:text-red-500"
                   aria-label="Delete"
@@ -387,6 +460,7 @@ const HomePage: React.FC = () => {
             <>
               {!isReadOnly && (
                 <button
+                  type="button"
                   onClick={(e) => handleEditClick(e, wf)}
                   className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Edit"
@@ -396,15 +470,26 @@ const HomePage: React.FC = () => {
               )}
               {showDuplicate && (
                 <button
+                  type="button"
                   onClick={(e) => handleDuplicate(e, wf._id)}
-                  className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  disabled={pendingAction !== null}
+                  className={`p-1 text-text-light hover:text-white transition-opacity disabled:cursor-wait ${
+                    pendingAction === `duplicate:${wf._id}`
+                      ? "opacity-100"
+                      : "opacity-0 group-hover:opacity-100"
+                  }`}
                   aria-label="Duplicate"
                 >
-                  <Copy size={16} />
+                  {pendingAction === `duplicate:${wf._id}` ? (
+                    <Loader size={16} className="animate-spin" aria-hidden />
+                  ) : (
+                    <Copy size={16} />
+                  )}
                 </button>
               )}
               {!isReadOnly && (
                 <button
+                  type="button"
                   onClick={(e) => handleDeleteClick(e, wf._id)}
                   className="p-1 text-text-light hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Delete"
@@ -430,7 +515,6 @@ const HomePage: React.FC = () => {
                 }}
                 className="text-lg font-semibold bg-transparent border border-gray-600 rounded-md text-nextflow-green focus:outline-none focus:border-nextflow-green focus:ring-1 focus:ring-nextflow-green w-full resize-none overflow-hidden p-2"
                 rows={1}
-                autoFocus
               />
             </div>
             <textarea
@@ -503,9 +587,9 @@ const HomePage: React.FC = () => {
           />
         )}
         <div className="flex-1 p-8">
-          <div className="mb-6 flex items-center justify-between gap-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <h1 className="text-3xl font-bold text-text">Workflows</h1>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               {!isHomeTutorialActive && (
                 <button
                   type="button"
@@ -525,6 +609,7 @@ const HomePage: React.FC = () => {
                 <span>Wiki</span>
               </a>
               <button
+                type="button"
                 onClick={() => setIsImportModalOpen(true)}
                 className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
               >
@@ -533,6 +618,14 @@ const HomePage: React.FC = () => {
               </button>
             </div>
           </div>
+          {!hasUserWorkflows && (
+            <p className="mb-6 max-w-2xl text-sm text-text-light">
+              You haven&apos;t created any workflows yet. Start a new one, import
+              an existing Nextflow script
+              {hasDemoWorkflow ? ", or open the demo workflow to learn the basics" : ""}
+              .
+            </p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {workflows.map((wf) => {
               const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin;
@@ -564,28 +657,30 @@ const HomePage: React.FC = () => {
                 </div>
               );
             })}
-            <div
+            <button
+              type="button"
               onClick={handleNewWorkflow}
-              className="flex items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent cursor-pointer transition-colors"
+              disabled={pendingAction !== null}
+              className="flex min-h-[10rem] items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent transition-colors disabled:cursor-wait disabled:opacity-70"
             >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              <span className="ml-2">New Workflow</span>
-            </div>
+              {pendingAction === "create" ? (
+                <Loader size={24} className="animate-spin" aria-hidden />
+              ) : (
+                <Plus size={24} aria-hidden />
+              )}
+              <span className="ml-2">
+                {pendingAction === "create" ? "Creating..." : "New Workflow"}
+              </span>
+            </button>
           </div>
         </div>
+        {actionError && (
+          <Toast
+            message={actionError}
+            type="error"
+            onClose={() => setActionError(null)}
+          />
+        )}
         <ConfirmDialog
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}
@@ -613,6 +708,7 @@ const HomePage: React.FC = () => {
           footer={
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => {
                   setIsImportModalOpen(false);
                   resetImportForm();
@@ -623,6 +719,7 @@ const HomePage: React.FC = () => {
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={handleImportWorkflow}
                 className="rounded-md bg-nextflow-green px-4 py-2 text-white hover:bg-nextflow-green-dark disabled:opacity-50"
                 disabled={isImporting || !importSource.trim()}
@@ -634,8 +731,9 @@ const HomePage: React.FC = () => {
         >
           <div className="space-y-4">
             <div>
-              <label className="mb-1 block text-sm text-text">Name</label>
+              <label htmlFor={`${fieldId}-name`} className="mb-1 block text-sm text-text">Name</label>
               <input
+                id={`${fieldId}-name`}
                 type="text"
                 value={importName}
                 onChange={(e) => setImportName(e.target.value)}
@@ -644,8 +742,9 @@ const HomePage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-text">Description</label>
+              <label htmlFor={`${fieldId}-description`} className="mb-1 block text-sm text-text">Description</label>
               <textarea
+                id={`${fieldId}-description`}
                 value={importDescription}
                 onChange={(e) => setImportDescription(e.target.value)}
                 className="w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none"
@@ -654,11 +753,12 @@ const HomePage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm text-text">
+              <label htmlFor={`${fieldId}-nextflow-file`} className="mb-1 block text-sm text-text">
                 Nextflow File
               </label>
               <div className="flex gap-2">
                 <input
+                  id={`${fieldId}-nextflow-file`}
                   ref={importFileInputRef}
                   type="file"
                   accept=".nf,.txt,.groovy"
@@ -680,10 +780,11 @@ const HomePage: React.FC = () => {
               </div>
             </div>
             <div>
-              <label className="mb-1 block text-sm text-text">
+              <label htmlFor={`${fieldId}-nextflow-source`} className="mb-1 block text-sm text-text">
                 Nextflow Source
               </label>
               <textarea
+                id={`${fieldId}-nextflow-source`}
                 value={importSource}
                 onChange={(e) => setImportSource(e.target.value)}
                 className="min-h-[220px] w-full rounded-md border border-gray-600 bg-accent p-2 font-mono text-sm text-text focus:border-nextflow-green focus:outline-none"

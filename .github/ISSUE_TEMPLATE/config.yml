@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation (Wiki)
+    url: https://github.com/HCIstudio/N-WAVE/wiki
+    about: Authoring workflows, the node reference, and running N-WAVE via Docker.
+  - name: Live demo
+    url: https://hcistudio.github.io/N-WAVE/
+    about: Try N-WAVE in the browser without installing anything.
