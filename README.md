@@ -50,7 +50,7 @@ can then execute the workflow and inspect its results from the browser.
 - The frontend owns the canvas and turns the node graph into a Nextflow script
   (`frontend/src/generators/`). The script is generated in the browser.
 - The backend persists workflows to MongoDB and executes them. It exposes a small REST API
-  under `/api` (`workflows`, `files`, `execute`).
+  under `/api` (`workflows`, `execute`, `nfcore`, `custom-nodes`).
 - The frontend talks to the backend only through `frontend/src/api.ts`. In the online demo
   that client is swapped for an in-browser store (`frontend/src/demo/`), which is why the
   demo needs no backend.
@@ -180,7 +180,7 @@ N-WAVE/
 │     ├─ controllers/       # workflow CRUD, execution
 │     ├─ execution/         # Nextflow script normalization + command building
 │     ├─ validation/        # zod request-body schemas
-│     ├─ routes/            # /api/workflows, /api/files, /api/execute
+│     ├─ routes/            # /api/workflows, /api/execute, /api/nfcore, /api/custom-nodes
 │     ├─ models/            # Mongoose models
 │     └─ workflows/         # built-in demo, import & materialize logic
 ├─ frontend/                # React + Vite SPA

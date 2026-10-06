@@ -1,8 +1,8 @@
 # N-WAVE Backend
 
 Express + TypeScript API for N-WAVE. It persists workflows to MongoDB and executes them by
-launching the official `nextflow/nextflow` Docker image. It stores workflow and file
-metadata only — file contents live in the browser.
+launching the official `nextflow/nextflow` Docker image. Input file contents live on the
+workflow's nodes in the browser and are sent along with each execution request.
 
 ## Development
 
@@ -31,7 +31,6 @@ Docker, use `docker compose up -d --build` from the repository root.
 All routes are under `/api`:
 
 - `workflows` — `GET`/`POST` `/workflows`, `GET`/`PUT`/`DELETE` `/workflows/:id`
-- `files` (metadata only) — `GET` `/files`, `POST` `/files/upload`, `GET`/`DELETE` `/files/:id`
 - `execute` — `POST` `/execute/execute`, `POST` `/execute/cancel`, `GET` `/execute/docker-status`, `GET` `/execute/nextflow-status`
 - `nfcore`, `custom-nodes` — node catalog and custom node definitions
 

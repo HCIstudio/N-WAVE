@@ -98,19 +98,13 @@ const demoApi = {
     }
 
     // Execution can't run in a static, backend-less demo.
-    if (path === "/execute") {
+    if (path === "/execute/execute") {
       return fail(501, EXECUTION_DISABLED_MESSAGE);
     }
     // Cancelling a (non-existent) run is a harmless no-op.
     if (path === "/execute/cancel") {
       return ok({ message: "No active execution in demo mode" } as T);
     }
-    // File "registration" is only backend persistence; the file content already
-    // lives on the node, so return a synthetic id and move on.
-    if (path === "/files/register") {
-      return ok({ _id: `demo-file-${Date.now().toString(36)}` } as T);
-    }
-
     return fail(404, `No demo handler for POST ${path}`);
   },
 
@@ -133,10 +127,6 @@ const demoApi = {
         demoStore.remove(decodeURIComponent(workflowMatch[1]));
         return { message: "Workflow deleted successfully" } as T;
       });
-    }
-    // File deletion is backend-only bookkeeping; treat as success.
-    if (/^\/files\/[^/]+$/.test(path)) {
-      return ok({ message: "File removed" } as T);
     }
     return fail(404, `No demo handler for DELETE ${path}`);
   },

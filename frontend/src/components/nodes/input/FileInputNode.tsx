@@ -11,7 +11,6 @@ interface FileObject {
   content: string;
   size: number;
   fileType?: string; // Detected file type
-  _id?: string; // Backend metadata ID (optional)
 }
 
 const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
@@ -69,10 +68,7 @@ const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
             );
             if (existingIndex !== -1) {
               // Replace existing file
-              updatedFiles[existingIndex] = {
-                ...newFile,
-                _id: updatedFiles[existingIndex]._id || newFile._id, // Keep backend ID if exists
-              };
+              updatedFiles[existingIndex] = newFile;
             } else {
               // Add new file
               updatedFiles.push(newFile);

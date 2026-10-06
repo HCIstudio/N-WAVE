@@ -6,14 +6,12 @@ import { useDropzone } from "react-dropzone";
 import type { NodeData } from "../../nodes/BaseNode";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import { SearchInput, detectFileType } from "../../common";
-import api from "../../../api";
 
 interface FileObject {
   name: string;
   content: string;
   size: number;
   fileType?: string; // Detected file type
-  _id?: string; // Backend metadata ID (optional)
 }
 
 const FileInputPanel: React.FC<{
@@ -103,10 +101,7 @@ const FileInputPanel: React.FC<{
           );
           if (existingIndex !== -1) {
             // Completely replace existing file (new file has content, so no missing content issue)
-            updatedFiles[existingIndex] = {
-              ...newFile,
-              _id: updatedFiles[existingIndex]._id || newFile._id, // Keep backend ID if exists
-            };
+            updatedFiles[existingIndex] = newFile;
             replacedFiles.push(newFile.name);
           } else {
             // Add new file
@@ -144,26 +139,6 @@ const FileInputPanel: React.FC<{
           ).toFixed(2)} KB`,
           outputs: [{ name: "ch_files_out", isConnectable: true }],
         });
-
-        // Optionally register metadata with backend (for persistence across sessions)
-        // This is optional and can be skipped for pure browser-based usage
-        try {
-          for (const file of newFiles) {
-            const formData = new FormData();
-            const originalFile = acceptedFiles.find(
-              (f) => f.name === file.name
-            );
-            if (originalFile) {
-              formData.append("file", originalFile);
-              const response = await api.post("/files/register", formData);
-              // Store the backend ID for future reference (optional)
-              file._id = response.data._id;
-            }
-          }
-        } catch (backendError) {
-          console.warn("Could not register files with backend:", backendError);
-          // This is fine - files still work locally
-        }
       } catch (err) {
         setError("An error occurred during file processing.");
         console.error(err);
@@ -208,11 +183,6 @@ const FileInputPanel: React.FC<{
     setIsRemoving(true);
 
     try {
-      // Find files to remove (for backend deletion)
-      const filesToRemove = nodeFiles.filter((f) =>
-        selectedForRemoval.has(f.name)
-      );
-
       const newFiles = nodeFiles.filter((f) => !selectedForRemoval.has(f.name));
       updateNodeData(node.id, {
         files: newFiles,
@@ -231,24 +201,6 @@ const FileInputPanel: React.FC<{
         outputs: [{ name: "ch_files_out", isConnectable: newFiles.length > 0 }],
       });
       setSelectedForRemoval(new Set());
-
-      // Delete from backend (for files that have backend IDs)
-      const filesToDeleteFromBackend = filesToRemove.filter((f) => f._id);
-      if (filesToDeleteFromBackend.length > 0) {
-        try {
-          await Promise.all(
-            filesToDeleteFromBackend.map((file) =>
-              api.delete(`/files/${file._id}`)
-            )
-          );
-        } catch (error) {
-          console.warn(
-            "Could not delete some file metadata from backend:",
-            error
-          );
-          // This is non-critical - the files are still removed from the UI
-        }
-      }
     } finally {
       setIsRemoving(false);
     }

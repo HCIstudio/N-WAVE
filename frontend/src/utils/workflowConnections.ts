@@ -38,7 +38,8 @@ export const getIncomingFiles = (
       const files = sourceNode?.data.files ?? [];
 
       files.forEach((file, fileIndex) => {
-        const key = file._id || `${file.name}:${file.size}:${file.content}`;
+        // Identical files reaching this node via several edges count once.
+        const key = `${file.name}:${file.size}:${file.content}`;
         if (!filesByKey.has(key)) {
           filesByKey.set(key, {
             ...file,

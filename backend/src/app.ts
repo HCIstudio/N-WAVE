@@ -7,7 +7,6 @@ import express, {
 import cors, { type CorsOptions } from "cors";
 import workflowRoutes from "./routes/workflowRoutes";
 import executeRoutes from "./routes/executeRoutes";
-import fileRoutes from "./routes/fileRoutes";
 import nfcoreRoutes from "./routes/nfcoreRoutes";
 import customNodeRoutes from "./routes/customNodeRoutes";
 import { getErrorMessage } from "./utils/errors";
@@ -51,7 +50,6 @@ export const createApp = (): Express => {
     res.send("Backend server is running!");
   });
 
-  app.use("/api/files", fileRoutes);
   app.use("/api/workflows", workflowRoutes);
   app.use("/api/execute", executeRoutes);
   app.use("/api/nfcore", nfcoreRoutes);
