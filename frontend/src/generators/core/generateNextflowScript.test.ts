@@ -140,4 +140,55 @@ describe("generateNextflowScript with nf-core modules", () => {
     expect(multiqcInput).toBeGreaterThan(zipAssignment);
     expect(multiqcCall).toBeGreaterThan(multiqcInput);
   });
+
+  it("keeps code that starts with a comment in dependency order", async () => {
+    await import("../../registry/nodeDefinitions");
+    const { nodeDefinitions } = await import("../../registry/nodeDefinitions");
+    const operator = nodeDefinitions.find((entry) => entry.id === "channelOperator");
+    const display = nodeDefinitions.find((entry) => entry.id === "outputDisplay");
+    if (!operator || !display) throw new Error("missing definitions");
+    const graphNodes: Node[] = [
+      // The display first, so node order alone can't produce the right order.
+      {
+        id: "show",
+        type: display.type,
+        position: { x: 0, y: 0 },
+        data: { ...display.defaults },
+      },
+      {
+        id: "reads",
+        type: "fileInput",
+        position: { x: 0, y: 0 },
+        data: {
+          files: [{ name: "a.txt", content: "a" }],
+          outputs: [{ name: "out", isConnectable: true }],
+        },
+      },
+      {
+        id: "op",
+        type: operator.type,
+        position: { x: 0, y: 0 },
+        data: {
+          ...operator.defaults,
+          channelOperatorCode: "// Mix the inputs.\noutput.joined = input.left.mix(input.right)",
+        },
+      },
+    ];
+    const graphEdges: Edge[] = [
+      { id: "e1", source: "reads", sourceHandle: "out", target: "op", targetHandle: "left" },
+      { id: "e2", source: "op", sourceHandle: "joined", target: "show", targetHandle: "in" },
+    ];
+    const generated = generateNextflowScript(
+      graphNodes,
+      graphEdges,
+      "mix",
+      "results",
+      "{workflow_name}"
+    );
+    const workflowBlock = generated.slice(generated.indexOf("workflow {"));
+    const defined = workflowBlock.indexOf("op_joined = ");
+    const used = workflowBlock.search(/\(op_joined\b|= op_joined\b|op_joined\./);
+    expect(defined).toBeGreaterThan(-1);
+    expect(used).toBeGreaterThan(defined);
+  });
 });

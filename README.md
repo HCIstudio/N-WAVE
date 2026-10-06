@@ -183,6 +183,39 @@ empty placeholder that nf-core reads as "no file", editable in the panel, and a 
 config** setting adds `withName` selectors for the processes inside. Details are in
 [scripts/README.md](scripts/README.md#subworkflows).
 
+### nf-core node outputs and settings
+
+nf-core modules don't save anything themselves (pipelines do that in their config), so each
+nf-core module or subworkflow node copies its outputs to `results/<node name>/`, the way
+nf-core pipelines lay out their results (`versions.yml` is left out). **Save outputs** in the
+node's panel turns this off. **Output prefix** sets `task.ext.prefix`; `${meta.id}` stands
+for the sample, as in `${meta.id}.filtered`. When a workflow uses nf-core components that
+aren't installed (an example, or a workflow from another install), a banner lists them with
+an **Install them** button. After a run, the run panel links the MultiQC report and the
+run's other result files.
+
+### RNA-seq (STAR + Salmon) example
+
+The built-in **RNA-seq (STAR + Salmon)** example rebuilds the default nf-core/rnaseq route
+from library nodes only (nf-core modules, the `bam_sort_stats_samtools` subworkflow, a
+channel operator, a samplesheet and a parameters node), so every step can be inspected and
+edited:
+
+- genome preparation: unzip and filter the GTF, transcript FASTA (gffread), STAR and Salmon
+  indexes;
+- FastQC and Trim Galore;
+- STAR alignment with the options nf-core/rnaseq 3.27.0 uses, Salmon quantification of the
+  transcriptome alignments;
+- SAMtools sort, index and statistics;
+- MultiQC over all reports, mixed by a channel operator.
+
+It uses four samples of the pipeline's test data, with notes on the canvas that explain each
+part and what the full pipeline adds. Opening it offers to install its 11 nf-core components.
+In the demo it opens, shows every node's code and exports; on the Docker install it runs
+(a few minutes) and writes Salmon quantifications to `results/salmon_quantification/` and the
+report to `results/multiqc/multiqc_report.html`. See
+[wiki/RNA-seq-STAR-Salmon-Example.md](wiki/RNA-seq-STAR-Salmon-Example.md).
+
 ### Running a whole nf-core pipeline
 
 The **nf-core Pipeline** node runs a complete, unmodified nf-core pipeline (nf-core/rnaseq

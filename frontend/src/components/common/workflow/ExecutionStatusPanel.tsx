@@ -9,6 +9,7 @@ import {
   Cpu,
   HardDrive,
 } from "lucide-react";
+import RunResultsList from "./RunResultsList";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 
@@ -52,6 +53,8 @@ interface ExecutionStatusPanelProps {
   canCancel?: boolean;
   onClose?: () => void;
   isVisible: boolean;
+  /** The run's id, once known: links its results after it finishes. */
+  runId?: string | null;
 }
 
 const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
@@ -60,6 +63,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   canCancel = true,
   onClose,
   isVisible,
+  runId,
 }) => {
   if (!isVisible) return null;
   const isCancelled = status.currentStage === "Workflow cancelled";
@@ -199,6 +203,16 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
           <div className="mt-2 text-sm text-gray-800">
             Current: {status.currentStage}
           </div>
+        )}
+
+        {runId && !status.isRunning && !isCancelled && (
+          <section
+            aria-label="Run results"
+            className="mt-3 space-y-1 border-t border-gray-300 pt-2 text-gray-800"
+          >
+            <h4 className="text-sm font-semibold">Results</h4>
+            <RunResultsList runId={runId} label="Run reports" />
+          </section>
         )}
       </div>
 

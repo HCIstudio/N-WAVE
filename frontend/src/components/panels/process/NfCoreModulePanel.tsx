@@ -4,6 +4,7 @@ import type { NodeData } from "../../nodes/BaseNode";
 import { MemoryInput, TimeInput } from "../../common/forms";
 import type { NfCoreValueInput } from "../../../registry/nfcore/inputChannels";
 import NfCoreValueInputs from "./NfCoreValueInputs";
+import SaveOutputsToggle from "./SaveOutputsToggle";
 
 interface NfCoreModulePanelProps {
   node: Node<NodeData>;
@@ -27,6 +28,7 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
     ? node.data.nwaveNfCoreArgumentReferences
     : [];
   const [extArgs, setExtArgs] = useState(node.data.nfcoreExtArgs ?? "");
+  const [extPrefix, setExtPrefix] = useState(node.data.nfcoreExtPrefix ?? "");
   const [cpus, setCpus] = useState(node.data.cpus ?? 1);
   const [memory, setMemory] = useState(node.data.memory ?? "2.GB");
   const [timeLimit, setTimeLimit] = useState(node.data.timeLimit ?? "2.h");
@@ -39,9 +41,11 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
     ? node.data.nfcoreValueInputs
     : [];
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: node.data is only read to compare; saving changes it.
   React.useEffect(() => {
-    onSave(node.id, {
+    const next: Partial<NodeData> = {
       nfcoreExtArgs: supportsExtArgs ? extArgs : undefined,
+      nfcoreExtPrefix: extPrefix.trim() ? extPrefix : undefined,
       overrideResources: supportsResources ? overrideResources : false,
       cpus: supportsResources && overrideResources ? cpus : undefined,
       memory: supportsResources && overrideResources ? memory : undefined,
@@ -50,10 +54,20 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
       subtitle: node.data.nwaveNfCoreNeedsReview
         ? "nf-core module - review adapter"
         : "nf-core module",
-    });
+    };
+    // Save only real changes: opening the panel mustn't edit the node (a
+    // read-only example would be copied).
+    // "", false and missing all mean "not set".
+    const unset = (value: unknown) =>
+      value === "" || value === false || value === null ? undefined : value;
+    const changed = (Object.keys(next) as Array<keyof NodeData>).some(
+      (key) => unset(next[key]) !== unset(node.data[key])
+    );
+    if (changed) onSave(node.id, next);
   }, [
     cpus,
     extArgs,
+    extPrefix,
     memory,
     node.data.nwaveNfCoreNeedsReview,
     node.id,
@@ -136,6 +150,28 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
           )}
         </div>
       )}
+
+      <SaveOutputsToggle node={node} onSave={onSave} />
+
+      <div className="space-y-1">
+        <label
+          htmlFor={`${fieldId}-output-prefix`}
+          className="block text-sm font-medium text-text"
+        >
+          Output prefix
+        </label>
+        <input
+          id={`${fieldId}-output-prefix`}
+          value={extPrefix}
+          onChange={(event) => setExtPrefix(event.target.value)}
+          className="w-full rounded-md border border-accent bg-background p-2 font-mono text-sm text-text focus:border-nextflow-green focus:ring-nextflow-green"
+          placeholder="Default: the sample id"
+        />
+        <p className="text-xs text-text-light">
+          Names the output files (task.ext.prefix). Use {"${meta.id}"} for the
+          sample id, e.g. {"${meta.id}.filtered"}.
+        </p>
+      </div>
 
       {supportsResources && (
         <div className="border-t border-accent pt-4 space-y-3">

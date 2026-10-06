@@ -1,3 +1,8 @@
+import {
+  publishDirLines,
+  resultsFolderFor,
+  savesOutputs,
+} from "./nfcore/publish";
 import type { Node } from "reactflow";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import NfCoreModulePanel from "../components/panels/process/NfCoreModulePanel";
@@ -347,6 +352,23 @@ export const generateNfCoreModuleNode =
         referencesParams(extArgs)
           ? `  ext.args = { ${groovyStringWithParams(extArgs)} }`
           : `  ext.args = ${groovyString(extArgs)}`
+      );
+    }
+
+    // Output file prefix (`task.ext.prefix`). `${meta.id}` and friends need a
+    // closure so they're read per task.
+    const extPrefix = String(node.data.nfcoreExtPrefix ?? "").trim();
+    if (extPrefix) {
+      configLines.push(
+        extPrefix.includes("${")
+          ? `  ext.prefix = { "${extPrefix.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}" }`
+          : `  ext.prefix = ${groovyString(extPrefix)}`
+      );
+    }
+
+    if (savesOutputs(node.data)) {
+      configLines.push(
+        ...publishDirLines(resultsFolderFor(node.data, moduleAlias))
       );
     }
 

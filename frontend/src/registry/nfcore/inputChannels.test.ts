@@ -164,7 +164,8 @@ describe("nf-core module inputs", () => {
     expect(definitions).toContain(
       "ch_proc_n1_quants_nfcore = quants_up.map { item ->",
     );
-    expect(definitions).toContain(".collect()");
+    // Flattened first: paired-end outputs are lists of files per sample.
+    expect(definitions).toContain(".flatten().collect()");
     expect(definitions).toContain("[id: 'all_samples']");
     expect(callOf(result?.processInvocations[0])).toBe(
       "PROC_N1(ch_proc_n1_quants_nfcore, ch_proc_n1_tx2gene_nfcore, 'salmon')",
@@ -175,5 +176,31 @@ describe("nf-core module inputs", () => {
     const { definition, result } = generate("krona/kronadb", []);
     expect(definition.inputs).toEqual([]);
     expect(callOf(result?.processInvocations[0])).toBe("PROC_N1()");
+  });
+
+  it("saves outputs to results/<node name> and sets the output prefix", () => {
+    const { result } = generate("custom/gtffilter", ["gtf", "fasta"], {
+      label: "Filter GTF",
+      nfcoreExtPrefix: "${meta.id}.filtered",
+    });
+    expect(result?.nextflowConfigBlocks).toEqual([
+      [
+        "withName: 'PROC_N1' {",
+        '  ext.prefix = { "${meta.id}.filtered" }',
+        "  publishDir = [",
+        '    path: { "${params.outdir}/filter_gtf" },',
+        "    mode: 'copy',",
+        "    saveAs: { filename -> filename.equals('versions.yml') ? null : filename }",
+        "  ]",
+        "}",
+      ].join("\n"),
+    ]);
+    // A plain prefix is a string; saving can be turned off.
+    expect(
+      generate("custom/gtffilter", ["gtf", "fasta"], {
+        nfcoreExtPrefix: "genes.filtered",
+        nfcorePublish: false,
+      }).result?.nextflowConfigBlocks,
+    ).toEqual(["withName: 'PROC_N1' {\n  ext.prefix = 'genes.filtered'\n}"]);
   });
 });

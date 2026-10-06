@@ -211,7 +211,8 @@ export const buildNfCoreGroupChannels = (
     const sources = connected.map(({ item, upstream }) => {
       if (item.mode === "first") return `${upstream}.first()`;
       if (item.mode === "collect") {
-        return `${upstream}.map { item -> ${hasMeta("item")} ? item[1..-1] : item }.collect()`;
+        // flatten(): per-sample outputs may be lists (paired-end reads).
+        return `${upstream}.map { item -> ${hasMeta("item")} ? item[1..-1] : item }.flatten().collect()`;
       }
       return upstream;
     });

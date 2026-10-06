@@ -42,6 +42,8 @@ import {
   refreshCustomNodes,
 } from "../api/customNodes";
 import { refreshInstalledNfCoreNodes } from "../api/nfcore";
+import MissingNfCoreBanner from "../components/canvas/MissingNfCoreBanner";
+import { getMissingNfCoreComponents } from "../registry/nfcore/missingComponents";
 import { getNodeCode } from "../registry/nodeCode";
 import {
   buildConvertedNode,
@@ -213,6 +215,8 @@ const WorkflowPageContent: React.FC = () => {
   >({});
   const [isRunning, setIsRunning] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  // The last run's id, kept after it ends to link its results.
+  const [lastRunId, setLastRunId] = useState<string | null>(null);
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(
     null
   );
@@ -420,14 +424,26 @@ const WorkflowPageContent: React.FC = () => {
 
   // Register installed nf-core modules and custom nodes, so saved
   // workflows that use them generate code without opening the node menu.
+  // Bumped when installed nf-core nodes are (re)loaded into the registry.
+  const [nfCoreRegistryVersion, setNfCoreRegistryVersion] = useState(0);
+  const reloadInstalledNfCore = useCallback(() => {
+    refreshInstalledNfCoreNodes()
+      .catch(() => 0)
+      .finally(() => setNfCoreRegistryVersion((version) => version + 1));
+  }, []);
+  const missingNfCoreComponents = useMemo(
+    () =>
+      nfCoreRegistryVersion > 0 ? getMissingNfCoreComponents(nodes) : [],
+    [nodes, nfCoreRegistryVersion]
+  );
   useEffect(() => {
-    refreshInstalledNfCoreNodes().catch(() => 0);
+    reloadInstalledNfCore();
     migrateLegacyCustomNodes()
       .catch(() => 0)
       .finally(() => {
         refreshCustomNodes().catch(() => 0);
       });
-  }, []);
+  }, [reloadInstalledNfCore]);
 
   const finishTutorial = useCallback(async () => {
     const tutorialCopyId = sessionStorage.getItem(TUTORIAL_COPY_ID_KEY);
@@ -1295,11 +1311,15 @@ const WorkflowPageContent: React.FC = () => {
         nextflowVersion: settings.nextflow?.version ?? "25.04.4",
       };
 
+      setLastRunId(null);
       // The output is read while the run goes: progress updates live, and
       // the run id (first line) makes Cancel work for long runs.
       const lineReader = createLineReader((line) => {
         const runId = parseRunId(line);
-        if (runId) setCurrentExecutionId(runId);
+        if (runId) {
+          setCurrentExecutionId(runId);
+          setLastRunId(runId);
+        }
         executionStatus.parseNextflowOutput(line);
       });
 
@@ -1878,6 +1898,10 @@ const WorkflowPageContent: React.FC = () => {
           {renderPanels()}
         </ErrorBoundary>
       </div>
+      <MissingNfCoreBanner
+        components={missingNfCoreComponents}
+        onInstalled={reloadInstalledNfCore}
+      />
       {workflowImportWarnings.length > 0 && (
         <div className="border-t border-yellow-700/40 bg-yellow-100/90 px-4 py-3 text-sm text-yellow-900">
           {workflowImportWarnings.join(" ")}
@@ -1956,6 +1980,7 @@ const WorkflowPageContent: React.FC = () => {
         canCancel={Boolean(currentExecutionId)}
         onClose={executionStatus.hideStatus}
         isVisible={executionStatus.isVisible}
+        runId={isDemoMode ? null : lastRunId}
       />
     </div>
   );

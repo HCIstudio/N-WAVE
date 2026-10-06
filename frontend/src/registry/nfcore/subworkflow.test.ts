@@ -1,3 +1,5 @@
+import type { NodeData } from "../../components/nodes/BaseNode";
+import { publishDirLines, resultsFolderFor } from "./publish";
 import type { Edge, Node } from "reactflow";
 import { afterEach, describe, expect, it } from "vitest";
 import { generateNextflowScript } from "../../generators";
@@ -65,6 +67,12 @@ describe("generating nf-core subworkflow calls", () => {
     position: { x: 0, y: 0 },
     data: { ...definition.defaults, ...data },
   });
+  const publishBlock = (alias: string) =>
+    [
+      `withName: '${alias}:.*' {`,
+      ...publishDirLines(resultsFolderFor(definition.defaults as NodeData, alias)),
+      "}",
+    ].join("\n");
   const generate = (subworkflow: Node, handles: string[]) =>
     definition.generateNextflow?.({
       node: subworkflow,
@@ -106,7 +114,11 @@ describe("generating nf-core subworkflow calls", () => {
         "",
       ].join("\n"),
     );
-    expect(result?.nextflowConfigBlocks).toBeUndefined();
+    // Every process of the subworkflow saves to the node's results folder.
+    expect(result?.nextflowConfigBlocks).toEqual([publishBlock(alias)]);
+    expect(
+      generate(node({ nfcorePublish: false }), ["ch_bam"])?.nextflowConfigBlocks,
+    ).toBeUndefined();
   });
 
   it("mixes several connections, uses edited placeholders and adds process config", () => {
@@ -122,6 +134,7 @@ describe("generating nf-core subworkflow calls", () => {
       "(up0_out.mix(up1_out), ch_reference.first())",
     );
     expect(result?.nextflowConfigBlocks).toEqual([
+      publishBlock("NFCORE_SUBWORKFLOW_BAM_SORT_STATS_SAMTOOLS_SORT"),
       "withName: '.*:SAMTOOLS_SORT' {\n    ext.prefix = { \"${meta.id}.sorted\" }\n}",
     ]);
   });

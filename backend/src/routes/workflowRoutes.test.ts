@@ -85,11 +85,31 @@ describe("/api/workflows", () => {
 
     const response = await request(app).get("/api/workflows").expect(200);
     expect(response.body[0].isBuiltin).toBe(true);
-    expect(response.body.slice(0, 2).map((workflow: { _id: string }) => workflow._id)).toEqual([
+    expect(response.body.slice(0, 3).map((workflow: { _id: string }) => workflow._id)).toEqual([
       "builtin:demo-basic",
       "builtin:rnaseq-pipeline",
+      "builtin:rnaseq-star-salmon",
     ]);
     expect(response.body.at(-1).name).toBe("Saved");
+  });
+
+  it("serves the RNA-seq (STAR + Salmon) example built from nf-core nodes", async () => {
+    const response = await request(app)
+      .get("/api/workflows/builtin:rnaseq-star-salmon")
+      .expect(200);
+    expect(response.body).toMatchObject({
+      name: "RNA-seq (STAR + Salmon)",
+      isBuiltin: true,
+      isReadOnly: true,
+      executionSettings: { resources: { maxCpus: 4, maxMemory: "8.GB" } },
+    });
+    const components = response.body.nodes
+      .map((node: { data: { nwaveNfCoreModuleId?: string } }) => node.data.nwaveNfCoreModuleId)
+      .filter(Boolean);
+    expect(components).toEqual(
+      expect.arrayContaining(["nf-core/star/align", "nf-core/salmon/quant", "nf-core/multiqc"])
+    );
+    await request(app).delete("/api/workflows/builtin:rnaseq-star-salmon").expect(403);
   });
 
   it("serves the nf-core/rnaseq example, read-only and with its resources", async () => {

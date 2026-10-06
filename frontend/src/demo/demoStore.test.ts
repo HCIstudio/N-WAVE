@@ -9,7 +9,7 @@ beforeEach(() => {
 describe("demoStore", () => {
   it("always lists the read-only built-ins first, the demo leading", () => {
     const list = demoStore.list();
-    expect(list.length).toBe(2);
+    expect(list.length).toBe(3);
     expect(list[0]._id).toBe(DEMO_WORKFLOW_ID);
     expect(list[0].isReadOnly).toBe(true);
   });

@@ -1,0 +1,1312 @@
+{
+  "id": "builtin:rnaseq-star-salmon",
+  "name": "RNA-seq (STAR + Salmon)",
+  "description": "The default nf-core/rnaseq route built from library nodes: genome preparation, FastQC, Trim Galore, STAR, Salmon, SAMtools and MultiQC on the pipeline's test data. Every step is a node you can inspect and edit.",
+  "components": [
+    "nf-core/gunzip",
+    "nf-core/custom/gtffilter",
+    "nf-core/gffread",
+    "nf-core/star/genomegenerate",
+    "nf-core/salmon/index",
+    "nf-core/fastqc",
+    "nf-core/trimgalore",
+    "nf-core/star/align",
+    "nf-core/salmon/quant",
+    "nf-core/subworkflows/bam_sort_stats_samtools",
+    "nf-core/multiqc"
+  ],
+  "nodes": [
+    {
+      "id": "samples",
+      "type": "samplesheet",
+      "position": {
+        "x": 0,
+        "y": 120
+      },
+      "data": {
+        "label": "Samplesheet",
+        "icon": "Sheet",
+        "subtitle": "4 samples, 3 paired-end",
+        "samplesheet": "sample,fastq_1,fastq_2,strandedness\nWT_REP1,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_1.fastq.gz,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_2.fastq.gz,auto\nWT_REP2,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357072_1.fastq.gz,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357072_2.fastq.gz,reverse\nRAP1_UNINDUCED_REP1,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357073_1.fastq.gz,,reverse\nRAP1_IAA_30M_REP1,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357076_1.fastq.gz,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357076_2.fastq.gz,reverse\n",
+        "samplesheetFileName": "samplesheet.csv",
+        "samplesheetMapping": {
+          "idColumn": "sample",
+          "read1Column": "fastq_1",
+          "read2Column": "fastq_2"
+        },
+        "outputs": [
+          {
+            "name": "samples",
+            "label": "Samples",
+            "isConnectable": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "reference",
+      "type": "parameters",
+      "position": {
+        "x": 0,
+        "y": 620
+      },
+      "data": {
+        "label": "Reference genome",
+        "icon": "Settings2",
+        "subtitle": "2 references",
+        "parameters": [
+          {
+            "name": "fasta",
+            "type": "file",
+            "value": "https://raw.githubusercontent.com/nf-core/test-datasets/626c8fab639062eade4b10747e919341cbf9b41a/reference/genome.fasta",
+            "description": "Genome sequence (FASTA)"
+          },
+          {
+            "name": "gtf",
+            "type": "file",
+            "value": "https://raw.githubusercontent.com/nf-core/test-datasets/626c8fab639062eade4b10747e919341cbf9b41a/reference/genes.gtf.gz",
+            "description": "Gene annotation (GTF, gzipped)"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "fasta",
+            "label": "fasta",
+            "isConnectable": true
+          },
+          {
+            "name": "gtf",
+            "label": "gtf",
+            "isConnectable": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "gunzip_gtf",
+      "type": "process",
+      "position": {
+        "x": 380,
+        "y": 760
+      },
+      "data": {
+        "label": "Unzip GTF",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/gunzip",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "documentation",
+            "url": "https://www.gnu.org/software/gzip/manual/gzip.html"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_gunzip",
+        "inputs": [
+          {
+            "name": "archive",
+            "label": "Archive",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "gunzip",
+            "label": "Gunzip",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_gunzip",
+            "label": "Versions Gunzip",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "gtf_filter",
+      "type": "process",
+      "position": {
+        "x": 380,
+        "y": 1000
+      },
+      "data": {
+        "label": "Filter GTF",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/custom/gtffilter",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "tool_dev_url",
+            "url": "https://github.com/nf-core/modules/blob/master/modules/nf-core/custom/gtffilter/main.nf"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_custom_gtffilter",
+        "inputs": [
+          {
+            "name": "gtf",
+            "label": "Gtf",
+            "isConnectable": true
+          },
+          {
+            "name": "fasta",
+            "label": "Fasta",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "gtf",
+            "label": "Gtf",
+            "isConnectable": true
+          },
+          {
+            "name": "versions",
+            "label": "Versions",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false,
+        "nfcoreExtPrefix": "${meta.id}.filtered"
+      }
+    },
+    {
+      "id": "transcripts_fasta",
+      "type": "process",
+      "position": {
+        "x": 760,
+        "y": 900
+      },
+      "data": {
+        "label": "Transcript FASTA",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/gffread",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "http://ccb.jhu.edu/software/stringtie/gff.shtml#gffread"
+          },
+          {
+            "type": "documentation",
+            "url": "http://ccb.jhu.edu/software/stringtie/gff.shtml#gffread"
+          },
+          {
+            "type": "tool_dev_url",
+            "url": "https://github.com/gpertea/gffread"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_gffread",
+        "inputs": [
+          {
+            "name": "gff",
+            "label": "Gff",
+            "isConnectable": true
+          },
+          {
+            "name": "fasta",
+            "label": "Fasta",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "gtf",
+            "label": "Gtf",
+            "isConnectable": true
+          },
+          {
+            "name": "gffread_gff",
+            "label": "Gffread Gff",
+            "isConnectable": true
+          },
+          {
+            "name": "gffread_fasta",
+            "label": "Gffread Fasta",
+            "isConnectable": true
+          },
+          {
+            "name": "bed",
+            "label": "Bed",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_gffread",
+            "label": "Versions Gffread",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false,
+        "nfcoreExtArgs": "-w"
+      }
+    },
+    {
+      "id": "star_index",
+      "type": "process",
+      "position": {
+        "x": 760,
+        "y": 600
+      },
+      "data": {
+        "label": "STAR index",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/star/genomegenerate",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://github.com/alexdobin/STAR"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_star_genomegenerate",
+        "inputs": [
+          {
+            "name": "fasta",
+            "label": "Fasta",
+            "isConnectable": true
+          },
+          {
+            "name": "gtf",
+            "label": "Gtf",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "index",
+            "label": "Index",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_star",
+            "label": "Versions Star",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_samtools",
+            "label": "Versions Samtools",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_gawk",
+            "label": "Versions Gawk",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false,
+        "nfcoreExtArgs": "--genomeSAindexNbases 7"
+      }
+    },
+    {
+      "id": "salmon_index",
+      "type": "process",
+      "position": {
+        "x": 1140,
+        "y": 900
+      },
+      "data": {
+        "label": "Salmon index",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/salmon/index",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://salmon.readthedocs.io/en/latest/salmon.html"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_salmon_index",
+        "inputs": [
+          {
+            "name": "transcript_fasta",
+            "label": "Transcript Fasta",
+            "isConnectable": true
+          },
+          {
+            "name": "genome_fasta",
+            "label": "Genome Fasta",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "index",
+            "label": "Index",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_salmon",
+            "label": "Versions Salmon",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "fastqc_raw",
+      "type": "process",
+      "position": {
+        "x": 380,
+        "y": -120
+      },
+      "data": {
+        "label": "FastQC (raw reads)",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/fastqc",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/"
+          },
+          {
+            "type": "documentation",
+            "url": "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_fastqc",
+        "inputs": [
+          {
+            "name": "reads",
+            "label": "Reads",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "html",
+            "label": "Html",
+            "isConnectable": true
+          },
+          {
+            "name": "zip",
+            "label": "Zip",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_fastqc",
+            "label": "Versions Fastqc",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "trim_galore",
+      "type": "process",
+      "position": {
+        "x": 380,
+        "y": 160
+      },
+      "data": {
+        "label": "Trim Galore",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/trimgalore",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/"
+          },
+          {
+            "type": "documentation",
+            "url": "https://github.com/FelixKrueger/TrimGalore/blob/master/Docs/Trim_Galore_User_Guide.md"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_trimgalore",
+        "inputs": [
+          {
+            "name": "reads",
+            "label": "Reads",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "reads",
+            "label": "Reads",
+            "isConnectable": true
+          },
+          {
+            "name": "log",
+            "label": "Log",
+            "isConnectable": true
+          },
+          {
+            "name": "json",
+            "label": "Json",
+            "isConnectable": true
+          },
+          {
+            "name": "unpaired",
+            "label": "Unpaired",
+            "isConnectable": true
+          },
+          {
+            "name": "html",
+            "label": "Html",
+            "isConnectable": true
+          },
+          {
+            "name": "zip",
+            "label": "Zip",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_trimgalore",
+            "label": "Versions Trimgalore",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "star_align",
+      "type": "process",
+      "position": {
+        "x": 1140,
+        "y": 220
+      },
+      "data": {
+        "label": "STAR alignment",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/star/align",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://github.com/alexdobin/STAR"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [
+          {
+            "name": "star_ignore_sjdbgtf",
+            "type": "boolean",
+            "description": "Ignore annotation GTF file",
+            "defaultValue": false
+          }
+        ],
+        "nfcoreValues": {
+          "star_ignore_sjdbgtf": false
+        },
+        "processType": "nfcore_star_align",
+        "inputs": [
+          {
+            "name": "reads",
+            "label": "Reads",
+            "isConnectable": true
+          },
+          {
+            "name": "index",
+            "label": "Index",
+            "isConnectable": true
+          },
+          {
+            "name": "gtf",
+            "label": "Gtf",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "log_final",
+            "label": "Log Final",
+            "isConnectable": true
+          },
+          {
+            "name": "log_out",
+            "label": "Log Out",
+            "isConnectable": true
+          },
+          {
+            "name": "log_progress",
+            "label": "Log Progress",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_star",
+            "label": "Versions Star",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_samtools",
+            "label": "Versions Samtools",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_gawk",
+            "label": "Versions Gawk",
+            "isConnectable": true
+          },
+          {
+            "name": "bam",
+            "label": "Bam",
+            "isConnectable": true
+          },
+          {
+            "name": "bam_sorted",
+            "label": "Bam Sorted",
+            "isConnectable": true
+          },
+          {
+            "name": "bam_sorted_aligned",
+            "label": "Bam Sorted Aligned",
+            "isConnectable": true
+          },
+          {
+            "name": "bam_transcript",
+            "label": "Bam Transcript",
+            "isConnectable": true
+          },
+          {
+            "name": "bam_unsorted",
+            "label": "Bam Unsorted",
+            "isConnectable": true
+          },
+          {
+            "name": "fastq",
+            "label": "Fastq",
+            "isConnectable": true
+          },
+          {
+            "name": "tab",
+            "label": "Tab",
+            "isConnectable": true
+          },
+          {
+            "name": "spl_junc_tab",
+            "label": "Spl Junc Tab",
+            "isConnectable": true
+          },
+          {
+            "name": "read_per_gene_tab",
+            "label": "Read Per Gene Tab",
+            "isConnectable": true
+          },
+          {
+            "name": "junction",
+            "label": "Junction",
+            "isConnectable": true
+          },
+          {
+            "name": "sam",
+            "label": "Sam",
+            "isConnectable": true
+          },
+          {
+            "name": "wig",
+            "label": "Wig",
+            "isConnectable": true
+          },
+          {
+            "name": "bedgraph",
+            "label": "Bedgraph",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false,
+        "nfcoreExtArgs": "--quantMode TranscriptomeSAM --outSAMtype BAM Unsorted --outSAMattributes NH HI AS NM MD --readFilesCommand zcat --twopassMode Basic --runRNGseed 0 --outFilterMultimapNmax 20 --alignSJDBoverhangMin 1 --outSAMstrandField intronMotif --quantTranscriptomeSAMoutput BanSingleEnd"
+      }
+    },
+    {
+      "id": "salmon_quant",
+      "type": "process",
+      "position": {
+        "x": 1520,
+        "y": 520
+      },
+      "data": {
+        "label": "Salmon quantification",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/salmon/quant",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://salmon.readthedocs.io/en/latest/salmon.html"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_salmon_quant",
+        "inputs": [
+          {
+            "name": "reads",
+            "label": "Reads",
+            "isConnectable": true
+          },
+          {
+            "name": "index",
+            "label": "Index",
+            "isConnectable": true
+          },
+          {
+            "name": "gtf",
+            "label": "Gtf",
+            "isConnectable": true
+          },
+          {
+            "name": "transcript_fasta",
+            "label": "Transcript Fasta",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "results",
+            "label": "Results",
+            "isConnectable": true
+          },
+          {
+            "name": "json_info",
+            "label": "Json Info",
+            "isConnectable": true
+          },
+          {
+            "name": "lib_format_counts",
+            "label": "Lib Format Counts",
+            "isConnectable": true
+          },
+          {
+            "name": "versions_salmon",
+            "label": "Versions Salmon",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false,
+        "nfcoreExtArgs": "--libType A"
+      }
+    },
+    {
+      "id": "bam_sort_stats",
+      "type": "process",
+      "position": {
+        "x": 1520,
+        "y": 120
+      },
+      "data": {
+        "label": "SAMtools sort, index, stats",
+        "icon": "Workflow",
+        "subtitle": "nf-core subworkflow",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/subworkflows/bam_sort_stats_samtools",
+        "processType": "nfcore_subworkflow_bam_sort_stats_samtools",
+        "inputs": [
+          {
+            "name": "ch_bam",
+            "label": "Ch Bam",
+            "isConnectable": true
+          },
+          {
+            "name": "ch_fasta_fai",
+            "label": "Ch Fasta Fai",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "bam",
+            "label": "Bam",
+            "isConnectable": true
+          },
+          {
+            "name": "index",
+            "label": "Index",
+            "isConnectable": true
+          },
+          {
+            "name": "stats",
+            "label": "Stats",
+            "isConnectable": true
+          },
+          {
+            "name": "flagstat",
+            "label": "Flagstat",
+            "isConnectable": true
+          },
+          {
+            "name": "idxstats",
+            "label": "Idxstats",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreOutdated": false,
+        "nfcoreSubworkflowTakes": [
+          {
+            "name": "ch_bam",
+            "kind": "channel",
+            "type": "expression",
+            "description": "BAM/CRAM/SAM file. Structure: [ val(meta), path(bam) ]",
+            "defaultValue": "Channel.value([[:], []])"
+          },
+          {
+            "name": "ch_fasta_fai",
+            "kind": "channel",
+            "type": "expression",
+            "description": "Reference genome fasta file and its index. Structure: [ val(meta), path(fasta), path(fai) ]",
+            "defaultValue": "Channel.value([[:], [], []])"
+          }
+        ],
+        "nfcoreSubworkflowComponents": {
+          "modules": [
+            "samtools/index",
+            "samtools/sort"
+          ],
+          "subworkflows": [
+            "bam_stats_samtools"
+          ]
+        },
+        "nfcoreValues": {
+          "ch_bam": "Channel.value([[:], []])",
+          "ch_fasta_fai": "Channel.value([[:], [], []])"
+        }
+      }
+    },
+    {
+      "id": "qc_reports",
+      "type": "channelOperator",
+      "position": {
+        "x": 1900,
+        "y": 220
+      },
+      "data": {
+        "label": "Collect QC reports",
+        "icon": "GitMerge",
+        "subtitle": "Mix",
+        "channelOperatorTemplate": "custom",
+        "channelOperatorCode": "// Every report MultiQC reads, as one channel.\noutput.reports = input.fastqc.mix(\n    input.trimming,\n    input.star,\n    input.salmon,\n    input.samtools_stats,\n    input.samtools_flagstat,\n    input.samtools_idxstats\n)",
+        "inputs": [
+          {
+            "name": "fastqc",
+            "label": "fastqc",
+            "isConnectable": true
+          },
+          {
+            "name": "trimming",
+            "label": "trimming",
+            "isConnectable": true
+          },
+          {
+            "name": "star",
+            "label": "star",
+            "isConnectable": true
+          },
+          {
+            "name": "salmon",
+            "label": "salmon",
+            "isConnectable": true
+          },
+          {
+            "name": "samtools_stats",
+            "label": "samtools_stats",
+            "isConnectable": true
+          },
+          {
+            "name": "samtools_flagstat",
+            "label": "samtools_flagstat",
+            "isConnectable": true
+          },
+          {
+            "name": "samtools_idxstats",
+            "label": "samtools_idxstats",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "reports",
+            "label": "reports",
+            "isConnectable": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "multiqc",
+      "type": "process",
+      "position": {
+        "x": 2280,
+        "y": 220
+      },
+      "data": {
+        "label": "MultiQC",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/multiqc",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://multiqc.info/"
+          },
+          {
+            "type": "documentation",
+            "url": "https://multiqc.info/docs/"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_multiqc",
+        "inputs": [
+          {
+            "name": "multiqc_files",
+            "label": "Multiqc Files",
+            "isConnectable": true
+          },
+          {
+            "name": "multiqc_config",
+            "label": "Multiqc Config",
+            "isConnectable": true
+          },
+          {
+            "name": "multiqc_logo",
+            "label": "Multiqc Logo",
+            "isConnectable": true
+          },
+          {
+            "name": "replace_names",
+            "label": "Replace Names",
+            "isConnectable": true
+          },
+          {
+            "name": "sample_names",
+            "label": "Sample Names",
+            "isConnectable": true
+          }
+        ],
+        "outputs": [
+          {
+            "name": "report",
+            "label": "Report",
+            "isConnectable": true
+          },
+          {
+            "name": "data",
+            "label": "Data",
+            "isConnectable": true
+          },
+          {
+            "name": "plots",
+            "label": "Plots",
+            "isConnectable": true
+          },
+          {
+            "name": "versions",
+            "label": "Versions",
+            "isConnectable": true
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "note_start",
+      "type": "note",
+      "position": {
+        "x": 0,
+        "y": -330
+      },
+      "data": {
+        "label": "RNA-seq (STAR + Salmon), built from library nodes",
+        "icon": "StickyNote",
+        "noteText": "The default route of nf-core/rnaseq, rebuilt step by step from nf-core modules: read QC and trimming, STAR alignment, Salmon quantification, SAMtools statistics and a MultiQC report.\n\nEvery node is a library node. Double-click one to see its settings, and open its Code tab for the Nextflow code it adds. Duplicate the workflow to change anything.",
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    {
+      "id": "note_inputs",
+      "type": "note",
+      "position": {
+        "x": -360,
+        "y": 380
+      },
+      "data": {
+        "label": "Inputs",
+        "icon": "StickyNote",
+        "noteText": "Samplesheet: four samples from the nf-core/rnaseq test data (yeast), three paired-end and one single-end. The reads are downloaded on the fly.\n\nReference genome: the test genome (FASTA) and gene annotation (GTF). Swap in your own files or URLs to analyse other data.",
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    {
+      "id": "note_genome",
+      "type": "note",
+      "position": {
+        "x": 760,
+        "y": 1120
+      },
+      "data": {
+        "label": "Genome preparation",
+        "icon": "StickyNote",
+        "noteText": "As in nf-core/rnaseq: unzip the GTF, drop annotation on sequences that aren't in the genome, write the transcript sequences (gffread -w), and build the STAR and Salmon indexes.\n\nThe STAR index uses --genomeSAindexNbases 7 because the test genome is tiny (230 kb); remove it for a real genome.",
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    {
+      "id": "note_quant",
+      "type": "note",
+      "position": {
+        "x": 1520,
+        "y": 760
+      },
+      "data": {
+        "label": "Alignment and quantification",
+        "icon": "StickyNote",
+        "noteText": "STAR aligns the trimmed reads with the options nf-core/rnaseq uses and also writes alignments to the transcriptome. Salmon quantifies those (alignment mode, --libType A detects the strandedness).\n\nSAMtools sorts and indexes the genome alignments and collects statistics.",
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    {
+      "id": "note_results",
+      "type": "note",
+      "position": {
+        "x": 2280,
+        "y": -220
+      },
+      "data": {
+        "label": "Results",
+        "icon": "StickyNote",
+        "noteText": "Run it on the Docker install (the browser demo builds and exports only). Each node saves its outputs to results/<node name>: Salmon quantifications in results/salmon_quantification/<sample>/quant.sf, the report in results/multiqc/multiqc_report.html.\n\nCollect QC reports is a channel operator that mixes every report into one channel for MultiQC.",
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    {
+      "id": "note_scope",
+      "type": "note",
+      "position": {
+        "x": 1900,
+        "y": 760
+      },
+      "data": {
+        "label": "What the full pipeline adds",
+        "icon": "StickyNote",
+        "noteText": "nf-core/rnaseq also merges runs of the same sample, infers strandedness, removes rRNA and contaminants, offers other aligners (HISAT2, RSEM, Bowtie 2, Kallisto) and UMI handling, adds QC (RSeQC, Qualimap, dupRadar, Preseq) and builds gene-level count matrices. Use the nf-core/rnaseq Example to run all of it.",
+        "inputs": [],
+        "outputs": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-reference-gtf-gunzip_gtf-archive",
+      "source": "reference",
+      "sourceHandle": "gtf",
+      "target": "gunzip_gtf",
+      "targetHandle": "archive",
+      "type": "default"
+    },
+    {
+      "id": "edge-gunzip_gtf-gunzip-gtf_filter-gtf",
+      "source": "gunzip_gtf",
+      "sourceHandle": "gunzip",
+      "target": "gtf_filter",
+      "targetHandle": "gtf",
+      "type": "default"
+    },
+    {
+      "id": "edge-reference-fasta-gtf_filter-fasta",
+      "source": "reference",
+      "sourceHandle": "fasta",
+      "target": "gtf_filter",
+      "targetHandle": "fasta",
+      "type": "default"
+    },
+    {
+      "id": "edge-gtf_filter-gtf-transcripts_fasta-gff",
+      "source": "gtf_filter",
+      "sourceHandle": "gtf",
+      "target": "transcripts_fasta",
+      "targetHandle": "gff",
+      "type": "default"
+    },
+    {
+      "id": "edge-reference-fasta-transcripts_fasta-fasta",
+      "source": "reference",
+      "sourceHandle": "fasta",
+      "target": "transcripts_fasta",
+      "targetHandle": "fasta",
+      "type": "default"
+    },
+    {
+      "id": "edge-reference-fasta-star_index-fasta",
+      "source": "reference",
+      "sourceHandle": "fasta",
+      "target": "star_index",
+      "targetHandle": "fasta",
+      "type": "default"
+    },
+    {
+      "id": "edge-gtf_filter-gtf-star_index-gtf",
+      "source": "gtf_filter",
+      "sourceHandle": "gtf",
+      "target": "star_index",
+      "targetHandle": "gtf",
+      "type": "default"
+    },
+    {
+      "id": "edge-transcripts_fasta-gffread_fasta-salmon_index-transcript_fasta",
+      "source": "transcripts_fasta",
+      "sourceHandle": "gffread_fasta",
+      "target": "salmon_index",
+      "targetHandle": "transcript_fasta",
+      "type": "default"
+    },
+    {
+      "id": "edge-reference-fasta-salmon_index-genome_fasta",
+      "source": "reference",
+      "sourceHandle": "fasta",
+      "target": "salmon_index",
+      "targetHandle": "genome_fasta",
+      "type": "default"
+    },
+    {
+      "id": "edge-samples-samples-fastqc_raw-reads",
+      "source": "samples",
+      "sourceHandle": "samples",
+      "target": "fastqc_raw",
+      "targetHandle": "reads",
+      "type": "default"
+    },
+    {
+      "id": "edge-samples-samples-trim_galore-reads",
+      "source": "samples",
+      "sourceHandle": "samples",
+      "target": "trim_galore",
+      "targetHandle": "reads",
+      "type": "default"
+    },
+    {
+      "id": "edge-trim_galore-reads-star_align-reads",
+      "source": "trim_galore",
+      "sourceHandle": "reads",
+      "target": "star_align",
+      "targetHandle": "reads",
+      "type": "default"
+    },
+    {
+      "id": "edge-star_index-index-star_align-index",
+      "source": "star_index",
+      "sourceHandle": "index",
+      "target": "star_align",
+      "targetHandle": "index",
+      "type": "default"
+    },
+    {
+      "id": "edge-gtf_filter-gtf-star_align-gtf",
+      "source": "gtf_filter",
+      "sourceHandle": "gtf",
+      "target": "star_align",
+      "targetHandle": "gtf",
+      "type": "default"
+    },
+    {
+      "id": "edge-star_align-bam_transcript-salmon_quant-reads",
+      "source": "star_align",
+      "sourceHandle": "bam_transcript",
+      "target": "salmon_quant",
+      "targetHandle": "reads",
+      "type": "default"
+    },
+    {
+      "id": "edge-salmon_index-index-salmon_quant-index",
+      "source": "salmon_index",
+      "sourceHandle": "index",
+      "target": "salmon_quant",
+      "targetHandle": "index",
+      "type": "default"
+    },
+    {
+      "id": "edge-gtf_filter-gtf-salmon_quant-gtf",
+      "source": "gtf_filter",
+      "sourceHandle": "gtf",
+      "target": "salmon_quant",
+      "targetHandle": "gtf",
+      "type": "default"
+    },
+    {
+      "id": "edge-transcripts_fasta-gffread_fasta-salmon_quant-transcript_fasta",
+      "source": "transcripts_fasta",
+      "sourceHandle": "gffread_fasta",
+      "target": "salmon_quant",
+      "targetHandle": "transcript_fasta",
+      "type": "default"
+    },
+    {
+      "id": "edge-star_align-bam-bam_sort_stats-ch_bam",
+      "source": "star_align",
+      "sourceHandle": "bam",
+      "target": "bam_sort_stats",
+      "targetHandle": "ch_bam",
+      "type": "default"
+    },
+    {
+      "id": "edge-fastqc_raw-zip-qc_reports-fastqc",
+      "source": "fastqc_raw",
+      "sourceHandle": "zip",
+      "target": "qc_reports",
+      "targetHandle": "fastqc",
+      "type": "default"
+    },
+    {
+      "id": "edge-trim_galore-log-qc_reports-trimming",
+      "source": "trim_galore",
+      "sourceHandle": "log",
+      "target": "qc_reports",
+      "targetHandle": "trimming",
+      "type": "default"
+    },
+    {
+      "id": "edge-star_align-log_final-qc_reports-star",
+      "source": "star_align",
+      "sourceHandle": "log_final",
+      "target": "qc_reports",
+      "targetHandle": "star",
+      "type": "default"
+    },
+    {
+      "id": "edge-salmon_quant-results-qc_reports-salmon",
+      "source": "salmon_quant",
+      "sourceHandle": "results",
+      "target": "qc_reports",
+      "targetHandle": "salmon",
+      "type": "default"
+    },
+    {
+      "id": "edge-bam_sort_stats-stats-qc_reports-samtools_stats",
+      "source": "bam_sort_stats",
+      "sourceHandle": "stats",
+      "target": "qc_reports",
+      "targetHandle": "samtools_stats",
+      "type": "default"
+    },
+    {
+      "id": "edge-bam_sort_stats-flagstat-qc_reports-samtools_flagstat",
+      "source": "bam_sort_stats",
+      "sourceHandle": "flagstat",
+      "target": "qc_reports",
+      "targetHandle": "samtools_flagstat",
+      "type": "default"
+    },
+    {
+      "id": "edge-bam_sort_stats-idxstats-qc_reports-samtools_idxstats",
+      "source": "bam_sort_stats",
+      "sourceHandle": "idxstats",
+      "target": "qc_reports",
+      "targetHandle": "samtools_idxstats",
+      "type": "default"
+    },
+    {
+      "id": "edge-qc_reports-reports-multiqc-multiqc_files",
+      "source": "qc_reports",
+      "sourceHandle": "reports",
+      "target": "multiqc",
+      "targetHandle": "multiqc_files",
+      "type": "default"
+    }
+  ],
+  "resources": {
+    "maxCpus": 4,
+    "maxMemory": "8.GB"
+  }
+}

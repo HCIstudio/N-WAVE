@@ -33,6 +33,15 @@ import {
  * @param outputNamingPattern The output naming pattern for the workflow.
  * @returns A string containing the generated Nextflow script.
  */
+/**
+ * True when an invocation holds only comments or blank lines. Code that
+ * starts with a comment (channel operator code, say) still counts as code.
+ */
+const isCommentOnly = (invocation: string): boolean =>
+  invocation
+    .split("\n")
+    .every((line) => line.trim() === "" || line.trim().startsWith("//"));
+
 export const generateNextflowScript = (
   nodes: Node[],
   edges: Edge[],
@@ -356,7 +365,7 @@ export const generateNextflowScript = (
 
   for (const invocation of processInvocations) {
     // Skip comments and empty lines
-    if (invocation.trim().startsWith("//") || invocation.trim() === "") {
+    if (isCommentOnly(invocation)) {
       continue;
     }
 
@@ -425,7 +434,7 @@ export const generateNextflowScript = (
 
   // Process all invocations, then any channel definition nothing uses
   for (const invocation of [...processInvocations, ...channelDefinitions]) {
-    if (!invocation.trim().startsWith("//") && invocation.trim() !== "") {
+    if (!isCommentOnly(invocation)) {
       addInvocation(invocation);
     }
   }
@@ -458,7 +467,7 @@ export const generateNextflowScript = (
 
   // Add comment lines as-is
   for (const invocation of processInvocations) {
-    if (invocation.trim().startsWith("//") || invocation.trim() === "") {
+    if (isCommentOnly(invocation)) {
       if (
         !sortedInvocations.includes(invocation) &&
         !outputInvocations.includes(invocation)
@@ -490,7 +499,7 @@ function parseInvocation(invocation: string): {
   const usages: string[] = [];
 
   const trimmed = invocation.trim();
-  if (trimmed === "" || trimmed.startsWith("//")) {
+  if (isCommentOnly(trimmed)) {
     return { definitions, usages };
   }
 

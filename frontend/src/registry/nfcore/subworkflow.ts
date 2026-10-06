@@ -1,3 +1,4 @@
+import { publishDirLines, resultsFolderFor, savesOutputs } from "./publish";
 // nf-core subworkflow nodes: a subworkflow's channel `take`s are the node's
 // input ports, its value `take`s are settings and its `emit`s are outputs.
 // The generated code includes the subworkflow from
@@ -128,6 +129,15 @@ export const generateNfCoreSubworkflowNode =
       return `    ${variable} = ${alias}.out.${output.emit}`;
     });
     const processConfig = String(node.data.nfcoreProcessConfig ?? "").trim();
+    // Every process inside the subworkflow saves to the node's folder.
+    const publishConfig = savesOutputs(node.data)
+      ? [
+          `withName: '${alias}:.*' {`,
+          ...publishDirLines(resultsFolderFor(node.data, alias)),
+          "}",
+        ].join("\n")
+      : "";
+    const configBlocks = [publishConfig, processConfig].filter(Boolean);
 
     return {
       processScript: "",
@@ -136,7 +146,7 @@ export const generateNfCoreSubworkflowNode =
       ],
       // Raw selectors from the settings; inner processes are named
       // "<alias>:<PROCESS>", so `withName: '.*:SALMON_QUANT'` matches.
-      nextflowConfigBlocks: processConfig ? [processConfig] : undefined,
+      nextflowConfigBlocks: configBlocks.length > 0 ? configBlocks : undefined,
       processInvocations: [
         `${[`    ${alias}(${args.join(", ")})`, ...outputs].join("\n")}\n`,
       ],
