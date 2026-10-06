@@ -199,11 +199,17 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add frontend/package.json backend/package.json
-          git commit -m "chore(release): v${version}"
+          # A version set by hand in the PR (e.g. 1.2.0) is already in both
+          # package.json files, so there may be nothing to commit: then only tag.
+          if git diff --cached --quiet; then
+            echo "package.json files already at v${version}; tagging only"
+          else
+            git commit -m "chore(release): v${version}"
+            # Uses the RELEASE_TOKEN PAT from the checkout above. This re-triggers
+            # the workflow, but the `version` job ignores "chore(release):" commits.
+            git push origin HEAD:main
+          fi
           git tag "v${version}"
-          # Uses the RELEASE_TOKEN PAT from the checkout above. This re-triggers
-          # the workflow, but the `version` job ignores "chore(release):" commits.
-          git push origin HEAD:main
           git push origin "v${version}"
 
       - name: Create GitHub release
