@@ -1,7 +1,10 @@
 name: Release
 
 # Auto-versioning: every push to main steps the patch version (derived from the
-# latest v* tag), and that version is applied everywhere in the same run:
+# latest v* tag). To release a minor or major version instead, set it in both
+# frontend/package.json and backend/package.json in the pull request (e.g.
+# 1.2.0); a package.json version above the latest tag is used as-is. Either way
+# the version is applied everywhere in the same run:
 #   - injected into the Pages demo build (the site footer shows it),
 #   - injected into the Docker images (:<version> + :latest, linux/amd64 and
 #     linux/arm64) pushed to Docker Hub,
@@ -61,6 +64,24 @@ jobs:
             IFS='.' read -r major minor patch <<< "$v"
             major=${major:-0}; minor=${minor:-0}; patch=${patch:-0}
             next="${major}.${minor}.$((patch + 1))"
+          fi
+
+          # A version set by hand in package.json (e.g. a minor bump to 1.2.0)
+          # wins when it is newer than the latest tag.
+          frontend=$(node -p 'require("./frontend/package.json").version')
+          backend=$(node -p 'require("./backend/package.json").version')
+          if [ "$frontend" != "$backend" ]; then
+            echo "::error::frontend ($frontend) and backend ($backend) package.json versions differ"
+            exit 1
+          fi
+          if ! [[ "$frontend" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::package.json version '$frontend' is not MAJOR.MINOR.PATCH"
+            exit 1
+          fi
+          newest=$(printf '%s\n%s\n' "${latest#v}" "$frontend" | sort -V | tail -n1)
+          if [ -n "$latest" ] && [ "$frontend" != "${latest#v}" ] && [ "$newest" = "$frontend" ]; then
+            echo "Using the version set in package.json: $frontend"
+            next="$frontend"
           fi
           echo "version=$next" >> "$GITHUB_OUTPUT"
           echo "tag=v$next" >> "$GITHUB_OUTPUT"

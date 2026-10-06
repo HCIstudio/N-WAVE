@@ -67,8 +67,9 @@ Guidelines:
 - Branch from `main` with a short descriptive name (`fix/canvas-crash`, `feat/arm-images`).
 - Keep pull requests focused, describe what changed and why, and link the issue
   (`Closes #123`). The pull request template has a short checklist.
-- **Don't bump versions.** Every merge to `main` is released automatically by `release.yml`
-  (version, Docker images, demo site and GitHub Release). See
+- **Don't bump patch versions.** Every merge to `main` is released automatically by
+  `release.yml` (version, Docker images, demo site and GitHub Release). Only a new minor or
+  major version is set by hand, in both `package.json` files. See
   [CI and releases](README.md#ci-and-releases).
 
 ## Reporting bugs and requesting features
