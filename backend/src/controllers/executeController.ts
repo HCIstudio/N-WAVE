@@ -1,14 +1,11 @@
 import type { Request, Response } from "express";
-import { exec, type ChildProcess } from "node:child_process";
+import { exec } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
 import {
   DEFAULT_NEXTFLOW_VERSION,
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
-  buildPipelineConfig,
-  capMaxMemory,
-  normalizeMaxCpus,
   resolveNextflowPlatform,
   resolveOutputName,
   sanitizeWorkflowName,
@@ -33,6 +30,16 @@ import {
   findSubworkflowEntry,
   resolveSubworkflowComponents,
 } from "../nfcore/library";
+import {
+  buildResourceLimitsConfig,
+  describeRunLimits,
+  diagnoseResourceFailure,
+  formatMemory,
+  resolveResourceCeiling,
+  resolveRunLimits,
+  resolveTimeoutMs,
+} from "../execution/resources";
+import { type RunHandle, startRun } from "../execution/runner";
 import type { ExecutionSettings } from "../execution/types";
 import { findRunResultsDir, listFiles, recordRun } from "../runs/runIndex";
 import { getErrorMessage } from "../utils/errors";
@@ -43,11 +50,15 @@ import {
 } from "../validation/schemas";
 import { parseBody } from "../validation/validate";
 
+/** Docker name of a run's Nextflow runner container, so it can be stopped. */
+const runnerContainerName = (executionId: string): string =>
+  `nwave-run-${executionId}`;
+
 // A simple in-memory cache to store input values temporarily
 const inputCache: Record<string, Record<string, unknown>> = {};
 
 // Track running processes for cancellation
-const runningProcesses: Map<string, ChildProcess> = new Map();
+const runningProcesses: Map<string, RunHandle> = new Map();
 
 export const executeProcess = async (
   req: Request,
@@ -182,9 +193,15 @@ const executeNextflowWorkflow = async (
 
     console.log(`Main output directory: ${mainOutputDir}`);
 
-    const maxCpus = normalizeMaxCpus(executionSettings.maxCpus);
-    // Memory is capped for system safety.
-    const maxMemory = capMaxMemory(executionSettings.maxMemory);
+    // The run's limits, clamped to what this server allows (see
+    // execution/resources.ts); applied as process.resourceLimits.
+    const limits = resolveRunLimits(executionSettings);
+    const maxCpus = limits.cpus;
+    const maxMemory = limits.memory;
+    const resourceConfig = buildResourceLimitsConfig(limits);
+    const timeoutMs = resolveTimeoutMs(executionSettings.executionTimeout);
+    // Identifies the run for cancellation, results and the runner container.
+    const executionId = `${sanitizedWorkflowName}_${Date.now()}`;
 
     let hasNfCoreModules: boolean;
     let shouldUseProcessDocker: boolean;
@@ -199,7 +216,7 @@ const executeNextflowWorkflow = async (
       withModuleConfig = true;
       fs.writeFileSync(
         path.join(mainOutputDir, "nwave_modules.config"),
-        buildPipelineConfig(maxCpus, maxMemory)
+        `${resourceConfig}\n`
       );
       if (Object.keys(pipeline.params).length > 0) {
         fs.writeFileSync(
@@ -219,11 +236,13 @@ const executeNextflowWorkflow = async (
           0;
       shouldUseProcessDocker =
         executionSettings.useDocker || hasNfCoreModules;
-      const nextflowConfig = buildExecutionConfig(
-        extractedNextflowAssets.config,
-        shouldUseProcessDocker
-      );
-      withModuleConfig = nextflowConfig.trim() !== "";
+      const nextflowConfig = `${[
+        buildExecutionConfig(extractedNextflowAssets.config, shouldUseProcessDocker),
+        resourceConfig,
+      ]
+        .filter((block) => block.trim() !== "")
+        .join("\n\n")}\n`;
+      withModuleConfig = true;
 
       // Write the Nextflow script to workflow directory
       fs.writeFileSync(scriptPath, extractedNextflowAssets.script);
@@ -366,6 +385,7 @@ const executeNextflowWorkflow = async (
         platform: resolveNextflowPlatform(process.env.NEXTFLOW_PLATFORM),
         nextflowVersion,
         workDir: dockerMainOutputDir,
+        containerName: runnerContainerName(executionId),
         mount: shouldUseProcessDocker
           ? {
               type: "bind",
@@ -379,8 +399,6 @@ const executeNextflowWorkflow = async (
     console.log(`Executing: ${nextflowCmd}`);
     console.log(`Working directory: ${mainOutputDir}`);
 
-    // Generate execution ID for tracking and cancellation
-    const executionId = `${sanitizedWorkflowName}_${Date.now()}`;
     try {
       recordRun(executionId, mainOutputDir);
     } catch (error: unknown) {
@@ -389,115 +407,109 @@ const executeNextflowWorkflow = async (
 
     // Set up streaming response for real-time output
     res.writeHead(200, {
-      "Content-Type": "text/plain",
+      "Content-Type": "text/plain; charset=utf-8",
       "Transfer-Encoding": "chunked",
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
+      // Ask proxies (nginx) not to buffer the stream, and browsers not to
+      // hold back its first kilobyte to sniff the content type.
+      "X-Accel-Buffering": "no",
+      "X-Content-Type-Options": "nosniff",
     });
-    // The frontend reads this to find the run's results afterwards.
+    // The frontend reads the run id to cancel the run and find its results.
     res.write(`N-WAVE run: ${executionId}\n`);
+    res.write(`${describeRunLimits(limits, timeoutMs)}\n`);
 
-    // Execute Nextflow with streaming output
-    const childProcess = exec(nextflowCmd, {
+    const run = startRun({
+      command: nextflowCmd,
       cwd: mainOutputDir,
-      timeout:
-        executionSettings.executionTimeout > 0
-          ? executionSettings.executionTimeout * 60000
-          : pipeline
-            ? 0 // pipelines run as long as they need
-            : 600000, // 10 minutes default
-      maxBuffer: 1024 * 1024 * 10, // 10MB buffer
-    });
-
-    // Track the process for cancellation
-    runningProcesses.set(executionId, childProcess);
-
-    // Stream output in real-time
-    if (childProcess.stdout) {
-      childProcess.stdout.on("data", (data) => {
-        const output = data.toString();
-        console.log(`STDOUT: ${output}`);
-
-        // Send output immediately to frontend
+      timeoutMs,
+      containerName: useLocalNextflow
+        ? undefined
+        : runnerContainerName(executionId),
+      onOutput: (output) => {
+        console.log(`OUTPUT: ${output}`);
         res.write(output);
-      });
-    }
+      },
+      onExit: ({ code, stopReason, outputTail }) => {
+        runningProcesses.delete(executionId);
 
-    if (childProcess.stderr) {
-      childProcess.stderr.on("data", (data) => {
-        const output = data.toString();
-        console.error(`STDERR: ${output}`);
+        if (stopReason === "cancelled") {
+          console.log(`Execution ${executionId} cancelled`);
+          res.write("\nExecution cancelled\n");
+          res.end();
+          return;
+        }
+        if (stopReason === "timeout") {
+          const minutes = Math.max(1, Math.round(timeoutMs / 60_000));
+          console.error(`Execution ${executionId} reached its time limit`);
+          res.write(
+            `\nN-WAVE resource problem: the run was stopped after its time limit of ${minutes} minute${minutes === 1 ? "" : "s"}. Raise Execution Timeout in the execution settings (0 uses the server default, NWAVE_EXECUTION_TIMEOUT).\n`
+          );
+          res.write(`Nextflow execution failed with exit code: ${code ?? "timeout"}\n`);
+          res.end();
+          return;
+        }
 
-        // Send stderr to frontend as well
-        res.write(output);
-      });
-    }
+        if (code !== 0) {
+          console.error(
+            `Execution ${executionId} failed with exit code: ${code}`
+          );
+          const diagnosis = diagnoseResourceFailure(outputTail, limits);
+          if (diagnosis) {
+            res.write(`\nN-WAVE resource problem: ${diagnosis}\n`);
+          }
+          res.write(`\nNextflow execution failed with exit code: ${code}\n`);
+          res.end();
+          return;
+        }
 
-    // Handle process completion
-    childProcess.on("close", (code) => {
-      // Remove from tracking when process completes
-      runningProcesses.delete(executionId);
+        console.log("Nextflow execution completed successfully");
+        console.log(`Results available in: ${mainOutputDir}`);
 
-      if (code !== 0) {
-        console.error(
-          `Execution ${executionId} failed with exit code: ${code}`
-        );
-        res.write(`\nNextflow execution failed with exit code: ${code}\n`);
+        // Send completion messages to frontend
+        res.write("\nNextflow execution completed successfully\n");
+        res.write(`Results available in: ${mainOutputDir}\n`);
+
+        // Move Nextflow metadata files to nextflow directory
+        const nextflowMetadataDir = path.join(mainOutputDir, ".nextflow");
+        const nextflowLogFile = path.join(mainOutputDir, ".nextflow.log");
+        const targetNextflowDir = path.join(nextflowDir, ".nextflow");
+        const targetLogFile = path.join(nextflowDir, ".nextflow.log");
+
+        try {
+          // Move .nextflow directory if it exists
+          if (fs.existsSync(nextflowMetadataDir)) {
+            if (fs.existsSync(targetNextflowDir)) {
+              fs.rmSync(targetNextflowDir, { recursive: true, force: true });
+            }
+            fs.renameSync(nextflowMetadataDir, targetNextflowDir);
+            console.log("Moved .nextflow directory to nextflow/");
+          }
+
+          // Move .nextflow.log file if it exists
+          if (fs.existsSync(nextflowLogFile)) {
+            if (fs.existsSync(targetLogFile)) {
+              fs.unlinkSync(targetLogFile);
+            }
+            fs.renameSync(nextflowLogFile, targetLogFile);
+            console.log("Moved .nextflow.log to nextflow/");
+          }
+        } catch (moveError) {
+          console.warn(
+            "Warning: Could not move Nextflow metadata files:",
+            moveError
+          );
+          // Don't fail the entire execution for this
+        }
+
+        console.log(`Execution ${executionId} completed successfully`);
         res.end();
-        return;
-      }
-
-      console.log("Nextflow execution completed successfully");
-      console.log(`Results available in: ${mainOutputDir}`);
-
-      // Send completion messages to frontend
-      res.write("\nNextflow execution completed successfully\n");
-      res.write(`Results available in: ${mainOutputDir}\n`);
-
-      // Move Nextflow metadata files to nextflow directory
-      const nextflowMetadataDir = path.join(mainOutputDir, ".nextflow");
-      const nextflowLogFile = path.join(mainOutputDir, ".nextflow.log");
-      const targetNextflowDir = path.join(nextflowDir, ".nextflow");
-      const targetLogFile = path.join(nextflowDir, ".nextflow.log");
-
-      try {
-        // Move .nextflow directory if it exists
-        if (fs.existsSync(nextflowMetadataDir)) {
-          if (fs.existsSync(targetNextflowDir)) {
-            fs.rmSync(targetNextflowDir, { recursive: true, force: true });
-          }
-          fs.renameSync(nextflowMetadataDir, targetNextflowDir);
-          console.log("Moved .nextflow directory to nextflow/");
-        }
-
-        // Move .nextflow.log file if it exists
-        if (fs.existsSync(nextflowLogFile)) {
-          if (fs.existsSync(targetLogFile)) {
-            fs.unlinkSync(targetLogFile);
-          }
-          fs.renameSync(nextflowLogFile, targetLogFile);
-          console.log("Moved .nextflow.log to nextflow/");
-        }
-      } catch (moveError) {
-        console.warn(
-          "Warning: Could not move Nextflow metadata files:",
-          moveError
-        );
-        // Don't fail the entire execution for this
-      }
-
-      console.log(`Execution ${executionId} completed successfully`);
-      res.end();
+      },
     });
 
-    childProcess.on("error", (error) => {
-      // Remove from tracking
-      runningProcesses.delete(executionId);
-
-      console.error(`Execution ${executionId} failed with error:`, error);
-      res.write(`\nExecution error: ${error.message}\n`);
-      res.end();
-    });
+    // Track the run for cancellation
+    runningProcesses.set(executionId, run);
   } catch (error: unknown) {
     console.error("Setup error:", error);
     res.status(500).json({
@@ -725,32 +737,13 @@ export const cancelExecution = (req: Request, res: Response): void => {
   if (!body) return;
   const { executionId } = body;
 
-  const childProcess = runningProcesses.get(executionId);
+  const run = runningProcesses.get(executionId);
 
-  if (childProcess) {
+  if (run) {
     try {
-      // Kill the process and all its children
-      if (childProcess.pid) {
-        // On Windows, use taskkill to kill the process tree
-        if (process.platform === "win32") {
-          exec(`taskkill /pid ${childProcess.pid} /t /f`, (error) => {
-            if (error) {
-              console.warn(`Failed to kill process tree: ${error.message}`);
-            }
-          });
-        } else {
-          // On Unix-like systems, kill the process group
-          childProcess.kill("SIGTERM");
-          setTimeout(() => {
-            if (!childProcess.killed) {
-              childProcess.kill("SIGKILL");
-            }
-          }, 5000);
-        }
-      }
-
-      runningProcesses.delete(executionId);
-
+      // Stops Nextflow, its tasks and its runner container; the run's
+      // stream reports "Execution cancelled" once it has ended.
+      run.stop("cancelled");
       res.json({
         message: "Execution cancelled successfully",
         executionId,
@@ -851,4 +844,19 @@ export const getRunResultFile = (req: Request, res: Response): void => {
   res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-popups");
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.sendFile(target);
+};
+
+/**
+ * `{ maxCpus, maxMemory, defaultTimeoutMinutes }`: the most a run may use on
+ * this server, and its time limit when a run sets none (0 = none).
+ */
+export const getExecutionLimits = (_req: Request, res: Response): void => {
+  const ceiling = resolveResourceCeiling();
+  res.json({
+    maxCpus: ceiling.cpus,
+    maxMemory: formatMemory(ceiling.memory),
+    maxMemoryBytes: ceiling.memory,
+    source: ceiling.source,
+    defaultTimeoutMinutes: Math.round(resolveTimeoutMs(0) / 60_000),
+  });
 };

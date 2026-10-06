@@ -141,3 +141,21 @@ describe("run results", () => {
     }
   });
 });
+
+describe("GET /api/execute/limits", () => {
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("reports the server's limits", async () => {
+    vi.stubEnv("NWAVE_MAX_CPUS", "12");
+    vi.stubEnv("NWAVE_MAX_MEMORY", "48 GB");
+    vi.stubEnv("NWAVE_EXECUTION_TIMEOUT", "0");
+    const response = await request(app).get("/api/execute/limits").expect(200);
+    expect(response.body).toEqual({
+      maxCpus: 12,
+      maxMemory: "48.GB",
+      maxMemoryBytes: 48 * 1024 ** 3,
+      source: { cpus: "env", memory: "env" },
+      defaultTimeoutMinutes: 0,
+    });
+  });
+});

@@ -31,6 +31,11 @@
       BACKEND_CONTAINER_NAME: nwave-backend
       CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
       NWAVE_CUSTOM_NODE_DIR: /app/custom-nodes
+      # Most a run may use (defaults: all CPUs, 80% of memory) and the time
+      # limit in minutes for runs that set none (default 1440; 0 = none).
+      # NWAVE_MAX_CPUS: 8
+      # NWAVE_MAX_MEMORY: 24 GB
+      # NWAVE_EXECUTION_TIMEOUT: 1440
     ports:
       - "5001:5001"
     volumes:

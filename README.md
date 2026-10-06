@@ -87,6 +87,21 @@ For the backend to launch containers, the host Docker socket is mounted into it
 (`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
 volumes. Both are set up in the compose files.
 
+### Resource limits and long runs
+
+Each run asks for CPUs, memory and a time limit in the **Execution Settings** (Resources
+tab). The CPU and memory limits are clamped to what the server allows (`NWAVE_MAX_CPUS`,
+`NWAVE_MAX_MEMORY`; by default all CPUs and 80% of the host's memory) and written into the
+run's Nextflow config as `process.resourceLimits`, so a step that asks for more (STAR wants
+tens of GB) is capped to the limit instead of failing. The first lines of a run's output say
+which limits it got, and whether they were lowered.
+
+Runs without their own time limit stop after `NWAVE_EXECUTION_TIMEOUT` minutes (24 hours by
+default). Output is streamed while the run goes, and **Cancel** stops Nextflow, its tasks
+and, in Docker mode, the Nextflow container. When a run fails because a step needed more
+memory or CPUs than allowed, was killed for lack of memory, or hit the time limit, the error
+says so and names the setting to raise.
+
 ### Node code and custom nodes
 
 Every node on the canvas has a **Code** tab in its panel. It shows, read-only, the Nextflow
@@ -165,8 +180,8 @@ holds the Pipeline node and the input nodes feeding it. Running it executes
 nextflow run nf-core/<pipeline> -r <version> -profile [test,]docker -params-file params.json --outdir results
 ```
 
-in the run directory, with N-WAVE's CPU and memory caps applied as `process.resourceLimits`.
-Pipeline runs have no default time limit. After a run, the node's panel links the MultiQC
+in the run directory, with the run's CPU and memory limits applied as
+`process.resourceLimits` (see [Resource limits and long runs](#resource-limits-and-long-runs)). After a run, the node's panel links the MultiQC
 report and Nextflow's execution report (served from the run's `results/`). Export Project
 writes `params.json`, the inputs, a `run.sh` and a README; the script download is a single
 launch script. The pipeline and its containers are downloaded by Nextflow on the first run.
@@ -275,6 +290,9 @@ VITE_DEMO_MODE=true pnpm build && pnpm preview
 | `NEXTFLOW_EXECUTION_MODE` | `auto` | `docker` \| `local` \| `auto` (see [execution](#how-workflow-execution-works)). |
 | `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform for the Nextflow runner container; `native` uses the host architecture. |
 | `BACKEND_CONTAINER_NAME` | `nwave-backend` | Container name the runner attaches volumes from. |
+| `NWAVE_MAX_CPUS` | all host CPUs | Most CPU cores a run may use; higher requests are lowered to this. |
+| `NWAVE_MAX_MEMORY` | 80% of host memory | Most memory a run may use, e.g. `24 GB`; higher requests are lowered to this. |
+| `NWAVE_EXECUTION_TIMEOUT` | `1440` | Time limit in minutes for runs that set none; `0` means no limit. |
 
 ### Frontend build variables
 

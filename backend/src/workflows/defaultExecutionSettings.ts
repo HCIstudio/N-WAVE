@@ -24,7 +24,8 @@ export const defaultExecutionSettings = {
   resources: {
     maxCpus: 4,
     maxMemory: "4.GB",
-    maxTime: "PT30M",
+    // "" uses the server default (NWAVE_EXECUTION_TIMEOUT, 24 hours).
+    maxTime: "",
     executor: "local",
   },
   errorHandling: {

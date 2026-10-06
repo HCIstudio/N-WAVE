@@ -2,9 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
-  buildPipelineConfig,
-  capMaxMemory,
-  normalizeMaxCpus,
   resolveNextflowPlatform,
   resolveOutputName,
   sanitizeWorkflowName,
@@ -60,30 +57,6 @@ describe("resolveOutputName", () => {
   it("defaults to the workflow name", () => {
     expect(resolveOutputName(undefined, "demo", now)).toBe("demo");
     expect(resolveOutputName("", "demo", now)).toBe("demo");
-  });
-});
-
-describe("capMaxMemory", () => {
-  it.each([
-    ["4 GB", "4 GB"],
-    ["5GB", "5GB"],
-    ["8GB", "5GB"],
-    ["16 GB", "5GB"],
-    ["512 MB", "512 MB"],
-    [undefined, "4GB"],
-  ])("%s -> %s", (input, expected) => {
-    expect(capMaxMemory(input)).toBe(expected);
-  });
-});
-
-describe("normalizeMaxCpus", () => {
-  it.each([
-    [8, 8],
-    [0, 4],
-    [-2, 1],
-    [undefined, 4],
-  ])("%s -> %s", (input, expected) => {
-    expect(normalizeMaxCpus(input)).toBe(expected);
   });
 });
 
@@ -210,10 +183,19 @@ describe("nf-core pipeline runs", () => {
     ).toMatch(/run 'nf-core\/rnaseq' -r '3.27.0' -profile 'docker' --outdir results -work-dir nextflow\/work$/);
   });
 
-  it("caps resources with process.resourceLimits", () => {
-    expect(buildPipelineConfig(4, "5 GB")).toContain(
-      "resourceLimits = [ cpus: 4, memory: '5GB' ]"
-    );
-    expect(buildPipelineConfig(2, "4GB'; x")).toContain("memory: '4GBx'");
+  it("names the runner container so a cancel can stop it", () => {
+    expect(
+      buildContainerNextflowCommand({
+        scriptPath: "workflow/x.nf",
+        withModuleConfig: true,
+        maxCpus: 2,
+        maxMemory: "8.GB",
+        platform: null,
+        nextflowVersion: "25.04.4",
+        workDir: "/app/results/x",
+        containerName: "nwave-run-x_1",
+        mount: { type: "volumes-from", container: "nwave-backend" },
+      })
+    ).toMatch(/^docker run --rm --name 'nwave-run-x_1' --volumes-from /);
   });
 });

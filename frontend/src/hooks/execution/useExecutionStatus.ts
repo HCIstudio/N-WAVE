@@ -122,7 +122,9 @@ export const useExecutionStatus = ({
       );
 
       if (executionMatch) {
-        const [, processNameWithInstance, completed, total, statusSymbol] = executionMatch;
+        // Groups: task hash, process name, completed, total, status symbol.
+        const [, , processNameWithInstance, completed, total, statusSymbol] =
+          executionMatch;
 
         // Extract just the process name (remove instance info)
         const nextflowProcessName = processNameWithInstance
