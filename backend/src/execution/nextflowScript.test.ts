@@ -18,6 +18,7 @@ describe("buildExecutionConfig", () => {
     const config = buildExecutionConfig("params.x = 1", true);
     expect(config.startsWith("params.x = 1\n\ndocker {")).toBe(true);
     expect(config).toContain("enabled = true");
+    expect(config).toContain("runOptions = '-u $(id -u):$(id -g)'");
     expect(config).toContain("executor = 'local'");
   });
 

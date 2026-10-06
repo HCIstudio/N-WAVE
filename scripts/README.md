@@ -26,7 +26,7 @@ Each module gets a support level:
 
 | Level | Meaning |
 |-------|---------|
-| `full` | Bundled with a hand-written adapter (FastQC, Trimmomatic). |
+| `full` | Has a curated N-WAVE node with its own settings panel (FastQC, Trimmomatic). |
 | `candidate` | Every input was understood; the module installs automatically. |
 | `needs_review` | Some input or output couldn't be mapped; installing is disabled and `installability.reasons` says why. |
 
@@ -97,11 +97,19 @@ Installed modules live in `$NWAVE_DATA_DIR/nf-core/modules/nf-core/<module>` wit
 same commit pick up the new input layout automatically. Modules installed from an older
 commit keep their stored layout and show a notice in the node panel: reinstall them from the
 nf-core Library so their files and layout match. Installed modules can be removed from the
-library again (`POST /api/nfcore/uninstall`); bundled modules can't.
+library again (`POST /api/nfcore/uninstall`).
+
+No module files ship with N-WAVE. Installing downloads every file the catalog lists for the
+module (`files.paths`: `main.nf`, `meta.yml`, `environment.yml`, `templates/…`; not
+`tests/`) from `raw.githubusercontent.com` at the catalog's commit. When a run uses a module
+that isn't installed yet, the backend installs it before starting Nextflow, so curated nodes
+such as FastQC and imported workflows work on a fresh install. The Code tab and Export
+Project read an installed module's files, or fetch them from GitHub when it isn't installed.
 
 In the online demo there is no backend: the library installs modules into the browser
 (`localStorage`), keeping each module's adapter manifest and its `main.nf`, fetched from
-GitHub at the catalog's commit. The catalog itself is a static asset loaded the first time
+GitHub at the catalog's commit. Export Project fetches the remaining module files the same
+way. The catalog itself is a static asset loaded the first time
 the library is opened.
 
 ## Manual adapters
@@ -123,7 +131,7 @@ When the automatic mapping is wrong for a module, there are three levels of fixe
    `parseInputDeclaration` in `scripts/nfcoreModuleParser.mjs`, add a test for the form in
    `scripts/nfcoreModuleParser.test.mjs`, and regenerate.
 
-3. **Bundled adapter.** For a module that needs custom settings or input handling, write an
+3. **Curated adapter.** For a module that needs custom settings or input handling, write an
    `NfCoreModuleAdapter` in `frontend/src/registry/nfcoreModuleAdapters.ts`, as FastQC and
    Trimmomatic do:
    - `inputs` / `inputGroups` describe the ports and the call arguments;
@@ -131,10 +139,9 @@ When the automatic mapping is wrong for a module, there are three levels of fixe
    - `defaults` and a panel component provide settings;
    - `buildExtArgs(node)` turns those settings into `task.ext.args`.
 
-   Register it in `nfCoreModuleAdapters`, add the module to `fullSupportModules` in the
-   catalog generator, and copy its files to
-   `backend/src/workflows/library/assets/nf-core/modules/nf-core/<module>` so it works
-   without installing.
+   Register it in `nfCoreModuleAdapters` and add the module to `curatedAdapterModules` in
+   the catalog generator. Its files are installed on demand like any other module, at the
+   catalog's commit.
 
 Without changing N-WAVE at all, any module can also be used by converting its node to a
 custom node (**Code** tab → **Convert to custom node**) and editing the code there.

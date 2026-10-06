@@ -80,6 +80,8 @@ test.describe("export project", () => {
       `${project}/README.md`,
       `${project}/inputs/sample.fastq`,
       `${project}/main.nf`,
+      `${project}/modules/nf-core/fastqc/.conda-lock/linux_amd64-bd-b342db7b694c9af4_1.txt`,
+      `${project}/modules/nf-core/fastqc/.conda-lock/linux_arm64-bd-7c8a53b986d9a000_1.txt`,
       `${project}/modules/nf-core/fastqc/environment.yml`,
       `${project}/modules/nf-core/fastqc/main.nf`,
       `${project}/modules/nf-core/fastqc/meta.yml`,
