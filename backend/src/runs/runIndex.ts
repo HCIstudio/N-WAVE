@@ -132,6 +132,12 @@ export const findRunLog = (id: string): string | null => {
   return fs.existsSync(file) ? file : null;
 };
 
+/** A recorded run's directory, or null. */
+export const findRunDir = (id: string): string | null => {
+  const run = readIndex()[id];
+  return run && fs.existsSync(run.dir) ? run.dir : null;
+};
+
 /** The results directory of a recorded run, or null. */
 export const findRunResultsDir = (id: string): string | null => {
   const run = readIndex()[id];

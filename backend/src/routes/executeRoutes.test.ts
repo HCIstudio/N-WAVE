@@ -176,6 +176,40 @@ describe("run history", () => {
     ]);
   });
 
+  it("lists a run's tasks and serves the files they produced", async () => {
+    const runDir = path.join(dataDir, "bee_1");
+    const workDir = path.join(runDir, "nextflow/work/1f/9a15a4aa");
+    fs.mkdirSync(workDir, { recursive: true });
+    fs.writeFileSync(path.join(workDir, "barry.txt"), "Barry");
+    fs.writeFileSync(path.join(workDir, ".command.sh"), "grep Barry");
+    fs.writeFileSync(
+      path.join(runDir, "nextflow/.nextflow.log"),
+      "Oct-15 15:28:58.078 [Task submitter] INFO  nextflow.Session - [1f/9a15a4] Submitted process > filter_demo_filter_barry (1)\n"
+    );
+
+    const tasks = await request(app).get("/api/execute/runs/bee_1/tasks").expect(200);
+    expect(tasks.body.tasks).toEqual([
+      expect.objectContaining({ hash: "1f/9a15a4", process: "filter_demo_filter_barry", status: "running" }),
+    ]);
+    const files = await request(app)
+      .get("/api/execute/runs/bee_1/tasks/1f/9a15a4/files")
+      .expect(200);
+    expect(files.body.files).toEqual([{ path: "barry.txt", size: 5 }]);
+    const file = await request(app)
+      .get("/api/execute/runs/bee_1/tasks/1f/9a15a4/file")
+      .query({ path: "barry.txt" })
+      .expect(200);
+    expect(file.text).toBe("Barry");
+    for (const filePath of [".command.sh", "../../../bee_1/nwave-run.log", ""]) {
+      await request(app)
+        .get("/api/execute/runs/bee_1/tasks/1f/9a15a4/file")
+        .query({ path: filePath })
+        .expect(404);
+    }
+    await request(app).get("/api/execute/runs/bee_1/tasks/zz/9a15a4/files").expect(404);
+    await request(app).get("/api/execute/runs/unknown/tasks").expect(404);
+  });
+
   it("serves a run's log", async () => {
     const log = await request(app).get("/api/execute/runs/bee_1/log").expect(200);
     expect(log.text).toContain("ERROR ~ boom");

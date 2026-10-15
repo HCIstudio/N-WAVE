@@ -48,13 +48,20 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
     }
   }, [selectedFileName]);
 
-  // Save changes to node data when settings change
+  // Save changes to node data when settings change. Unset values are the
+  // defaults, so just opening the panel doesn't edit the node (that would
+  // turn a read-only example into a copy).
   useEffect(() => {
-    if (node && onNodeDataChange) {
-      onNodeDataChange(node.id, {
-        selectedFileName,
-        downloadFormat,
-      });
+    if (!node || !onNodeDataChange) return;
+    const stored = {
+      selectedFileName: node.data?.selectedFileName || "all",
+      downloadFormat: node.data?.downloadFormat || "txt",
+    };
+    if (
+      stored.selectedFileName !== selectedFileName ||
+      stored.downloadFormat !== downloadFormat
+    ) {
+      onNodeDataChange(node.id, { selectedFileName, downloadFormat });
     }
   }, [selectedFileName, downloadFormat, node, onNodeDataChange]);
 

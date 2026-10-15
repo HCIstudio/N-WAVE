@@ -33,6 +33,11 @@ import {
 } from "../nfcore/library";
 import { summarizeFailure } from "../execution/failureSummary";
 import {
+  findTaskWorkDir,
+  listTaskOutputs,
+  readRunTasks,
+} from "../runs/taskEvents";
+import {
   buildResourceLimitsConfig,
   describeRunLimits,
   diagnoseResourceFailure,
@@ -44,6 +49,7 @@ import {
 import { type RunHandle, startRun } from "../execution/runner";
 import type { ExecutionSettings } from "../execution/types";
 import {
+  findRunDir,
   findRunLog,
   findRunResultsDir,
   finishRun,
@@ -905,6 +911,58 @@ export const getRunResultFile = (req: Request, res: Response): void => {
     !fs.statSync(target).isFile()
   ) {
     res.status(404).json({ message: "Result file not found" });
+    return;
+  }
+  res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-popups");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.sendFile(target);
+};
+
+/** `{ tasks }`: what each task of a run is doing, from Nextflow's log. */
+export const listRunTasks = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  if (!dir) {
+    res.status(404).json({ message: `Unknown run ${id}` });
+    return;
+  }
+  res.json({ id, tasks: readRunTasks(dir) });
+};
+
+/** A task's work directory, from the run id and its hash in the URL. */
+const resolveTaskDir = (req: Request, res: Response): string | null => {
+  const id = parseRunId(req, res);
+  if (!id) return null;
+  const hash = `${req.params.prefix ?? ""}/${req.params.rest ?? ""}`;
+  const runDir = findRunDir(id);
+  const workDir = runDir ? findTaskWorkDir(runDir, hash) : null;
+  if (!workDir) {
+    res.status(404).json({ message: `No work directory for task ${hash}` });
+    return null;
+  }
+  return workDir;
+};
+
+/** `{ files }`: the files a task produced. */
+export const listRunTaskFiles = (req: Request, res: Response): void => {
+  const workDir = resolveTaskDir(req, res);
+  if (workDir) res.json({ files: listTaskOutputs(workDir) });
+};
+
+/** One file a task produced (served like result files). */
+export const getRunTaskFile = (req: Request, res: Response): void => {
+  const workDir = resolveTaskDir(req, res);
+  if (!workDir) return;
+  const relative = typeof req.query.path === "string" ? req.query.path : "";
+  const target = path.resolve(workDir, relative);
+  const inside =
+    relative &&
+    !relative.split(/[\\/]/).some((part) => part.startsWith(".")) &&
+    target.startsWith(`${path.resolve(workDir)}${path.sep}`);
+  // lstat: staged inputs are symlinks that may point anywhere.
+  if (!inside || !fs.existsSync(target) || !fs.lstatSync(target).isFile()) {
+    res.status(404).json({ message: "Task file not found" });
     return;
   }
   res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-popups");

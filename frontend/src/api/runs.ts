@@ -48,3 +48,50 @@ export const getRunLog = async (runId: string): Promise<string> => {
   );
   return response.data;
 };
+
+/** One Nextflow task of a run (from the backend's reading of its log). */
+export interface RunTask {
+  /** e.g. "b7/8cc335": the task's work directory. */
+  hash: string;
+  name: string;
+  /** Process name without the tag, e.g. "ALIGN:SAMTOOLS_SORT". */
+  process: string;
+  status: "running" | "succeeded" | "failed" | "cached";
+  exitCode?: number;
+}
+
+/** What each task of a run is doing. */
+export const listRunTasks = async (runId: string): Promise<RunTask[]> => {
+  const response = await api.get<{ tasks: RunTask[] }>(
+    `/execute/runs/${encodeURIComponent(runId)}/tasks`,
+  );
+  return response.data.tasks;
+};
+
+/** Files a task produced. */
+export const listTaskFiles = async (
+  runId: string,
+  hash: string,
+): Promise<RunResultFile[]> => {
+  const response = await api.get<{ files: RunResultFile[] }>(
+    `/execute/runs/${encodeURIComponent(runId)}/tasks/${hash}/files`,
+  );
+  return response.data.files;
+};
+
+/** URL that serves one file a task produced. */
+export const taskFileUrl = (runId: string, hash: string, path: string): string =>
+  `${import.meta.env.VITE_API_BASE_URL || "/api"}/execute/runs/${encodeURIComponent(runId)}/tasks/${hash}/file?path=${encodeURIComponent(path)}`;
+
+/** The text of a file a task produced. */
+export const getTaskFileText = async (
+  runId: string,
+  hash: string,
+  path: string,
+): Promise<string> => {
+  const response = await api.get<string>(
+    `/execute/runs/${encodeURIComponent(runId)}/tasks/${hash}/file`,
+    { params: { path }, responseType: "text", transformResponse: (data) => data },
+  );
+  return response.data;
+};

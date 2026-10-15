@@ -118,6 +118,22 @@ succeeded and, if it failed, why, along with its saved log and its results. The 
 each run's log as `nwave-run.log` in the run's directory, and serves the history at
 `GET /api/execute/runs?workflowId=` and each log at `GET /api/execute/runs/:id/log`.
 
+### Which step is running, and what each node produced
+
+While a workflow runs, each node on the canvas shows its state under it: **Running** (with
+the number of tasks done, for a step that runs once per sample), **Results ready** or
+**Failed**. The Steps tab of the run panel lists the steps by their names on the canvas.
+Double-click a node and open its **Results** tab to see the files its tasks produced, with a
+preview of text files; the Display Output panel shows the real output of the last run above
+its browser preview.
+
+This comes from Nextflow's own log (`nextflow/.nextflow.log` in the run directory): it names
+every task in full when it is submitted and when it finishes, with its exit status and work
+directory. The console output can't be used for this, because Nextflow shortens long process
+names there. The backend serves the tasks at `GET /api/execute/runs/:id/tasks` and the files
+in a task's work directory at `GET /api/execute/runs/:id/tasks/:hash/files` and `/file?path=`
+(Nextflow's `.command.*` files and staged inputs are left out).
+
 ### Node code and custom nodes
 
 Every node on the canvas has a **Code** tab in its panel. It shows, read-only, the Nextflow

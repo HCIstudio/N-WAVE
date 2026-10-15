@@ -65,7 +65,26 @@ interface ExecutionStatusPanelProps {
   workflowId?: string | null;
   tab?: RunPanelTab;
   onTabChange?: (tab: RunPanelTab) => void;
+  /**
+   * The canvas nodes the run's tasks belong to (from Nextflow's log), named
+   * as on the canvas. Shown instead of the console's process names.
+   */
+  steps?: RunStep[];
 }
+
+export interface RunStep {
+  id: string;
+  label: string;
+  status: "running" | "succeeded" | "failed";
+  done: number;
+  total: number;
+}
+
+const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
+  running: <Activity className="h-4 w-4 animate-pulse text-blue-500" />,
+  succeeded: <CheckCircle className="h-4 w-4 text-green-500" />,
+  failed: <XCircle className="h-4 w-4 text-red-500" />,
+};
 
 export type RunPanelTab = "steps" | "log" | "history";
 
@@ -86,6 +105,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   workflowId,
   tab = "steps",
   onTabChange,
+  steps = [],
 }) => {
   const [maximized, setMaximized] = useState(false);
   if (!isVisible) return null;
@@ -261,13 +281,17 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             <div className="grid grid-cols-2 gap-4 mb-3">
               <div className="text-center">
                 <div className="text-2xl font-bold text-nextflow-green">
-                  {status.completedNodes}
+                  {steps.length > 0
+                    ? steps.filter((step) => step.status === "succeeded").length
+                    : status.completedNodes}
                 </div>
                 <div className="text-xs text-gray-700">Completed</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-500">
-                  {status.runningNodes}
+                  {steps.length > 0
+                    ? steps.filter((step) => step.status === "running").length
+                    : status.runningNodes}
                 </div>
                 <div className="text-xs text-gray-700">Running</div>
               </div>
@@ -316,8 +340,27 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             )}
           </div>
 
-          {/* Node Status List */}
-          <div>
+          {/* Steps by canvas node, when the run's tasks are known */}
+          {steps.length > 0 && (
+            <ul aria-label="Steps of this run">
+              {steps.map((step) => (
+                <li
+                  key={step.id}
+                  className="flex items-center justify-between border-b border-gray-200 p-3 last:border-b-0"
+                >
+                  <span className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                    {STEP_ICON[step.status]}
+                    {step.label}
+                  </span>
+                  <span className="text-xs text-gray-700">
+                    {step.done} of {step.total}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Node Status List (from the console output) */}
+          <div hidden={steps.length > 0}>
             {status.nodeStatuses.map((nodeStatus) => (
               <div
                 key={nodeStatus.nodeId}
