@@ -289,19 +289,7 @@ export const useExecutionStatus = ({
           runningNodes: 0,
         }));
 
-        // Auto-hide after showing completion for a few seconds
-        setTimeout(() => {
-          setIsVisible(false);
-          setStatus({
-            isRunning: false,
-            totalNodes: 0,
-            completedNodes: 0,
-            failedNodes: 0,
-            runningNodes: 0,
-            nodeStatuses: [],
-            overallProgress: 0,
-          });
-        }, 10000);
+        // The panel stays open with the run's outcome until it's closed.
 
         continue; // Nothing else to parse on a completion line
       }
@@ -395,9 +383,9 @@ export const useExecutionStatus = ({
         };
       });
 
-      // Clear node statuses and hide panel after completion
+      // Clear the node statuses on the canvas after a while; the panel
+      // stays open with the outcome until it's closed.
       setTimeout(() => {
-        setIsVisible(false);
         // Trigger callback to clear node statuses on the canvas
         onStatusChange?.({
           isRunning: false,
@@ -464,10 +452,6 @@ export const useExecutionStatus = ({
       });
     }, 1000); // Clear statuses after 1 second
 
-    // Auto-hide the panel after a delay
-    setTimeout(() => {
-      setIsVisible(false);
-    }, 10000); // Hide panel after 2 seconds for cancellation
   }, [executionId, onStatusChange]);
 
   // Hide status panel

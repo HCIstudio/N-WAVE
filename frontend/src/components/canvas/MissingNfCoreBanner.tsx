@@ -31,7 +31,7 @@ const MissingNfCoreBanner: React.FC<{
     <div
       role="alert"
       aria-label="Missing nf-core components"
-      className="flex flex-wrap items-center gap-3 border-t border-yellow-700/40 bg-yellow-100/90 px-4 py-3 text-sm text-yellow-900"
+      className="pointer-events-auto flex max-h-[40vh] flex-wrap items-center gap-3 overflow-y-auto rounded-lg border border-yellow-700/40 bg-yellow-100 px-4 py-3 text-sm text-yellow-900 shadow-lg"
     >
       <p className="min-w-0 flex-1">
         This workflow uses {components.length} nf-core component

@@ -30,6 +30,7 @@ import {
   findSubworkflowEntry,
   resolveSubworkflowComponents,
 } from "../nfcore/library";
+import { summarizeFailure } from "../execution/failureSummary";
 import {
   buildResourceLimitsConfig,
   describeRunLimits,
@@ -41,7 +42,15 @@ import {
 } from "../execution/resources";
 import { type RunHandle, startRun } from "../execution/runner";
 import type { ExecutionSettings } from "../execution/types";
-import { findRunResultsDir, listFiles, recordRun } from "../runs/runIndex";
+import {
+  findRunLog,
+  findRunResultsDir,
+  finishRun,
+  listFiles,
+  listRuns,
+  RUN_LOG_FILE,
+  recordRun,
+} from "../runs/runIndex";
 import { getErrorMessage } from "../utils/errors";
 import {
   cancelExecutionSchema,
@@ -78,6 +87,7 @@ export const executeProcess = async (
     workflowName = "workflow",
     fileContent,
     executionSettings,
+    workflowId,
   } = body;
 
   console.log("Execute request received:", {
@@ -107,7 +117,8 @@ export const executeProcess = async (
       },
       res,
       fileContent,
-      body.pipeline
+      body.pipeline,
+      workflowId
     );
     return;
   }
@@ -140,7 +151,9 @@ export const executeProcess = async (
         cleanupOnFailure: true,
       },
       res,
-      fileContent
+      fileContent,
+      undefined,
+      workflowId
     );
     return;
   }
@@ -163,8 +176,12 @@ const executeNextflowWorkflow = async (
   executionSettings: ExecutionSettings,
   res: Response,
   fileContent?: Record<string, string>,
-  pipeline?: PipelineRunRequest
+  pipeline?: PipelineRunRequest,
+  workflowId?: string
 ): Promise<void> => {
+  // Set once the run is recorded, so setup failures land in its history.
+  let executionId: string | null = null;
+  let runLog: fs.WriteStream | null = null;
   try {
     const sanitizedWorkflowName = sanitizeWorkflowName(workflowName);
 
@@ -193,6 +210,25 @@ const executeNextflowWorkflow = async (
 
     console.log(`Main output directory: ${mainOutputDir}`);
 
+    // Identifies the run for cancellation, results, its log and the runner
+    // container. Recorded now, so a failure while setting up is listed too.
+    executionId = `${sanitizedWorkflowName}_${Date.now()}`;
+    try {
+      recordRun(executionId, mainOutputDir, { workflowId, workflowName });
+    } catch (error: unknown) {
+      console.warn(`Could not record run ${executionId}:`, error);
+    }
+    // Everything sent to the browser is also kept in the run's log.
+    runLog = fs.createWriteStream(path.join(mainOutputDir, RUN_LOG_FILE), {
+      flags: "a",
+    });
+    const log = runLog;
+    const runId = executionId;
+    const send = (text: string) => {
+      res.write(text);
+      log.write(text);
+    };
+
     // The run's limits, clamped to what this server allows (see
     // execution/resources.ts); applied as process.resourceLimits.
     const limits = resolveRunLimits(executionSettings);
@@ -200,8 +236,6 @@ const executeNextflowWorkflow = async (
     const maxMemory = limits.memory;
     const resourceConfig = buildResourceLimitsConfig(limits);
     const timeoutMs = resolveTimeoutMs(executionSettings.executionTimeout);
-    // Identifies the run for cancellation, results and the runner container.
-    const executionId = `${sanitizedWorkflowName}_${Date.now()}`;
 
     let hasNfCoreModules: boolean;
     let shouldUseProcessDocker: boolean;
@@ -385,7 +419,7 @@ const executeNextflowWorkflow = async (
         platform: resolveNextflowPlatform(process.env.NEXTFLOW_PLATFORM),
         nextflowVersion,
         workDir: dockerMainOutputDir,
-        containerName: runnerContainerName(executionId),
+        containerName: runnerContainerName(runId),
         mount: shouldUseProcessDocker
           ? {
               type: "bind",
@@ -399,11 +433,6 @@ const executeNextflowWorkflow = async (
     console.log(`Executing: ${nextflowCmd}`);
     console.log(`Working directory: ${mainOutputDir}`);
 
-    try {
-      recordRun(executionId, mainOutputDir);
-    } catch (error: unknown) {
-      console.warn(`Could not record run ${executionId}:`, error);
-    }
 
     // Set up streaming response for real-time output
     res.writeHead(200, {
@@ -417,8 +446,8 @@ const executeNextflowWorkflow = async (
       "X-Content-Type-Options": "nosniff",
     });
     // The frontend reads the run id to cancel the run and find its results.
-    res.write(`N-WAVE run: ${executionId}\n`);
-    res.write(`${describeRunLimits(limits, timeoutMs)}\n`);
+    send(`N-WAVE run: ${runId}\n`);
+    send(`${describeRunLimits(limits, timeoutMs)}\n`);
 
     const run = startRun({
       command: nextflowCmd,
@@ -426,40 +455,50 @@ const executeNextflowWorkflow = async (
       timeoutMs,
       containerName: useLocalNextflow
         ? undefined
-        : runnerContainerName(executionId),
+        : runnerContainerName(runId),
       onOutput: (output) => {
         console.log(`OUTPUT: ${output}`);
-        res.write(output);
+        send(output);
       },
       onExit: ({ code, stopReason, outputTail }) => {
-        runningProcesses.delete(executionId);
+        runningProcesses.delete(runId);
 
         if (stopReason === "cancelled") {
-          console.log(`Execution ${executionId} cancelled`);
-          res.write("\nExecution cancelled\n");
+          console.log(`Execution ${runId} cancelled`);
+          send("\nExecution cancelled\n");
+          finishRun(runId, "cancelled");
+          log.end();
           res.end();
           return;
         }
         if (stopReason === "timeout") {
           const minutes = Math.max(1, Math.round(timeoutMs / 60_000));
-          console.error(`Execution ${executionId} reached its time limit`);
-          res.write(
+          console.error(`Execution ${runId} reached its time limit`);
+          send(
             `\nN-WAVE resource problem: the run was stopped after its time limit of ${minutes} minute${minutes === 1 ? "" : "s"}. Raise Execution Timeout in the execution settings (0 uses the server default, NWAVE_EXECUTION_TIMEOUT).\n`
           );
-          res.write(`Nextflow execution failed with exit code: ${code ?? "timeout"}\n`);
+          send(`Nextflow execution failed with exit code: ${code ?? "timeout"}\n`);
+          finishRun(runId, "failed", `Stopped after the time limit of ${minutes} minutes.`);
+          log.end();
           res.end();
           return;
         }
 
         if (code !== 0) {
           console.error(
-            `Execution ${executionId} failed with exit code: ${code}`
+            `Execution ${runId} failed with exit code: ${code}`
           );
           const diagnosis = diagnoseResourceFailure(outputTail, limits);
           if (diagnosis) {
-            res.write(`\nN-WAVE resource problem: ${diagnosis}\n`);
+            send(`\nN-WAVE resource problem: ${diagnosis}\n`);
           }
-          res.write(`\nNextflow execution failed with exit code: ${code}\n`);
+          send(`\nNextflow execution failed with exit code: ${code}\n`);
+          finishRun(
+            runId,
+            "failed",
+            diagnosis ?? summarizeFailure(outputTail) ?? `Nextflow exited with code ${code}.`
+          );
+          log.end();
           res.end();
           return;
         }
@@ -468,8 +507,8 @@ const executeNextflowWorkflow = async (
         console.log(`Results available in: ${mainOutputDir}`);
 
         // Send completion messages to frontend
-        res.write("\nNextflow execution completed successfully\n");
-        res.write(`Results available in: ${mainOutputDir}\n`);
+        send("\nNextflow execution completed successfully\n");
+        send(`Results available in: ${mainOutputDir}\n`);
 
         // Move Nextflow metadata files to nextflow directory
         const nextflowMetadataDir = path.join(mainOutputDir, ".nextflow");
@@ -503,18 +542,29 @@ const executeNextflowWorkflow = async (
           // Don't fail the entire execution for this
         }
 
-        console.log(`Execution ${executionId} completed successfully`);
+        console.log(`Execution ${runId} completed successfully`);
+        finishRun(runId, "succeeded");
+        log.end();
         res.end();
       },
     });
 
     // Track the run for cancellation
-    runningProcesses.set(executionId, run);
+    runningProcesses.set(runId, run);
   } catch (error: unknown) {
     console.error("Setup error:", error);
-    res.status(500).json({
-      error: `Failed to setup workflow execution: ${getErrorMessage(error)}`,
-    });
+    const message = `Failed to setup workflow execution: ${getErrorMessage(error)}`;
+    if (executionId) {
+      runLog?.write(`\n${message}\n`);
+      finishRun(executionId, "failed", getErrorMessage(error));
+    }
+    runLog?.end();
+    if (res.headersSent) {
+      res.write(`\n${message}\n`);
+      res.end();
+      return;
+    }
+    res.status(500).json({ error: message, ...(executionId ? { runId: executionId } : {}) });
   }
 };
 
@@ -859,4 +909,32 @@ export const getExecutionLimits = (_req: Request, res: Response): void => {
     source: ceiling.source,
     defaultTimeoutMinutes: Math.round(resolveTimeoutMs(0) / 60_000),
   });
+};
+
+/** Recorded runs, newest first; `?workflowId=` limits them to one workflow. */
+export const listRunsHandler = (req: Request, res: Response): void => {
+  const workflowId =
+    typeof req.query.workflowId === "string" ? req.query.workflowId : undefined;
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+  res.json({
+    runs: listRuns({
+      workflowId,
+      limit,
+      isLive: (id) => runningProcesses.has(id),
+    }),
+  });
+};
+
+/** A recorded run's full output, as the run panel showed it. */
+export const getRunLog = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const file = findRunLog(id);
+  if (!file) {
+    res.status(404).json({ message: `No log for run ${id}` });
+    return;
+  }
+  res.setHeader("Content-Type", "text/plain; charset=utf-8");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  fs.createReadStream(file).pipe(res);
 };
