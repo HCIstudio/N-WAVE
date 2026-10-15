@@ -24,8 +24,14 @@ const DemoBanner = () => {
     const measure = () => {
       const footer = document.querySelector("footer");
       if (!footer) {
-        // No footer on this route — sit near the viewport bottom.
-        setBottomOffset(GAP);
+        // No footer on this route: sit near the viewport bottom, above the
+        // canvas's zoom controls when the canvas is open.
+        const controls = document.querySelector("[data-canvas-controls]");
+        setBottomOffset(
+          controls
+            ? Math.max(GAP, window.innerHeight - controls.getBoundingClientRect().top + GAP)
+            : GAP
+        );
         return;
       }
       // Distance from the viewport bottom up to the footer's top edge, so the

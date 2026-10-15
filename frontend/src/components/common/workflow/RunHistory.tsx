@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { getRunLog, listRuns, type RunSummary } from "../../../api/runs";
 import { getErrorMessage } from "../../../utils/errors";
 import RunResultsList from "./RunResultsList";
@@ -22,6 +23,18 @@ export const RunLog: React.FC<{ text: string; label?: string }> = ({
     if (element && atBottom.current) element.scrollTop = element.scrollHeight;
   }, [text]);
 
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Without clipboard access, the text can still be selected and copied.
+      setCopied(false);
+    }
+  };
+
   if (!text.trim()) {
     return (
       <p className="p-4 text-sm text-gray-700">
@@ -30,27 +43,43 @@ export const RunLog: React.FC<{ text: string; label?: string }> = ({
     );
   }
   return (
-    <pre
-      ref={ref}
-      aria-label={label}
-      onScroll={(event) => {
-        const element = event.currentTarget;
-        atBottom.current =
-          element.scrollHeight - element.scrollTop - element.clientHeight < 24;
-      }}
-      className="h-full min-h-0 overflow-auto whitespace-pre-wrap break-words bg-gray-900 p-3 font-mono text-xs leading-relaxed text-gray-100"
-    >
-      {text.split("\n").map((line, index) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: log lines have no other identity.
-          key={index}
-          className={ERROR_LINE.test(line) ? "text-red-300" : undefined}
-        >
-          {line}
-          {"\n"}
-        </span>
-      ))}
-    </pre>
+    <div className="relative h-full min-h-0">
+      <button
+        type="button"
+        onClick={() => void copy()}
+        aria-label={`Copy ${label.toLowerCase()}`}
+        className="absolute right-4 top-2 z-10 inline-flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-xs text-gray-100 hover:bg-gray-600"
+      >
+        {copied ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <Copy className="h-3.5 w-3.5" />
+        )}
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <pre
+        ref={ref}
+        aria-label={label}
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          atBottom.current =
+            element.scrollHeight - element.scrollTop - element.clientHeight <
+            24;
+        }}
+        className="h-full min-h-0 select-text overflow-auto whitespace-pre-wrap break-words bg-gray-900 p-3 pt-9 font-mono text-xs leading-relaxed text-gray-100"
+      >
+        {text.split("\n").map((line, index) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: log lines have no other identity.
+            key={index}
+            className={ERROR_LINE.test(line) ? "text-red-300" : undefined}
+          >
+            {line}
+            {"\n"}
+          </span>
+        ))}
+      </pre>
+    </div>
   );
 };
 

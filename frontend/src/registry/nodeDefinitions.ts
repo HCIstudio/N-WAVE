@@ -120,19 +120,7 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     },
     panel: FileInputPanel,
     executionLabel: "File Input",
-    validateConnection: ({ sourceNode }) => {
-      if (
-        sourceNode?.type === "fileInput" &&
-        (!sourceNode.data.files || sourceNode.data.files.length === 0)
-      ) {
-        return {
-          valid: false,
-          message: "File Input requires at least one file before connecting.",
-        };
-      }
-
-      return { valid: true };
-    },
+    // It connects before a file is uploaded; a run asks for the file.
   },
   {
     id: "samplesheet",

@@ -9,8 +9,16 @@ export const useProcessOperatorLogic = (
   selectedFiles?: FileObject[]
 ) => {
   useEffect(() => {
+    // Without input, OperatorNode owns the subtitle ("Filter", "Waiting for
+    // files"). Writing one here too made the two effects overwrite each
+    // other on every render, an endless loop that also stalled navigation.
+    if (!incomingFiles || incomingFiles.length === 0) {
+      onSave({ files: processedFiles });
+      return;
+    }
+
     // Check if incoming files are missing content (should show reupload message)
-    if (incomingFiles && incomingFiles.length > 0) {
+    if (incomingFiles.length > 0) {
       const filesWithoutContent = incomingFiles.filter(
         (file) => !file.content || file.content.trim() === ""
       );

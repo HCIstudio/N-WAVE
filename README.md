@@ -258,6 +258,12 @@ choices, help text and required fields, filterable by name. A Samplesheet node c
 can become an input port for a Parameters or File Input node. **Use the pipeline's test
 profile** runs it on the pipeline's own small test data.
 
+Pipelines declare the oldest Nextflow they accept (`manifest.nextflowVersion` in their
+`nextflow.config`; nf-core/rnaseq 3.27.0 needs 25.10.4 for its nf-schema plugin). When the
+selected Nextflow is older, the run uses the pipeline's minimum instead and says so in its
+first lines: the `nextflow/nextflow` image of that version in Docker mode, or `NXF_VER` for a
+local Nextflow.
+
 A workflow with a Pipeline node runs that pipeline instead of a generated script, so it
 holds the Pipeline node and the input nodes feeding it. Running it executes
 

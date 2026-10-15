@@ -17,7 +17,9 @@ const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
   const { id, data } = props;
   const { updateNodeData } = useWorkflowContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const isConnectable = !!data.files && data.files.length > 0;
+  // Connect it before uploading: building the workflow comes first; a run
+  // asks for the file (see handleRunWorkflow).
+  const isConnectable = true;
 
   // Check if files are missing content (reupload needed)
   const filesWithoutContent = (data.files || []).filter(

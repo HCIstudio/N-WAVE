@@ -90,6 +90,21 @@ describe("RunHistory", () => {
     expect(container.textContent).toContain("hasn't been run");
   });
 
+  it("RunLog copies the whole log", async () => {
+    const writeText = vi.fn(async (_text: string) => undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+    act(() => root.render(<RunLog text={"line 1\nERROR ~ boom"} />));
+    const button = container.querySelector(
+      '[aria-label="Copy run log"]',
+    ) as HTMLButtonElement;
+    await act(async () => button.click());
+    expect(writeText).toHaveBeenCalledWith("line 1\nERROR ~ boom");
+    expect(button.textContent).toContain("Copied");
+  });
+
   it("RunLog shows a placeholder until there is output", () => {
     act(() => root.render(<RunLog text="" />));
     expect(container.textContent).toContain("No output yet");

@@ -30,7 +30,7 @@ test.describe("parameters node", () => {
 
     // The reference is an output port other nodes connect to.
     const output = await addNode(page, "Display Output");
-    await moveNode(page, output, 150, 0);
+    await page.getByRole("button", { name: "Fit view" }).click();
     await connect(page, params, output);
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 
