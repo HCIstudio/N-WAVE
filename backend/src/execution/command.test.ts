@@ -3,6 +3,7 @@ import {
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
   resolveNextflowPlatform,
+  resolveRunnerDockerApiVersion,
   resolveOutputName,
   sanitizeWorkflowName,
   shellQuote,
@@ -197,5 +198,42 @@ describe("nf-core pipeline runs", () => {
         mount: { type: "volumes-from", container: "nwave-backend" },
       })
     ).toMatch(/^docker run --rm --name 'nwave-run-x_1' --volumes-from /);
+  });
+});
+
+describe("runner docker API version", () => {
+  it("raises the old runner CLI to the engine's minimum", () => {
+    // Docker Engine 29 (Docker Desktop) rejects API 1.32 clients.
+    expect(resolveRunnerDockerApiVersion("1.40")).toBe("1.40");
+    expect(resolveRunnerDockerApiVersion("1.44\n")).toBe("1.44");
+  });
+
+  it("leaves older engines and unknown versions alone", () => {
+    expect(resolveRunnerDockerApiVersion("1.24")).toBeNull();
+    expect(resolveRunnerDockerApiVersion("1.32")).toBeNull();
+    expect(resolveRunnerDockerApiVersion(undefined)).toBeNull();
+    expect(resolveRunnerDockerApiVersion("garbage")).toBeNull();
+  });
+
+  it("prefers a configured DOCKER_API_VERSION", () => {
+    expect(resolveRunnerDockerApiVersion("1.40", "1.41")).toBe("1.41");
+    expect(resolveRunnerDockerApiVersion("1.40", "")).toBe("1.40");
+  });
+
+  it("passes it to the runner container", () => {
+    const command = buildContainerNextflowCommand({
+      scriptPath: "workflow/demo.nf",
+      withModuleConfig: false,
+      maxCpus: 4,
+      maxMemory: "4GB",
+      platform: null,
+      nextflowVersion: "25.04.4",
+      workDir: "/app/results/demo",
+      dockerApiVersion: "1.40",
+      mount: { type: "volumes-from", container: "nwave-backend" },
+    });
+    expect(command).toContain(
+      "-v /var/run/docker.sock:/var/run/docker.sock -e DOCKER_API_VERSION='1.40' -e NXF_LOG_FILE"
+    );
   });
 });

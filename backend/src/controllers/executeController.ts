@@ -5,6 +5,7 @@ import fs from "node:fs";
 import {
   DEFAULT_NEXTFLOW_VERSION,
   buildContainerNextflowCommand,
+  resolveRunnerDockerApiVersion,
   buildLocalNextflowCommand,
   resolveNextflowPlatform,
   resolveOutputName,
@@ -410,7 +411,14 @@ const executeNextflowWorkflow = async (
       // When process Docker is enabled, run Nextflow from a path that is also
       // visible to the host Docker daemon. Otherwise sibling task containers
       // receive empty /app/results mounts and cannot see .command.sh.
+      const dockerApiVersion = resolveRunnerDockerApiVersion(
+        await readCommandOutput(
+          "docker version --format '{{.Server.MinAPIVersion}}'"
+        ),
+        process.env.DOCKER_API_VERSION
+      );
       nextflowCmd = buildContainerNextflowCommand({
+        dockerApiVersion,
         scriptPath: path.posix.join("workflow", `${sanitizedWorkflowName}.nf`),
         pipeline: pipelineTarget,
         withModuleConfig,
@@ -567,6 +575,14 @@ const executeNextflowWorkflow = async (
     res.status(500).json({ error: message, ...(executionId ? { runId: executionId } : {}) });
   }
 };
+
+/** A command's trimmed output, or undefined when it fails. */
+const readCommandOutput = (command: string): Promise<string | undefined> =>
+  new Promise((resolve) =>
+    exec(command, { timeout: 15_000 }, (error, stdout) =>
+      resolve(error ? undefined : String(stdout).trim())
+    )
+  );
 
 const executeSingleProcess = (
   script: string,

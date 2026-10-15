@@ -113,6 +113,11 @@ interface ContainerNextflowOptions extends NextflowRunOptions {
   workDir: string;
   /** Container name, so a cancelled run's container can be stopped. */
   containerName?: string;
+  /**
+   * Docker API version for the runner's own docker CLI, which starts the task
+   * containers (see resolveRunnerDockerApiVersion); null leaves it alone.
+   */
+  dockerApiVersion?: string | null;
   /** Either a `-v host:container` bind or `--volumes-from <container>`. */
   mount: { type: "bind"; source: string; target: string } | {
     type: "volumes-from";
@@ -137,5 +142,40 @@ export const buildContainerNextflowCommand = (
     ? ` --name ${shellQuote(options.containerName)}`
     : "";
 
-  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
+  const apiVersion = options.dockerApiVersion
+    ? ` -e DOCKER_API_VERSION=${shellQuote(options.dockerApiVersion)}`
+    : "";
+
+  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion} -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
+};
+
+/** Docker API version of the CLI in the nextflow/nextflow images (17.09). */
+export const RUNNER_DOCKER_CLI_API = "1.32";
+
+const compareApiVersions = (a: string, b: string): number => {
+  const [aMajor = 0, aMinor = 0] = a.split(".").map(Number);
+  const [bMajor = 0, bMinor = 0] = b.split(".").map(Number);
+  return aMajor - bMajor || aMinor - bMinor;
+};
+
+/**
+ * Docker API version the Nextflow runner's CLI should use.
+ *
+ * The nextflow/nextflow images ship docker CLI 17.09 (API 1.32). Docker
+ * Engine 29 (current Docker Desktop) rejects clients older than API 1.40, so
+ * every task container fails with "client version 1.32 is too old". The old
+ * CLI works when told to use the engine's minimum version, so that is used
+ * whenever it is newer than 1.32. `configured` (DOCKER_API_VERSION on the
+ * backend) wins; null means the CLI's own version is fine.
+ */
+export const resolveRunnerDockerApiVersion = (
+  engineMinApiVersion: string | undefined,
+  configured?: string
+): string | null => {
+  const isVersion = (value: string | undefined): value is string =>
+    /^\d+\.\d+$/.test(value?.trim() ?? "");
+  if (isVersion(configured)) return configured.trim();
+  if (!isVersion(engineMinApiVersion)) return null;
+  const minimum = engineMinApiVersion.trim();
+  return compareApiVersions(minimum, RUNNER_DOCKER_CLI_API) > 0 ? minimum : null;
 };
