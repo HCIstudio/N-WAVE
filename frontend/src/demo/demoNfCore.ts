@@ -148,6 +148,29 @@ export const fetchNfCoreModuleSource = (id: string): Promise<string> => {
   return request;
 };
 
+const metaCache = new Map<string, Promise<string | undefined>>();
+
+/**
+ * meta.yml of an nf-core module or subworkflow, from GitHub once per
+ * session; undefined when it can't be loaded (it is only documentation).
+ */
+export const fetchNfCoreModuleMeta = (
+  id: string,
+): Promise<string | undefined> => {
+  const cached = metaCache.get(id);
+  if (cached) return cached;
+  const request = findEntry(id)
+    .then((entry) => fetch(nfCoreModuleFileUrl(entry.source, "meta.yml")))
+    .then((response) => (response.ok ? response.text() : undefined))
+    .catch(() => undefined);
+  request.then((meta) => {
+    // Retry later rather than remembering a failure.
+    if (meta === undefined) metaCache.delete(id);
+  });
+  metaCache.set(id, request);
+  return request;
+};
+
 // Files a module runs without; everything else (main.nf, templates/...) is
 // required.
 const OPTIONAL_MODULE_FILES = new Set([

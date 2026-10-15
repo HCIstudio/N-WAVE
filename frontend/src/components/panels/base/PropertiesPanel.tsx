@@ -2,12 +2,13 @@ import type React from "react";
 import { useState, useCallback, useEffect, useRef, memo } from "react";
 import type { Node } from "reactflow";
 import { GripVertical, Trash2, X } from "lucide-react";
-import type { NodeData } from "../../nodes/BaseNode";
+import type { NodeData, PortData } from "../../nodes/BaseNode";
 import ConfirmDialog from "../../common/dialogs/ConfirmDialog";
 import OperatorNodePanel from "../operator/OperatorNodePanel";
 import { getNodeDefinitionForNode } from "../../../registry";
 import NodeCodeView from "./NodeCodeView";
 import NodeRunResults from "./NodeRunResults";
+import NfCoreModuleDocs from "../process/NfCoreModuleDocs";
 import { useNodeRun } from "../../../execution/RunTasksContext";
 
 type PanelTab = "settings" | "code" | "results";
@@ -177,14 +178,37 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     isDragging ? "cursor-move" : "cursor-move"
   }`;
 
+  const definition = getNodeDefinitionForNode(node);
+  const nfCoreModuleId =
+    typeof node.data.nwaveNfCoreModuleId === "string"
+      ? node.data.nwaveNfCoreModuleId
+      : undefined;
+  const ports = (key: "inputs" | "outputs"): PortData[] => {
+    const fromData = node.data[key];
+    return Array.isArray(fromData) && fromData.length > 0
+      ? fromData
+      : (definition?.[key] ?? []);
+  };
+
   const renderNodeSpecificFields = () => {
     if (node.type === "operator" || node.type === "filter") {
       return <OperatorNodePanel node={node} onSave={onSave} />;
     }
 
-    const PanelComponent = getNodeDefinitionForNode(node)?.panel;
+    const PanelComponent = definition?.panel;
     if (PanelComponent) {
       return <PanelComponent node={node} onSave={onSave} />;
+    }
+
+    if (nfCoreModuleId) {
+      return (
+        <p className="rounded-md border border-amber-500/60 bg-amber-100 px-3 py-2 text-sm text-amber-900">
+          This nf-core component isn&apos;t installed on this server yet, so the
+          node has no settings and adds nothing to the generated workflow.
+          Install it with &quot;Install them&quot; in the banner above the
+          canvas.
+        </p>
+      );
     }
 
     return (
@@ -340,6 +364,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             </div>
 
             <hr className="border-accent" />
+
+            {nfCoreModuleId && (
+              <>
+                <NfCoreModuleDocs
+                  moduleId={nfCoreModuleId}
+                  inputs={ports("inputs")}
+                  outputs={ports("outputs")}
+                />
+                <hr className="border-accent" />
+              </>
+            )}
 
             {renderNodeSpecificFields()}
           </fieldset>

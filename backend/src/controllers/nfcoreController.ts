@@ -161,7 +161,7 @@ const parseModuleId = (req: Request, res: Response): string | null => {
   return parsed.data.id;
 };
 
-/** `{ id, source }`: a module's main.nf (installed copy or GitHub). */
+/** `{ id, source, meta? }`: a module's main.nf and meta.yml (installed copy or GitHub). */
 export const getNfCoreModuleSource = async (
   req: Request,
   res: Response
@@ -169,8 +169,13 @@ export const getNfCoreModuleSource = async (
   const id = parseModuleId(req, res);
   if (!id) return;
   try {
-    const files = await readModuleFiles(id, ["main.nf"]);
-    res.json({ id, source: files["main.nf"] });
+    const files = await readModuleFiles(id, ["main.nf", "meta.yml"]);
+    res.json({
+      id,
+      source: files["main.nf"],
+      // What the module documents about its inputs and outputs.
+      ...(files["meta.yml"] ? { meta: files["meta.yml"] } : {}),
+    });
   } catch (error: unknown) {
     sendError(res, error, "Failed to read nf-core module source");
   }
