@@ -264,6 +264,11 @@ selected Nextflow is older, the run uses the pipeline's minimum instead and says
 first lines: the `nextflow/nextflow` image of that version in Docker mode, or `NXF_VER` for a
 local Nextflow.
 
+In Docker mode, Nextflow keeps downloaded pipelines in `results/.nextflow-assets`
+(`NXF_ASSETS`) rather than inside its own container: steps that call a pipeline's `bin/`
+scripts (nf-core/rnaseq's DESeq2 QC, for example) run in sibling containers that only see
+paths on the host.
+
 A workflow with a Pipeline node runs that pipeline instead of a generated script, so it
 holds the Pipeline node and the input nodes feeding it. Running it executes
 

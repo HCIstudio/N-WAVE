@@ -441,6 +441,12 @@ const executeNextflowWorkflow = async (
       );
       nextflowCmd = buildContainerNextflowCommand({
         dockerApiVersion,
+        // A pipeline's bin/ scripts must be on a path the host's Docker
+        // sees (task containers mount it); keep pipelines under results/.
+        assetsDir:
+          pipeline && shouldUseProcessDocker
+            ? path.posix.join(dockerResultsRoot, ".nextflow-assets")
+            : undefined,
         scriptPath: path.posix.join("workflow", `${sanitizedWorkflowName}.nf`),
         pipeline: pipelineTarget,
         withModuleConfig,

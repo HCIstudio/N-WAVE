@@ -124,6 +124,13 @@ interface ContainerNextflowOptions extends NextflowRunOptions {
    * containers (see resolveRunnerDockerApiVersion); null leaves it alone.
    */
   dockerApiVersion?: string | null;
+  /**
+   * Where Nextflow keeps downloaded pipelines (NXF_ASSETS). It must be a
+   * path the Docker host sees too: Nextflow mounts a pipeline's bin/ into
+   * each task container, and the default ($HOME/.nextflow/assets inside the
+   * runner) reaches the host's daemon as an empty folder.
+   */
+  assetsDir?: string;
   /** Either a `-v host:container` bind or `--volumes-from <container>`. */
   mount: { type: "bind"; source: string; target: string } | {
     type: "volumes-from";
@@ -151,8 +158,11 @@ export const buildContainerNextflowCommand = (
   const apiVersion = options.dockerApiVersion
     ? ` -e DOCKER_API_VERSION=${shellQuote(options.dockerApiVersion)}`
     : "";
+  const assets = options.assetsDir
+    ? ` -e NXF_ASSETS=${shellQuote(options.assetsDir)}`
+    : "";
 
-  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion} -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
+  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion}${assets} -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
 };
 
 /** Docker API version of the CLI in the nextflow/nextflow images (17.09). */
