@@ -236,6 +236,27 @@ describe("runner docker API version", () => {
       "-v /var/run/docker.sock:/var/run/docker.sock -e DOCKER_API_VERSION='1.40' -e NXF_LOG_FILE"
     );
   });
+
+  it("keeps pipelines where the Docker host can see their bin/ scripts", () => {
+    const command = buildContainerNextflowCommand({
+      scriptPath: "workflow/demo.nf",
+      withModuleConfig: true,
+      maxCpus: 4,
+      maxMemory: "4GB",
+      platform: null,
+      nextflowVersion: "25.10.4",
+      workDir: "/run/desktop/mnt/host/c/N-WAVE/results/run",
+      assetsDir: "/run/desktop/mnt/host/c/N-WAVE/results/.nextflow-assets",
+      mount: {
+        type: "bind",
+        source: "C:\\N-WAVE\\results",
+        target: "/run/desktop/mnt/host/c/N-WAVE/results",
+      },
+    });
+    expect(command).toContain(
+      "-e NXF_ASSETS='/run/desktop/mnt/host/c/N-WAVE/results/.nextflow-assets'"
+    );
+  });
 });
 
 describe("buildLocalNextflowCommand", () => {
