@@ -87,6 +87,12 @@ For the backend to launch containers, the host Docker socket is mounted into it
 (`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
 volumes. Both are set up in the compose files.
 
+The `nextflow/nextflow` images ship an old docker CLI (17.09, API 1.32), which Nextflow
+uses to start each step's container. Docker Engine 29 and later (current Docker Desktop)
+reject clients that old ("client version 1.32 is too old"), so the backend asks the engine
+for its minimum API version and passes it to the runner as `DOCKER_API_VERSION`. Set
+`DOCKER_API_VERSION` on the backend to choose the version yourself.
+
 ### Resource limits and long runs
 
 Each run asks for CPUs, memory and a time limit in the **Execution Settings** (Resources
