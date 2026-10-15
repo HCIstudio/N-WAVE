@@ -11,6 +11,7 @@ import {
   Settings,
   Container,
   FolderDown,
+  History,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
@@ -32,6 +33,8 @@ interface BottomBarProps {
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
   onExecutionSettingsChange: (settings: ExecutionSettings) => void;
+  /** Open the run panel: the last run's steps and log, and earlier runs. */
+  onShowRuns?: () => void;
 }
 
 const BottomBar: React.FC<BottomBarProps> = ({
@@ -49,6 +52,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   isLoading = false,
   executionSettings,
   onExecutionSettingsChange,
+  onShowRuns,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(workflowName);
@@ -430,6 +434,18 @@ const BottomBar: React.FC<BottomBarProps> = ({
             ) : (
               <Play className="w-4 h-4" />
             )}
+          </button>
+        )}
+
+        {onShowRuns && (
+          <button
+            type="button"
+            onClick={onShowRuns}
+            className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
+            aria-label="Show runs"
+            title="Show the run panel: the last run's steps and log, and earlier runs"
+          >
+            <History className="w-4 h-4" />
           </button>
         )}
 

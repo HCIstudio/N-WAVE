@@ -4,7 +4,7 @@ import path from "node:path";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app";
-import { recordRun } from "../runs/runIndex";
+import { finishRun, recordRun, RUN_LOG_FILE } from "../runs/runIndex";
 
 // These tests only exercise request validation; no Nextflow or Docker runs.
 const app = createApp();
@@ -139,6 +139,49 @@ describe("run results", () => {
         .query({ path: filePath })
         .expect(404);
     }
+  });
+});
+
+describe("run history", () => {
+  let dataDir: string;
+
+  beforeEach(() => {
+    dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-history-"));
+    vi.stubEnv("NWAVE_DATA_DIR", dataDir);
+    const runDir = path.join(dataDir, "bee_1");
+    fs.mkdirSync(runDir, { recursive: true });
+    fs.writeFileSync(path.join(runDir, RUN_LOG_FILE), "N-WAVE run: bee_1\nERROR ~ boom\n");
+    recordRun("bee_1", runDir, { workflowId: "wf1", workflowName: "Bee" });
+    finishRun("bee_1", "failed", "ERROR ~ boom");
+    recordRun("other_1", path.join(dataDir, "other_1"), { workflowId: "wf2" });
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(dataDir, { recursive: true, force: true });
+  });
+
+  it("lists a workflow's runs with their outcome", async () => {
+    const response = await request(app)
+      .get("/api/execute/runs")
+      .query({ workflowId: "wf1" })
+      .expect(200);
+    expect(response.body.runs).toEqual([
+      expect.objectContaining({
+        id: "bee_1",
+        workflowName: "Bee",
+        status: "failed",
+        message: "ERROR ~ boom",
+      }),
+    ]);
+  });
+
+  it("serves a run's log", async () => {
+    const log = await request(app).get("/api/execute/runs/bee_1/log").expect(200);
+    expect(log.text).toContain("ERROR ~ boom");
+    expect(log.headers["content-type"]).toContain("text/plain");
+    await request(app).get("/api/execute/runs/other_1/log").expect(404);
+    await request(app).get("/api/execute/runs/bad..id/log").expect(400);
   });
 });
 

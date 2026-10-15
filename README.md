@@ -102,6 +102,16 @@ and, in Docker mode, the Nextflow container. When a run fails because a step nee
 memory or CPUs than allowed, was killed for lack of memory, or hit the time limit, the error
 says so and names the setting to raise.
 
+### Run panel and run history
+
+The run panel stays open until you close it, and the **Show runs** button in the bottom bar
+opens it again. **Steps** shows the progress of each node and, after a run, its results.
+**Log** shows the run's full output as it streams in, with error lines in red. **History**
+lists the workflow's earlier runs on this server, newest first: each one shows whether it
+succeeded and, if it failed, why, along with its saved log and its results. The backend keeps
+each run's log as `nwave-run.log` in the run's directory, and serves the history at
+`GET /api/execute/runs?workflowId=` and each log at `GET /api/execute/runs/:id/log`.
+
 ### Node code and custom nodes
 
 Every node on the canvas has a **Code** tab in its panel. It shows, read-only, the Nextflow

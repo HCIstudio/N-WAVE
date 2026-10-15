@@ -5,6 +5,7 @@ import {
   useEffect,
   useContext,
   useMemo,
+  useRef,
 } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ReactFlowProvider, useReactFlow } from "reactflow";
@@ -27,7 +28,9 @@ import {
   Toast,
   WorkflowExecutionErrorNotification,
 } from "../components/common";
-import ExecutionStatusPanel from "../components/common/workflow/ExecutionStatusPanel";
+import ExecutionStatusPanel, {
+  type RunPanelTab,
+} from "../components/common/workflow/ExecutionStatusPanel";
 import CustomNodeModal from "../components/common/forms/CustomNodeModal";
 import { useExecutionStatus, useLatestRef } from "../hooks";
 import { generateNextflowScript } from "../generators";
@@ -220,6 +223,10 @@ const WorkflowPageContent: React.FC = () => {
   const [currentExecutionId, setCurrentExecutionId] = useState<string | null>(
     null
   );
+  // The current run's output, for the run panel's Log tab.
+  const [runOutput, setRunOutput] = useState("");
+  const [runPanelTab, setRunPanelTab] = useState<RunPanelTab>("steps");
+  const pendingRunOutput = useRef<string | null>(null);
   const [, setExecutionResult] = useState<{
     success: boolean;
     output: string;
@@ -1312,6 +1319,7 @@ const WorkflowPageContent: React.FC = () => {
       };
 
       setLastRunId(null);
+      setRunOutput("");
       // The output is read while the run goes: progress updates live, and
       // the run id (first line) makes Cancel work for long runs.
       const lineReader = createLineReader((line) => {
@@ -1343,6 +1351,8 @@ const WorkflowPageContent: React.FC = () => {
           outputDirectory: settings.output.directory,
           executionSettings: flatExecutionSettings,
           fileContent: workflowFiles, // Send actual file content
+          // Keeps the run in this workflow's history.
+          ...(workflowId ? { workflowId } : {}),
         },
         {
           responseType: "text", // Handle as streaming text
@@ -1355,6 +1365,16 @@ const WorkflowPageContent: React.FC = () => {
               | undefined;
             if (typeof request?.responseText === "string") {
               lineReader.feed(request.responseText);
+              // Show the log at most a few times a second.
+              if (pendingRunOutput.current === null) {
+                setTimeout(() => {
+                  if (pendingRunOutput.current !== null) {
+                    setRunOutput(pendingRunOutput.current);
+                  }
+                  pendingRunOutput.current = null;
+                }, 250);
+              }
+              pendingRunOutput.current = request.responseText;
             }
           },
         }
@@ -1364,6 +1384,8 @@ const WorkflowPageContent: React.FC = () => {
       if (typeof response.data === "string") {
         // Lines not seen while streaming (e.g. the last one)
         lineReader.flush(response.data);
+        pendingRunOutput.current = null;
+        setRunOutput(response.data);
         setCurrentExecutionId(null);
 
         const normalizedOutput = response.data.toLowerCase();
@@ -1564,6 +1586,16 @@ const WorkflowPageContent: React.FC = () => {
 
       const errorOutput = String(
         responseData?.stdout || responseData?.stderr || ""
+      );
+      if (typeof responseData?.runId === "string") {
+        setLastRunId(responseData.runId);
+      }
+      pendingRunOutput.current = null;
+      // Keep what streamed before the failure and add why it failed.
+      setRunOutput((previous) =>
+        [previous.trimEnd(), errorOutput, `Error: ${errorMessage}`]
+          .filter(Boolean)
+          .join("\n")
       );
 
       setExecutionResult({
@@ -1886,6 +1918,22 @@ const WorkflowPageContent: React.FC = () => {
             }}
           />
         )}
+        {/* Notices sit at the top of the canvas, clear of the bottom bar
+            and the demo banner. */}
+        {(missingNfCoreComponents.length > 0 ||
+          workflowImportWarnings.length > 0) && (
+          <div className="pointer-events-none absolute left-1/2 top-4 z-30 flex w-[min(42rem,calc(100%-9rem))] -translate-x-1/2 flex-col gap-2">
+            <MissingNfCoreBanner
+              components={missingNfCoreComponents}
+              onInstalled={reloadInstalledNfCore}
+            />
+            {workflowImportWarnings.length > 0 && (
+              <div className="pointer-events-auto rounded-lg border border-yellow-700/40 bg-yellow-100 px-4 py-3 text-sm text-yellow-900 shadow-lg">
+                {workflowImportWarnings.join(" ")}
+              </div>
+            )}
+          </div>
+        )}
         <DeleteDropZone
           isDragging={isDragging}
           isHovering={isHoveringDropZone}
@@ -1898,15 +1946,6 @@ const WorkflowPageContent: React.FC = () => {
           {renderPanels()}
         </ErrorBoundary>
       </div>
-      <MissingNfCoreBanner
-        components={missingNfCoreComponents}
-        onInstalled={reloadInstalledNfCore}
-      />
-      {workflowImportWarnings.length > 0 && (
-        <div className="border-t border-yellow-700/40 bg-yellow-100/90 px-4 py-3 text-sm text-yellow-900">
-          {workflowImportWarnings.join(" ")}
-        </div>
-      )}
 
       <BottomBar
         workflowName={workflowName}
@@ -1923,6 +1962,7 @@ const WorkflowPageContent: React.FC = () => {
         isLoading={isLoading}
         executionSettings={executionSettings as ExecutionSettings}
         onExecutionSettingsChange={handleExecutionSettingsChange}
+        onShowRuns={executionStatus.showStatus}
       />
       {nodeToDelete && (
         <ConfirmDialog
@@ -1968,6 +2008,11 @@ const WorkflowPageContent: React.FC = () => {
           isVisible={showErrorDialog}
           onClose={handleCloseErrorDialog}
           onRetry={handleRetryExecution}
+          onShowLog={() => {
+            setShowErrorDialog(false);
+            setRunPanelTab("log");
+            executionStatus.showStatus();
+          }}
           error={executionError}
         />
       )}
@@ -1981,6 +2026,10 @@ const WorkflowPageContent: React.FC = () => {
         onClose={executionStatus.hideStatus}
         isVisible={executionStatus.isVisible}
         runId={isDemoMode ? null : lastRunId}
+        output={runOutput}
+        workflowId={workflowId}
+        tab={runPanelTab}
+        onTabChange={setRunPanelTab}
       />
     </div>
   );

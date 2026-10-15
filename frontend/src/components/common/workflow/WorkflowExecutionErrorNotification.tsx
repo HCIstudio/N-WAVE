@@ -22,12 +22,14 @@ interface WorkflowExecutionErrorNotificationProps {
   isVisible: boolean;
   onClose: () => void;
   onRetry: () => Promise<void>;
+  /** Open the run panel's full log. */
+  onShowLog?: () => void;
   error: ExecutionError;
 }
 
 const WorkflowExecutionErrorNotification: React.FC<
   WorkflowExecutionErrorNotificationProps
-> = ({ isVisible, onClose, onRetry, error }) => {
+> = ({ isVisible, onClose, onRetry, onShowLog, error }) => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -308,7 +310,7 @@ const WorkflowExecutionErrorNotification: React.FC<
           </div>
 
           {/* Bottom section with Retry button */}
-          <div className="flex justify-start pt-3 border-t border-panel-border mt-3">
+          <div className="flex justify-start gap-2 pt-3 border-t border-panel-border mt-3">
             <button
               type="button"
               onClick={handleRetry}
@@ -327,6 +329,16 @@ const WorkflowExecutionErrorNotification: React.FC<
                 </>
               )}
             </button>
+            {onShowLog && (
+              <button
+                type="button"
+                onClick={onShowLog}
+                className="px-4 py-2 text-sm rounded border border-panel-border text-text hover:bg-accent transition-colors flex items-center space-x-2"
+              >
+                <Terminal className="w-4 h-4" />
+                <span>Show full log</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

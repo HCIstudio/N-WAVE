@@ -137,6 +137,8 @@ export const executeRequestSchema = z
     containerImage: dockerImage.or(z.literal("")).optional(),
     outputDirectory: z.string().max(4_096).optional(),
     workflowName: z.string().max(MAX_NAME_LENGTH).optional(),
+    /** The saved workflow's id, to list its runs. */
+    workflowId: z.string().max(255).optional(),
     fileContent: z
       .record(inputFileName, z.string())
       .refine((files) => Object.keys(files).length <= MAX_INPUT_FILES, {

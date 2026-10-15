@@ -174,6 +174,11 @@ const demoApi = {
       } as T);
     }
 
+    // No runs happen in the demo, so there is no run history.
+    if (path === "/execute/runs") {
+      return ok({ runs: [] } as T);
+    }
+
     return fail(404, `No demo handler for GET ${path}`);
   },
 

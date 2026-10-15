@@ -58,6 +58,15 @@ test.describe("RNA-seq (STAR + Salmon) example", () => {
       `uses ${example.components.length} nf-core components`
     );
     await expect(banner).toContainText("nf-core/star/align");
+    // It sits at the top of the canvas, clear of the bottom bar.
+    const bannerBox = await banner.boundingBox();
+    const barBox = await page
+      .locator("[data-tutorial-bottom-bar]")
+      .boundingBox();
+    expect(bannerBox && barBox && bannerBox.y + bannerBox.height).toBeLessThan(
+      barBox?.y ?? 0
+    );
+    expect(bannerBox?.y).toBeLessThan((page.viewportSize()?.height ?? 0) / 2);
     await banner.getByRole("button", { name: "Install them" }).click();
     await expect(banner).toHaveCount(0, { timeout: 60_000 });
 

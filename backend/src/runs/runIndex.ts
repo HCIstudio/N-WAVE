@@ -8,10 +8,32 @@ import { getNwaveDataRoot } from "../execution/nfcoreModules";
 
 const MAX_RUNS = 500;
 
+export type RunStatus = "running" | "succeeded" | "failed" | "cancelled";
+
 interface RunRecord {
   dir: string;
   startedAt: string;
+  workflowId?: string;
+  workflowName?: string;
+  /** Missing on runs recorded before statuses were kept. */
+  status?: RunStatus;
+  finishedAt?: string;
+  /** Why a run failed, in one line. */
+  message?: string;
 }
+
+export interface RunSummary {
+  id: string;
+  workflowId?: string;
+  workflowName?: string;
+  status: RunStatus | "unknown";
+  startedAt: string;
+  finishedAt?: string;
+  message?: string;
+}
+
+/** The run's full output (what the run panel showed), in its directory. */
+export const RUN_LOG_FILE = "nwave-run.log";
 
 const indexPath = (): string => path.join(getNwaveDataRoot(), "runs.json");
 
@@ -26,15 +48,88 @@ const readIndex = (): Record<string, RunRecord> => {
   }
 };
 
-/** Remember a run's directory (keeps the newest MAX_RUNS). */
-export const recordRun = (id: string, dir: string): void => {
-  const entries = Object.entries(readIndex()).filter(([runId]) => runId !== id);
-  entries.push([id, { dir, startedAt: new Date().toISOString() }]);
+const writeIndex = (entries: Array<[string, RunRecord]>): void => {
   fs.mkdirSync(path.dirname(indexPath()), { recursive: true });
   fs.writeFileSync(
     indexPath(),
     `${JSON.stringify(Object.fromEntries(entries.slice(-MAX_RUNS)), null, 2)}\n`
   );
+};
+
+/** Remember a run's directory as running (keeps the newest MAX_RUNS). */
+export const recordRun = (
+  id: string,
+  dir: string,
+  meta: { workflowId?: string; workflowName?: string } = {}
+): void => {
+  const entries = Object.entries(readIndex()).filter(([runId]) => runId !== id);
+  entries.push([
+    id,
+    {
+      dir,
+      startedAt: new Date().toISOString(),
+      ...(meta.workflowId ? { workflowId: meta.workflowId } : {}),
+      ...(meta.workflowName ? { workflowName: meta.workflowName } : {}),
+      status: "running",
+    },
+  ]);
+  writeIndex(entries);
+};
+
+/** Record how a run ended. */
+export const finishRun = (
+  id: string,
+  status: Exclude<RunStatus, "running">,
+  message?: string
+): void => {
+  const index = readIndex();
+  const run = index[id];
+  if (!run) return;
+  index[id] = {
+    ...run,
+    status,
+    finishedAt: new Date().toISOString(),
+    ...(message ? { message: message.slice(0, 500) } : {}),
+  };
+  writeIndex(Object.entries(index));
+};
+
+/**
+ * Recorded runs, newest first, optionally of one workflow. `isLive` tells
+ * whether a "running" run is still going (it isn't after a restart).
+ */
+export const listRuns = (
+  options: { workflowId?: string; limit?: number; isLive?: (id: string) => boolean } = {}
+): RunSummary[] =>
+  Object.entries(readIndex())
+    .filter(
+      ([, run]) => !options.workflowId || run.workflowId === options.workflowId
+    )
+    .reverse()
+    .slice(0, options.limit ?? 50)
+    .map(([id, run]) => ({
+      id,
+      ...(run.workflowId ? { workflowId: run.workflowId } : {}),
+      ...(run.workflowName ? { workflowName: run.workflowName } : {}),
+      status:
+        run.status === "running" && options.isLive && !options.isLive(id)
+          ? "failed"
+          : (run.status ?? "unknown"),
+      startedAt: run.startedAt,
+      ...(run.finishedAt ? { finishedAt: run.finishedAt } : {}),
+      ...(run.status === "running" && options.isLive && !options.isLive(id)
+        ? { message: "The run was interrupted (the server stopped)." }
+        : run.message
+          ? { message: run.message }
+          : {}),
+    }));
+
+/** A recorded run's log file, or null. */
+export const findRunLog = (id: string): string | null => {
+  const run = readIndex()[id];
+  if (!run) return null;
+  const file = path.join(run.dir, RUN_LOG_FILE);
+  return fs.existsSync(file) ? file : null;
 };
 
 /** The results directory of a recorded run, or null. */

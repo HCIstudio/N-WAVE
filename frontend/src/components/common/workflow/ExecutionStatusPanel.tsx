@@ -8,8 +8,12 @@ import {
   Activity,
   Cpu,
   HardDrive,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
+import { useState } from "react";
 import RunResultsList from "./RunResultsList";
+import RunHistory, { RunLog } from "./RunHistory";
 import type { Node } from "reactflow";
 import type { NodeData } from "../../nodes/BaseNode";
 
@@ -55,7 +59,21 @@ interface ExecutionStatusPanelProps {
   isVisible: boolean;
   /** The run's id, once known: links its results after it finishes. */
   runId?: string | null;
+  /** The current run's output, as it streams in. */
+  output?: string;
+  /** The saved workflow's id: its earlier runs show under History. */
+  workflowId?: string | null;
+  tab?: RunPanelTab;
+  onTabChange?: (tab: RunPanelTab) => void;
 }
+
+export type RunPanelTab = "steps" | "log" | "history";
+
+const TABS: { id: RunPanelTab; label: string }[] = [
+  { id: "steps", label: "Steps" },
+  { id: "log", label: "Log" },
+  { id: "history", label: "History" },
+];
 
 const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   status,
@@ -64,8 +82,15 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   onClose,
   isVisible,
   runId,
+  output = "",
+  workflowId,
+  tab = "steps",
+  onTabChange,
 }) => {
+  const [maximized, setMaximized] = useState(false);
   if (!isVisible) return null;
+  // Opened before any run in this session: only the history has content.
+  const hasRun = Boolean(status.startTime) || status.isRunning;
   const isCancelled = status.currentStage === "Workflow cancelled";
   const isFailed =
     !status.isRunning &&
@@ -98,7 +123,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
     if (duration < 3600)
       return `${Math.floor(duration / 60)}m ${duration % 60}s`;
     return `${Math.floor(duration / 3600)}h ${Math.floor(
-      (duration % 3600) / 60
+      (duration % 3600) / 60,
     )}m`;
   };
 
@@ -110,9 +135,16 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   };
 
   return (
-    <div className="fixed bottom-4 right-4 bg-[#fcfcfc] border border-gray-600 rounded-lg shadow-lg w-96 max-h-96 overflow-hidden z-50">
+    <section
+      aria-label="Run panel"
+      className={`fixed right-4 z-50 flex flex-col overflow-hidden rounded-lg border border-gray-600 bg-[#fcfcfc] shadow-lg ${
+        maximized
+          ? "top-4 bottom-20 left-4 sm:left-auto sm:w-[min(72rem,calc(100vw-2rem))]"
+          : "bottom-20 h-[min(34rem,calc(100vh-6rem))] w-[min(44rem,calc(100vw-2rem))]"
+      }`}
+    >
       {/* Header */}
-      <div className="bg-nextflow-green text-white px-4 py-3 flex items-center justify-between">
+      <div className="flex shrink-0 items-center justify-between bg-nextflow-green px-4 py-3 text-white">
         <div className="flex items-center gap-2">
           {status.isRunning ? (
             <Activity className="w-5 h-5 animate-pulse" />
@@ -122,13 +154,15 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             <CheckCircle className="w-5 h-5" />
           )}
           <h3 className="font-semibold">
-            {status.isRunning
-              ? "Workflow Running"
-              : isCancelled
-                ? "Workflow Cancelled"
-                : isFailed
-                  ? "Workflow Failed"
-                  : "Workflow Complete"}
+            {!hasRun
+              ? "Runs"
+              : status.isRunning
+                ? "Workflow Running"
+                : isCancelled
+                  ? "Workflow Cancelled"
+                  : isFailed
+                    ? "Workflow Failed"
+                    : "Workflow Complete"}
           </h3>
         </div>
         <div className="flex items-center gap-2">
@@ -143,12 +177,26 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               Cancel run
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => setMaximized((value) => !value)}
+            className="rounded p-0.5 text-white transition-colors hover:bg-white/20 hover:text-gray-200"
+            aria-label={maximized ? "Restore panel size" : "Maximize panel"}
+            title={maximized ? "Restore panel size" : "Maximize panel"}
+          >
+            {maximized ? (
+              <Minimize2 className="h-4 w-4" />
+            ) : (
+              <Maximize2 className="h-4 w-4" />
+            )}
+          </button>
           {onClose && (
             <button
               type="button"
               onClick={onClose}
               className="text-white hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/20"
               title="Close panel"
+              aria-label="Close run panel"
             >
               <X className="w-4 h-4" />
             </button>
@@ -156,138 +204,192 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
         </div>
       </div>
 
-      {/* Progress Overview */}
-      <div className="p-4 border-b border-gray-300">
-        <div className="grid grid-cols-2 gap-4 mb-3">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-nextflow-green">
-              {status.completedNodes}
-            </div>
-            <div className="text-xs text-gray-700">Completed</div>
-          </div>
-          <div className="text-center">
-            <div className="text-2xl font-bold text-blue-500">
-              {status.runningNodes}
-            </div>
-            <div className="text-xs text-gray-700">Running</div>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-2">
-          <div className="flex justify-between text-xs text-gray-800 mb-1">
-            <span>Progress</span>
-            <span>{Math.round(status.overallProgress)}%</span>
-          </div>
-          <div className="w-full bg-gray-300 rounded-full h-2">
-            <div
-              className="bg-nextflow-green h-2 rounded-full transition-all duration-300"
-              style={{ width: `${status.overallProgress}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Time Information */}
-        <div className="flex justify-between text-xs text-gray-800">
-          <span>
-            Runtime: {formatDuration(status.startTime, status.endTime)}
-          </span>
-          {status.isRunning && status.estimatedTimeRemaining && (
-            <span>
-              ETA: {formatEstimatedTime(status.estimatedTimeRemaining)}
-            </span>
-          )}
-        </div>
-
-        {status.currentStage && (
-          <div className="mt-2 text-sm text-gray-800">
-            Current: {status.currentStage}
-          </div>
-        )}
-
-        {runId && !status.isRunning && !isCancelled && (
-          <section
-            aria-label="Run results"
-            className="mt-3 space-y-1 border-t border-gray-300 pt-2 text-gray-800"
+      <div
+        role="tablist"
+        aria-label="Run panel views"
+        className="flex shrink-0 gap-1 border-b border-gray-300 px-2 pt-2"
+      >
+        {TABS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === item.id}
+            onClick={() => onTabChange?.(item.id)}
+            className={`rounded-t px-3 py-1.5 text-sm ${
+              tab === item.id
+                ? "border border-b-0 border-gray-300 bg-white font-semibold text-gray-900"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
           >
-            <h4 className="text-sm font-semibold">Results</h4>
-            <RunResultsList runId={runId} label="Run reports" />
-          </section>
-        )}
-      </div>
-
-      {/* Node Status List */}
-      <div className="max-h-80 overflow-y-auto">
-        {status.nodeStatuses.map((nodeStatus) => (
-          <div
-            key={nodeStatus.nodeId}
-            className="p-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-100"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                {getStatusIcon(nodeStatus.status)}
-                <span className="font-medium text-sm truncate text-gray-800">
-                  {nodeStatus.nodeName}
-                </span>
-              </div>
-              <span className="text-xs text-gray-700">
-                {formatDuration(nodeStatus.startTime, nodeStatus.endTime)}
-              </span>
-            </div>
-
-            {/* Progress bar for running nodes */}
-            {nodeStatus.status === "running" &&
-              nodeStatus.progress !== undefined && (
-                <div className="mb-1">
-                  <div className="w-full bg-gray-300 rounded-full h-1">
-                    <div
-                      className="bg-blue-500 h-1 rounded-full transition-all duration-300"
-                      style={{ width: `${nodeStatus.progress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-            {/* Container and resource info */}
-            {nodeStatus.container && (
-              <div className="text-xs text-gray-700 mb-1">
-                📦 {nodeStatus.container}
-              </div>
-            )}
-
-            {nodeStatus.resources && (
-              <div className="flex items-center gap-3 text-xs text-gray-700">
-                <div className="flex items-center gap-1">
-                  <Cpu className="w-3 h-3" />
-                  <span>{nodeStatus.resources.cpus} CPU</span>
-                  {nodeStatus.resources.actualCpuUsage && (
-                    <span className="text-blue-500">
-                      ({nodeStatus.resources.actualCpuUsage}%)
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <HardDrive className="w-3 h-3" />
-                  <span>{nodeStatus.resources.memory}</span>
-                  {nodeStatus.resources.actualMemoryUsage && (
-                    <span className="text-blue-500">
-                      ({nodeStatus.resources.actualMemoryUsage}%)
-                    </span>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Error message */}
-            {nodeStatus.status === "error" && nodeStatus.error && (
-              <div className="text-xs text-red-600 mt-1 bg-red-50 p-1 rounded">
-                {nodeStatus.error}
-              </div>
-            )}
-          </div>
+            {item.label}
+          </button>
         ))}
       </div>
-    </div>
+
+      {tab === "log" && (
+        <div role="tabpanel" aria-label="Log" className="min-h-0 flex-1">
+          <RunLog text={output} />
+        </div>
+      )}
+      {tab === "history" && (
+        <div role="tabpanel" aria-label="History" className="min-h-0 flex-1">
+          <RunHistory
+            workflowId={workflowId}
+            refreshKey={`${runId ?? ""}:${status.isRunning}`}
+          />
+        </div>
+      )}
+      {tab === "steps" && !hasRun && (
+        <p
+          role="tabpanel"
+          aria-label="Steps"
+          className="p-4 text-sm text-gray-700"
+        >
+          No run yet in this session. Click Run Workflow, or look under History
+          for earlier runs.
+        </p>
+      )}
+      {tab === "steps" && hasRun && (
+        <div
+          role="tabpanel"
+          aria-label="Steps"
+          className="min-h-0 flex-1 overflow-y-auto"
+        >
+          {/* Progress Overview */}
+          <div className="p-4 border-b border-gray-300">
+            <div className="grid grid-cols-2 gap-4 mb-3">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-nextflow-green">
+                  {status.completedNodes}
+                </div>
+                <div className="text-xs text-gray-700">Completed</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-500">
+                  {status.runningNodes}
+                </div>
+                <div className="text-xs text-gray-700">Running</div>
+              </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="mb-2">
+              <div className="flex justify-between text-xs text-gray-800 mb-1">
+                <span>Progress</span>
+                <span>{Math.round(status.overallProgress)}%</span>
+              </div>
+              <div className="w-full bg-gray-300 rounded-full h-2">
+                <div
+                  className="bg-nextflow-green h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${status.overallProgress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Time Information */}
+            <div className="flex justify-between text-xs text-gray-800">
+              <span>
+                Runtime: {formatDuration(status.startTime, status.endTime)}
+              </span>
+              {status.isRunning && status.estimatedTimeRemaining && (
+                <span>
+                  ETA: {formatEstimatedTime(status.estimatedTimeRemaining)}
+                </span>
+              )}
+            </div>
+
+            {status.currentStage && (
+              <div className="mt-2 text-sm text-gray-800">
+                Current: {status.currentStage}
+              </div>
+            )}
+
+            {runId && !status.isRunning && !isCancelled && (
+              <section
+                aria-label="Run results"
+                className="mt-3 space-y-1 border-t border-gray-300 pt-2 text-gray-800"
+              >
+                <h4 className="text-sm font-semibold">Results</h4>
+                <RunResultsList runId={runId} label="Run reports" />
+              </section>
+            )}
+          </div>
+
+          {/* Node Status List */}
+          <div>
+            {status.nodeStatuses.map((nodeStatus) => (
+              <div
+                key={nodeStatus.nodeId}
+                className="p-3 border-b border-gray-200 last:border-b-0 hover:bg-gray-100"
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(nodeStatus.status)}
+                    <span className="font-medium text-sm truncate text-gray-800">
+                      {nodeStatus.nodeName}
+                    </span>
+                  </div>
+                  <span className="text-xs text-gray-700">
+                    {formatDuration(nodeStatus.startTime, nodeStatus.endTime)}
+                  </span>
+                </div>
+
+                {/* Progress bar for running nodes */}
+                {nodeStatus.status === "running" &&
+                  nodeStatus.progress !== undefined && (
+                    <div className="mb-1">
+                      <div className="w-full bg-gray-300 rounded-full h-1">
+                        <div
+                          className="bg-blue-500 h-1 rounded-full transition-all duration-300"
+                          style={{ width: `${nodeStatus.progress}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                {/* Container and resource info */}
+                {nodeStatus.container && (
+                  <div className="text-xs text-gray-700 mb-1">
+                    📦 {nodeStatus.container}
+                  </div>
+                )}
+
+                {nodeStatus.resources && (
+                  <div className="flex items-center gap-3 text-xs text-gray-700">
+                    <div className="flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      <span>{nodeStatus.resources.cpus} CPU</span>
+                      {nodeStatus.resources.actualCpuUsage && (
+                        <span className="text-blue-500">
+                          ({nodeStatus.resources.actualCpuUsage}%)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <HardDrive className="w-3 h-3" />
+                      <span>{nodeStatus.resources.memory}</span>
+                      {nodeStatus.resources.actualMemoryUsage && (
+                        <span className="text-blue-500">
+                          ({nodeStatus.resources.actualMemoryUsage}%)
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Error message */}
+                {nodeStatus.status === "error" && nodeStatus.error && (
+                  <div className="text-xs text-red-600 mt-1 bg-red-50 p-1 rounded">
+                    {nodeStatus.error}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 };
 
