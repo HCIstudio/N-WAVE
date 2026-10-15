@@ -118,6 +118,11 @@ succeeded and, if it failed, why, along with its saved log and its results. The 
 each run's log as `nwave-run.log` in the run's directory, and serves the history at
 `GET /api/execute/runs?workflowId=` and each log at `GET /api/execute/runs/:id/log`.
 
+While a workflow runs, it is locked: nodes can't be moved, connected, added or deleted,
+and node settings and notes can't be edited (an amber frame and a notice say so) until the
+run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
+**Running** button brings it back.
+
 ### Which step is running, and what each node produced
 
 While a workflow runs, each node on the canvas shows its state under it: **Running** (with

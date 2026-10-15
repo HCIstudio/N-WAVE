@@ -99,6 +99,47 @@ describe("ExecutionStatusPanel", () => {
     expect(panel?.className).toContain("top-4");
   });
 
+  it("can only be minimized while a run goes, and closed after", () => {
+    const running = { ...idle, isRunning: true, startTime: new Date() };
+    const onMinimizedChange = vi.fn();
+    const onClose = vi.fn();
+    render({ status: running, onClose, onMinimizedChange });
+    expect(container.querySelector("h3")?.textContent).toBe("Workflow Running");
+    expect(container.querySelector('[aria-label="Close run panel"]')).toBeNull();
+    act(() =>
+      (
+        container.querySelector(
+          '[aria-label="Minimize run panel"]',
+        ) as HTMLButtonElement
+      ).click(),
+    );
+    expect(onMinimizedChange).toHaveBeenCalledWith(true);
+
+    render({
+      status: running,
+      onClose,
+      onMinimizedChange,
+      minimized: true,
+      steps: [
+        { id: "a", label: "Filter", status: "succeeded", done: 1, total: 1 },
+        { id: "b", label: "Merge", status: "running", done: 0, total: 1 },
+      ],
+    });
+    expect(container.textContent).toContain("1 of 2 steps done");
+    expect(container.querySelector('[aria-label="Close run panel"]')).toBeNull();
+    act(() =>
+      (
+        container.querySelector(
+          '[aria-label="Expand run panel"]',
+        ) as HTMLButtonElement
+      ).click(),
+    );
+    expect(onMinimizedChange).toHaveBeenCalledWith(false);
+
+    render({ status: failed, onClose, onMinimizedChange });
+    expect(container.querySelector('[aria-label="Close run panel"]')).not.toBeNull();
+  });
+
   it("renders nothing when hidden", () => {
     render({ isVisible: false });
     expect(container.innerHTML).toBe("");

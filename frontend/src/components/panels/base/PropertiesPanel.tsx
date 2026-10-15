@@ -14,6 +14,8 @@ type PanelTab = "settings" | "code" | "results";
 
 interface PropertiesPanelProps {
   node: Node<NodeData>;
+  /** True while the workflow runs: settings are shown but can't change. */
+  locked?: boolean;
   onClose: () => void;
   onSave: (nodeId: string, data: Partial<NodeData>) => void;
   onDelete: (node: Node<NodeData>) => void;
@@ -35,6 +37,7 @@ const MIN_PANEL_HEIGHT = 200;
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   node,
+  locked = false,
   onClose,
   onSave,
   onDelete,
@@ -219,7 +222,8 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           <button
             type="button"
             onClick={handleDeleteClick}
-            className="p-1 rounded-full hover:bg-gray-600 text-gray-400 hover:text-red-400"
+            disabled={locked}
+            className="p-1 rounded-full hover:bg-gray-600 text-gray-400 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Delete Node"
           >
             <Trash2 className="w-4 h-4" />
@@ -312,7 +316,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           aria-labelledby="node-panel-tab-settings"
           className="p-4 overflow-auto flex-grow"
         >
-          <div className="space-y-4">
+          {locked && (
+            <p className="mb-3 rounded-md border border-amber-500/60 bg-amber-100 px-3 py-2 text-sm text-amber-900">
+              Locked while the workflow runs.
+            </p>
+          )}
+          <fieldset disabled={locked} className="min-w-0 space-y-4 disabled:opacity-70">
             <div>
               <label
                 htmlFor="node-label"
@@ -333,7 +342,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             <hr className="border-accent" />
 
             {renderNodeSpecificFields()}
-          </div>
+          </fieldset>
         </div>
       )}
       <div

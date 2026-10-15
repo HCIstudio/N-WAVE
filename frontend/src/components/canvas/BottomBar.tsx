@@ -12,6 +12,7 @@ import {
   Container,
   FolderDown,
   History,
+  Hourglass,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
@@ -411,31 +412,38 @@ const BottomBar: React.FC<BottomBarProps> = ({
           )}
         </button>
 
-        {/* Run Button */}
-        {onRun && (
-          <button
-            type="button"
-            onClick={handleRun}
-            disabled={isRunning || !canExecute}
-            className="p-1.5 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Run Workflow"
-            title={
-              !canExecute
-                ? "Cannot run: Some files are missing content"
-                : isRunning
-                ? "Workflow is currently running"
-                : executionSettings.container?.enabled
-                ? "Run with Docker"
-                : "Run locally"
-            }
-          >
-            {isRunning ? (
-              <Loader className="w-4 h-4 animate-spin" />
-            ) : (
+        {/* Run Button: while a run goes, it shows the run panel's hourglass
+            and brings that panel back. */}
+        {onRun &&
+          (isRunning ? (
+            <button
+              type="button"
+              onClick={onShowRuns}
+              className="inline-flex items-center gap-1.5 rounded-md bg-nextflow-green px-2 py-1.5 text-xs font-medium text-white ring-2 ring-nextflow-green/40 hover:bg-nextflow-green/90"
+              aria-label="Show the running workflow"
+              title="The workflow is running. Click to show its progress."
+            >
+              <Hourglass className="h-4 w-4 animate-pulse" aria-hidden />
+              Running
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleRun}
+              disabled={!canExecute}
+              className="p-1.5 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Run Workflow"
+              title={
+                !canExecute
+                  ? "Cannot run: Some files are missing content"
+                  : executionSettings.container?.enabled
+                  ? "Run with Docker"
+                  : "Run locally"
+              }
+            >
               <Play className="w-4 h-4" />
-            )}
-          </button>
-        )}
+            </button>
+          ))}
 
         {onShowRuns && (
           <button
