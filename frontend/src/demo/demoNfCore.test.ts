@@ -109,6 +109,16 @@ describe("demo nf-core library", () => {
     ]);
   });
 
+  it("serves a module's meta.yml with its source", async () => {
+    const { data } = await demoApi.get<{ source: string; meta?: string }>(
+      `/nfcore/modules/source?id=${encodeURIComponent("nf-core/fastqc")}`,
+    );
+    expect(data.meta).toBeDefined();
+    expect(githubRequests.some((url) => url.endsWith("fastqc/meta.yml"))).toBe(
+      true,
+    );
+  });
+
   it("serves an installed module's source from storage", async () => {
     await demoApi.post("/nfcore/install", { id: "nf-core/salmon/quant" });
     githubRequests.length = 0;
@@ -117,7 +127,10 @@ describe("demo nf-core library", () => {
       `/nfcore/modules/source?id=${encodeURIComponent("nf-core/salmon/quant")}`,
     );
     expect(data.source).toContain("process STAR_ALIGN");
-    expect(githubRequests).toEqual([]);
+    // Only the documentation comes from GitHub.
+    expect(githubRequests.filter((url) => url.endsWith("main.nf"))).toEqual(
+      [],
+    );
   });
 
   it("marks modules installed from another catalog commit as outdated", async () => {

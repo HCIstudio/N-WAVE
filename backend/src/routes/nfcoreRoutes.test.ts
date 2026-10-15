@@ -57,7 +57,7 @@ const subworkflowDir = (name: string) =>
   path.join(dataDir, "nf-core/subworkflows/nf-core", name);
 
 describe("GET /api/nfcore/modules/source", () => {
-  it("fetches the main.nf of a module that isn't installed from GitHub", async () => {
+  it("fetches the main.nf and meta.yml of a module that isn't installed from GitHub", async () => {
     const response = await request(app)
       .get("/api/nfcore/modules/source")
       .query({ id: "nf-core/fastqc" })
@@ -65,12 +65,24 @@ describe("GET /api/nfcore/modules/source", () => {
     expect(response.body).toEqual({
       id: "nf-core/fastqc",
       source: "main.nf of fastqc/main.nf",
+      meta: "meta.yml of fastqc/meta.yml",
     });
-    // Only main.nf is downloaded, at the catalog's pinned commit.
-    expect(githubRequests).toHaveLength(1);
+    // Only main.nf and meta.yml are downloaded, at the catalog's pinned commit.
+    expect(githubRequests).toHaveLength(2);
     expect(githubRequests[0]).toMatch(
       /^https:\/\/raw\.githubusercontent\.com\/nf-core\/modules\/[0-9a-f]{40}\/modules\/nf-core\/fastqc\/main\.nf$/
     );
+  });
+
+  it("leaves out a meta.yml GitHub doesn't have", async () => {
+    const response = await request(app)
+      .get("/api/nfcore/modules/source")
+      .query({ id: "nf-core/salmon/quant" })
+      .expect(200);
+    expect(response.body).toEqual({
+      id: "nf-core/salmon/quant",
+      source: "main.nf of salmon/quant/main.nf",
+    });
   });
 
   it("reads installed modules from disk", async () => {

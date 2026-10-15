@@ -33,7 +33,8 @@
     "react-icons": "^5.7.0",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^6.24.1",
-    "reactflow": "^11.11.4"
+    "reactflow": "^11.11.4",
+    "yaml": "^2.8.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",

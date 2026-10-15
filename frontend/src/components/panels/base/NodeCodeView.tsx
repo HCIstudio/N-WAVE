@@ -44,7 +44,13 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
   onEditCustomNode,
 }) => {
   const code = useMemo(() => getNodeCode(node), [node]);
-  const moduleId = code?.nfCoreModule?.id;
+  // An nf-core node whose module isn't installed has no code yet, but its
+  // module's source can still be shown.
+  const uninstalledModuleId =
+    !code && typeof node.data.nwaveNfCoreModuleId === "string"
+      ? node.data.nwaveNfCoreModuleId
+      : undefined;
+  const moduleId = code?.nfCoreModule?.id ?? uninstalledModuleId;
   const moduleKind =
     moduleId && isNfCoreSubworkflowId(moduleId) ? "subworkflow" : "module";
   const [moduleSource, setModuleSource] = useState<ModuleSourceState>({
@@ -77,6 +83,53 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
       cancelled = true;
     };
   }, [moduleId, moduleKind]);
+
+  const moduleSourceView = (
+    <>
+      {moduleSource.status === "loaded" && (
+        <CodeBlock
+          code={moduleSource.source}
+          label={moduleKind === "module" ? "Module code" : "Subworkflow code"}
+        />
+      )}
+      {moduleSource.status === "loading" && (
+        <p className="flex items-center gap-2 text-sm text-text-light">
+          <Loader size={14} className="animate-spin" aria-hidden />
+          Loading {moduleKind} source…
+        </p>
+      )}
+      {moduleSource.status === "error" && (
+        <p role="alert" className="text-sm text-danger">
+          {moduleSource.message}
+        </p>
+      )}
+    </>
+  );
+
+  if (!code && uninstalledModuleId) {
+    return (
+      <div className="space-y-5">
+        <p className="rounded-md border border-amber-500/60 bg-amber-100 px-3 py-2 text-sm text-amber-900">
+          This nf-core {moduleKind} isn&apos;t installed on this server yet, so
+          the node adds nothing to the generated workflow. Install it with
+          &quot;Install them&quot; in the banner above the canvas. Below is the{" "}
+          {moduleKind}&apos;s code from nf-core.
+        </p>
+        <Section
+          title={
+            <>
+              nf-core {moduleKind}{" "}
+              <span className="font-mono normal-case">
+                {uninstalledModuleId}
+              </span>
+            </>
+          }
+        >
+          {moduleSourceView}
+        </Section>
+      </div>
+    );
+  }
 
   if (!code) {
     return (
@@ -131,23 +184,7 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
             </>
           }
         >
-          {moduleSource.status === "loaded" && (
-            <CodeBlock
-              code={moduleSource.source}
-              label={moduleKind === "module" ? "Module code" : "Subworkflow code"}
-            />
-          )}
-          {moduleSource.status === "loading" && (
-            <p className="flex items-center gap-2 text-sm text-text-light">
-              <Loader size={14} className="animate-spin" aria-hidden />
-              Loading {moduleKind} source…
-            </p>
-          )}
-          {moduleSource.status === "error" && (
-            <p role="alert" className="text-sm text-danger">
-              {moduleSource.message}
-            </p>
-          )}
+          {moduleSourceView}
           <CodeBlock
             code={code.includeStatements.join("\n")}
             label="Include statement"

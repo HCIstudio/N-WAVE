@@ -125,9 +125,14 @@ const demoApi = {
     if (path === "/nfcore/modules/source") {
       const id = new URL(url, "http://demo").searchParams.get("id") ?? "";
       return loadNfCore()
-        .then(({ fetchNfCoreModuleSource }) => fetchNfCoreModuleSource(id))
+        .then(({ fetchNfCoreModuleSource, fetchNfCoreModuleMeta }) =>
+          Promise.all([
+            fetchNfCoreModuleSource(id),
+            fetchNfCoreModuleMeta(id),
+          ]),
+        )
         .then(
-        (source) => ok({ id, source } as T),
+        ([source, meta]) => ok({ id, source, ...(meta ? { meta } : {}) } as T),
         (error: unknown) =>
           fail(404, error instanceof Error ? error.message : String(error))
       );

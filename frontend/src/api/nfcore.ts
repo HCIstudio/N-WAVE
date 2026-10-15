@@ -145,11 +145,37 @@ export const installNfCoreModule = async (
  * `main.nf` of an nf-core module or subworkflow, e.g.
  * getNfCoreModuleSource("nf-core/fastqc").
  */
-export const getNfCoreModuleSource = async (id: string): Promise<string> => {
-  const response = await api.get<{ id: string; source: string }>(
-    `/nfcore/modules/source?id=${encodeURIComponent(id)}`
-  );
-  return response.data.source;
+export const getNfCoreModuleSource = async (id: string): Promise<string> =>
+  (await getNfCoreModuleInfo(id)).source;
+
+export interface NfCoreModuleInfo {
+  /** main.nf */
+  source: string;
+  /** meta.yml, when the module has one. */
+  meta?: string;
+}
+
+const moduleInfoCache = new Map<string, Promise<NfCoreModuleInfo>>();
+
+/**
+ * main.nf and meta.yml of an nf-core module or subworkflow, fetched once:
+ * the Code tab and the module's description share them.
+ */
+export const getNfCoreModuleInfo = (id: string): Promise<NfCoreModuleInfo> => {
+  const cached = moduleInfoCache.get(id);
+  if (cached) return cached;
+  const request = api
+    .get<{ id: string; source: string; meta?: string }>(
+      `/nfcore/modules/source?id=${encodeURIComponent(id)}`
+    )
+    .then(({ data }) => ({
+      source: data.source,
+      ...(typeof data.meta === "string" ? { meta: data.meta } : {}),
+    }));
+  // Don't cache failures, so a later attempt can succeed.
+  request.catch(() => moduleInfoCache.delete(id));
+  moduleInfoCache.set(id, request);
+  return request;
 };
 
 /** Remove an installed module or subworkflow. */
