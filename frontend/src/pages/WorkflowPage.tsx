@@ -34,7 +34,7 @@ import ExecutionStatusPanel, {
 import CustomNodeModal from "../components/common/forms/CustomNodeModal";
 import { useExecutionStatus, useLatestRef } from "../hooks";
 import { generateNextflowScript } from "../generators";
-import { Loader } from "lucide-react";
+import { Loader, Lock } from "lucide-react";
 import { type ExecutionSettings, ExecutionMode } from "../types/execution";
 import type { WorkflowDescriptor } from "../types/backend";
 import TutorialCallout from "../components/tutorial/TutorialCallout";
@@ -231,6 +231,7 @@ const WorkflowPageContent: React.FC = () => {
   // The current run's output, for the run panel's Log tab.
   const [runOutput, setRunOutput] = useState("");
   const [runPanelTab, setRunPanelTab] = useState<RunPanelTab>("steps");
+  const [runPanelMinimized, setRunPanelMinimized] = useState(false);
   const pendingRunOutput = useRef<string | null>(null);
   const [, setExecutionResult] = useState<{
     success: boolean;
@@ -563,14 +564,28 @@ const WorkflowPageContent: React.FC = () => {
     workflowReadOnly,
   ]);
 
+  // While a run goes the workflow is locked: the run uses what was on the
+  // canvas when it started, so edits would only be confusing (and are lost
+  // if the run's results don't match them).
+  const blockedByRun = useCallback(() => {
+    if (!isRunning) return false;
+    showToast(
+      "The workflow is locked while it runs. Wait for the run to finish, or cancel it, to make changes.",
+      "info"
+    );
+    return true;
+  }, [isRunning, showToast]);
+
   const ensureEditableWorkflow = useCallback(async () => {
+    if (blockedByRun()) return false;
     if (!workflowReadOnly) return true;
     await duplicateReadOnlyWorkflow();
     return false;
-  }, [workflowReadOnly, duplicateReadOnlyWorkflow]);
+  }, [workflowReadOnly, duplicateReadOnlyWorkflow, blockedByRun]);
 
   const handleWorkflowNameChange = useCallback(
     (newName: string) => {
+      if (blockedByRun()) return;
       if (workflowReadOnly) {
         void duplicateReadOnlyWorkflow();
         return;
@@ -578,11 +593,12 @@ const WorkflowPageContent: React.FC = () => {
       setWorkflowName(newName);
       setIsDirty(true);
     },
-    [workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty]
+    [workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty, blockedByRun]
   );
 
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
+      if (blockedByRun()) return;
       if (workflowReadOnly) {
         if (tutorialStepIndex === 4) {
           setTutorialStep(5);
@@ -625,6 +641,7 @@ const WorkflowPageContent: React.FC = () => {
       duplicateReadOnlyWorkflow,
       tutorialStepIndex,
       setTutorialStep,
+      blockedByRun,
     ]
   );
 
@@ -637,14 +654,16 @@ const WorkflowPageContent: React.FC = () => {
         isHighlight: node.id === activePanelNodeId,
       },
       selectable: !isConnecting,
-      draggable: !isConnecting && !workflowReadOnly,
+      draggable: !isConnecting && !workflowReadOnly && !isRunning,
+      connectable: !isRunning,
+      deletable: !isRunning,
       // React Flow marks draggable nodes "nopan"; without it, the canvas's
       // double-click zoom swallows the double-click that opens a panel.
       className: workflowReadOnly
         ? [node.className, "nopan"].filter(Boolean).join(" ")
         : node.className,
     }));
-  }, [nodes, isConnecting, activePanelNodeId, workflowReadOnly]);
+  }, [nodes, isConnecting, activePanelNodeId, workflowReadOnly, isRunning]);
 
   // Memoize edges to prevent unnecessary re-renders
   const memoizedEdges = useMemo(() => {
@@ -658,6 +677,13 @@ const WorkflowPageContent: React.FC = () => {
     nodes: memoizedNodes,
     executionId: currentExecutionId,
   });
+
+  // The Run button (while running), Show runs and Show full log all bring
+  // the run panel back, expanded.
+  const openRunPanel = useCallback(() => {
+    setRunPanelMinimized(false);
+    executionStatus.showStatus();
+  }, [executionStatus.showStatus]);
 
   // What each node did in the last run, from Nextflow's log (polled while
   // the run goes). Kept outside node data so it is never saved.
@@ -819,6 +845,24 @@ const WorkflowPageContent: React.FC = () => {
 
   const handleNodesChange = useCallback(
     (changes: Parameters<typeof onNodesChange>[0]) => {
+      // Selecting and measuring still work while a run goes; moving,
+      // adding and removing don't.
+      if (isRunning) {
+        const blocked = changes.some(
+          (change) =>
+            change.type === "remove" ||
+            change.type === "add" ||
+            change.type === "reset" ||
+            (change.type === "position" &&
+              (change as { dragging?: boolean }).dragging)
+        );
+        if (blocked) blockedByRun();
+        const allowed = changes.filter(
+          (change) => change.type === "select" || change.type === "dimensions"
+        );
+        if (allowed.length > 0) onNodesChange(allowed);
+        return;
+      }
       if (workflowReadOnly) {
         const editableChanges = changes.filter(
           (change) =>
@@ -843,11 +887,24 @@ const WorkflowPageContent: React.FC = () => {
       }
       onNodesChange(changes);
     },
-    [onNodesChange, workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty]
+    [
+      onNodesChange,
+      workflowReadOnly,
+      duplicateReadOnlyWorkflow,
+      setIsDirty,
+      isRunning,
+      blockedByRun,
+    ]
   );
 
   const handleEdgesChange = useCallback(
     (changes: Parameters<typeof onEdgesChange>[0]) => {
+      if (isRunning) {
+        if (changes.some((change) => change.type !== "select")) blockedByRun();
+        const allowed = changes.filter((change) => change.type === "select");
+        if (allowed.length > 0) onEdgesChange(allowed);
+        return;
+      }
       if (workflowReadOnly) {
         if (changes.some((change) => change.type === "remove")) {
           void duplicateReadOnlyWorkflow();
@@ -866,18 +923,26 @@ const WorkflowPageContent: React.FC = () => {
       }
       onEdgesChange(changes);
     },
-    [onEdgesChange, workflowReadOnly, duplicateReadOnlyWorkflow, setIsDirty]
+    [
+      onEdgesChange,
+      workflowReadOnly,
+      duplicateReadOnlyWorkflow,
+      setIsDirty,
+      isRunning,
+      blockedByRun,
+    ]
   );
 
   const handleConnect = useCallback(
     (connection: Parameters<typeof onConnect>[0]) => {
+      if (blockedByRun()) return;
       if (workflowReadOnly) {
         void duplicateReadOnlyWorkflow();
         return;
       }
       onConnect(connection);
     },
-    [onConnect, workflowReadOnly, duplicateReadOnlyWorkflow]
+    [onConnect, workflowReadOnly, duplicateReadOnlyWorkflow, blockedByRun]
   );
 
   const handleUpdateNodeData = useCallback(
@@ -1274,6 +1339,7 @@ const WorkflowPageContent: React.FC = () => {
 
     // Start execution status tracking
     executionStatus.startExecution();
+    setRunPanelMinimized(false);
 
     try {
       // A File Input without files would run on nothing.
@@ -1702,6 +1768,7 @@ const WorkflowPageContent: React.FC = () => {
   };
 
   const handleDeleteNode = (node: Node<NodeData> | null) => {
+    if (blockedByRun()) return;
     if (workflowReadOnly) {
       void duplicateReadOnlyWorkflow();
       return;
@@ -1794,6 +1861,7 @@ const WorkflowPageContent: React.FC = () => {
 
   const handleExecutionSettingsChange = useCallback(
     (newSettings: ExecutionSettings) => {
+      if (blockedByRun()) return;
       if (workflowReadOnly) {
         void duplicateReadOnlyWorkflow();
         return;
@@ -1814,7 +1882,7 @@ const WorkflowPageContent: React.FC = () => {
       // Mark workflow as dirty to trigger auto-save
       setIsDirty(true);
     },
-    [setIsDirty, workflowReadOnly, duplicateReadOnlyWorkflow]
+    [setIsDirty, workflowReadOnly, duplicateReadOnlyWorkflow, blockedByRun]
   );
 
   const renderPanels = () => {
@@ -1852,10 +1920,12 @@ const WorkflowPageContent: React.FC = () => {
             {node.type === "outputDisplay" ? (
               <div className="flex h-full flex-col gap-4">
                 <LastRunSection nodeId={node.id} />
-                <OutputDisplayPanelContent
-                  node={node}
-                  onNodeDataChange={handleUpdateNodeData}
-                />
+                <fieldset disabled={isRunning} className="min-w-0">
+                  <OutputDisplayPanelContent
+                    node={node}
+                    onNodeDataChange={handleUpdateNodeData}
+                  />
+                </fieldset>
               </div>
             ) : null}
           </FloatingPanel>
@@ -1865,6 +1935,7 @@ const WorkflowPageContent: React.FC = () => {
           <PropertiesPanel
             key={node.id}
             node={node}
+            locked={isRunning}
             onClose={() => onPanelClose(node.id)}
             onSave={handleUpdateNodeData}
             onDelete={() => {
@@ -1958,9 +2029,30 @@ const WorkflowPageContent: React.FC = () => {
         )}
         {/* Notices sit at the top of the canvas, clear of the bottom bar
             and the demo banner. */}
-        {(missingNfCoreComponents.length > 0 ||
+        {/* While a run goes the canvas is locked: a frame and a notice say
+            so (edits are blocked in the handlers above). */}
+        {isRunning && (
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 z-20 ring-4 ring-inset ring-amber-400/70"
+          />
+        )}
+        {(isRunning ||
+          missingNfCoreComponents.length > 0 ||
           workflowImportWarnings.length > 0) && (
           <div className="pointer-events-none absolute left-1/2 top-4 z-30 flex w-[min(42rem,calc(100%-9rem))] -translate-x-1/2 flex-col gap-2">
+            {isRunning && (
+              <output
+                aria-label="Workflow locked"
+                className="pointer-events-auto flex items-center gap-2 rounded-lg border border-amber-500/60 bg-amber-100 px-4 py-2 text-sm text-amber-900 shadow-lg"
+              >
+                <Lock className="h-4 w-4 shrink-0" aria-hidden />
+                <span>
+                  Running: the workflow is locked until the run finishes or
+                  is cancelled.
+                </span>
+              </output>
+            )}
             <MissingNfCoreBanner
               components={missingNfCoreComponents}
               onInstalled={reloadInstalledNfCore}
@@ -2000,7 +2092,7 @@ const WorkflowPageContent: React.FC = () => {
         isLoading={isLoading}
         executionSettings={executionSettings as ExecutionSettings}
         onExecutionSettingsChange={handleExecutionSettingsChange}
-        onShowRuns={executionStatus.showStatus}
+        onShowRuns={openRunPanel}
       />
       {nodeToDelete && (
         <ConfirmDialog
@@ -2049,7 +2141,7 @@ const WorkflowPageContent: React.FC = () => {
           onShowLog={() => {
             setShowErrorDialog(false);
             setRunPanelTab("log");
-            executionStatus.showStatus();
+            openRunPanel();
           }}
           error={executionError}
         />
@@ -2068,6 +2160,8 @@ const WorkflowPageContent: React.FC = () => {
         workflowId={workflowId}
         tab={runPanelTab}
         onTabChange={setRunPanelTab}
+        minimized={runPanelMinimized}
+        onMinimizedChange={setRunPanelMinimized}
         // In the order their first task started.
         steps={Object.entries(runTasksState.nodeRuns).map(([id, run]) => ({
           id,

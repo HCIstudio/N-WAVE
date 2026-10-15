@@ -5,11 +5,13 @@ import {
   XCircle,
   X,
   Clock,
-  Activity,
+  Hourglass,
   Cpu,
   HardDrive,
   Maximize2,
   Minimize2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { useState } from "react";
 import RunResultsList from "./RunResultsList";
@@ -70,6 +72,9 @@ interface ExecutionStatusPanelProps {
    * as on the canvas. Shown instead of the console's process names.
    */
   steps?: RunStep[];
+  /** Collapsed to a small bar; the bottom bar's Run button expands it. */
+  minimized?: boolean;
+  onMinimizedChange?: (minimized: boolean) => void;
 }
 
 export interface RunStep {
@@ -81,7 +86,7 @@ export interface RunStep {
 }
 
 const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
-  running: <Activity className="h-4 w-4 animate-pulse text-blue-500" />,
+  running: <Hourglass className="h-4 w-4 animate-pulse text-blue-500" />,
   succeeded: <CheckCircle className="h-4 w-4 text-green-500" />,
   failed: <XCircle className="h-4 w-4 text-red-500" />,
 };
@@ -106,6 +111,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   tab = "steps",
   onTabChange,
   steps = [],
+  minimized = false,
+  onMinimizedChange,
 }) => {
   const [maximized, setMaximized] = useState(false);
   if (!isVisible) return null;
@@ -117,12 +124,71 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
     !isCancelled &&
     (status.failedNodes > 0 || /failed/i.test(status.currentStage ?? ""));
 
+  const title = !hasRun
+    ? "Runs"
+    : status.isRunning
+      ? "Workflow Running"
+      : isCancelled
+        ? "Workflow Cancelled"
+        : isFailed
+          ? "Workflow Failed"
+          : "Workflow Complete";
+  const statusIcon = status.isRunning ? (
+    <Hourglass className="w-5 h-5 animate-pulse" aria-hidden />
+  ) : isCancelled || isFailed ? (
+    <XCircle className="w-5 h-5" aria-hidden />
+  ) : (
+    <CheckCircle className="w-5 h-5" aria-hidden />
+  );
+  // While a run goes the panel only minimizes: closing it would hide the
+  // only place that says the canvas is busy.
+  const canClose = Boolean(onClose) && !status.isRunning;
+  const closeButton = canClose && (
+    <button
+      type="button"
+      onClick={onClose}
+      className="text-white hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/20"
+      title="Close panel"
+      aria-label="Close run panel"
+    >
+      <X className="w-4 h-4" />
+    </button>
+  );
+  const stepsDone = steps.filter((step) => step.status === "succeeded").length;
+
+  if (minimized) {
+    return (
+      <section
+        aria-label="Run panel"
+        className="fixed bottom-20 right-4 z-50 flex items-center gap-3 rounded-lg bg-nextflow-green px-4 py-2 text-white shadow-lg"
+      >
+        {statusIcon}
+        <span className="font-semibold">{title}</span>
+        {status.isRunning && steps.length > 0 && (
+          <span className="text-sm text-white/90">
+            {stepsDone} of {steps.length} steps done
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => onMinimizedChange?.(false)}
+          className="rounded p-0.5 transition-colors hover:bg-white/20"
+          aria-label="Expand run panel"
+          title="Expand run panel"
+        >
+          <ChevronUp className="h-4 w-4" />
+        </button>
+        {closeButton}
+      </section>
+    );
+  }
+
   const getStatusIcon = (nodeStatus: NodeExecutionStatus["status"]) => {
     switch (nodeStatus) {
       case "waiting":
         return <Clock className="w-4 h-4 text-gray-400" />;
       case "running":
-        return <Activity className="w-4 h-4 text-blue-500 animate-pulse" />;
+        return <Hourglass className="w-4 h-4 text-blue-500 animate-pulse" />;
       case "success":
         return <CheckCircle className="w-4 h-4 text-green-500" />;
       case "error":
@@ -166,24 +232,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between bg-nextflow-green px-4 py-3 text-white">
         <div className="flex items-center gap-2">
-          {status.isRunning ? (
-            <Activity className="w-5 h-5 animate-pulse" />
-          ) : isCancelled || isFailed ? (
-            <XCircle className="w-5 h-5" />
-          ) : (
-            <CheckCircle className="w-5 h-5" />
-          )}
-          <h3 className="font-semibold">
-            {!hasRun
-              ? "Runs"
-              : status.isRunning
-                ? "Workflow Running"
-                : isCancelled
-                  ? "Workflow Cancelled"
-                  : isFailed
-                    ? "Workflow Failed"
-                    : "Workflow Complete"}
-          </h3>
+          {statusIcon}
+          <h3 className="font-semibold">{title}</h3>
         </div>
         <div className="flex items-center gap-2">
           {status.isRunning && onCancel && (
@@ -195,6 +245,17 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               title="Stop the run, its tasks and containers"
             >
               Cancel run
+            </button>
+          )}
+          {onMinimizedChange && (
+            <button
+              type="button"
+              onClick={() => onMinimizedChange(true)}
+              className="rounded p-0.5 text-white transition-colors hover:bg-white/20 hover:text-gray-200"
+              aria-label="Minimize run panel"
+              title="Minimize run panel"
+            >
+              <ChevronDown className="h-4 w-4" />
             </button>
           )}
           <button
@@ -210,17 +271,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               <Maximize2 className="h-4 w-4" />
             )}
           </button>
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-white hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/20"
-              title="Close panel"
-              aria-label="Close run panel"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          {closeButton}
         </div>
       </div>
 
