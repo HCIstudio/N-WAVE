@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 
 type AnchorPlacement = "above" | "left" | "left-start" | "right" | "center";
 
@@ -17,6 +17,18 @@ interface TutorialCalloutProps {
 }
 
 const CALLOUT_WIDTH = 320;
+
+/** Look shared by every tutorial box (here and on the home page). */
+export const TUTORIAL_BOX_CLASS =
+  "rounded-lg border-2 border-sky-400/70 bg-gradient-to-br from-sky-950 via-background to-violet-950 text-text shadow-2xl shadow-sky-500/20";
+
+/** Small "Tutorial" label at the top of a tutorial box. */
+export const TutorialBadge: React.FC = () => (
+  <span className="mb-2 inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-amber-300">
+    <Sparkles size={12} aria-hidden />
+    Tutorial
+  </span>
+);
 
 const TutorialCallout: React.FC<TutorialCalloutProps> = ({
   text,
@@ -99,16 +111,17 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
     <section
       aria-label="Tutorial"
       aria-live="polite"
-      className="fixed z-50 w-[320px] rounded-lg border border-nextflow-green/60 bg-background p-4 text-text shadow-2xl"
+      className={`fixed z-50 w-[320px] p-4 ${TUTORIAL_BOX_CLASS}`}
       style={{ top: position.top, left: position.left, transform }}
     >
+      <TutorialBadge />
       <p className="text-sm leading-5">{text}</p>
       <div className="mt-3 flex items-center justify-between">
         <button
           type="button"
           onClick={onBack}
           disabled={!canGoBack}
-          className="rounded-md p-1.5 text-text hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
+          className="rounded-md p-1.5 text-sky-200 hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-30"
           aria-label="Previous tutorial step"
         >
           <ChevronLeft size={18} />
@@ -116,7 +129,7 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
         <button
           type="button"
           onClick={onSkip}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-nextflow-green hover:bg-accent"
+          className="rounded-md px-3 py-1.5 text-sm font-medium text-amber-300 hover:bg-amber-400/15"
         >
           {skipLabel}
         </button>
@@ -124,7 +137,7 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
           <button
             type="button"
             onClick={onForward}
-            className="rounded-md p-1.5 text-text hover:bg-accent"
+            className="rounded-md p-1.5 text-sky-200 hover:bg-sky-400/15"
             aria-label="Next tutorial step"
           >
             <ChevronRight size={18} />
