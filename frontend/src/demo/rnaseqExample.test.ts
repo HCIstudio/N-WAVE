@@ -84,7 +84,7 @@ describe("the nf-core/rnaseq example", () => {
     expect(
       Object.keys(
         buildPipelineProjectFiles({
-          workflowName: "nf-core/rnaseq Example",
+          workflowName: "Demo 2 - nf-core/rnaseq pipeline",
           launch,
         }),
       ).sort(),

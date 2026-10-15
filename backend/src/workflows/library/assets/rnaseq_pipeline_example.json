@@ -1,7 +1,7 @@
 {
   "id": "builtin:rnaseq-pipeline",
-  "name": "nf-core/rnaseq Example",
-  "description": "Runs the full nf-core/rnaseq 3.27.0 pipeline (STAR + Salmon) on its small test data. Notes on the canvas explain each input and how to use your own data. Duplicate it to edit.",
+  "name": "Demo 2 - nf-core/rnaseq pipeline",
+  "description": "The complete nf-core/rnaseq 3.27.0 pipeline (STAR + Salmon) as a single Pipeline node, run on its small test data. Notes on the canvas explain each input and how to use your own data.",
   "nodes": [
     {
       "id": "rnaseq-note-start",

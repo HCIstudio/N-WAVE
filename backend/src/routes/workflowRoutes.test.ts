@@ -98,7 +98,7 @@ describe("/api/workflows", () => {
       .get("/api/workflows/builtin:rnaseq-star-salmon")
       .expect(200);
     expect(response.body).toMatchObject({
-      name: "RNA-seq (STAR + Salmon)",
+      name: "Demo 3 - nf-core/rnaseq rebuilt from nodes",
       isBuiltin: true,
       isReadOnly: true,
       executionSettings: { resources: { maxCpus: 4, maxMemory: "8.GB" } },

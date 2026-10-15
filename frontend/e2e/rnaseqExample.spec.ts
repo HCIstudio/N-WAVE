@@ -23,7 +23,7 @@ test.describe("nf-core/rnaseq example", () => {
     );
 
     await page.goto("./");
-    await page.getByRole("link", { name: /nf-core\/rnaseq Example/ }).click();
+    await page.getByRole("link", { name: /Demo 2 - nf-core\/rnaseq pipeline/ }).click();
     await expect(page).toHaveURL(/builtin:rnaseq-pipeline/);
     await expect(page.locator(".react-flow__node")).toHaveCount(9);
     await expect(page.locator(".react-flow__edge")).toHaveCount(3);

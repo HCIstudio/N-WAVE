@@ -28,6 +28,9 @@ import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
+import WorkflowPreview, {
+  countNodes,
+} from "../components/common/workflow/WorkflowPreview";
 import fondaLogo from "../assets/fonda-logo.png";
 import {
   TUTORIAL_BOX_CLASS,
@@ -39,6 +42,27 @@ const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
 const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 const TUTORIAL_VERSION = "custom-nodes-v3";
+
+const PILL_CLASS =
+  "rounded-full bg-background px-2 py-0.5 text-xs text-text-light";
+
+/** "3 days ago", for when a workflow was last edited. */
+const formatRelativeTime = (iso: string): string => {
+  const seconds = (new Date(iso).getTime() - Date.now()) / 1000;
+  if (!Number.isFinite(seconds)) return "";
+  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
+    ["year", 31_536_000],
+    ["month", 2_592_000],
+    ["day", 86_400],
+    ["hour", 3_600],
+    ["minute", 60],
+  ];
+  const format = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  for (const [unit, size] of units) {
+    if (Math.abs(seconds) >= size) return format.format(Math.round(seconds / size), unit);
+  }
+  return "just now";
+};
 
 const HomePage: React.FC = () => {
   // Prefix for label/input id pairs, unique per component instance.
@@ -420,9 +444,11 @@ const HomePage: React.FC = () => {
 
   const hasDemoWorkflow = workflows.some((wf) => wf._id === DEMO_WORKFLOW_ID);
   const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
-  const hasUserWorkflows = workflows.some(
-    (wf) => !(wf._id === DEMO_WORKFLOW_ID || wf.isBuiltin)
-  );
+  const isBuiltinWorkflow = (wf: WorkflowDescriptor) =>
+    wf._id === DEMO_WORKFLOW_ID || Boolean(wf.isBuiltin);
+  const builtinWorkflows = workflows.filter(isBuiltinWorkflow);
+  const userWorkflows = workflows.filter((wf) => !isBuiltinWorkflow(wf));
+  const hasUserWorkflows = userWorkflows.length > 0;
 
   const renderWorkflowCard = (wf: WorkflowDescriptor) => {
     const isEditing = editingId === wf._id;
@@ -430,6 +456,9 @@ const HomePage: React.FC = () => {
     const showDuplicate = Boolean(wf.origin?.canDuplicate);
     const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
     const hideCardButtons = isHomeTutorialActive && isDemoWorkflow;
+    // Built-in demos change with each release of N-WAVE.
+    const changedAt =
+      wf.updatedAt ?? (isBuiltinWorkflow(wf) ? buildInfo.buildDate : undefined);
 
     const cardContent = (
       <>
@@ -537,17 +566,33 @@ const HomePage: React.FC = () => {
           </>
         ) : (
           <>
-            <h2 className="text-lg font-semibold text-nextflow-green whitespace-pre-wrap h-[42px] overflow-hidden p-2 pr-12">
+            <WorkflowPreview nodes={wf.nodes ?? []} edges={wf.edges ?? []} />
+            <h2 className="mt-3 line-clamp-2 pr-16 text-lg font-semibold text-nextflow-green">
               {wf.name}
             </h2>
-            <p className="text-sm leading-5 text-text-light mt-2 whitespace-pre-wrap h-[76px] overflow-y-auto p-2">
+            <p className="mt-1 line-clamp-3 min-h-[3.75rem] text-sm leading-5 text-text-light">
               {wf.description || (
                 <span className="text-gray-500 italic">No description</span>
               )}
             </p>
-            <div className="h-5 px-2 pt-1 text-xs text-gray-400">
-              {isReadOnly ? "Read-only demo" : ""}
-            </div>
+            <ul
+              aria-label="About this workflow"
+              className="mt-auto flex flex-wrap gap-1.5 pt-3"
+            >
+              <li className={PILL_CLASS}>
+                {countNodes(wf.nodes ?? [])}{" "}
+                {countNodes(wf.nodes ?? []) === 1 ? "node" : "nodes"}
+              </li>
+              {isReadOnly && <li className={PILL_CLASS}>Read-only</li>}
+              {changedAt && (
+                <li
+                  className={PILL_CLASS}
+                  title={new Date(changedAt).toLocaleString()}
+                >
+                  Changed {formatRelativeTime(changedAt)}
+                </li>
+              )}
+            </ul>
           </>
         )}
       </>
@@ -574,7 +619,11 @@ const HomePage: React.FC = () => {
             startTutorial();
           }
         }}
-        className="group relative block bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
+        className={`group relative flex flex-col bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 ${
+          isDemoWorkflow && isHomeTutorialActive
+            ? "ring-2 ring-sky-400 ring-offset-2 ring-offset-background"
+            : ""
+        }`}
       >
         {cardContent}
       </Link>
@@ -616,63 +665,80 @@ const HomePage: React.FC = () => {
               </button>
             </div>
           </div>
-          {!hasUserWorkflows && (
-            <p className="mb-6 max-w-2xl text-sm text-text-light">
-              You haven&apos;t created any workflows yet. Start a new one, import
-              an existing Nextflow script
-              {hasDemoWorkflow ? ", or open the demo workflow to learn the basics" : ""}
-              .
-            </p>
-          )}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {workflows.map((wf) => {
-              const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
-              return (
-                <div key={wf._id} className="relative">
-                  {renderWorkflowCard(wf)}
-                  {isHomeTutorialActive && isDemoWorkflow && (
-                    <section
-                      aria-label="Tutorial"
-                      className={`mt-3 p-4 text-sm ${TUTORIAL_BOX_CLASS}`}
-                    >
-                      <TutorialBadge />
-                      <p>
-                        Getting started: this demo workflow explains the
-                        fundamentals of N-WAVE.
-                      </p>
-                      <p className="mt-2 text-text-light">
-                        Click on the above demo to open it and start the
-                        tutorial, or{" "}
-                        <button
-                          type="button"
-                          onClick={skipTutorial}
-                          className="text-sky-300 underline underline-offset-2 hover:text-sky-200"
-                        >
-                          skip the tutorial
-                        </button>
-                        .
-                      </p>
-                    </section>
-                  )}
-                </div>
-              );
-            })}
-            <button
-              type="button"
-              onClick={handleNewWorkflow}
-              disabled={pendingAction !== null}
-              className="flex min-h-[10rem] items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent transition-colors disabled:cursor-wait disabled:opacity-70"
+          {isHomeTutorialActive && (
+            <section
+              aria-label="Tutorial"
+              className={`mb-8 max-w-3xl p-4 text-sm ${TUTORIAL_BOX_CLASS}`}
             >
-              {pendingAction === "create" ? (
-                <Loader size={24} className="animate-spin" aria-hidden />
-              ) : (
-                <Plus size={24} aria-hidden />
-              )}
-              <span className="ml-2">
-                {pendingAction === "create" ? "Creating..." : "New Workflow"}
-              </span>
-            </button>
-          </div>
+              <TutorialBadge />
+              <p>
+                Getting started: the first demo below explains the
+                fundamentals of N-WAVE.
+              </p>
+              <p className="mt-2 text-text-light">
+                Click on the highlighted demo to open it and start the
+                tutorial, or{" "}
+                <button
+                  type="button"
+                  onClick={skipTutorial}
+                  className="text-sky-300 underline underline-offset-2 hover:text-sky-200"
+                >
+                  skip the tutorial
+                </button>
+                .
+              </p>
+            </section>
+          )}
+
+          {builtinWorkflows.length > 0 && (
+            <section aria-labelledby={`${fieldId}-examples`} className="mb-10">
+              <h2
+                id={`${fieldId}-examples`}
+                className="text-xl font-semibold text-text"
+              >
+                Built-in demos
+              </h2>
+              <p className="mb-4 mt-1 max-w-3xl text-sm text-text-light">
+                Three read-only examples, from simple text processing to a
+                complete nf-core pipeline, and that pipeline rebuilt node by
+                node. Open one to explore it; duplicate it to make your own
+                editable copy.
+              </p>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+                {builtinWorkflows.map((wf) => renderWorkflowCard(wf))}
+              </div>
+            </section>
+          )}
+
+          <section aria-labelledby={`${fieldId}-own`}>
+            <h2 id={`${fieldId}-own`} className="text-xl font-semibold text-text">
+              Your workflows
+            </h2>
+            {!hasUserWorkflows && (
+              <p className="mt-1 max-w-3xl text-sm text-text-light">
+                You haven&apos;t created any workflows yet. Start a new one,
+                import an existing Nextflow script, or duplicate a demo.
+              </p>
+            )}
+            <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+              {userWorkflows.map((wf) => renderWorkflowCard(wf))}
+              <button
+                type="button"
+                onClick={handleNewWorkflow}
+                disabled={pendingAction !== null}
+                className="flex min-h-[12rem] items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent transition-colors disabled:cursor-wait disabled:opacity-70"
+              >
+                {pendingAction === "create" ? (
+                  <Loader size={24} className="animate-spin" aria-hidden />
+                ) : (
+                  <Plus size={24} aria-hidden />
+                )}
+                <span className="ml-2">
+                  {pendingAction === "create" ? "Creating..." : "New Workflow"}
+                </span>
+              </button>
+            </div>
+          </section>
         </div>
         {actionError && (
           <Toast
@@ -837,7 +903,7 @@ const HomePage: React.FC = () => {
                 Privacy Policy
               </a>
               <span>
-                {isDemoMode && "Hosted on GitHub Pages:"}
+                {isDemoMode && "Hosted on GitHub Pages: "}
                 <a
                   href="https://github.com/HCIstudio/N-WAVE"
                   target="_blank"

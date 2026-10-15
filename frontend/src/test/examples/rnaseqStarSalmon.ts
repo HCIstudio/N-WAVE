@@ -388,7 +388,7 @@ export const buildRnaseqStarSalmonExample = () => {
       { x: 1900, y: 760 },
       "What the full pipeline adds",
       [
-        "nf-core/rnaseq also merges runs of the same sample, infers strandedness, removes rRNA and contaminants, offers other aligners (HISAT2, RSEM, Bowtie 2, Kallisto) and UMI handling, adds QC (RSeQC, Qualimap, dupRadar, Preseq) and builds gene-level count matrices. Use the nf-core/rnaseq Example to run all of it.",
+        "nf-core/rnaseq also merges runs of the same sample, infers strandedness, removes rRNA and contaminants, offers other aligners (HISAT2, RSEM, Bowtie 2, Kallisto) and UMI handling, adds QC (RSeQC, Qualimap, dupRadar, Preseq) and builds gene-level count matrices. Use Demo 2 (nf-core/rnaseq pipeline) to run all of it.",
       ].join("\n"),
     ),
   ] as Node<NodeData>[];

@@ -83,6 +83,7 @@ const materialize = (stored: StoredWorkflow): WorkflowDescriptor => ({
     readOnly: false,
     canDuplicate: true,
   },
+  updatedAt: stored.updatedAt,
 });
 
 /** A read-only built-in workflow, materialized. Never persisted. */

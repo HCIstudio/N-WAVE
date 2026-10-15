@@ -4,7 +4,7 @@ test("opening the Display Output panel leaves the read-only demo as it is", asyn
   page,
 }) => {
   await page.goto("./");
-  await page.getByRole("link", { name: /Demo Workflow/ }).click();
+  await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
   await expect(page).toHaveURL(/builtin:demo-basic/);
   await page.locator('[data-id="demo-output"]').dblclick();
   await expect(page.getByLabel("View File:")).toBeVisible();

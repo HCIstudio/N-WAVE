@@ -21,30 +21,30 @@ const unzip = async (download: Download) => {
 test.describe("export project", () => {
   test("exports the demo workflow as a runnable project", async ({ page }) => {
     await page.goto("./");
-    await page.getByRole("link", { name: /Demo Workflow/ }).click();
+    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
     await expect(page.locator(".react-flow__node")).toHaveCount(6);
 
     const download = await exportProject(page);
-    expect(download.suggestedFilename()).toBe("Demo_Workflow.zip");
+    expect(download.suggestedFilename()).toBe("Demo_1_-_Text_basics.zip");
     const files = await unzip(download);
 
     expect(Object.keys(files).sort()).toEqual([
-      "Demo_Workflow/README.md",
-      "Demo_Workflow/inputs/sample.txt",
-      "Demo_Workflow/main.nf",
-      "Demo_Workflow/nextflow.config",
+      "Demo_1_-_Text_basics/README.md",
+      "Demo_1_-_Text_basics/inputs/sample.txt",
+      "Demo_1_-_Text_basics/main.nf",
+      "Demo_1_-_Text_basics/nextflow.config",
     ]);
-    expect(files["Demo_Workflow/main.nf"]).toContain("workflow {");
-    expect(files["Demo_Workflow/main.nf"]).not.toContain(
+    expect(files["Demo_1_-_Text_basics/main.nf"]).toContain("workflow {");
+    expect(files["Demo_1_-_Text_basics/main.nf"]).not.toContain(
       "N-WAVE_NEXTFLOW_CONFIG"
     );
-    expect(files["Demo_Workflow/nextflow.config"]).toContain(
+    expect(files["Demo_1_-_Text_basics/nextflow.config"]).toContain(
       "docker.enabled = true"
     );
-    expect(files["Demo_Workflow/README.md"]).toContain(
+    expect(files["Demo_1_-_Text_basics/README.md"]).toContain(
       "nextflow run main.nf -profile docker"
     );
-    expect(files["Demo_Workflow/inputs/sample.txt"]).toContain("Barry");
+    expect(files["Demo_1_-_Text_basics/inputs/sample.txt"]).toContain("Barry");
   });
 
   test("includes the nf-core modules the workflow uses", async ({ page }) => {

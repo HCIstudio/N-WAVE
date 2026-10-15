@@ -43,7 +43,7 @@ test.describe("RNA-seq (STAR + Salmon) example", () => {
     });
 
     await page.goto("./");
-    await page.getByRole("link", { name: /RNA-seq \(STAR \+ Salmon\)/ }).click();
+    await page.getByRole("link", { name: /Demo 3 - nf-core\/rnaseq rebuilt/ }).click();
     await expect(page).toHaveURL(/builtin:rnaseq-star-salmon/);
     await expect(page.locator(".react-flow__node")).toHaveCount(
       example.nodes.length

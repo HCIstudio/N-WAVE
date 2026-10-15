@@ -179,9 +179,9 @@ export const demoWorkflowId = "builtin:demo-basic";
 export const getDemoWorkflowDescriptor = (): WorkflowDescriptor =>
   materializeWorkflow({
     id: demoWorkflowId,
-    name: "Demo Workflow",
+    name: "Demo 1 - Text basics",
     description:
-      "Bundled Bee Movie demo with a source-controlled Nextflow script and input file. Duplicate it to edit, or run it directly as a built-in example.",
+      "Start here: filter the Bee Movie script for two words, uppercase one branch, then merge and display the result. The tutorial walks you through it.",
     nodes: demoGraphNodes,
     edges: demoGraphEdges,
     executionSettings: defaultExecutionSettings,

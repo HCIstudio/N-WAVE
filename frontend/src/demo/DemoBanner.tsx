@@ -65,7 +65,7 @@ const DemoBanner = () => {
 
   return (
     <div
-      className="fixed left-3 z-50 max-w-xs rounded-lg border border-panel-border border-l-4 border-l-warning bg-panel-background px-3 py-2 text-xs text-text shadow-lg"
+      className="fixed left-4 sm:left-8 z-50 max-w-xs rounded-lg border border-panel-border border-l-4 border-l-warning bg-panel-background px-3 py-2 text-xs text-text shadow-lg"
       style={{ bottom: bottomOffset }}
     >
       <div className="flex items-start gap-2">

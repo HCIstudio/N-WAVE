@@ -228,7 +228,7 @@ run's other result files.
 
 ### RNA-seq (STAR + Salmon) example
 
-The built-in **RNA-seq (STAR + Salmon)** example rebuilds the default nf-core/rnaseq route
+The built-in **Demo 3 - nf-core/rnaseq rebuilt from nodes** example rebuilds the default nf-core/rnaseq route
 from library nodes only (nf-core modules, the `bam_sort_stats_samtools` subworkflow, a
 channel operator, a samplesheet and a parameters node), so every step can be inspected and
 edited:
@@ -271,7 +271,7 @@ report and Nextflow's execution report (served from the run's `results/`). Expor
 writes `params.json`, the inputs, a `run.sh` and a README; the script download is a single
 launch script. The pipeline and its containers are downloaded by Nextflow on the first run.
 
-The built-in **nf-core/rnaseq Example** is a ready-made Pipeline workflow: nf-core/rnaseq
+The built-in **Demo 2 - nf-core/rnaseq pipeline** is a ready-made Pipeline workflow: nf-core/rnaseq
 3.27.0 (STAR + Salmon) on the pipeline's small test data, with a Samplesheet node, the
 reference genome in a Parameters node, and **Note** nodes on the canvas that explain each
 input, how to swap in your own data and what resources it needs (4 CPUs, 6–8 GB of memory).
