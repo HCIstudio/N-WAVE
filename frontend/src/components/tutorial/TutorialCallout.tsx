@@ -18,6 +18,17 @@ interface TutorialCalloutProps {
 
 const CALLOUT_WIDTH = 320;
 
+/** Look shared by every tutorial box (here and on the home page). */
+export const TUTORIAL_BOX_CLASS =
+  "rounded-md border border-l-4 border-panel-border border-l-sky-400 bg-panel-background text-text shadow-lg";
+
+/** Small "Tutorial" label at the top of a tutorial box. */
+export const TutorialBadge: React.FC = () => (
+  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
+    Tutorial
+  </p>
+);
+
 const TutorialCallout: React.FC<TutorialCalloutProps> = ({
   text,
   targetSelector,
@@ -99,9 +110,10 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
     <section
       aria-label="Tutorial"
       aria-live="polite"
-      className="fixed z-50 w-[320px] rounded-lg border border-nextflow-green/60 bg-background p-4 text-text shadow-2xl"
+      className={`fixed z-50 w-[320px] p-4 ${TUTORIAL_BOX_CLASS}`}
       style={{ top: position.top, left: position.left, transform }}
     >
+      <TutorialBadge />
       <p className="text-sm leading-5">{text}</p>
       <div className="mt-3 flex items-center justify-between">
         <button
@@ -116,7 +128,7 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
         <button
           type="button"
           onClick={onSkip}
-          className="rounded-md px-3 py-1.5 text-sm font-medium text-nextflow-green hover:bg-accent"
+          className="rounded-md px-3 py-1.5 text-sm text-sky-300 hover:bg-accent"
         >
           {skipLabel}
         </button>

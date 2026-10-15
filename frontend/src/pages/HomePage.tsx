@@ -29,6 +29,10 @@ import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings"
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import fondaLogo from "../assets/fonda-logo.png";
+import {
+  TUTORIAL_BOX_CLASS,
+  TutorialBadge,
+} from "../components/tutorial/TutorialCallout";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
@@ -580,12 +584,6 @@ const HomePage: React.FC = () => {
   return (
     <PageLayout>
       <div className="min-h-screen flex flex-col">
-        {isHomeTutorialActive && (
-          <div
-            className="fixed inset-0 z-20 bg-nextflow-green-dark/40"
-            aria-hidden="true"
-          />
-        )}
         <div className="flex-1 p-8">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
             <h1 className="text-3xl font-bold text-text">Workflows</h1>
@@ -630,29 +628,31 @@ const HomePage: React.FC = () => {
             {workflows.map((wf) => {
               const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
               return (
-                <div
-                  key={wf._id}
-                  className={
-                    isHomeTutorialActive && isDemoWorkflow
-                      ? "relative z-30"
-                      : "relative"
-                  }
-                >
+                <div key={wf._id} className="relative">
                   {renderWorkflowCard(wf)}
                   {isHomeTutorialActive && isDemoWorkflow && (
-                    <div className="relative z-40 mt-3 rounded-lg border border-nextflow-green/60 bg-background p-4 text-sm text-text shadow-2xl">
+                    <section
+                      aria-label="Tutorial"
+                      className={`mt-3 p-4 text-sm ${TUTORIAL_BOX_CLASS}`}
+                    >
+                      <TutorialBadge />
                       <p>
-                        Getting started: This demo workflow explains the
-                        fundamentals of N-Wave
+                        Getting started: this demo workflow explains the
+                        fundamentals of N-WAVE.
                       </p>
-                      <button
-                        type="button"
-                        onClick={skipTutorial}
-                        className="mt-3 rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
-                      >
-                        Skip Tutorial
-                      </button>
-                    </div>
+                      <p className="mt-2 text-text-light">
+                        Click on the above demo to open it and start the
+                        tutorial, or{" "}
+                        <button
+                          type="button"
+                          onClick={skipTutorial}
+                          className="text-sky-300 underline underline-offset-2 hover:text-sky-200"
+                        >
+                          skip the tutorial
+                        </button>
+                        .
+                      </p>
+                    </section>
                   )}
                 </div>
               );
