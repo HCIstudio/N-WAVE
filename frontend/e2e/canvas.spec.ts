@@ -56,7 +56,7 @@ test.describe("canvas flow", () => {
     page,
   }) => {
     await page.goto("./");
-    const demoCard = page.getByRole("link", { name: /Demo Workflow/ });
+    const demoCard = page.getByRole("link", { name: /Demo 1 - Text basics/ });
     await demoCard.click();
     await expect(page.locator(".react-flow__node")).toHaveCount(6);
     await expect(page.locator(".react-flow__edge")).toHaveCount(6);
@@ -75,7 +75,7 @@ test.describe("canvas flow", () => {
     await expect(page.getByRole("alert")).toContainText("Workflow not found");
     await page.getByRole("link", { name: "Back to workflow library" }).click();
     await expect(
-      page.getByRole("heading", { name: "Workflows" })
+      page.getByRole("heading", { name: "Workflows", exact: true })
     ).toBeVisible();
   });
 });

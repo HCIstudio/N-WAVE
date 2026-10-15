@@ -1,4 +1,4 @@
-This page walks through the built-in **nf-core/rnaseq Example**: the complete
+This page walks through the built-in **Demo 2 - nf-core/rnaseq pipeline**: the complete
 [nf-core/rnaseq](https://nf-co.re/rnaseq/3.27.0) 3.27.0 pipeline, set up on the N-WAVE canvas
 and preset to the pipeline's small test data.
 
@@ -34,7 +34,7 @@ with `params.json` pointing `input` at the samplesheet and `fasta`/`gtf` at the 
 - Time: about 15–30 minutes on a laptop, plus the first downloads.
 
 ### Running it
-1. Open N-WAVE and click the **nf-core/rnaseq Example** card on the home page.
+1. Open N-WAVE and click the **Demo 2 - nf-core/rnaseq pipeline** card on the home page.
 2. Double-click the **nf-core/rnaseq** node to see its settings: the parameters from the
    pipeline's schema, the launch command and the params file.
 3. Click **Run Workflow** in the bottom bar. The output streams in while the pipeline runs; you can

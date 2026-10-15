@@ -5,7 +5,7 @@ test.describe("run panel", () => {
     page,
   }) => {
     await page.goto("./");
-    await page.getByRole("link", { name: /Demo Workflow/ }).click();
+    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
 
     // The demo has no backend, so a run fails at once.

@@ -41,7 +41,7 @@ describe("demoStore", () => {
 
   it("duplicates the built-in demo into an editable copy", () => {
     const copy = demoStore.duplicate(DEMO_WORKFLOW_ID);
-    expect(copy.name).toBe("Demo Workflow Copy");
+    expect(copy.name).toBe("Demo 1 - Text basics Copy");
     expect(copy.isReadOnly).toBe(false);
     expect(copy._id).not.toBe(DEMO_WORKFLOW_ID);
     // the copy keeps the graph

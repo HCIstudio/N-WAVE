@@ -6,7 +6,7 @@ test.describe("home tutorial", () => {
     await page.goto("./");
     const box = page.getByRole("region", { name: "Tutorial" });
     await expect(box).toContainText(
-      "Click on the above demo to open it and start the tutorial, or skip the tutorial."
+      "Click on the highlighted demo to open it and start the tutorial, or skip the tutorial."
     );
     // No green scrim over the page any more.
     await expect(page.locator(".fixed.inset-0")).toHaveCount(0);
@@ -18,7 +18,7 @@ test.describe("home tutorial", () => {
 
   test("opening the demo starts the tutorial on the canvas", async ({ page }) => {
     await page.goto("./");
-    await page.getByRole("link", { name: /Demo Workflow/ }).click();
+    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
     await expect(page.getByRole("region", { name: "Tutorial" })).toBeVisible();
   });
 });

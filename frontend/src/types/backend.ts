@@ -29,4 +29,6 @@ export interface WorkflowDescriptor {
   isBuiltin?: boolean;
   isReadOnly?: boolean;
   origin?: WorkflowOriginDescriptor;
+  /** Set for saved workflows (not for built-in examples). */
+  updatedAt?: string;
 }

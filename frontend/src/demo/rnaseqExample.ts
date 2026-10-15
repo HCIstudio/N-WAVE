@@ -199,9 +199,9 @@ const rnaseqExampleEdges = [
 
 export const rnaseqExampleSeed = {
   id: RNASEQ_EXAMPLE_ID,
-  name: "nf-core/rnaseq Example",
+  name: "Demo 2 - nf-core/rnaseq pipeline",
   description:
-    "Runs the full nf-core/rnaseq 3.27.0 pipeline (STAR + Salmon) on its small test data. Notes on the canvas explain each input and how to use your own data. Duplicate it to edit.",
+    "The complete nf-core/rnaseq 3.27.0 pipeline (STAR + Salmon) as a single Pipeline node, run on its small test data. Notes on the canvas explain each input and how to use your own data.",
   nodes: rnaseqExampleNodes,
   edges: rnaseqExampleEdges,
   /** Overrides of the default execution settings' resources. */

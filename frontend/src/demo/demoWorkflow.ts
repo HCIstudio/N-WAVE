@@ -166,9 +166,9 @@ const demoGraphEdges = [
 
 export const demoWorkflowSeed = {
   id: DEMO_WORKFLOW_ID,
-  name: "Demo Workflow",
+  name: "Demo 1 - Text basics",
   description:
-    "A bundled example: filter a text file for two keywords, uppercase one branch, then merge and display the result. Duplicate it to create an editable copy.",
+    "Start here: filter the Bee Movie script for two words, uppercase one branch, then merge and display the result. The tutorial walks you through it.",
   nodes: demoGraphNodes,
   edges: demoGraphEdges,
 };

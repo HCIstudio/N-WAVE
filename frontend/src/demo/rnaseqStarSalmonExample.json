@@ -1,7 +1,7 @@
 {
   "id": "builtin:rnaseq-star-salmon",
-  "name": "RNA-seq (STAR + Salmon)",
-  "description": "The default nf-core/rnaseq route built from library nodes: genome preparation, FastQC, Trim Galore, STAR, Salmon, SAMtools and MultiQC on the pipeline's test data. Every step is a node you can inspect and edit.",
+  "name": "Demo 3 - nf-core/rnaseq rebuilt from nodes",
+  "description": "The default route of Demo 2, rebuilt step by step from library nodes: genome preparation, FastQC, Trim Galore, STAR, Salmon, SAMtools and MultiQC on the pipeline's test data. Every step is a node you can inspect and edit.",
   "components": [
     "nf-core/gunzip",
     "nf-core/custom/gtffilter",
@@ -1081,7 +1081,7 @@
       "data": {
         "label": "What the full pipeline adds",
         "icon": "StickyNote",
-        "noteText": "nf-core/rnaseq also merges runs of the same sample, infers strandedness, removes rRNA and contaminants, offers other aligners (HISAT2, RSEM, Bowtie 2, Kallisto) and UMI handling, adds QC (RSeQC, Qualimap, dupRadar, Preseq) and builds gene-level count matrices. Use the nf-core/rnaseq Example to run all of it.",
+        "noteText": "nf-core/rnaseq also merges runs of the same sample, infers strandedness, removes rRNA and contaminants, offers other aligners (HISAT2, RSEM, Bowtie 2, Kallisto) and UMI handling, adds QC (RSeQC, Qualimap, dupRadar, Preseq) and builds gene-level count matrices. Use Demo 2 (nf-core/rnaseq pipeline) to run all of it.",
         "inputs": [],
         "outputs": []
       }

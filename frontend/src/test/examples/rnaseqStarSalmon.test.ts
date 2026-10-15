@@ -37,9 +37,9 @@ const { nodes, edges, definitions } = buildRnaseqStarSalmonExample();
 
 const example = {
   id: RNASEQ_STAR_SALMON_ID,
-  name: "RNA-seq (STAR + Salmon)",
+  name: "Demo 3 - nf-core/rnaseq rebuilt from nodes",
   description:
-    "The default nf-core/rnaseq route built from library nodes: genome preparation, FastQC, Trim Galore, STAR, Salmon, SAMtools and MultiQC on the pipeline's test data. Every step is a node you can inspect and edit.",
+    "The default route of Demo 2, rebuilt step by step from library nodes: genome preparation, FastQC, Trim Galore, STAR, Salmon, SAMtools and MultiQC on the pipeline's test data. Every step is a node you can inspect and edit.",
   components: RNASEQ_STAR_SALMON_COMPONENTS,
   nodes,
   edges,

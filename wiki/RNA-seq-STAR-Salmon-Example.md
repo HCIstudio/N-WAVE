@@ -1,4 +1,4 @@
-The built-in **RNA-seq (STAR + Salmon)** example rebuilds the default route of
+The built-in **Demo 3 - nf-core/rnaseq rebuilt from nodes** example rebuilds the default route of
 [nf-core/rnaseq](https://nf-co.re/rnaseq/3.27.0) from library nodes. Every step is a node you
 can open, inspect (its **Code** tab shows the Nextflow it adds) and change. It is also the
 reference for building your own pipelines in N-WAVE: nothing in it is special-cased in the
@@ -19,7 +19,7 @@ like STAR's options are the node's **Extra arguments**, and output names are its
 prefix**.
 
 ### Opening it
-Open **RNA-seq (STAR + Salmon)** on the home page. Its 11 nf-core components (10 modules and
+Open **Demo 3 - nf-core/rnaseq rebuilt from nodes** on the home page. Its 11 nf-core components (10 modules and
 one subworkflow) aren't installed on a fresh install. A banner lists them; click **Install
 them**. The subworkflow brings in five samtools modules and the `bam_stats_samtools`
 subworkflow. In the browser demo they install into the browser.
@@ -54,7 +54,7 @@ The results go to `results/`, in the same layout as above.
 
 ### Manual check (release testing)
 1. Start a fresh Docker install of N-WAVE (`docker compose up -d`).
-2. Open **RNA-seq (STAR + Salmon)**, click **Install them** and wait for the banner to go.
+2. Open **Demo 3 - nf-core/rnaseq rebuilt from nodes**, click **Install them** and wait for the banner to go.
 3. Click **Run Workflow**. The run should finish with "Workflow Complete".
 4. In the run panel's **Results**, open `multiqc/multiqc_report.html`. It should list four
    samples with FastQC, Cutadapt, STAR, Salmon and SAMtools sections.
@@ -81,5 +81,5 @@ nf-core/rnaseq also:
 - adds QC (RSeQC, Qualimap, dupRadar, Preseq, DESeq2 PCA);
 - builds gene-level count matrices with tximport.
 
-To run all of that, use the **nf-core/rnaseq Example**, which runs the whole pipeline as one
+To run all of that, use **Demo 2 - nf-core/rnaseq pipeline**, which runs the whole pipeline as one
 node.
