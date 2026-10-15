@@ -55,6 +55,10 @@ import {
 } from "../registry/convertToCustomNode";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
 import { isoDurationToMinutes } from "../utils/duration";
+import { listRunTasks, type RunTask } from "../api/runs";
+import { summarizeNodeRuns } from "../execution/nodeRuns";
+import { RunTasksContext } from "../execution/RunTasksContext";
+import { LastRunSection } from "../components/panels/base/NodeRunResults";
 import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
   createLineReader,
@@ -650,29 +654,40 @@ const WorkflowPageContent: React.FC = () => {
   const executionStatus = useExecutionStatus({
     nodes: memoizedNodes,
     executionId: currentExecutionId,
-    onStatusChange: (status) => {
-      // Update node statuses on the canvas based on execution status
-      if (status.nodeStatuses.length === 0 && !status.isRunning) {
-        // Clear all node statuses when execution is complete and not running
-        for (const node of nodes) {
-          if (node.data.status) {
-            updateNodeData(node.id, { status: undefined });
-          }
-        }
-      } else if (status.nodeStatuses.length > 0) {
-        // Update individual node statuses during execution
-        for (const nodeStatus of status.nodeStatuses) {
-          const nodeIndex = nodes.findIndex((n) => n.id === nodeStatus.nodeId);
-          if (nodeIndex !== -1) {
-            // Map execution status to node status (excluding 'skipped')
-            const nodeStatusValue =
-              nodeStatus.status === "skipped" ? "waiting" : nodeStatus.status;
-            updateNodeData(nodeStatus.nodeId, { status: nodeStatusValue });
-          }
-        }
-      }
-    },
   });
+
+  // What each node did in the last run, from Nextflow's log (polled while
+  // the run goes). Kept outside node data so it is never saved.
+  const [runTasks, setRunTasks] = useState<RunTask[]>([]);
+  const runTasksRunId = isDemoMode ? null : lastRunId;
+  useEffect(() => {
+    if (!runTasksRunId) return;
+    let cancelled = false;
+    const load = () =>
+      listRunTasks(runTasksRunId).then(
+        (tasks) => !cancelled && setRunTasks(tasks),
+        () => undefined
+      );
+    void load();
+    // Once more when the run ends (isRunning flips), every 2s while it goes.
+    const timer = isRunning ? window.setInterval(load, 2000) : undefined;
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [runTasksRunId, isRunning]);
+  // A Pipeline node runs the whole pipeline: all tasks are its own.
+  const pipelineNodeId = useMemo(
+    () => nodes.find((node) => node.type === "pipeline")?.id ?? null,
+    [nodes]
+  );
+  const runTasksState = useMemo(
+    () => ({
+      runId: runTasksRunId,
+      nodeRuns: summarizeNodeRuns(runTasks, nodes, pipelineNodeId),
+    }),
+    [runTasksRunId, runTasks, nodes, pipelineNodeId]
+  );
 
   const fetchWorkflow = useCallback(async () => {
     if (!workflowId) {
@@ -1319,6 +1334,7 @@ const WorkflowPageContent: React.FC = () => {
       };
 
       setLastRunId(null);
+      setRunTasks([]);
       setRunOutput("");
       // The output is read while the run goes: progress updates live, and
       // the run id (first line) makes Cancel work for long runs.
@@ -1816,10 +1832,13 @@ const WorkflowPageContent: React.FC = () => {
             onResize={(dx, dy) => onPanelResize(node.id, dx, dy)}
           >
             {node.type === "outputDisplay" ? (
-              <OutputDisplayPanelContent
-                node={node}
-                onNodeDataChange={handleUpdateNodeData}
-              />
+              <div className="flex h-full flex-col gap-4">
+                <LastRunSection nodeId={node.id} />
+                <OutputDisplayPanelContent
+                  node={node}
+                  onNodeDataChange={handleUpdateNodeData}
+                />
+              </div>
             ) : null}
           </FloatingPanel>
         );
@@ -1862,6 +1881,7 @@ const WorkflowPageContent: React.FC = () => {
   }
 
   return (
+    <RunTasksContext.Provider value={runTasksState}>
     <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
       <Header
         onProcessSelect={handleProcessSelect}
@@ -2030,8 +2050,17 @@ const WorkflowPageContent: React.FC = () => {
         workflowId={workflowId}
         tab={runPanelTab}
         onTabChange={setRunPanelTab}
+        // In the order their first task started.
+        steps={Object.entries(runTasksState.nodeRuns).map(([id, run]) => ({
+          id,
+          label: nodes.find((node) => node.id === id)?.data.label || id,
+          status: run.status,
+          done: run.done,
+          total: run.total,
+        }))}
       />
     </div>
+    </RunTasksContext.Provider>
   );
 };
 

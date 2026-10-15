@@ -7,8 +7,10 @@ import ConfirmDialog from "../../common/dialogs/ConfirmDialog";
 import OperatorNodePanel from "../operator/OperatorNodePanel";
 import { getNodeDefinitionForNode } from "../../../registry";
 import NodeCodeView from "./NodeCodeView";
+import NodeRunResults from "./NodeRunResults";
+import { useNodeRun } from "../../../execution/RunTasksContext";
 
-type PanelTab = "settings" | "code";
+type PanelTab = "settings" | "code" | "results";
 
 interface PropertiesPanelProps {
   node: Node<NodeData>;
@@ -48,6 +50,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const [label, setLabel] = useState(node.data.label || "");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<PanelTab>("settings");
+  const hasRun = Boolean(useNodeRun(node.id).summary);
 
   const [position, setPosition] = useState({
     x: window.innerWidth - 580,
@@ -241,6 +244,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           [
             ["settings", "Settings"],
             ["code", "Code"],
+            ["results", "Results"],
           ] as const
         ).map(([tab, title]) => (
           <button
@@ -254,7 +258,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             onClick={() => setActiveTab(tab)}
             onKeyDown={(e) => {
               if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                const next = tab === "settings" ? "code" : "settings";
+                const order: PanelTab[] = ["settings", "code", "results"];
+                const step = e.key === "ArrowRight" ? 1 : order.length - 1;
+                const next =
+                  order[(order.indexOf(tab) + step) % order.length] ?? "settings";
                 setActiveTab(next);
                 document.getElementById(`node-panel-tab-${next}`)?.focus();
               }
@@ -266,11 +273,26 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             }`}
           >
             {title}
+            {tab === "results" && hasRun && (
+              <span
+                aria-hidden
+                className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-green-400 align-middle"
+              />
+            )}
           </button>
         ))}
       </div>
 
-      {activeTab === "code" ? (
+      {activeTab === "results" ? (
+        <div
+          id="node-panel-results"
+          role="tabpanel"
+          aria-labelledby="node-panel-tab-results"
+          className="p-4 overflow-auto flex-grow"
+        >
+          <NodeRunResults nodeId={node.id} />
+        </div>
+      ) : activeTab === "code" ? (
         <div
           id="node-panel-code"
           role="tabpanel"

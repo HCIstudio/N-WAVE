@@ -7,6 +7,7 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
+import { useNodeRun } from "../../execution/RunTasksContext";
 import type { SelectedFile } from "../../data/types";
 
 export interface PortData {
@@ -87,6 +88,14 @@ const BaseNode = ({
     updateNodeInternals(id);
   }, [id, portKey, updateNodeInternals]);
 
+  // The last run's state for this node wins over a stored status.
+  const { summary: run } = useNodeRun(id);
+  const status = run
+    ? ({ running: "running", succeeded: "success", failed: "error" } as const)[
+        run.status
+      ]
+    : data.status;
+
   const iconName = data.icon || "DefaultIcon";
   const maxPortCount = Math.max(data.inputs?.length ?? 0, data.outputs?.length ?? 0);
   const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32);
@@ -128,20 +137,20 @@ const BaseNode = ({
     nodeClasses.push("border-gray-600"); // Default border
   }
 
-  if (data.status === "running") {
+  if (status === "running") {
     nodeClasses.push(
       "border-yellow-400",
       "border-2",
       "animate-pulse",
       "bg-yellow-50"
     );
-  } else if (data.status === "success") {
+  } else if (status === "success") {
     nodeClasses.push("border-green-500", "border-2", "bg-green-50");
-  } else if (data.status === "error") {
+  } else if (status === "error") {
     nodeClasses.push("border-red-500", "border-2", "bg-red-50");
-  } else if (data.status === "waiting") {
+  } else if (status === "waiting") {
     nodeClasses.push("border-purple-400", "border-2", "bg-purple-50");
-  } else if (data.status === "disabled") {
+  } else if (status === "disabled") {
     nodeClasses.push("opacity-60", "bg-gray-100");
   }
 
@@ -201,30 +210,56 @@ const BaseNode = ({
       </div>
 
       {/* Execution Status Indicator */}
-      {data.status && data.status !== "disabled" && (
+      {status && status !== "disabled" && (
         <div className="absolute top-2 right-2">
-          {data.status === "running" && (
+          {status === "running" && (
             <div
               className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"
               title="Running"
             />
           )}
-          {data.status === "success" && (
+          {status === "success" && (
             <div
               className="w-3 h-3 bg-green-500 rounded-full"
               title="Completed"
             />
           )}
-          {data.status === "error" && (
+          {status === "error" && (
             <div className="w-3 h-3 bg-red-500 rounded-full" title="Failed" />
           )}
-          {data.status === "waiting" && (
+          {status === "waiting" && (
             <div
               className="w-3 h-3 bg-purple-400 rounded-full"
               title="Waiting"
             />
           )}
         </div>
+      )}
+
+      {/* What the last run did here; double-click shows its results. */}
+      {run && (
+        <output
+          aria-label={`Last run: ${run.status}`}
+          title={
+            run.status === "running"
+              ? "This step is running"
+              : "Double-click to see what this step produced"
+          }
+          className={clsx(
+            "absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-sm",
+            run.status === "running" &&
+              "border-yellow-400 bg-yellow-100 text-yellow-900",
+            run.status === "succeeded" &&
+              "border-green-500 bg-green-100 text-green-900",
+            run.status === "failed" && "border-red-500 bg-red-100 text-red-900"
+          )}
+        >
+          {run.status === "running"
+            ? `Running${run.total > 1 ? ` ${run.done}/${run.total}` : ""}`
+            : run.status === "failed"
+              ? `Failed${run.total > 1 ? ` ${run.failed}/${run.total}` : ""}`
+              : "Results ready"}
+        </output>
       )}
 
       {/* Render children if they exist */}
