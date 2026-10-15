@@ -82,13 +82,16 @@ export default defineConfig({
     __GIT_SHA__: JSON.stringify(gitSha),
   },
   server: {
-    host: true,
+    // Vite's default (localhost only): the dev server proxies /api to a backend
+    // without a login. `pnpm dev --host` opens it to the network.
     port: 5173,
     proxy: {
       // Dev proxy so the frontend's "/api" calls reach the local backend
       // (backend defaults to port 5001 — see backend/.env / docker-compose).
       "/api": {
-        target: "http://localhost:5001",
+        // 127.0.0.1, not localhost: the backend listens on IPv4 loopback only,
+        // and Node may resolve localhost to ::1 first.
+        target: "http://127.0.0.1:5001",
         changeOrigin: true,
       },
     },

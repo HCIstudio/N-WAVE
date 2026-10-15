@@ -10,7 +10,7 @@ and **Docker** if you want to execute workflows.
 
 ```bash
 # MongoDB
-docker run -d --name nwave-mongo -p 27017:27017 mongo:7
+docker run -d --name nwave-mongo -p 127.0.0.1:27017:27017 mongo:7
 
 # Backend: http://localhost:5001 (hot reload)
 cd backend
