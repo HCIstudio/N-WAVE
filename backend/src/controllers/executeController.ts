@@ -33,6 +33,10 @@ import {
 } from "../nfcore/library";
 import { summarizeFailure } from "../execution/failureSummary";
 import {
+  getPipelineNextflowRequirement,
+  resolvePipelineNextflowVersion,
+} from "../pipelines/nextflowRequirement";
+import {
   findTaskWorkDir,
   listTaskOutputs,
   readRunTasks,
@@ -321,8 +325,18 @@ const executeNextflowWorkflow = async (
       }
     }
 
-    const nextflowVersion =
+    const selectedNextflowVersion =
       executionSettings.nextflowVersion || DEFAULT_NEXTFLOW_VERSION;
+    // A pipeline may need a newer Nextflow than the one selected
+    // (nf-core/rnaseq 3.27.0 needs 25.10.4); run it with that version.
+    const requiredNextflowVersion = pipeline
+      ? await getPipelineNextflowRequirement(pipeline.name, pipeline.version)
+      : null;
+    const nextflowVersion = resolvePipelineNextflowVersion(
+      selectedNextflowVersion,
+      requiredNextflowVersion
+    );
+    const raisedNextflowVersion = nextflowVersion !== selectedNextflowVersion;
 
     // Decide how to run Nextflow:
     //   "docker" — always run Nextflow in a container (nextflow/nextflow). The
@@ -390,6 +404,8 @@ const executeNextflowWorkflow = async (
 
     if (useLocalNextflow) {
       nextflowCmd = buildLocalNextflowCommand({
+        // The Nextflow launcher switches versions through NXF_VER.
+        nextflowVersion: raisedNextflowVersion ? nextflowVersion : undefined,
         scriptPath: relativeScriptPath,
         pipeline: pipelineTarget,
         withModuleConfig,
@@ -462,6 +478,11 @@ const executeNextflowWorkflow = async (
     // The frontend reads the run id to cancel the run and find its results.
     send(`N-WAVE run: ${runId}\n`);
     send(`${describeRunLimits(limits, timeoutMs)}\n`);
+    if (pipeline && raisedNextflowVersion) {
+      send(
+        `N-WAVE: nf-core/${pipeline.name} ${pipeline.version} needs Nextflow ${requiredNextflowVersion} or newer; this run uses ${nextflowVersion}.\n`
+      );
+    }
 
     const run = startRun({
       command: nextflowCmd,

@@ -19,7 +19,7 @@ test.describe("run panel", () => {
       "aria-selected",
       "true",
     );
-    await expect(panel.getByLabel("Run log")).toContainText("Error:");
+    await expect(panel.getByLabel("Run log", { exact: true })).toContainText("Error:");
 
     // It no longer hides itself after a few seconds.
     await page.waitForTimeout(11_000);
@@ -31,7 +31,7 @@ test.describe("run panel", () => {
 
     // The bottom bar brings it back, with the last run's log.
     await page.getByRole("button", { name: "Show runs" }).click();
-    await expect(panel.getByLabel("Run log")).toContainText("Error:");
+    await expect(panel.getByLabel("Run log", { exact: true })).toContainText("Error:");
     await panel.getByRole("tab", { name: "History" }).click();
     await expect(panel).toContainText("hasn't been run on this server");
   });

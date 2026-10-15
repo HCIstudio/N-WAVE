@@ -55,6 +55,7 @@ import {
 } from "../registry/convertToCustomNode";
 import type { CustomNodeInput, StoredCustomNode } from "../registry/customNodes";
 import { isoDurationToMinutes } from "../utils/duration";
+import { findFreePosition } from "../utils/nodePlacement";
 import { listRunTasks, type RunTask } from "../api/runs";
 import { summarizeNodeRuns } from "../execution/nodeRuns";
 import { RunTasksContext } from "../execution/RunTasksContext";
@@ -300,7 +301,7 @@ const WorkflowPageContent: React.FC = () => {
 
   const { id: workflowId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getNodes } = useReactFlow();
   const [isDuplicatingReadOnly, setIsDuplicatingReadOnly] = useState(false);
   const [tutorialStepIndex, setTutorialStepIndex] = useState(() => {
     if (sessionStorage.getItem(TUTORIAL_ACTIVE_KEY) !== "true") return null;
@@ -592,7 +593,7 @@ const WorkflowPageContent: React.FC = () => {
         return;
       }
 
-      const position = screenToFlowPosition({
+      const desired = screenToFlowPosition({
         x: window.innerWidth / 2 - 150, // Adjust for panel width
         y: window.innerHeight / 3,
       });
@@ -600,7 +601,8 @@ const WorkflowPageContent: React.FC = () => {
       const newNode: Node<NodeData> = {
         id: `node-${+new Date()}`,
         type: process.type,
-        position,
+        // Next to what's on the canvas, never on top of another node.
+        position: findFreePosition(desired, getNodes()),
         data: {
           label: process.label,
           icon: process.icon,
@@ -616,6 +618,7 @@ const WorkflowPageContent: React.FC = () => {
     },
     [
       screenToFlowPosition,
+      getNodes,
       setNodes,
       setIsDirty,
       workflowReadOnly,
@@ -1273,6 +1276,21 @@ const WorkflowPageContent: React.FC = () => {
     executionStatus.startExecution();
 
     try {
+      // A File Input without files would run on nothing.
+      const emptyInputs = nodes.filter(
+        (node) =>
+          node.type === "fileInput" &&
+          edges.some((edge) => edge.source === node.id) &&
+          !(Array.isArray(node.data.files) && node.data.files.length > 0)
+      );
+      if (emptyInputs.length > 0) {
+        throw new Error(
+          `Add a file to ${emptyInputs
+            .map((node) => `"${node.data.label || "File Input"}"`)
+            .join(", ")} before running the workflow.`
+        );
+      }
+
       // Validate file inputs before execution
       const missingFiles = checkForMissingFiles();
       if (missingFiles.length > 0) {

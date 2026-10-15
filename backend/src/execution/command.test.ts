@@ -237,3 +237,22 @@ describe("runner docker API version", () => {
     );
   });
 });
+
+describe("buildLocalNextflowCommand", () => {
+  const options = {
+    scriptPath: "workflow/demo.nf",
+    withModuleConfig: false,
+    maxCpus: 4,
+    maxMemory: "4GB",
+  };
+
+  it("uses the host's Nextflow as is by default", () => {
+    expect(buildLocalNextflowCommand(options)).toMatch(/^NXF_LOG_FILE=/);
+  });
+
+  it("switches the launcher to a pipeline's required version", () => {
+    expect(
+      buildLocalNextflowCommand({ ...options, nextflowVersion: "25.10.4" }),
+    ).toMatch(/^NXF_VER='25\.10\.4' NXF_LOG_FILE=/);
+  });
+});

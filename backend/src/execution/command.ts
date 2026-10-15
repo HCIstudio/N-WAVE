@@ -101,9 +101,15 @@ const buildNextflowRunArgs = ({
   return `nextflow -log nextflow/.nextflow.log ${configOption}run ./${scriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory ${shellQuote(maxMemory)} -work-dir nextflow/work`;
 };
 
-/** Command for a Nextflow binary installed on the host. */
-export const buildLocalNextflowCommand = (options: NextflowRunOptions): string =>
-  `NXF_LOG_FILE=nextflow/.nextflow.log ${buildNextflowRunArgs(options)}`;
+/**
+ * Command for a Nextflow binary installed on the host. `nextflowVersion`
+ * makes the launcher use that version (NXF_VER), e.g. when a pipeline needs
+ * a newer one.
+ */
+export const buildLocalNextflowCommand = (
+  options: NextflowRunOptions & { nextflowVersion?: string }
+): string =>
+  `${options.nextflowVersion ? `NXF_VER=${shellQuote(options.nextflowVersion)} ` : ""}NXF_LOG_FILE=nextflow/.nextflow.log ${buildNextflowRunArgs(options)}`;
 
 interface ContainerNextflowOptions extends NextflowRunOptions {
   /** Docker platform for the runner, e.g. linux/amd64; null for native. */

@@ -14,19 +14,19 @@ test.describe("operator nodes", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
+    // Upload while the node is in view (setting a file scrolls its field into
+    // view); new nodes are then placed beside it, never on top.
     const input = await addNode(page, "File Input");
-    await moveNode(page, input, -450, 0);
-    const filter = await addNode(page, "Filter");
-    await moveNode(page, filter, -100, 0);
-    const output = await addNode(page, "Display Output");
-    await moveNode(page, output, 250, 0);
-
     await input.locator('input[type="file"]').setInputFiles({
       name: "greetings.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("hello world\ngoodbye world\nhello again\n"),
     });
     await expect(input).toContainText("1 file");
+    await moveNode(page, input, -450, 0);
+    const filter = await addNode(page, "Filter");
+    const output = await addNode(page, "Display Output");
+    await page.getByRole("button", { name: "Fit view" }).click();
 
     // A connected filter picks up the file and shows it in its subtitle.
     await connect(page, input, filter);
