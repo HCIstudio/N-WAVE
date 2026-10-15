@@ -633,25 +633,20 @@ const HomePage: React.FC = () => {
                   {isHomeTutorialActive && isDemoWorkflow && (
                     <section
                       aria-label="Tutorial"
-                      className={`relative mt-4 p-4 text-sm ${TUTORIAL_BOX_CLASS}`}
+                      className={`mt-3 p-4 text-sm ${TUTORIAL_BOX_CLASS}`}
                     >
-                      {/* Points up at the demo card. */}
-                      <span
-                        aria-hidden
-                        className="absolute -top-2 left-8 h-3.5 w-3.5 rotate-45 border-l-2 border-t-2 border-sky-400/70 bg-sky-950"
-                      />
                       <TutorialBadge />
-                      <p className="font-medium">
+                      <p>
                         Getting started: this demo workflow explains the
                         fundamentals of N-WAVE.
                       </p>
-                      <p className="mt-2 text-sky-100/90">
+                      <p className="mt-2 text-text-light">
                         Click on the above demo to open it and start the
                         tutorial, or{" "}
                         <button
                           type="button"
                           onClick={skipTutorial}
-                          className="font-medium text-amber-300 underline decoration-amber-300/60 underline-offset-2 hover:text-amber-200"
+                          className="text-sky-300 underline underline-offset-2 hover:text-sky-200"
                         >
                           skip the tutorial
                         </button>
