@@ -22,8 +22,6 @@ interface PanelProps {
   recenterTrigger?: number;
   initialSize?: { width: number; height: number };
   panelId: string;
-  onPositionChange: (x: number, y: number) => void;
-  onResize: (x: number, y: number) => void;
 }
 
 const PANEL_HEADER_HEIGHT = 45;

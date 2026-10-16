@@ -1,0 +1,145 @@
+import { act } from "react";
+import type { Node } from "reactflow";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { flush, renderHook } from "../../test/renderHook";
+import { DEFAULT_EXECUTION_SETTINGS } from "./executionSettings";
+
+const get = vi.fn();
+const put = vi.fn(async () => ({ data: {} }));
+const post = vi.fn();
+vi.mock("../../api", () => ({
+  default: {
+    get: (...args: unknown[]) => get(...args),
+    put: (...args: unknown[]) => put(...(args as [])),
+    post: (...args: unknown[]) => post(...args),
+  },
+  isDemoMode: false,
+}));
+const navigate = vi.fn();
+vi.mock("react-router-dom", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("react-router-dom")>()),
+  useNavigate: () => navigate,
+}));
+
+const { useWorkflowDocument } = await import("./useWorkflowDocument");
+
+const storedNode = {
+  id: "in",
+  type: "fileInput",
+  position: { x: 0, y: 0 },
+  data: { label: "Reads", files: [{ name: "a.txt", size: 1, content: "abc" }] },
+};
+
+describe("useWorkflowDocument", () => {
+  const options = () => ({
+    workflowId: "wf1" as string | undefined,
+    nodes: [] as Node[],
+    edges: [],
+    setNodes: vi.fn(),
+    setEdges: vi.fn(),
+    isDirty: false,
+    setIsDirty: vi.fn(),
+    showError: vi.fn(),
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("loads the workflow, its read-only flag and its settings", async () => {
+    get.mockResolvedValueOnce({
+      data: {
+        name: " ",
+        nodes: [storedNode],
+        edges: [],
+        isReadOnly: true,
+        importWarnings: ["Ignored a channel"],
+        executionSettings: DEFAULT_EXECUTION_SETTINGS,
+      },
+    });
+    const props = options();
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: props,
+    });
+    await flush();
+    expect(get).toHaveBeenCalledWith("/workflows/wf1");
+    expect(result.current).toMatchObject({
+      workflowName: "Untitled Workflow",
+      readOnly: true,
+      importWarnings: ["Ignored a channel"],
+      isLoading: false,
+      loadError: null,
+    });
+    expect(props.setNodes).toHaveBeenCalledWith([storedNode]);
+    expect(props.setIsDirty).toHaveBeenCalledWith(false);
+    expect(JSON.parse(localStorage.getItem("executionSettings") ?? "{}")).toEqual(
+      DEFAULT_EXECUTION_SETTINGS,
+    );
+    unmount();
+  });
+
+  it("shows why a workflow can't be loaded", async () => {
+    get.mockRejectedValueOnce({ response: { status: 404 } });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    expect(result.current.loadError?.title).toBe("Workflow not found");
+    unmount();
+  });
+
+  it("saves changes automatically, without file contents", async () => {
+    get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [] } });
+    vi.useFakeTimers();
+    const props = options();
+    const { rerender, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: props,
+    });
+    await flush();
+    rerender({ ...props, nodes: [storedNode as Node], isDirty: true });
+    expect(put).not.toHaveBeenCalled();
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(put).toHaveBeenCalledWith("/workflows/wf1", {
+      name: "Mine",
+      nodes: [
+        {
+          ...storedNode,
+          data: {
+            label: "Reads",
+            files: [{ name: "a.txt", size: 1, content: "" }],
+            fileContent: undefined,
+            processedContent: undefined,
+          },
+        },
+      ],
+      edges: [],
+      executionSettings: DEFAULT_EXECUTION_SETTINGS,
+    });
+    unmount();
+  });
+
+  it("copies a read-only workflow and opens the copy", async () => {
+    get.mockResolvedValueOnce({
+      data: { name: "Demo", nodes: [], edges: [], origin: { readOnly: true } },
+    });
+    post.mockResolvedValueOnce({ data: { _id: "copy1" } });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    const onCopied = vi.fn();
+    let copied = false;
+    await act(async () => {
+      copied = await result.current.duplicateReadOnlyWorkflow({ onCopied });
+    });
+    expect(copied).toBe(true);
+    expect(post).toHaveBeenCalledWith("/workflows/wf1/duplicate");
+    expect(onCopied).toHaveBeenCalledWith("copy1");
+    expect(navigate).toHaveBeenCalledWith("/workflow/copy1");
+    unmount();
+  });
+});
