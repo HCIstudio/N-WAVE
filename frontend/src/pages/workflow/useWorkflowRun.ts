@@ -120,25 +120,22 @@ export const useWorkflowRun = ({
 
     const failed = outcome.kind === "failed";
     executionStatus.completeExecution(!failed, failed ? text : undefined);
-    showToast(
-      !failed
-        ? "Workflow executed successfully! Results have been written to ~/results. \nCheck the execution panel for details."
-        : outcome.resourceProblem
-          ? `The run hit its resource limits: ${outcome.resourceProblem}`
-          : "Workflow execution failed. Check the execution panel/log output for details.",
-      failed ? "error" : "success",
-    );
-    // A failed run also gets the error notice, with Show log and Retry.
-    setError(
-      failed
-        ? {
-            message: outcome.resourceProblem
-              ? `The run hit its resource limits. ${outcome.resourceProblem}`
-              : "Workflow execution failed",
-            output: text,
-          }
-        : null,
-    );
+    if (!failed) {
+      showToast(
+        "Workflow executed successfully! Results have been written to ~/results. \nCheck the execution panel for details.",
+        "success",
+      );
+      setError(null);
+      return;
+    }
+    // A failed run gets the error notice (with Show log and Retry) instead
+    // of a toast saying the same.
+    setError({
+      message: outcome.resourceProblem
+        ? `The run hit its resource limits. ${outcome.resourceProblem}`
+        : "Workflow execution failed",
+      output: text,
+    });
   };
 
   const fail = (caught: unknown) => {

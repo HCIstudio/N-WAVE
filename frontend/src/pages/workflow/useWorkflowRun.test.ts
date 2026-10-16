@@ -79,10 +79,8 @@ describe("useWorkflowRun", () => {
     streamedRun("N-WAVE run: bee_2\nERROR ~ boom\n");
     await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
     await flush();
-    expect(options.showToast).toHaveBeenCalledWith(
-      expect.stringContaining("execution failed"),
-      "error",
-    );
+    // The notice says it; no toast repeats it.
+    expect(options.showToast).not.toHaveBeenCalled();
     expect(hook.result.current.error).toEqual({
       message: "Workflow execution failed",
       output: "N-WAVE run: bee_2\nERROR ~ boom\n",
