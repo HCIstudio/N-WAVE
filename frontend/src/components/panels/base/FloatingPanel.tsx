@@ -14,8 +14,6 @@ interface FloatingPanelProps {
   onFocus?: () => void;
   style?: React.CSSProperties;
   recenterTrigger?: number;
-  onPositionChange: (x: number, y: number) => void;
-  onResize: (x: number, y: number) => void;
 }
 
 const FloatingPanel: React.FC<FloatingPanelProps> = ({
@@ -30,8 +28,6 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({
   onFocus,
   style,
   recenterTrigger,
-  onPositionChange,
-  onResize,
 }) => {
   if (!isOpen) return null;
 
@@ -46,8 +42,6 @@ const FloatingPanel: React.FC<FloatingPanelProps> = ({
       onFocus={onFocus}
       style={style}
       recenterTrigger={recenterTrigger}
-      onPositionChange={onPositionChange}
-      onResize={onResize}
     >
       {children}
     </Panel>
