@@ -75,7 +75,7 @@ describe("useWorkflowRun", () => {
     );
   });
 
-  it("tells about a failed run in a toast, not the error notice", async () => {
+  it("shows the error notice for a failed run, with its log", async () => {
     streamedRun("N-WAVE run: bee_2\nERROR ~ boom\n");
     await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
     await flush();
@@ -83,8 +83,28 @@ describe("useWorkflowRun", () => {
       expect.stringContaining("execution failed"),
       "error",
     );
-    expect(hook.result.current.error).toBeNull();
+    expect(hook.result.current.error).toEqual({
+      message: "Workflow execution failed",
+      output: "N-WAVE run: bee_2\nERROR ~ boom\n",
+    });
     expect(hook.result.current.executionStatus.status.isRunning).toBe(false);
+
+    // A later successful run closes it.
+    streamedRun("N-WAVE run: bee_3\nDone\n");
+    await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
+    await flush();
+    expect(hook.result.current.error).toBeNull();
+  });
+
+  it("names a resource problem in the error notice", async () => {
+    streamedRun(
+      "N-WAVE run: bee_4\nN-WAVE resource problem: A task needed 8 GB of memory.\n",
+    );
+    await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
+    await flush();
+    expect(hook.result.current.error?.message).toBe(
+      "The run hit its resource limits. A task needed 8 GB of memory.",
+    );
   });
 
   it("shows the error notice when the run can't start", async () => {

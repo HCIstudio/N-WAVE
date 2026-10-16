@@ -128,9 +128,17 @@ export const useWorkflowRun = ({
           : "Workflow execution failed. Check the execution panel/log output for details.",
       failed ? "error" : "success",
     );
-    // A run that ran tells how it went in the toast and the run panel; the
-    // error notice is for runs that couldn't start or broke off.
-    setError(null);
+    // A failed run also gets the error notice, with Show log and Retry.
+    setError(
+      failed
+        ? {
+            message: outcome.resourceProblem
+              ? `The run hit its resource limits. ${outcome.resourceProblem}`
+              : "Workflow execution failed",
+            output: text,
+          }
+        : null,
+    );
   };
 
   const fail = (caught: unknown) => {
