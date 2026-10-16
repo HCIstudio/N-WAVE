@@ -346,10 +346,28 @@ Then open http://localhost:5173. Stop with `docker compose -f latest.yml down`.
 
 - Frontend (UI): http://localhost:5173
 - Backend (API): http://localhost:5001
-- MongoDB: `mongodb://localhost:27017`
 
 Workflow outputs are written to `./results` on the host. Requires Docker with the daemon
 running. The first execution pulls the `nextflow/nextflow` image, so it may take a moment.
+
+### Who can reach N-WAVE
+
+By default only the computer N-WAVE runs on: the Docker setups publish their ports on
+`127.0.0.1`, and the backend listens on `127.0.0.1` when run from source.
+
+Keep it that way unless you trust everyone on your network. N-WAVE has no login yet, and the
+backend starts containers through the host's Docker socket, so anyone who can reach it can
+run code on that machine with root rights. To open it up anyway (for example on a lab
+network behind a firewall), set the address to bind to and allow the address people will
+open in their browser:
+
+```bash
+NWAVE_BIND_ADDRESS=0.0.0.0 docker compose -f latest.yml up -d
+```
+
+and add that address (e.g. `http://192.168.1.20:5173`) to `CORS_ORIGIN` in the compose file.
+A login and sandboxed runs for shared installs are planned
+([#27](https://github.com/HCIstudio/N-WAVE/issues/27)).
 
 ### From source (Docker Compose)
 
@@ -359,7 +377,8 @@ Clone the repo and build the images locally:
 docker compose up -d --build
 ```
 
-Same endpoints as above. Stop and remove volumes with `docker compose down -v`.
+Same endpoints as above, plus MongoDB on `mongodb://localhost:27017`. Stop and remove volumes
+with `docker compose down -v`.
 
 ### Local development
 
@@ -369,7 +388,7 @@ execute workflows).
 MongoDB (easiest via Docker):
 
 ```bash
-docker run -d --name nwave-mongo -p 27017:27017 mongo:7
+docker run -d --name nwave-mongo -p 127.0.0.1:27017:27017 mongo:7
 ```
 
 Backend (`http://localhost:5001`, hot-reloads via nodemon):
@@ -403,6 +422,7 @@ VITE_DEMO_MODE=true pnpm build && pnpm preview
 | Variable | Default | Purpose |
 |----------|---------|---------|
 | `PORT` | `5001` | API port. |
+| `HOST` | `127.0.0.1` | Address the API listens on; the Docker image sets `0.0.0.0` (see [Who can reach N-WAVE](#who-can-reach-n-wave)). |
 | `MONGODB_URI` | `mongodb://localhost:27017/nwave` | MongoDB connection string. |
 | `CORS_ORIGIN` | `http://localhost:5173,http://localhost:8080` | Comma-separated allowed origins. |
 | `NEXTFLOW_EXECUTION_MODE` | `auto` | `docker` \| `local` \| `auto` (see [execution](#how-workflow-execution-works)). |

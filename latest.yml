@@ -7,6 +7,11 @@
 #   - backend  (Express API + Nextflow runner) on http://localhost:5001
 #   - mongodb  for workflow persistence
 #
+# Only this computer can reach it: the ports are bound to 127.0.0.1. N-WAVE has
+# no login and the backend can start containers on the host's Docker, so
+# whoever reaches it can run code here. To open it to your network anyway
+# (trusted networks only), set NWAVE_BIND_ADDRESS=0.0.0.0.
+#
 # Workflow execution runs Nextflow on-demand via the host's Docker: the backend
 # mounts the Docker socket and launches the nextflow/nextflow image, sharing
 # files through --volumes-from nwave-backend. That's why the backend needs a
@@ -43,7 +48,7 @@ services:
       BACKEND_CONTAINER_NAME: nwave-backend
       CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
     ports:
-      - "5001:5001"
+      - "${NWAVE_BIND_ADDRESS:-127.0.0.1}:5001:5001"
     volumes:
       # Persist workflow outputs to ./results on the host.
       - ./results:/app/results
@@ -58,7 +63,7 @@ services:
       - backend
     ports:
       # nginx inside the image listens on 80.
-      - "5173:80"
+      - "${NWAVE_BIND_ADDRESS:-127.0.0.1}:5173:80"
 
 volumes:
   mongodb_data:

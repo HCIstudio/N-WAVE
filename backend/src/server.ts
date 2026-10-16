@@ -8,8 +8,12 @@ dotenv.config();
 connectDB();
 
 const app = createApp();
-const PORT = process.env.PORT || 5001;
+const PORT = Number(process.env.PORT) || 5001;
+// Only this computer by default: there is no login, and runs can start
+// containers on the host's Docker. The Docker image sets HOST=0.0.0.0 so the
+// frontend container can reach it; its published ports stay on 127.0.0.1.
+const HOST = process.env.HOST || "127.0.0.1";
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });

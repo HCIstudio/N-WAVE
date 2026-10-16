@@ -40,6 +40,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/workflows/library/assets ./dist/workflows/library/assets
 
+# Listen on the container's network so the frontend container can reach the
+# API; the compose files publish the port on 127.0.0.1 only.
+ENV HOST=0.0.0.0
 EXPOSE 5001
 
 CMD ["node", "dist/server.js"]
