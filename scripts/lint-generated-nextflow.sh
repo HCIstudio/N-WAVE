@@ -16,7 +16,7 @@ OUT="$(mkdir -p "${1:-$ROOT/.lint-nextflow}" && cd "${1:-$ROOT/.lint-nextflow}" 
 IMAGE="${NEXTFLOW_LINT_IMAGE:-nextflow/nextflow:25.10.4}"
 
 (cd "$ROOT/frontend" && npx vite-node scripts/lint/buildProjects.ts -- "$OUT")
-(cd "$ROOT/backend" && npx ts-node --transpile-only scripts/writeRunFiles.ts "$OUT")
+(cd "$ROOT/backend" && npx tsx scripts/writeRunFiles.ts "$OUT")
 
 cd "$OUT"
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then

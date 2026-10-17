@@ -4,7 +4,7 @@
   "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for your scientific workflows.",
   "main": "dist/server.js",
   "scripts": {
-    "dev": "nodemon src/server.ts",
+    "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "vitest run",
@@ -41,10 +41,9 @@
     "@types/node": "^22.15.29",
     "@types/supertest": "^7.2.1",
     "@vitest/coverage-v8": "2.1.9",
-    "nodemon": "^3.1.14",
     "supertest": "^7.3.1",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.8.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
     "vitest": "^2.1.9"
   }
 }

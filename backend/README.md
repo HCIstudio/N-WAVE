@@ -10,7 +10,7 @@ Requires Node 20, pnpm, and a running MongoDB (v7).
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:5001, hot-reload via nodemon
+pnpm dev      # http://localhost:5001, hot-reload via tsx watch
 pnpm build    # compile TypeScript
 pnpm start    # run the compiled server
 pnpm lint     # Biome
