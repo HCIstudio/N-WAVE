@@ -6,7 +6,10 @@ import { getErrorMessage } from "../utils/errors";
 const connectDB = async () => {
   try {
     if (!process.env.MONGODB_URI) {
-      dotenv.config({ path: path.resolve(__dirname, "..", "..", ".env") });
+      dotenv.config({
+        path: path.resolve(__dirname, "..", "..", ".env"),
+        quiet: true,
+      });
     }
 
     const mongoURI = process.env.MONGODB_URI;
