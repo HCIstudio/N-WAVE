@@ -1,6 +1,6 @@
 // Keeping placed custom nodes in step with their definition.
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import type { CustomNodeInput, StoredCustomNode } from "../../registry/customNodes";
 

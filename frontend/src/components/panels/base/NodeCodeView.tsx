@@ -1,7 +1,7 @@
 import { FileCode, Loader, Pencil } from "lucide-react";
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { getNfCoreModuleSource } from "../../../api/nfcore";
 import { isNfCoreSubworkflowId } from "../../../registry/nfcore/subworkflow";
 import { getNodeCode } from "../../../registry/nodeCode";

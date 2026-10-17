@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { isDemoMode } from "../../../api";
 import RunResultsList from "../../common/workflow/RunResultsList";
 import type { NodeData } from "../../nodes/BaseNode";

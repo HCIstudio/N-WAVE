@@ -2,7 +2,7 @@
 // cancelling it, and what the run panel and error notice show about it.
 
 import { useCallback, useRef, useState } from "react";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import api from "../../api";
 import type { ToastType } from "../../components/common";
 import type { RunPanelTab } from "../../components/common/workflow/ExecutionStatusPanel";

@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { FileObject, NodeData } from "../components/nodes/BaseNode";
 
 const getEdgeOrder = (edge: Edge, fallbackIndex: number): number => {

@@ -1,6 +1,6 @@
 import type React from "react";
 import { type ChangeEvent, useEffect, useId, useMemo, useRef } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import {
   DEFAULT_SAMPLESHEET_MAPPING,

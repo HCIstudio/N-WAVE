@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import {
   FloatingPanel,

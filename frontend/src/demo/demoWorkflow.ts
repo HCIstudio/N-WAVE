@@ -36,7 +36,7 @@ const demoGraphNodes = [
           content: DEMO_INPUT_CONTENT,
         },
       ],
-      outputs: [{ name: "out", isConnectable: true }],
+      outputs: [{ name: "ch_files_out", isConnectable: true }],
     },
   },
   {

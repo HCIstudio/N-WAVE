@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { DEFAULT_EXECUTION_SETTINGS } from "./executionSettings";

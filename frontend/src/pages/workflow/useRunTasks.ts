@@ -2,7 +2,7 @@
 // run goes. Kept outside node data so it is never saved.
 
 import { useEffect, useMemo, useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { listRunTasks, type RunTask } from "../../api/runs";
 import { summarizeNodeRuns } from "../../execution/nodeRuns";

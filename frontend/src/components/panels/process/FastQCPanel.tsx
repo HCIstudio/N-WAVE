@@ -1,6 +1,6 @@
 import React, { useState, useId } from "react";
 import ResourceSettingsPanel from "../shared/ResourceSettingsPanel";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { ClipboardCheck, Info, FileText, Archive } from "lucide-react";
 import type { NodeData } from "../../nodes/BaseNode";
 

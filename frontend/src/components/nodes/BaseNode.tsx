@@ -1,9 +1,10 @@
 import {
   Handle,
   Position,
+  type Node,
   type NodeProps,
   useUpdateNodeInternals,
-} from "reactflow";
+} from "@xyflow/react";
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
@@ -74,7 +75,7 @@ const BaseNode = ({
   selected,
   isConnectable,
   children,
-}: NodeProps<NodeData> & {
+}: NodeProps<Node<NodeData>> & {
   children?: ReactNode;
 }) => {
   // Ports can change at runtime (Parameters references, custom node edits);

@@ -1,5 +1,5 @@
 import React, { useState, useId } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 import { MemoryInput, TimeInput } from "../../common/forms";
 import type { NfCoreValueInput } from "../../../registry/nfcore/inputChannels";

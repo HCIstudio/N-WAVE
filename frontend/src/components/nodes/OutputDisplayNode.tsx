@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo } from "react";
-import type { NodeProps } from "reactflow";
-import { useEdges, useNodes } from "reactflow";
+import type { Node, NodeProps } from "@xyflow/react";
+import { useEdges, useNodes } from "@xyflow/react";
 import BaseNode, { type NodeData } from "./BaseNode";
 import { useWorkflowContext } from "../../context/WorkflowContext";
 import { isOperatorTypeRegistered } from "../../hooks";
@@ -8,12 +8,12 @@ import { isOperatorTypeRegistered } from "../../hooks";
 const getNodeLabel = (nodeData: NodeData, fallback: string): string =>
   nodeData.label || nodeData.processType || nodeData.operatorType || fallback;
 
-const OutputDisplayNode = (props: NodeProps<NodeData>) => {
+const OutputDisplayNode = (props: NodeProps<Node<NodeData>>) => {
   const { data, id } = props;
   const { updateNodeData } = useWorkflowContext();
 
   const edges = useEdges();
-  const nodes = useNodes<NodeData>();
+  const nodes = useNodes<Node<NodeData>>();
 
   // Find preview content from the connected parent node, if that parent provides any.
   const upstreamPreview = useMemo(() => {

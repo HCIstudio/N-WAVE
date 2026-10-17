@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import { summarizeParameters } from "../components/panels/input/ParametersPanel";
 import { generateNextflowScript } from "../generators";

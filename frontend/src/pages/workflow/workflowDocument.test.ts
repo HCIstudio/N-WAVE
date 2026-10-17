@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it, vi } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import {
@@ -7,7 +7,12 @@ import {
   flattenExecutionSettings,
   readStoredExecutionSettings,
 } from "./executionSettings";
-import { hydrateEdges, loadErrorFor, sanitizeNodesForSave } from "./workflowDocument";
+import {
+  hydrateEdges,
+  hydrateNodes,
+  loadErrorFor,
+  sanitizeNodesForSave,
+} from "./workflowDocument";
 
 const node = (id: string, type: string, data: Partial<NodeData> = {}) =>
   ({ id, type, position: { x: 0, y: 0 }, data: { label: id, ...data } }) as Node<NodeData>;
@@ -60,6 +65,63 @@ describe("hydrateEdges", () => {
       targetHandle: "reads",
       data: { order: 3 },
     });
+  });
+});
+
+describe("hydrateNodes", () => {
+  it("drops the sizes React Flow 11 saved, so nodes are measured again", () => {
+    const saved = {
+      ...node("a", "process"),
+      width: 123,
+      height: 110,
+      positionAbsolute: { x: 0, y: 0 },
+      measured: { width: 240, height: 214 },
+    } as Node<NodeData>;
+    const [hydrated] = hydrateNodes([saved]);
+    expect(hydrated).not.toHaveProperty("width");
+    expect(hydrated).not.toHaveProperty("height");
+    expect(hydrated).not.toHaveProperty("positionAbsolute");
+    expect(hydrated.measured).toEqual({ width: 240, height: 214 });
+  });
+
+  it("names File Input's old output like its edges do", () => {
+    const [hydrated] = hydrateNodes([
+      node("in", "fileInput", {
+        outputs: [{ name: "out", isConnectable: true }],
+      }),
+    ]);
+    expect(hydrated.data.outputs).toEqual([
+      { name: "ch_files_out", isConnectable: true },
+    ]);
+  });
+});
+
+describe("hydrateEdges with React Flow 12", () => {
+  const edge = (sourceHandle: string, targetHandle: string) =>
+    ({ id: "e", source: "a", sourceHandle, target: "b", targetHandle }) as Edge;
+
+  it("attaches an edge to a node's only port, whatever handle it names", () => {
+    const [hydrated] = hydrateEdges(
+      [edge("output", "input")],
+      [
+        node("a", "process", { outputs: [{ name: "out" }] }),
+        node("b", "process", { inputs: [{ name: "in" }] }),
+      ],
+      () => undefined,
+    );
+    expect(hydrated).toMatchObject({ sourceHandle: "out", targetHandle: "in" });
+  });
+
+  it("leaves handles alone on nodes with several ports", () => {
+    const [hydrated] = hydrateEdges(
+      [edge("bam", "reads")],
+      [
+        node("a", "process", { outputs: [{ name: "bam" }, { name: "log" }] }),
+        node("b", "process", { inputs: [{ name: "x" }, { name: "y" }] }),
+      ],
+      () => undefined,
+    );
+    expect(hydrated).toMatchObject({ sourceHandle: "bam", targetHandle: "reads" });
   });
 });
 

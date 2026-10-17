@@ -1,5 +1,5 @@
 import { act } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flush, renderHook } from "../../test/renderHook";
 import { DEFAULT_EXECUTION_SETTINGS } from "./executionSettings";

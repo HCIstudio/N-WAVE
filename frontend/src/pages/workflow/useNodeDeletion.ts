@@ -2,7 +2,7 @@
 // delete button of its panel.
 
 import { type Dispatch, type SetStateAction, useState } from "react";
-import { type Edge, type Node, useReactFlow } from "reactflow";
+import { type Edge, type Node, useReactFlow } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 
 /** Remove a node and its connections from the canvas. */
@@ -33,29 +33,33 @@ export const useNodeDeletion = ({
   setNodes,
   setEdges,
 }: Options) => {
-  const { screenToFlowPosition } = useReactFlow();
+  const { screenToFlowPosition, getInternalNode } = useReactFlow();
   const [isDragging, setIsDragging] = useState(false);
   const [isHoveringDropZone, setIsHoveringDropZone] = useState(false);
   const [nodeToDelete, setNodeToDelete] = useState<Node<NodeData> | null>(null);
 
   const onNodeDragStart = () => setIsDragging(true);
 
-  const onNodeDrag = (_: React.MouseEvent, node: Node) => {
-    if (!node.width || !node.height || !node.positionAbsolute) return;
+  const onNodeDrag = (_: unknown, node: Node) => {
+    const internal = getInternalNode(node.id);
+    const width = internal?.measured.width;
+    const height = internal?.measured.height;
+    if (!internal || !width || !height) return;
+    const { x, y } = internal.internals.positionAbsolute;
     const dropZone = document.getElementById("delete-drop-zone");
     if (!dropZone) return;
     const rect = dropZone.getBoundingClientRect();
     const topLeft = screenToFlowPosition({ x: rect.left, y: rect.top });
     const bottomRight = screenToFlowPosition({ x: rect.right, y: rect.bottom });
     setIsHoveringDropZone(
-      node.positionAbsolute.x < bottomRight.x &&
-        node.positionAbsolute.x + node.width > topLeft.x &&
-        node.positionAbsolute.y < bottomRight.y &&
-        node.positionAbsolute.y + node.height > topLeft.y,
+      x < bottomRight.x &&
+        x + width > topLeft.x &&
+        y < bottomRight.y &&
+        y + height > topLeft.y,
     );
   };
 
-  const onNodeDragStop = (_: React.MouseEvent, node: Node) => {
+  const onNodeDragStop = (_: unknown, node: Node) => {
     setIsDragging(false);
     if (isHoveringDropZone) {
       if (readOnly) void duplicateReadOnlyWorkflow();

@@ -1,4 +1,4 @@
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { getNfCoreModuleFiles } from "../api/nfcore";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { getWorkflowInputFiles } from "../utils/inputFiles";

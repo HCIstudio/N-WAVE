@@ -1,7 +1,7 @@
 // What a run needs before it starts, what it sends, and how its output is
 // read when it ends.
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { generateNextflowScript } from "../../generators";
 import type { PipelineLaunch } from "../../registry/pipelines/launch";

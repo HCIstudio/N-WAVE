@@ -1,6 +1,6 @@
 import type React from "react";
 import { memo } from "react";
-import { useReactFlow } from "reactflow";
+import { useReactFlow } from "@xyflow/react";
 import { ZoomIn, ZoomOut, Maximize } from "lucide-react";
 
 const CustomControls: React.FC = () => {

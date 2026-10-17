@@ -2,7 +2,7 @@ import { Loader } from "lucide-react";
 import type React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
 import { useParams } from "react-router";
-import { type Node, ReactFlowProvider, useReactFlow } from "reactflow";
+import { type Node, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { isDemoMode } from "../api";
 import { refreshCustomNodes } from "../api/customNodes";
 import BottomBar from "../components/canvas/BottomBar";

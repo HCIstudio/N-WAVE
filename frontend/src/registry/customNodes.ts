@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import CustomNodePanel from "../components/panels/process/CustomNodePanel";
 import type { NodeDefinition } from "./nodeDefinitions";

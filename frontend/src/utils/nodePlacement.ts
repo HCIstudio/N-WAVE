@@ -1,4 +1,4 @@
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 
 /** Size assumed for a node React Flow hasn't measured yet (a new node). */
 export const DEFAULT_NODE_SIZE = { width: 280, height: 240 };
@@ -14,8 +14,8 @@ interface Box {
 const boxOf = (node: Node): Box => ({
   x: node.position.x,
   y: node.position.y,
-  width: node.width ?? DEFAULT_NODE_SIZE.width,
-  height: node.height ?? DEFAULT_NODE_SIZE.height,
+  width: node.measured?.width ?? DEFAULT_NODE_SIZE.width,
+  height: node.measured?.height ?? DEFAULT_NODE_SIZE.height,
 });
 
 const overlaps = (a: Box, b: Box): boolean =>

@@ -1,8 +1,8 @@
 import { memo } from "react";
-import type { NodeProps } from "reactflow";
+import type { Node, NodeProps } from "@xyflow/react";
 import BaseNode, { type NodeData } from "../BaseNode";
 
-const ProcessNode = (props: NodeProps<NodeData>) => {
+const ProcessNode = (props: NodeProps<Node<NodeData>>) => {
   const { data } = props;
 
   // Restore the fallback logic to ensure nodes always have a connectable port,

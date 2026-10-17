@@ -1,6 +1,6 @@
 import type React from "react";
 import { useId } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 
 interface NotePanelProps {

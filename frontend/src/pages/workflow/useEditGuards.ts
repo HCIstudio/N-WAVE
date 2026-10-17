@@ -11,7 +11,7 @@ import type {
   OnConnect,
   OnEdgesChange,
   OnNodesChange,
-} from "reactflow";
+} from "@xyflow/react";
 import type { ToastType } from "../../components/common";
 
 export const RUN_LOCK_MESSAGE =
@@ -29,7 +29,7 @@ export const nodeChangesWhileRunning = (changes: NodeChange[]) => ({
     (change) =>
       change.type === "remove" ||
       change.type === "add" ||
-      change.type === "reset" ||
+      change.type === "replace" ||
       isDrag(change),
   ),
 });
@@ -38,13 +38,15 @@ export const nodeChangesWhileRunning = (changes: NodeChange[]) => ({
  * In a read-only workflow: canvas-internal changes (selection, sizes)
  * apply; dragging or removing a node asks for an editable copy.
  */
-export const nodeChangesWhileReadOnly = (changes: NodeChange[]) => ({
+export const nodeChangesWhileReadOnly = (
+  changes: NodeChange[],
+): { allowed: NodeChange[]; wantsCopy: boolean } => ({
   allowed: changes.filter(
     (change) =>
       change.type !== "position" &&
       change.type !== "remove" &&
       change.type !== "add" &&
-      change.type !== "reset",
+      change.type !== "replace",
   ),
   wantsCopy: changes.some(
     (change) => isDrag(change) || change.type === "remove",
@@ -56,12 +58,14 @@ export const edgeChangesWhileRunning = (changes: EdgeChange[]) => ({
   blocked: changes.some((change) => change.type !== "select"),
 });
 
-export const edgeChangesWhileReadOnly = (changes: EdgeChange[]) => ({
+export const edgeChangesWhileReadOnly = (
+  changes: EdgeChange[],
+): { allowed: EdgeChange[]; wantsCopy: boolean } => ({
   allowed: changes.filter(
     (change) =>
       change.type !== "remove" &&
       change.type !== "add" &&
-      change.type !== "reset",
+      change.type !== "replace",
   ),
   wantsCopy: changes.some((change) => change.type === "remove"),
 });

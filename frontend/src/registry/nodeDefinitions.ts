@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Connection, Edge, Node } from "reactflow";
+import type { Connection, Edge, Node } from "@xyflow/react";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
 import NotePanel from "../components/panels/input/NotePanel";

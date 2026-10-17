@@ -1,12 +1,11 @@
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_NODE_SIZE, findFreePosition } from "./nodePlacement";
 
 const node = (x: number, y: number, width = 280, height = 240): Node => ({
   id: `${x},${y}`,
   position: { x, y },
-  width,
-  height,
+  measured: { width, height },
   data: {},
 });
 
@@ -21,7 +20,7 @@ describe("findFreePosition", () => {
   });
 
   it("skips several nodes in a row, and unmeasured nodes count with a default size", () => {
-    const row = [node(0, 0), node(320, 0), { ...node(640, 0), width: undefined, height: undefined }];
+    const row = [node(0, 0), node(320, 0), { ...node(640, 0), measured: undefined }];
     const spot = findFreePosition({ x: 0, y: 0 }, row);
     expect(spot.x).toBeGreaterThanOrEqual(640 + DEFAULT_NODE_SIZE.width + 40);
     expect(spot.y).toBe(0);

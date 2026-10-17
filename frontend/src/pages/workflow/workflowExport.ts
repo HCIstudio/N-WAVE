@@ -1,7 +1,7 @@
 // Downloading the workflow as a script and exporting it as a runnable
 // project.
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { generateNextflowScript } from "../../generators";
 import {

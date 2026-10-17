@@ -5,7 +5,7 @@ import { RouterProvider } from "react-router/dom";
 import App from "./App";
 import LoadingIndicator from "./components/common/ui/LoadingIndicator";
 import RouteErrorFallback from "./components/common/ui/RouteErrorFallback";
-import "reactflow/dist/style.css";
+import "@xyflow/react/dist/style.css";
 import "./index.css";
 
 const router = createBrowserRouter(

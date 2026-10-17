@@ -1,4 +1,4 @@
-import type { EdgeChange, NodeChange } from "reactflow";
+import type { EdgeChange, NodeChange } from "@xyflow/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "../../test/renderHook";
 import {

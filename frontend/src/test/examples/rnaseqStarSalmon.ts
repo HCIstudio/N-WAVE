@@ -10,7 +10,7 @@
 // backend/src/workflows/library/assets/rnaseq_star_salmon_example.json, kept
 // in sync by rnaseqStarSalmon.test.ts.
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import "../../registry/nodeDefinitions";
 import catalog from "../../registry/nfcore/catalog.json";

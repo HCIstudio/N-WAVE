@@ -1,4 +1,4 @@
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import { keyReports } from "../../components/panels/process/PipelineResults";
 import { buildPipelineProjectFiles } from "../../export/exportProject";

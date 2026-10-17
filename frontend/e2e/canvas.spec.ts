@@ -79,4 +79,29 @@ test.describe("canvas flow", () => {
       page.getByRole("heading", { name: "Workflows", exact: true })
     ).toBeVisible();
   });
+
+  test("dragging a node onto the trash deletes it", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const filter = await addNode(page, "Filter");
+
+    const box = await filter.boundingBox();
+    if (!box) throw new Error("node is not visible");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2, {
+      steps: 5,
+    });
+    const trash = page.locator("#delete-drop-zone");
+    const zone = await trash.boundingBox();
+    if (!zone) throw new Error("the trash doesn't show while dragging");
+    await page.mouse.move(zone.x + zone.width / 2, zone.y + zone.height / 2, {
+      steps: 10,
+    });
+    await expect(trash).toHaveClass(/bg-red-500/);
+    await page.mouse.up();
+
+    await expect(page.locator(".react-flow__node")).toHaveCount(0);
+  });
 });

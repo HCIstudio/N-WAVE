@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import api from "../../api";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { useLatestRef } from "../../hooks";
@@ -24,6 +24,7 @@ import {
 } from "./executionSettings";
 import {
   hydrateEdges,
+  hydrateNodes,
   type LoadError,
   loadErrorFor,
   sanitizeNodesForSave,
@@ -92,7 +93,7 @@ export const useWorkflowDocument = ({
       setImportWarnings(data.importWarnings ?? []);
       setSourceFormat(data.origin?.sourceFormat ?? "visual");
 
-      const loadedNodes = data.nodes || [];
+      const loadedNodes = hydrateNodes(data.nodes || []);
       setNodes(loadedNodes);
       setEdges(
         hydrateEdges(data.edges || [], loadedNodes, (edgeId) =>
