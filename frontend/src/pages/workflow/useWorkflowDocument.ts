@@ -8,7 +8,7 @@ import {
   useEffect,
   useState,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import type { Edge, Node } from "reactflow";
 import api from "../../api";
 import type { NodeData } from "../../components/nodes/BaseNode";

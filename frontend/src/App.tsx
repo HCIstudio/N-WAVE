@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect } from "react";
-import { Outlet } from "react-router-dom";
+import { Outlet } from "react-router";
 import { isDemoMode } from "./api";
 import DemoBanner from "./demo/DemoBanner";
 

@@ -1,6 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter } from "react-router";
+import { RouterProvider } from "react-router/dom";
 import App from "./App";
 import LoadingIndicator from "./components/common/ui/LoadingIndicator";
 import RouteErrorFallback from "./components/common/ui/RouteErrorFallback";
@@ -13,6 +14,8 @@ const router = createBrowserRouter(
       path: "/",
       element: <App />,
       errorElement: <RouteErrorFallback />,
+      // Shown while the first page's code loads.
+      hydrateFallbackElement: <LoadingIndicator fullPage />,
       children: [
         {
           // Pathless layout route so page errors render inside <App /> (keeping
@@ -42,9 +45,6 @@ const router = createBrowserRouter(
     // Prefix routes with the deployment base path (e.g. "/N-WAVE" on GitHub
     // Pages). BASE_URL is "/" for local dev and Docker, so basename is "".
     basename: import.meta.env.BASE_URL.replace(/\/$/, ""),
-    future: {
-      v7_relativeSplatPath: true,
-    },
   }
 );
 
@@ -55,10 +55,6 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
-    <RouterProvider
-      router={router}
-      fallbackElement={<LoadingIndicator fullPage />}
-      future={{ v7_startTransition: true }}
-    />
+    <RouterProvider router={router} />
   </React.StrictMode>
 );

@@ -55,7 +55,7 @@ const basePath = process.env.VITE_BASE_PATH?.trim() || "/";
 // in src/main.tsx.
 const vendorChunks: Record<string, RegExp> = {
   "vendor-react":
-    /[\\/]node_modules[\\/](\.pnpm[\\/])?(react|react-dom|scheduler|react-router|react-router-dom|@remix-run[\\/+]router)[@\\/]/,
+    /[\\/]node_modules[\\/](\.pnpm[\\/])?(react|react-dom|scheduler|react-router)[@\\/]/,
   "vendor-reactflow":
     /[\\/]node_modules[\\/](\.pnpm[\\/])?(reactflow|@reactflow[\\/+][^\\/]+|d3-[^\\/@]+|zustand|classcat)[@\\/]/,
 };

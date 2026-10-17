@@ -1,5 +1,5 @@
 import type React from "react";
-import { isRouteErrorResponse, useRouteError } from "react-router-dom";
+import { isRouteErrorResponse, useRouteError } from "react-router";
 import ErrorFallback from "./ErrorFallback";
 
 /** `errorElement` for the router: render errors and unknown routes. */
