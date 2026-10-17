@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 import { FlaskConical, X } from "lucide-react";
 
 /** Gap in px between the banner and the footer (or the viewport bottom). */

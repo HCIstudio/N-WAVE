@@ -4,7 +4,7 @@
 
 import type React from "react";
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router";
 import api from "../../api";
 import TutorialCallout from "../../components/tutorial/TutorialCallout";
 

@@ -1,7 +1,7 @@
 import { Loader } from "lucide-react";
 import type React from "react";
 import { useCallback, useContext, useMemo, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams } from "react-router";
 import { type Node, ReactFlowProvider, useReactFlow } from "reactflow";
 import { isDemoMode } from "../api";
 import { refreshCustomNodes } from "../api/customNodes";
