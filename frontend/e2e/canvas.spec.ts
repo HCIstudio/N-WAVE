@@ -126,4 +126,15 @@ test.describe("canvas flow", () => {
     await expect(node).toBeVisible();
     expect((await node.boundingBox())?.x).toBeCloseTo(before.x, 0);
   });
+
+  test("a node can't be connected to itself", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const filter = await addNode(page, "Filter");
+
+    await connect(page, filter, filter);
+    await expect(page.getByText("A node can't be connected to itself.")).toBeVisible();
+    await expect(page.locator(".react-flow__edge")).toHaveCount(0);
+  });
 });

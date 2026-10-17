@@ -112,6 +112,15 @@ describe("hydrateEdges with React Flow 12", () => {
     expect(hydrated).toMatchObject({ sourceHandle: "out", targetHandle: "in" });
   });
 
+  it("drops an edge from a node to itself", () => {
+    const hydrated = hydrateEdges(
+      [{ id: "loop", source: "a", sourceHandle: "out", target: "a", targetHandle: "in" } as Edge],
+      [node("a", "process")],
+      () => undefined,
+    );
+    expect(hydrated).toEqual([]);
+  });
+
   it("leaves handles alone on nodes with several ports", () => {
     const [hydrated] = hydrateEdges(
       [edge("bam", "reads")],

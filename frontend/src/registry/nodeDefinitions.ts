@@ -575,6 +575,15 @@ export const getExecutionLabelForProcessName = (
 export const validateConnectionWithNodeDefinitions = (
   context: NodeConnectionValidationContext
 ): NodeConnectionValidationResult => {
+  // A node's output can't feed its own input (and the edge would hide
+  // behind the node, out of reach).
+  if (
+    context.connection.source &&
+    context.connection.source === context.connection.target
+  ) {
+    return { valid: false, message: "A node can't be connected to itself." };
+  }
+
   const validators = [
     context.sourceNode
       ? getNodeDefinitionForNode(context.sourceNode)?.validateConnection

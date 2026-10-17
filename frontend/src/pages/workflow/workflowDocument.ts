@@ -21,47 +21,50 @@ const handleFor = (
 /**
  * Edges as the canvas uses them, upgrading the handles of older workflows
  * (File Input's "out", Merge's numbered "inN" inputs, a handle name that
- * doesn't match a node's only port).
+ * doesn't match a node's only port). An edge from a node to itself, which
+ * older versions allowed, is dropped: it can't be run, or seen to remove.
  */
 export const hydrateEdges = (
   edges: Edge[],
   nodes: Node<NodeData>[],
   onDelete: (edgeId: string) => void,
 ): Edge[] =>
-  edges.map((edge) => {
-    const sourceNode = nodes.find((node) => node.id === edge.source);
-    const targetNode = nodes.find((node) => node.id === edge.target);
-    const legacyMergeInputMatch = String(edge.targetHandle ?? "").match(
-      /^in(\d+)$/,
-    );
+  edges
+    .filter((edge) => edge.source !== edge.target)
+    .map((edge) => {
+      const sourceNode = nodes.find((node) => node.id === edge.source);
+      const targetNode = nodes.find((node) => node.id === edge.target);
+      const legacyMergeInputMatch = String(edge.targetHandle ?? "").match(
+        /^in(\d+)$/,
+      );
 
-    return {
-      ...edge,
-      sourceHandle: handleFor(
-        sourceNode?.type === "fileInput" && edge.sourceHandle === "out"
-          ? "ch_files_out"
-          : edge.sourceHandle,
-        sourceNode?.data?.outputs,
-      ),
-      targetHandle: handleFor(
-        targetNode?.data?.operatorType === "merge" && legacyMergeInputMatch
-          ? "in"
-          : edge.targetHandle,
-        targetNode?.data?.inputs,
-      ),
-      type: "default",
-      data: {
-        ...edge.data,
-        order:
-          typeof edge.data?.order === "number"
-            ? edge.data.order
-            : legacyMergeInputMatch?.[1]
-              ? Number(legacyMergeInputMatch[1]) - 1
-              : undefined,
-        onDelete,
-      },
-    };
-  });
+      return {
+        ...edge,
+        sourceHandle: handleFor(
+          sourceNode?.type === "fileInput" && edge.sourceHandle === "out"
+            ? "ch_files_out"
+            : edge.sourceHandle,
+          sourceNode?.data?.outputs,
+        ),
+        targetHandle: handleFor(
+          targetNode?.data?.operatorType === "merge" && legacyMergeInputMatch
+            ? "in"
+            : edge.targetHandle,
+          targetNode?.data?.inputs,
+        ),
+        type: "default",
+        data: {
+          ...edge.data,
+          order:
+            typeof edge.data?.order === "number"
+              ? edge.data.order
+              : legacyMergeInputMatch?.[1]
+                ? Number(legacyMergeInputMatch[1]) - 1
+                : undefined,
+          onDelete,
+        },
+      };
+    });
 
 const withoutContent = (file: FileObject): FileObject => ({
   name: file.name,
