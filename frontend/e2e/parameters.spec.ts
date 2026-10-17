@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, fitView, moveNode, test } from "./fixtures";
 
 test.describe("parameters node", () => {
   test("declares params and connects a reference file", async ({ page }) => {
@@ -30,7 +30,7 @@ test.describe("parameters node", () => {
 
     // The reference is an output port other nodes connect to.
     const output = await addNode(page, "Display Output");
-    await page.getByRole("button", { name: "Fit view" }).click();
+    await fitView(page);
     await connect(page, params, output);
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 

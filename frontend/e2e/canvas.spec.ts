@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, fitView, moveNode, test } from "./fixtures";
 
 test.describe("canvas flow", () => {
   test("create a workflow, add and connect nodes, generate the script", async ({
@@ -23,7 +23,7 @@ test.describe("canvas flow", () => {
     await moveNode(page, input, -450, 0);
     const filter = await addNode(page, "Filter");
     const output = await addNode(page, "Display Output");
-    await page.getByRole("button", { name: "Fit view" }).click();
+    await fitView(page);
 
     await connect(page, input, filter);
     await connect(page, filter, output);

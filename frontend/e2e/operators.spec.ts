@@ -1,4 +1,4 @@
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, fitView, moveNode, test } from "./fixtures";
 
 test.describe("operator nodes", () => {
   test("subtitles, filtering and autosave react to edits without render loops", async ({
@@ -26,7 +26,7 @@ test.describe("operator nodes", () => {
     await moveNode(page, input, -450, 0);
     const filter = await addNode(page, "Filter");
     const output = await addNode(page, "Display Output");
-    await page.getByRole("button", { name: "Fit view" }).click();
+    await fitView(page);
 
     // A connected filter picks up the file and shows it in its subtitle.
     await connect(page, input, filter);
