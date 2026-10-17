@@ -43,16 +43,13 @@ export const preparePipelineRun = (
 };
 
 /**
- * A generated (or imported) script: written with its config, and the
- * nf-core components it uses installed (from the catalog's pinned commit)
- * and copied next to it.
+ * The script and config a run of `nextflowScript` uses: N-WAVE's config
+ * blocks moved out of the script, and the server's resource limits added.
  */
-export const prepareScriptRun = async (
-  dirs: RunDirectories,
-  scriptPath: string,
+export const buildScriptRunFiles = (
   nextflowScript: string,
   options: { useDocker: boolean; resourceConfig: string }
-): Promise<PreparedRun> => {
+) => {
   const assets = extractNwaveNextflowAssets(nextflowScript);
   const modules = getReferencedNfCoreModules(assets.script);
   const subworkflows = getReferencedNfCoreSubworkflows(assets.script);
@@ -64,13 +61,33 @@ export const prepareScriptRun = async (
   ]
     .filter((block) => block.trim() !== "")
     .join("\n\n")}\n`;
+  return {
+    script: assets.script,
+    config,
+    modules,
+    subworkflows,
+    prepared: { hasNfCoreModules, useProcessDocker } as PreparedRun,
+  };
+};
 
-  fs.writeFileSync(scriptPath, assets.script);
-  fs.writeFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), config);
-  fs.writeFileSync(path.join(dirs.workflow, MODULE_CONFIG_FILE), config);
+/**
+ * A generated (or imported) script: written with its config, and the
+ * nf-core components it uses installed (from the catalog's pinned commit)
+ * and copied next to it.
+ */
+export const prepareScriptRun = async (
+  dirs: RunDirectories,
+  scriptPath: string,
+  nextflowScript: string,
+  options: { useDocker: boolean; resourceConfig: string }
+): Promise<PreparedRun> => {
+  const run = buildScriptRunFiles(nextflowScript, options);
+  fs.writeFileSync(scriptPath, run.script);
+  fs.writeFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), run.config);
+  fs.writeFileSync(path.join(dirs.workflow, MODULE_CONFIG_FILE), run.config);
 
-  await ensureModulesInstalled(modules);
-  await ensureSubworkflowsInstalled(subworkflows);
-  materializeNfCoreModules(assets.script, [dirs.main, dirs.workflow]);
-  return { hasNfCoreModules, useProcessDocker };
+  await ensureModulesInstalled(run.modules);
+  await ensureSubworkflowsInstalled(run.subworkflows);
+  materializeNfCoreModules(run.script, [dirs.main, dirs.workflow]);
+  return run.prepared;
 };

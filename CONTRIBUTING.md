@@ -44,6 +44,18 @@ The nf-core catalog parser has its own tests (run from the repository root):
 node --test scripts/nfcoreModuleParser.test.mjs
 ```
 
+The Nextflow N-WAVE generates is checked with `nextflow lint`. The built-in examples and a set
+of node combinations are exported as projects, with the script and config a run of each uses,
+and linted with a pinned Nextflow (needs Docker, or `nextflow` on PATH, after `pnpm install`
+in both packages):
+
+```bash
+scripts/lint-generated-nextflow.sh
+```
+
+When you change the generator or add a node type, add a combination that uses it to
+`frontend/scripts/lint/fixtures.ts`.
+
 End-to-end tests (Playwright) cover the canvas flow against the backend-less demo build.
 They run as a separate, non-blocking CI job; locally:
 

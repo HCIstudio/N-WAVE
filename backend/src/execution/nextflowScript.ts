@@ -469,3 +469,7 @@ const sanitizeVarName = (name: string): string => {
   }
   return sanitized;
 };
+
+/** A submitted script as a run uses it: legacy output upgraded, invocations stabilized. */
+export const normalizeSubmittedScript = (script: string): string =>
+  stabilizeWorkflowInvocations(normalizeLegacyGeneratedScript(script));

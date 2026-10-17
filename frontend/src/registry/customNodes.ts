@@ -570,7 +570,7 @@ const buildTupleDefinition = ({
     if (field.kind === "path") {
       const argName = args[pathIndex];
       pathIndex += 1;
-      return `extractCustomPath(${argName})`;
+      return `nwaveLastOf(${argName})`;
     }
     return groovyLiteralForSetting(
       String(values[field.name] ?? ""),
@@ -580,8 +580,7 @@ const buildTupleDefinition = ({
 
   return [
     `    ${channelName} = ${expression}.map { ${args.join(", ")} ->`,
-    "        def extractCustomPath = { item -> item instanceof List && item.size() > 0 ? item[-1] : item }",
-    `        def firstPath = extractCustomPath(${args[0]})`,
+    `        def firstPath = nwaveLastOf(${args[0]})`,
     "        def meta = [id: (firstPath instanceof List ? firstPath[0] : firstPath).baseName]",
     `        tuple(${lines.join(", ")})`,
     "    }\n",
