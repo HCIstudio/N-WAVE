@@ -1,9 +1,9 @@
 import type React from "react";
 import { useState, useEffect } from "react";
 import { useLatestRef } from "../../../hooks";
-import type { Node as RFNode } from "reactflow";
+import type { Node as RFNode } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
-import { useReactFlow } from "reactflow";
+import { useReactFlow } from "@xyflow/react";
 
 import { SelectField, InputField } from "../../common";
 import BaseOperatorPanel, {
@@ -22,7 +22,7 @@ const MergePanelContent: React.FC<InjectedOperatorProps> = ({
 }) => {
   const { mergeOperation = "join", mergeJoinSeparator = "\\n" } = nodeData;
   const [joinType, setJoinType] = useState(nodeData.joinType || "txt");
-  const { getEdges, getNodes } = useReactFlow<NodeData>();
+  const { getEdges, getNodes } = useReactFlow<RFNode<NodeData>>();
 
   const [availableTypes, setAvailableTypes] = useState<string[]>([]);
 

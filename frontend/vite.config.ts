@@ -57,7 +57,7 @@ const vendorChunks: Record<string, RegExp> = {
   "vendor-react":
     /[\\/]node_modules[\\/](\.pnpm[\\/])?(react|react-dom|scheduler|react-router)[@\\/]/,
   "vendor-reactflow":
-    /[\\/]node_modules[\\/](\.pnpm[\\/])?(reactflow|@reactflow[\\/+][^\\/]+|d3-[^\\/@]+|zustand|classcat)[@\\/]/,
+    /[\\/]node_modules[\\/](\.pnpm[\\/])?(@xyflow[\\/+][^\\/]+|d3-[^\\/@]+|zustand|classcat)[@\\/]/,
 };
 
 // https://vite.dev/config/

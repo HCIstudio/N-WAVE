@@ -11,8 +11,10 @@ import type {
   OnConnect,
   OnEdgesChange,
   OnNodesChange,
-} from "reactflow";
+  XYPosition,
+} from "@xyflow/react";
 import type { ToastType } from "../../components/common";
+import type { CopyOptions } from "./useWorkflowDocument";
 
 export const RUN_LOCK_MESSAGE =
   "The workflow is locked while it runs. Wait for the run to finish, or cancel it, to make changes.";
@@ -29,39 +31,61 @@ export const nodeChangesWhileRunning = (changes: NodeChange[]) => ({
     (change) =>
       change.type === "remove" ||
       change.type === "add" ||
-      change.type === "reset" ||
+      change.type === "replace" ||
       isDrag(change),
   ),
 });
 
+/** Where the nodes a finished drag moved ended up, by node ID. */
+const droppedPositions = (changes: NodeChange[]): Record<string, XYPosition> =>
+  Object.fromEntries(
+    changes.flatMap((change) =>
+      change.type === "position" && change.dragging === false && change.position
+        ? [[change.id, change.position]]
+        : [],
+    ),
+  );
+
 /**
- * In a read-only workflow: canvas-internal changes (selection, sizes)
- * apply; dragging or removing a node asks for an editable copy.
+ * In a read-only workflow: canvas-internal changes (selection, sizes) and
+ * dragging apply; a finished drag or removing a node asks for an editable
+ * copy, which keeps where the drag left the nodes (`moved`).
  */
-export const nodeChangesWhileReadOnly = (changes: NodeChange[]) => ({
-  allowed: changes.filter(
-    (change) =>
-      change.type !== "position" &&
-      change.type !== "remove" &&
-      change.type !== "add" &&
-      change.type !== "reset",
-  ),
-  wantsCopy: changes.some(
-    (change) => isDrag(change) || change.type === "remove",
-  ),
-});
+export const nodeChangesWhileReadOnly = (
+  changes: NodeChange[],
+): {
+  allowed: NodeChange[];
+  wantsCopy: boolean;
+  moved: Record<string, XYPosition>;
+} => {
+  const moved = droppedPositions(changes);
+  return {
+    allowed: changes.filter(
+      (change) =>
+        change.type !== "remove" &&
+        change.type !== "add" &&
+        change.type !== "replace",
+    ),
+    wantsCopy:
+      Object.keys(moved).length > 0 ||
+      changes.some((change) => change.type === "remove"),
+    moved,
+  };
+};
 
 export const edgeChangesWhileRunning = (changes: EdgeChange[]) => ({
   allowed: changes.filter((change) => change.type === "select"),
   blocked: changes.some((change) => change.type !== "select"),
 });
 
-export const edgeChangesWhileReadOnly = (changes: EdgeChange[]) => ({
+export const edgeChangesWhileReadOnly = (
+  changes: EdgeChange[],
+): { allowed: EdgeChange[]; wantsCopy: boolean } => ({
   allowed: changes.filter(
     (change) =>
       change.type !== "remove" &&
       change.type !== "add" &&
-      change.type !== "reset",
+      change.type !== "replace",
   ),
   wantsCopy: changes.some((change) => change.type === "remove"),
 });
@@ -69,7 +93,7 @@ export const edgeChangesWhileReadOnly = (changes: EdgeChange[]) => ({
 interface Options {
   isRunning: boolean;
   readOnly: boolean;
-  duplicateReadOnlyWorkflow: () => Promise<boolean>;
+  duplicateReadOnlyWorkflow: (options?: CopyOptions) => Promise<boolean>;
   showToast: (message: string, type: ToastType) => void;
   setIsDirty: (dirty: boolean) => void;
   onNodesChange: OnNodesChange;
@@ -122,8 +146,8 @@ export const useEditGuards = ({
         return;
       }
       if (readOnly) {
-        const { allowed, wantsCopy } = nodeChangesWhileReadOnly(changes);
-        if (wantsCopy) void duplicateReadOnlyWorkflow();
+        const { allowed, wantsCopy, moved } = nodeChangesWhileReadOnly(changes);
+        if (wantsCopy) void duplicateReadOnlyWorkflow({ positions: moved });
         if (allowed.length > 0) {
           onNodesChange(allowed);
           // Selection isn't an edit worth saving.

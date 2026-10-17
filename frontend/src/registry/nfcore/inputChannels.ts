@@ -1,4 +1,4 @@
-import type { Edge } from "reactflow";
+import type { Edge } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { groovyStringWithParams } from "../params";
 

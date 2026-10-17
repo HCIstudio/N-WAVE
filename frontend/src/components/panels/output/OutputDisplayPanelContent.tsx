@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useMemo, useEffect } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { Download, Info } from "lucide-react";
 import type { NodeData } from "../../nodes/BaseNode";
 import { FileViewer, detectFileType } from "../../common";

@@ -3,7 +3,7 @@ import {
   resultsFolderFor,
   savesOutputs,
 } from "./nfcore/publish";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import NfCoreModulePanel from "../components/panels/process/NfCoreModulePanel";
 import type { NodeDefinition } from "./nodeDefinitions";

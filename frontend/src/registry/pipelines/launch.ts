@@ -2,7 +2,7 @@
 // the input nodes connected to it become `nextflow run nf-core/<name>`
 // with a params file, instead of a generated script.
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import {
   getNodeInputFiles,

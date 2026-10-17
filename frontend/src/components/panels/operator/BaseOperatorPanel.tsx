@@ -1,5 +1,5 @@
 import React from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData, FileObject } from "../../nodes/BaseNode";
 import { useOperatorPanel } from "../../../hooks";
 import { OperatorHeader } from "../../common";

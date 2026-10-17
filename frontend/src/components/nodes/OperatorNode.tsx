@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useCallback } from "react";
-import type { NodeProps } from "reactflow";
-import { useEdges, useNodes } from "reactflow";
+import type { Node, NodeProps } from "@xyflow/react";
+import { useEdges, useNodes } from "@xyflow/react";
 import BaseNode, { type NodeData } from "./BaseNode";
 import { useWorkflowContext } from "../../context/WorkflowContext";
 import { useOperatorLogic } from "../../hooks";
@@ -20,11 +20,11 @@ const portsEqual = (
       port.label === next[index].label
   );
 
-const OperatorNode = (props: NodeProps<NodeData>) => {
+const OperatorNode = (props: NodeProps<Node<NodeData>>) => {
   const { data, id } = props;
   const { updateNodeData } = useWorkflowContext();
   const edges = useEdges();
-  const nodes = useNodes<NodeData>();
+  const nodes = useNodes<Node<NodeData>>();
 
   // Callback to save operator data
   const handleOperatorSave = useCallback(

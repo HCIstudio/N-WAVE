@@ -1,6 +1,6 @@
 import React, { useState, useId } from "react";
 import { Scissors, Info, ChevronDown, ChevronUp } from "lucide-react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 import MemoryInput from "../../common/forms/MemoryInput";
 import TimeInput from "../../common/forms/TimeInput";

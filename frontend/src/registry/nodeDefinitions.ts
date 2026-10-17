@@ -1,5 +1,5 @@
 import type React from "react";
-import type { Connection, Edge, Node } from "reactflow";
+import type { Connection, Edge, Node } from "@xyflow/react";
 import type { NextflowProcessCategory } from "../data/types";
 import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
 import NotePanel from "../components/panels/input/NotePanel";
@@ -575,6 +575,15 @@ export const getExecutionLabelForProcessName = (
 export const validateConnectionWithNodeDefinitions = (
   context: NodeConnectionValidationContext
 ): NodeConnectionValidationResult => {
+  // A node's output can't feed its own input (and the edge would hide
+  // behind the node, out of reach).
+  if (
+    context.connection.source &&
+    context.connection.source === context.connection.target
+  ) {
+    return { valid: false, message: "A node can't be connected to itself." };
+  }
+
   const validators = [
     context.sourceNode
       ? getNodeDefinitionForNode(context.sourceNode)?.validateConnection

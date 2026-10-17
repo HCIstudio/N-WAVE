@@ -1,6 +1,6 @@
 import type React from "react";
 import { useCallback } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData, FileObject } from "../../nodes/BaseNode";
 
 import { SelectField, InputField, CheckboxField } from "../../common";

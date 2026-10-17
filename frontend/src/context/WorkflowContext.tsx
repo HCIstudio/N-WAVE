@@ -17,9 +17,10 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
   type Connection,
+  type IsValidConnection,
   useEdgesState,
   useReactFlow,
-} from "reactflow";
+} from "@xyflow/react";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { isNodeDataPatchNoop } from "../utils/nodeData";
 import type { ToastType } from "../components/common";
@@ -32,20 +33,20 @@ interface ToastState {
 }
 
 interface IWorkflowContext {
-  nodes: Node[];
+  nodes: Node<NodeData>[];
   edges: Edge[];
   toast: ToastState | null;
   closeToast: () => void;
   isDirty: boolean;
   setIsDirty: React.Dispatch<React.SetStateAction<boolean>>;
-  setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  setNodes: React.Dispatch<React.SetStateAction<Node<NodeData>[]>>;
   setEdges: React.Dispatch<React.SetStateAction<Edge[]>>;
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   onConnectStart: OnConnectStart;
   onConnectEnd: OnConnectEnd;
-  isValidConnection: (connection: Connection) => boolean;
+  isValidConnection: IsValidConnection;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   showToast: (message: string, type: ToastType) => void;
 }
@@ -70,7 +71,7 @@ export const useWorkflowContext = (): IWorkflowContext => {
 
 export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
   const [nodes, setNodes] = useState<Node<NodeData>[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [isToastVisible, setIsToastVisible] = useState(false);
@@ -99,8 +100,15 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
     [isToastVisible]
   );
 
-  const isValidConnection = useCallback(
-    (connection: Connection) => {
+  const isValidConnection: IsValidConnection = useCallback(
+    (edgeOrConnection: Edge | Connection) => {
+      // React Flow also checks existing edges (when one is reconnected).
+      const connection: Connection = {
+        source: edgeOrConnection.source,
+        target: edgeOrConnection.target,
+        sourceHandle: edgeOrConnection.sourceHandle ?? null,
+        targetHandle: edgeOrConnection.targetHandle ?? null,
+      };
       const currentNodes = getNodes();
       const currentEdges = getEdges();
       const sourceNode = connection.source
@@ -133,7 +141,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
       const targetIncomingCount = params.target
         ? getEdges().filter((edge) => edge.target === params.target).length
         : 0;
-      const newEdge = {
+      const newEdge: Edge = {
         ...params,
         id: `e-${params.source || "N/A"}-${params.target || "N/A"}`,
         type: "default",

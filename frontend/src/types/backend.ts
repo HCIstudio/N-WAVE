@@ -1,7 +1,7 @@
 // This file contains type definitions for objects coming from the backend API.
 // It helps to decouple frontend type definitions from backend source code.
 
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../components/nodes/BaseNode";
 import type { ExecutionSettings } from "./execution";
 

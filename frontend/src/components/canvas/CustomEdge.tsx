@@ -1,7 +1,7 @@
 import type React from "react";
 import { useState } from "react";
-import { getBezierPath, EdgeLabelRenderer, BaseEdge } from "reactflow";
-import type { EdgeProps } from "reactflow";
+import { getBezierPath, EdgeLabelRenderer, BaseEdge } from "@xyflow/react";
+import type { EdgeProps } from "@xyflow/react";
 
 const CustomEdge: React.FC<EdgeProps> = ({
   id,
@@ -27,7 +27,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
 
   const onEdgeClick = (evt: React.MouseEvent) => {
     evt.stopPropagation();
-    data.onDelete(id);
+    (data?.onDelete as ((edgeId: string) => void) | undefined)?.(id);
   };
 
   return (

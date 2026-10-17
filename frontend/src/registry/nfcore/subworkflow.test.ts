@@ -1,6 +1,6 @@
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { publishDirLines, resultsFolderFor } from "./publish";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { generateNextflowScript } from "../../generators";
 import catalog from "./catalog.json";

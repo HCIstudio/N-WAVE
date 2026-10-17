@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { summarizeParameters } from "../../components/panels/input/ParametersPanel";

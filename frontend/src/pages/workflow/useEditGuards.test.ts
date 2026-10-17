@@ -1,4 +1,4 @@
-import type { EdgeChange, NodeChange } from "reactflow";
+import type { EdgeChange, NodeChange } from "@xyflow/react";
 import { describe, expect, it, vi } from "vitest";
 import { renderHook } from "../../test/renderHook";
 import {
@@ -23,6 +23,12 @@ const drag = {
   dragging: true,
 } as NodeChange;
 const remove: NodeChange = { type: "remove", id: "a" };
+const drop = {
+  type: "position",
+  id: "a",
+  position: { x: 2, y: 3 },
+  dragging: false,
+} as NodeChange;
 
 describe("change filters", () => {
   it("only lets selection and measuring through while running", () => {
@@ -38,10 +44,16 @@ describe("change filters", () => {
     });
   });
 
-  it("asks for a copy when a read-only workflow is dragged or changed", () => {
+  it("lets a read-only workflow's nodes be dragged and copies it on the drop", () => {
     expect(nodeChangesWhileReadOnly([select, drag])).toEqual({
-      allowed: [select],
+      allowed: [select, drag],
+      wantsCopy: false,
+      moved: {},
+    });
+    expect(nodeChangesWhileReadOnly([drop])).toEqual({
+      allowed: [drop],
       wantsCopy: true,
+      moved: { a: { x: 2, y: 3 } },
     });
     expect(nodeChangesWhileReadOnly([remove]).wantsCopy).toBe(true);
     expect(nodeChangesWhileReadOnly([select]).wantsCopy).toBe(false);
@@ -86,6 +98,11 @@ describe("useEditGuards", () => {
     expect(props.onNodesChange).toHaveBeenCalledWith([select]);
     // Selecting in a demo isn't an edit to save.
     expect(props.setIsDirty).toHaveBeenCalledWith(false);
+    // Dropping a dragged node copies the workflow with the node where it was dropped.
+    guards.handleNodesChange([drop]);
+    expect(props.duplicateReadOnlyWorkflow).toHaveBeenLastCalledWith({
+      positions: { a: { x: 2, y: 3 } },
+    });
     unmount();
   });
 

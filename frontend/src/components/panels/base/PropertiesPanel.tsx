@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useCallback, useEffect, useRef, memo } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { GripVertical, Trash2, X } from "lucide-react";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
 import ConfirmDialog from "../../common/dialogs/ConfirmDialog";

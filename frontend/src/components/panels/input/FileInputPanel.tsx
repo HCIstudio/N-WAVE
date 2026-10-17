@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useCallback, useMemo, useEffect } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { File, X, UploadCloud, Trash2, Plus } from "lucide-react";
 import { useDropzone } from "react-dropzone";
 import type { NodeData } from "../../nodes/BaseNode";

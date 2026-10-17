@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node, XYPosition } from "@xyflow/react";
 import api from "../../api";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { useLatestRef } from "../../hooks";
@@ -24,10 +24,17 @@ import {
 } from "./executionSettings";
 import {
   hydrateEdges,
+  hydrateNodes,
   type LoadError,
   loadErrorFor,
   sanitizeNodesForSave,
 } from "./workflowDocument";
+
+/** What an editable copy takes over from the read-only original. */
+export interface CopyOptions {
+  /** Nodes the user moved, by ID: the copy has them there. */
+  positions?: Record<string, XYPosition>;
+}
 
 /** Saves happen this long after the last change. */
 const AUTOSAVE_DELAY_MS = 2000;
@@ -92,7 +99,7 @@ export const useWorkflowDocument = ({
       setImportWarnings(data.importWarnings ?? []);
       setSourceFormat(data.origin?.sourceFormat ?? "visual");
 
-      const loadedNodes = data.nodes || [];
+      const loadedNodes = hydrateNodes(data.nodes || []);
       setNodes(loadedNodes);
       setEdges(
         hydrateEdges(data.edges || [], loadedNodes, (edgeId) =>
@@ -134,13 +141,28 @@ export const useWorkflowDocument = ({
 
   /** Open an editable copy of a read-only workflow (e.g. a built-in demo). */
   const duplicateReadOnlyWorkflow = useCallback(
-    async (options?: { onCopied?: (copyId: string) => void }) => {
+    async (
+      options?: CopyOptions & { onCopied?: (copyId: string) => void },
+    ) => {
       if (!workflowId || !readOnly || isDuplicating) return false;
       try {
         setIsDuplicating(true);
-        const response = await api.post(`/workflows/${workflowId}/duplicate`);
-        if (response.data?._id) options?.onCopied?.(response.data._id);
-        navigate(`/workflow/${response.data._id}`);
+        const response = await api.post<WorkflowDescriptor>(
+          `/workflows/${workflowId}/duplicate`,
+        );
+        const copy = response.data;
+        const positions = options?.positions ?? {};
+        if (Object.keys(positions).length > 0) {
+          await api.put(`/workflows/${copy._id}`, {
+            nodes: (copy.nodes ?? []).map((node) =>
+              positions[node.id]
+                ? { ...node, position: positions[node.id] }
+                : node,
+            ),
+          });
+        }
+        if (copy._id) options?.onCopied?.(copy._id);
+        navigate(`/workflow/${copy._id}`);
         return true;
       } catch (error) {
         showError(

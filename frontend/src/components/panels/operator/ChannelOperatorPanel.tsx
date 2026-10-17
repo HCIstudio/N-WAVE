@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useId, useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import {
   CHANNEL_OPERATOR_TEMPLATES,

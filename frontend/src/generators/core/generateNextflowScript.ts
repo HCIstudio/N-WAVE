@@ -1,5 +1,5 @@
-import type { Node, Edge } from "reactflow";
-import type { FileObject } from "../../components/nodes/BaseNode";
+import type { Node, Edge } from "@xyflow/react";
+import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
 import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
 import { helperFunctionsFor } from "./helpers";
@@ -43,7 +43,7 @@ const isCommentOnly = (invocation: string): boolean =>
     .every((line) => line.trim() === "" || line.trim().startsWith("//"));
 
 export const generateNextflowScript = (
-  nodes: Node[],
+  nodes: Node<NodeData>[],
   edges: Edge[],
   workflowName: string,
   outputDirectory: string,
@@ -220,7 +220,7 @@ export const generateNextflowScript = (
         // Skip the early return check for FastQC since it handles outputs differently
         if (node.data.processType !== "fastqc") {
           outputChannelName = channelNameMap.get(
-            `${node.id}.${node.data.outputs[0].name}`
+            `${node.id}.${node.data.outputs?.[0]?.name}`
           );
           if (!outputChannelName) continue;
         }

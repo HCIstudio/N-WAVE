@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import { generateNextflowScript } from "./generateNextflowScript";
 import { demoWorkflowSeed } from "../../demo/demoWorkflow";
 

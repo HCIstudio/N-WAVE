@@ -1,6 +1,6 @@
 import type React from "react";
 import { useId } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import type { NfCoreSubworkflowTake } from "../../../registry/nfcore/subworkflow";
 import type { NodeData } from "../../nodes/BaseNode";

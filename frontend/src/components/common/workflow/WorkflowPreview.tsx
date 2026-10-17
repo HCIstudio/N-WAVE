@@ -25,11 +25,13 @@ const WorkflowPreview: React.FC<{
       </div>
     );
   }
+  // The size React Flow measured: `measured` since React Flow 12, `width` and
+  // `height` in workflows saved before.
   const box = (node: WorkflowNode) => ({
     x: node.position?.x ?? 0,
     y: node.position?.y ?? 0,
-    width: node.width ?? DEFAULT_SIZE.width,
-    height: node.height ?? DEFAULT_SIZE.height,
+    width: node.measured?.width ?? node.width ?? DEFAULT_SIZE.width,
+    height: node.measured?.height ?? node.height ?? DEFAULT_SIZE.height,
   });
   const boxes = new Map(steps.map((node) => [node.id, box(node)]));
   const all = [...boxes.values()];

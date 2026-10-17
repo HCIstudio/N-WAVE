@@ -463,7 +463,15 @@ const HomePage: React.FC = () => {
     const cardContent = (
       <>
         {!hideCardButtons && (
-        <div className="absolute top-4 right-2 z-10 flex items-center gap-1">
+        // The buttons sit over the preview: they get a backdrop of their own
+        // whenever they show.
+        <div
+          className={`absolute top-4 right-2 z-10 flex items-center gap-1 rounded-md border border-transparent transition-colors group-hover:border-panel-border group-hover:bg-panel-background group-hover:shadow-sm ${
+            pendingAction === `duplicate:${wf._id}`
+              ? "border-panel-border bg-panel-background shadow-sm"
+              : ""
+          }`}
+        >
           {isEditing ? (
             <>
               <button

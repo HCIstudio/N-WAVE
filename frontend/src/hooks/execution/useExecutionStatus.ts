@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { getExecutionLabelForProcessName } from "../../registry";
 import type {

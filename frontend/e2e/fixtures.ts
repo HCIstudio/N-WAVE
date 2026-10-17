@@ -12,6 +12,37 @@ export const test = base.extend({
 
 export { expect };
 
+/**
+ * Wait until React Flow has caught up: it measures nodes whose ports changed
+ * and applies a fitView in animation frames, so right after either a new
+ * handle can't start a connection yet and positions read can be stale. This
+ * waits two frames and until the viewport holds still.
+ */
+export const canvasSettled = async (page: Page): Promise<void> => {
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          new Promise<boolean>((resolve) => {
+            const viewport = document.querySelector(".react-flow__viewport");
+            const before = viewport?.getAttribute("style");
+            requestAnimationFrame(() =>
+              requestAnimationFrame(() =>
+                resolve(viewport?.getAttribute("style") === before)
+              )
+            );
+          })
+      )
+    )
+    .toBe(true);
+};
+
+/** Click "Fit view" and wait for the canvas to get there. */
+export const fitView = async (page: Page): Promise<void> => {
+  await page.getByRole("button", { name: "Fit view" }).click();
+  await canvasSettled(page);
+};
+
 /** Add a node from the "Add node" menu and return its locator. */
 export const addNode = async (page: Page, label: string): Promise<Locator> => {
   const nodes = page.locator(".react-flow__node");
@@ -49,6 +80,7 @@ export const connect = async (
   from: Locator,
   to: Locator
 ): Promise<void> => {
+  await canvasSettled(page);
   const source = from.locator(".react-flow__handle.source").first();
   const target = to.locator(".react-flow__handle.target").first();
   const s = await source.boundingBox();

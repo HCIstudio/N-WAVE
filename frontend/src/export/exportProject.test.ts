@@ -1,5 +1,5 @@
 import { strFromU8, unzipSync } from "fflate";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import type { NodeData } from "../components/nodes/BaseNode";
 // Load the registry first, as the app does (api/nfcore imports the adapters).

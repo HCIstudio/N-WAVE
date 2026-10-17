@@ -3,7 +3,7 @@
 // one in the editor.
 
 import { type Dispatch, type SetStateAction, useCallback, useState } from "react";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import {
   deleteCustomNode,
   persistCustomNode,

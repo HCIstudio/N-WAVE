@@ -1,6 +1,6 @@
 import type React from "react";
 import { useRef, useEffect, type ChangeEvent } from "react";
-import type { NodeProps } from "reactflow";
+import type { Node, NodeProps } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import BaseNode, { type NodeData } from "../BaseNode";
 import { detectFileType } from "../../common";
@@ -13,7 +13,7 @@ interface FileObject {
   fileType?: string; // Detected file type
 }
 
-const FileInputNode: React.FC<NodeProps<NodeData>> = (props) => {
+const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
   const { id, data } = props;
   const { updateNodeData } = useWorkflowContext();
   const fileInputRef = useRef<HTMLInputElement>(null);

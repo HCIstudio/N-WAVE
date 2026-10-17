@@ -1,5 +1,5 @@
 import { memo } from "react";
-import type { NodeProps } from "reactflow";
+import type { Node, NodeProps } from "@xyflow/react";
 import clsx from "clsx";
 import type { NodeData } from "../BaseNode";
 
@@ -7,7 +7,7 @@ import type { NodeData } from "../BaseNode";
  * A note on the canvas: guidance text for whoever opens the workflow. It
  * has no ports and adds nothing to the generated code.
  */
-const NoteNode = ({ data, selected }: NodeProps<NodeData>) => (
+const NoteNode = ({ data, selected }: NodeProps<Node<NodeData>>) => (
   <div
     className={clsx(
       "w-72 rounded-md border bg-yellow-50 p-3 text-sm text-gray-800 shadow-md",

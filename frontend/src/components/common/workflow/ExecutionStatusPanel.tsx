@@ -16,7 +16,7 @@ import {
 import { useState } from "react";
 import RunResultsList from "./RunResultsList";
 import RunHistory, { RunLog } from "./RunHistory";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 
 export interface NodeExecutionStatus {

@@ -1,6 +1,6 @@
 import type React from "react";
 import { useEffect, useId, useMemo, useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { getPipelineSchema } from "../../../api/pipelines";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import {

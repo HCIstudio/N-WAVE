@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, fitView, moveNode, test } from "./fixtures";
 
 test.describe("canvas flow", () => {
   test("create a workflow, add and connect nodes, generate the script", async ({
@@ -23,7 +23,7 @@ test.describe("canvas flow", () => {
     await moveNode(page, input, -450, 0);
     const filter = await addNode(page, "Filter");
     const output = await addNode(page, "Display Output");
-    await page.getByRole("button", { name: "Fit view" }).click();
+    await fitView(page);
 
     await connect(page, input, filter);
     await connect(page, filter, output);
@@ -78,5 +78,63 @@ test.describe("canvas flow", () => {
     await expect(
       page.getByRole("heading", { name: "Workflows", exact: true })
     ).toBeVisible();
+  });
+
+  test("dragging a node onto the trash deletes it", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const filter = await addNode(page, "Filter");
+
+    const box = await filter.boundingBox();
+    if (!box) throw new Error("node is not visible");
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 + 20, box.y + box.height / 2, {
+      steps: 5,
+    });
+    const trash = page.locator("#delete-drop-zone");
+    const zone = await trash.boundingBox();
+    if (!zone) throw new Error("the trash doesn't show while dragging");
+    await page.mouse.move(zone.x + zone.width / 2, zone.y + zone.height / 2, {
+      steps: 10,
+    });
+    await expect(trash).toHaveClass(/bg-red-500/);
+    await page.mouse.up();
+
+    await expect(page.locator(".react-flow__node")).toHaveCount(0);
+  });
+
+  test("dragging a node of a built-in demo opens a copy with the node moved", async ({
+    page,
+  }) => {
+    await page.goto("./workflow/builtin:demo-basic");
+    const node = page.locator(".react-flow__node").nth(1);
+    await expect(node).toBeVisible();
+    const before = await node.boundingBox();
+    if (!before) throw new Error("node is not visible");
+
+    await moveNode(page, node, 160, 80);
+    await expect(page).not.toHaveURL(/builtin:demo-basic/);
+    await expect(page).toHaveURL(/\/workflow\//);
+
+    // The copy has the node where it was dropped, the demo is unchanged.
+    await expect
+      .poll(async () => (await node.boundingBox())?.x ?? 0)
+      .toBeGreaterThan(before.x + 100);
+    await page.goto("./workflow/builtin:demo-basic");
+    await expect(node).toBeVisible();
+    expect((await node.boundingBox())?.x).toBeCloseTo(before.x, 0);
+  });
+
+  test("a node can't be connected to itself", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const filter = await addNode(page, "Filter");
+
+    await connect(page, filter, filter);
+    await expect(page.getByText("A node can't be connected to itself.")).toBeVisible();
+    await expect(page.locator(".react-flow__edge")).toHaveCount(0);
   });
 });

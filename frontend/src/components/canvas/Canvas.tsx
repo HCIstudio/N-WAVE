@@ -1,9 +1,12 @@
-import React, { type FC } from "react";
-import ReactFlow, {
+import React, { type FC, useEffect, useRef } from "react";
+import {
+  ReactFlow,
   Background,
   BackgroundVariant,
   ConnectionMode,
-} from "reactflow";
+  useNodesInitialized,
+  useReactFlow,
+} from "@xyflow/react";
 import type {
   Edge,
   Node,
@@ -12,8 +15,9 @@ import type {
   OnConnect,
   OnConnectEnd,
   OnConnectStart,
-  Connection,
-} from "reactflow";
+  IsValidConnection,
+  OnNodeDrag,
+} from "@xyflow/react";
 
 import CustomControls from "./CustomControls";
 import CustomEdge from "./CustomEdge";
@@ -49,14 +53,30 @@ interface CanvasProps {
   onNodesChange: OnNodesChange;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  isValidConnection: (connection: Connection) => boolean;
+  isValidConnection: IsValidConnection;
   onNodeDoubleClick: (event: React.MouseEvent, node: Node) => void;
-  onNodeDragStart: (event: React.MouseEvent, node: Node) => void;
-  onNodeDrag: (event: React.MouseEvent, node: Node) => void;
-  onNodeDragStop: (event: React.MouseEvent, node: Node) => void;
+  onNodeDragStart: OnNodeDrag;
+  onNodeDrag: OnNodeDrag;
+  onNodeDragStop: OnNodeDrag;
   onConnectStart: OnConnectStart;
   onConnectEnd: OnConnectEnd;
 }
+
+/**
+ * Fits the view once the canvas's first nodes all have their size. React
+ * Flow's own `fitView` fits on its first measurement, which can come before
+ * all nodes are measured (each node asks for one as it mounts).
+ */
+const useFitViewWhenMeasured = () => {
+  const nodesInitialized = useNodesInitialized();
+  const { fitView } = useReactFlow();
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (!nodesInitialized || fitted.current) return;
+    fitted.current = true;
+    void fitView();
+  }, [nodesInitialized, fitView]);
+};
 
 const Canvas: FC<CanvasProps> = ({
   nodes,
@@ -73,6 +93,7 @@ const Canvas: FC<CanvasProps> = ({
   onConnectEnd,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
+  useFitViewWhenMeasured();
 
   return (
     <div className="flex-grow h-full" ref={reactFlowWrapper}>
@@ -92,7 +113,6 @@ const Canvas: FC<CanvasProps> = ({
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         connectionMode={ConnectionMode.Loose}
-        fitView
         className="bg-background"
         proOptions={{ hideAttribution: true }}
       >

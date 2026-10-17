@@ -2,7 +2,7 @@
 // that use them generate code without opening the node menu.
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Node } from "reactflow";
+import type { Node } from "@xyflow/react";
 import { migrateLegacyCustomNodes, refreshCustomNodes } from "../../api/customNodes";
 import { refreshInstalledNfCoreNodes } from "../../api/nfcore";
 import type { NodeData } from "../../components/nodes/BaseNode";
