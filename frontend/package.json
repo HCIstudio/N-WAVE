@@ -37,7 +37,7 @@
     "yaml": "^2.8.0"
   },
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.5.15",
     "@playwright/test": "1.63.0",
     "@types/cors": "^2.8.18",
     "@types/react": "^19.3.0",

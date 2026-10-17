@@ -4,8 +4,9 @@ name: Test
 # main as a safety net): lint, unit tests, typecheck, and build — all blocking.
 #
 # Biome (frontend/biome.json, backend/biome.json) runs the recommended rule
-# set with no rules disabled; justified exceptions use inline biome-ignore
-# comments that state a reason.
+# set; the only rule disabled is the frontend's noTemplateCurlyInString (its
+# generated Nextflow code has Groovy `${...}` in plain strings). Justified
+# exceptions use inline biome-ignore comments that state a reason.
 on:
   pull_request:
   push:

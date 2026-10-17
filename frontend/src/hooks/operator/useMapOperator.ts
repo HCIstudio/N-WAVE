@@ -41,7 +41,7 @@ export const useMapOperator = (
                   new RegExp(mapReplaceFind, "g"),
                   mapReplaceWith
                 );
-              } catch (e) {
+              } catch {
                 return line;
               }
             default:

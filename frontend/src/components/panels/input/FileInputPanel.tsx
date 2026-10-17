@@ -359,10 +359,10 @@ const FileInputPanel: React.FC<{
         >
           {filteredFiles.length > 0 ? (
             <div className="p-3 max-h-64 overflow-y-auto space-y-2">
-              {filteredFiles.map((file, index) => (
+              {filteredFiles.map((file) => (
                 // The whole row toggles the checkbox it contains.
                 <label
-                  key={`${file.name}-${index}`}
+                  key={file.name}
                   className={`flex items-center justify-between bg-background p-3 rounded-md border transition-colors cursor-pointer ${
                     selectedForRemoval.has(file.name)
                       ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"

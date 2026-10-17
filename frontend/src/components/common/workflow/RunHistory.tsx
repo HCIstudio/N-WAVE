@@ -59,6 +59,7 @@ export const RunLog: React.FC<{ text: string; label?: string }> = ({
       </button>
       <pre
         ref={ref}
+        role="log"
         aria-label={label}
         onScroll={(event) => {
           const element = event.currentTarget;

@@ -472,7 +472,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                       } else {
                         fallbackToManualInput();
                       }
-                    } catch (error) {
+                    } catch {
                       fallbackToManualInput();
                     }
 
@@ -631,7 +631,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   max={cpuSliderMax}
                   value={maxCpus}
                   onChange={(e) =>
-                    updateSection("resources", { maxCpus: Number.parseInt(e.target.value) })
+                    updateSection("resources", { maxCpus: Number.parseInt(e.target.value, 10) })
                   }
                   className="flex-1 h-2 bg-accent rounded-lg appearance-none cursor-pointer slider"
                   style={{
@@ -672,6 +672,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
 
             {serverLimits && (
               <p
+                role="note"
                 aria-label="Server limits"
                 className="rounded-md border border-panel-border p-3 text-xs text-text-light"
               >
@@ -696,7 +697,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 onChange={(e) =>
                   updateSection("resources", {
                     maxTime: minutesToIsoDuration(
-                      Number.parseInt(e.target.value) || 0
+                      Number.parseInt(e.target.value, 10) || 0
                     ),
                   })
                 }

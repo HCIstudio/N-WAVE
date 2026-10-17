@@ -178,6 +178,9 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
   return (
     <div
       ref={panelRef}
+      // A floating, non-modal window.
+      role="dialog"
+      aria-label={title}
       className="fixed bg-panel-background rounded-lg shadow-2xl border border-panel-border z-30 text-text flex flex-col"
       style={{
         ...style,
@@ -192,6 +195,7 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
       onMouseDown={onFocus}
       onFocus={onFocus}
     >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: dragging the panel by its header is a pointer-only extra; the panel works where it opens. */}
       <div className={headerClasses} onMouseDown={onDragMouseDown}>
         <div className="flex items-center gap-2">
           <GripVertical className="w-5 h-5 text-gray-400" />
@@ -221,6 +225,7 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
         </div>
       </div>
       <main className="p-4 overflow-auto flex-grow">{children}</main>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: resizing by the corner is a pointer-only extra; the panel content scrolls at any size. */}
       <div
         className="absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize text-gray-500 hover:text-text"
         onMouseDown={onResizeMouseDown}
