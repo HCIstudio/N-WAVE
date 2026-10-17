@@ -134,7 +134,7 @@ export const updateWorkflow = async (
       await WorkflowModel.findByIdAndUpdate(
         workflowId,
         updateData,
-        { new: true, runValidators: true } // new: true returns the modified document
+        { returnDocument: "after", runValidators: true }
       );
 
     if (!updatedWorkflow) {
