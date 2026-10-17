@@ -5,7 +5,7 @@ to pass, and how changes reach `main`.
 
 ## Development setup
 
-You need **Node 20**, **pnpm 10** (`corepack enable` picks the pinned version), **MongoDB 7**,
+You need **Node 20.19 or newer** (mongoose 9 requires it), **pnpm 10** (`corepack enable` picks the pinned version), **MongoDB 7**,
 and **Docker** if you want to execute workflows.
 
 ```bash

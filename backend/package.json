@@ -31,7 +31,7 @@
     "cors": "^2.8.6",
     "dotenv": "^18.0.8",
     "express": "4",
-    "mongoose": "^8.15.1",
+    "mongoose": "^9.11.2",
     "zod": "^3.25.76"
   },
   "devDependencies": {
