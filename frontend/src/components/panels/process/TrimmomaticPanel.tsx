@@ -99,7 +99,7 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
               min="0"
               max="40"
               value={leading}
-              onChange={(e) => setLeading(Number.parseInt(e.target.value) || 0)}
+              onChange={(e) => setLeading(Number.parseInt(e.target.value, 10) || 0)}
               className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
             />
             <p className="text-xs text-text-light mt-1">
@@ -116,7 +116,7 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
               min="0"
               max="40"
               value={trailing}
-              onChange={(e) => setTrailing(Number.parseInt(e.target.value) || 0)}
+              onChange={(e) => setTrailing(Number.parseInt(e.target.value, 10) || 0)}
               className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
             />
             <p className="text-xs text-text-light mt-1">
@@ -151,7 +151,7 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
               min="1"
               max="300"
               value={minlen}
-              onChange={(e) => setMinlen(Number.parseInt(e.target.value) || 1)}
+              onChange={(e) => setMinlen(Number.parseInt(e.target.value, 10) || 1)}
               className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
             />
             <p className="text-xs text-text-light mt-1">
@@ -269,7 +269,7 @@ const TrimmomaticPanel: React.FC<TrimmomaticPanelProps> = ({
                 min="1"
                 max="16"
                 value={cpus}
-                onChange={(e) => setCpus(Number.parseInt(e.target.value) || 1)}
+                onChange={(e) => setCpus(Number.parseInt(e.target.value, 10) || 1)}
                 className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
               />
             </div>

@@ -134,6 +134,7 @@ const TaskResults: React.FC<{
             {preview.path}
           </figcaption>
           <pre
+            role="document"
             aria-label={`Preview of ${preview.path}`}
             className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-900 p-2 font-mono text-xs text-gray-100"
           >

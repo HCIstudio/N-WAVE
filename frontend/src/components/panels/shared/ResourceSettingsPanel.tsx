@@ -71,7 +71,7 @@ const ResourceSettingsPanel: React.FC<ResourceSettingsPanelProps> = ({
                 type="number"
                 min="1"
                 value={cpus}
-                onChange={(e) => setCpus(Number.parseInt(e.target.value) || 1)}
+                onChange={(e) => setCpus(Number.parseInt(e.target.value, 10) || 1)}
                 className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
               />
             </div>

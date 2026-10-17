@@ -118,7 +118,7 @@ export const useExecutionStatus = ({
 
       // Parse process execution with progress - Main pattern
       const executionMatch = line.match(
-        /\[([\w\/]+)\]\s+([^\s]+(?:\s+\([^)]+\))?)\s*\|\s*(\d+)\s+of\s+(\d+)\s*(✔|❌|⚠)?/
+        /\[([\w/]+)\]\s+([^\s]+(?:\s+\([^)]+\))?)\s*\|\s*(\d+)\s+of\s+(\d+)\s*(✔|❌|⚠)?/
       );
 
       if (executionMatch) {
@@ -130,8 +130,8 @@ export const useExecutionStatus = ({
         const nextflowProcessName = processNameWithInstance
           .split(" ")[0]
           .replace(/…/g, "");
-        const completedNum = Number.parseInt(completed);
-        const totalNum = Number.parseInt(total);
+        const completedNum = Number.parseInt(completed, 10);
+        const totalNum = Number.parseInt(total, 10);
 
         // Create user-friendly names for display
         const getDisplayName = (nfProcessName: string) => {

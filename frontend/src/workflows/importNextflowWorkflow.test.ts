@@ -30,7 +30,7 @@ process outputDisplay_node_1 {
   path input_files
   script:
   """
-  cat \$input_files > result.txt
+  cat $input_files > result.txt
   """
 }
 

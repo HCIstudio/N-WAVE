@@ -261,7 +261,7 @@ function buildProcessInvocations({
   const outputVars = Array.isArray(node.data.outputs)
     ? node.data.outputs
         .map((output: { name: string }) => {
-          if (!output || !output.name) return undefined;
+          if (!output?.name) return undefined;
           return (
             channelNameMap.get(`${node.id}.${output.name}`) ??
             sanitizeVarName(`${processName}_${output.name}`)

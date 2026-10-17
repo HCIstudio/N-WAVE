@@ -201,7 +201,7 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
                     min="1"
                     value={cpus}
                     onChange={(event) =>
-                      setCpus(Number.parseInt(event.target.value) || 1)
+                      setCpus(Number.parseInt(event.target.value, 10) || 1)
                     }
                     className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
                   />

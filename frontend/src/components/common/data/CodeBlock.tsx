@@ -119,6 +119,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ code, label }) => {
         )}
       </button>
       <pre
+        role="document"
         aria-label={label}
         className="max-h-96 overflow-auto rounded-md border border-panel-border bg-background p-3 pr-10 font-mono text-xs leading-5 text-text"
       >

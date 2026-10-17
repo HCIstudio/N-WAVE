@@ -115,7 +115,7 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
             min="1"
             max="16"
             value={threads}
-            onChange={(e) => setThreads(Number.parseInt(e.target.value) || 1)}
+            onChange={(e) => setThreads(Number.parseInt(e.target.value, 10) || 1)}
             className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
           />
           <p className="text-xs text-text-light mt-1">
@@ -133,7 +133,7 @@ const FastQCPanel: React.FC<FastQCPanelProps> = ({ node, onSave }) => {
             min="2"
             max="10"
             value={kmers}
-            onChange={(e) => setKmers(Number.parseInt(e.target.value) || 7)}
+            onChange={(e) => setKmers(Number.parseInt(e.target.value, 10) || 7)}
             className="w-full p-2 border border-accent rounded-md bg-background focus:ring-2 focus:ring-nextflow-green focus:border-transparent"
           />
           <p className="text-xs text-text-light mt-1">

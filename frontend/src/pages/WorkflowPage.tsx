@@ -1,6 +1,6 @@
 import { Loader } from "lucide-react";
 import type React from "react";
-import { useCallback, useContext, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useParams } from "react-router";
 import { type Node, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { isDemoMode } from "../api";
@@ -19,7 +19,7 @@ import CustomNodeModal from "../components/common/forms/CustomNodeModal";
 import ExecutionStatusPanel from "../components/common/workflow/ExecutionStatusPanel";
 import Header from "../components/layout/Header";
 import type { NodeData } from "../components/nodes/BaseNode";
-import { WorkflowContext, WorkflowProvider } from "../context/WorkflowContext";
+import { useWorkflowContext, WorkflowProvider } from "../context/WorkflowContext";
 import type { NextflowProcess } from "../data/types";
 import { RunTasksContext } from "../execution/RunTasksContext";
 import type { ExecutionSettings } from "../types/execution";
@@ -44,10 +44,6 @@ import {
 } from "./workflow/workflowExport";
 
 const WorkflowPageContent: React.FC = () => {
-  const workflowContext = useContext(WorkflowContext);
-  if (!workflowContext) {
-    return <div>Workflow context is not available.</div>;
-  }
   const {
     nodes,
     edges,
@@ -65,7 +61,7 @@ const WorkflowPageContent: React.FC = () => {
     toast,
     closeToast,
     showToast,
-  } = workflowContext;
+  } = useWorkflowContext();
   // Errors from user actions (save, duplicate, script generation) are shown as
   // toasts so the editor stays usable.
   const showError = useCallback(
@@ -159,7 +155,7 @@ const WorkflowPageContent: React.FC = () => {
         y: window.innerHeight / 3,
       });
       const newNode: Node<NodeData> = {
-        id: `node-${+new Date()}`,
+        id: `node-${Date.now()}`,
         type: process.type,
         // Next to what's on the canvas, never on top of another node.
         position: findFreePosition(desired, getNodes()),

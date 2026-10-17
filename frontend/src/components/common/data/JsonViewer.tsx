@@ -13,7 +13,7 @@ const JsonViewer: React.FC<JsonViewerProps> = ({ content }) => {
         {formattedJson}
       </pre>
     );
-  } catch (error) {
+  } catch {
     return (
       <div className="p-4 text-center text-red-400">Invalid JSON format.</div>
     );

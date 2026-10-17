@@ -104,7 +104,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
           2
         );
         blob = new Blob([jsonContent], { type: "application/json" });
-      } catch (error) {
+      } catch {
         console.warn("Content is not valid JSON. Downloading as text.");
         blob = new Blob([contentToDownload], {
           type: "text/plain;charset=utf-8",

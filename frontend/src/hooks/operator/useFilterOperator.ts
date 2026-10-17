@@ -89,7 +89,7 @@ export const useFilterOperator = (
                 isMatch = line.includes(filterText);
                 break;
             }
-          } catch (e) {
+          } catch {
             return false;
           }
           return filterNegate ? !isMatch : isMatch;

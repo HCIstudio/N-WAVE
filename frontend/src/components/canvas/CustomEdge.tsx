@@ -31,6 +31,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
   };
 
   return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: hovering only reveals the delete button; edges are selected and deleted through React Flow too.
     <g
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}

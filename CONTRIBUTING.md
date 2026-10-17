@@ -71,7 +71,9 @@ Guidelines:
   tests use `supertest` against `createApp()` with the Mongoose model mocked, so they need no
   database or Docker.
 - **Keep lint green; don't disable rules.** Both packages run Biome's recommended rules
-  in full. A `biome-ignore` comment needs a stated reason: for hooks, use it only for
+  in full, with one exception: the frontend turns off `noTemplateCurlyInString`, since
+  the Nextflow code it generates and tests is full of Groovy `${...}` in plain strings.
+  A `biome-ignore` comment needs a stated reason: for hooks, use it only for
   deliberate re-run triggers, and prefer `useLatestRef` for callbacks an effect should call
   without re-running. Avoid `any`; the only allowed one is the `NodeData` index signature.
 - **No debug logging.** `console.log`/`console.info` fail lint; use `console.warn` or

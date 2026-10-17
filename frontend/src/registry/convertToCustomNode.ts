@@ -139,7 +139,9 @@ export const mapPorts = (
     );
   }
   if (oldPorts.length === newPorts.length) {
-    oldPorts.forEach((oldPort, index) => assign(oldPort, newPorts[index]));
+    for (const [index, oldPort] of oldPorts.entries()) {
+      assign(oldPort, newPorts[index]);
+    }
   }
   return mapping;
 };

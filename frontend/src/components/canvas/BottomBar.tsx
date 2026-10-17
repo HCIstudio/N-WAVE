@@ -384,12 +384,14 @@ const BottomBar: React.FC<BottomBarProps> = ({
               ref={nameInputRef}
             />
           ) : (
-            <div
+            <button
+              type="button"
               onDoubleClick={handleNameDoubleClick}
+              title="Double-click to rename"
               className="px-2 py-0.5 cursor-pointer text-sm"
             >
               {isLoading ? "Loading..." : workflowName || "Untitled Workflow"}
-            </div>
+            </button>
           )}
         </div>
 
