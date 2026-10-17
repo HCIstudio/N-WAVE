@@ -21,7 +21,9 @@ IMAGE="${NEXTFLOW_LINT_IMAGE:-nextflow/nextflow:25.10.4}"
 cd "$OUT"
 if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
   echo "Linting with $IMAGE"
-  docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v "$OUT:/w" -w /w "$IMAGE" \
+  # The image's Nextflow only runs as its own (root) user; the projects are
+  # mounted read-only, and lint writes nothing.
+  docker run --rm -v "$OUT:/w:ro" -w /w "$IMAGE" \
     sh -c 'nextflow lint -o concise */project'
 else
   echo "Linting with $(command -v nextflow) (Docker isn't available)"
