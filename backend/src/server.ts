@@ -2,8 +2,9 @@ import dotenv from "dotenv";
 import { createApp } from "./app";
 import connectDB from "./config/db";
 
-// Load environment variables from .env file
-dotenv.config();
+// Load environment variables from .env file (quietly: dotenv 17+ otherwise
+// logs a line every time it loads one).
+dotenv.config({ quiet: true });
 
 connectDB();
 
