@@ -19,6 +19,12 @@ export const NWAVE_HELPER_FUNCTIONS: Record<string, string> = {
     `    ${HAS_META} ? item[0] : null`,
     "}",
   ].join("\n"),
+  // The last element of a channel item (its file, for custom node tuples).
+  nwaveLastOf: [
+    "def nwaveLastOf(item) {",
+    "    item instanceof List && item.size() > 0 ? item[-1] : item",
+    "}",
+  ].join("\n"),
   // An input file: absolute paths and URLs as they are, other paths in the
   // input directory.
   nwaveInputFile: [
