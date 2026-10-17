@@ -3,10 +3,7 @@
 
 import type { Request, Response } from "express";
 import { getDockerStatus, getNextflowStatus } from "../execution/docker";
-import {
-  normalizeLegacyGeneratedScript,
-  stabilizeWorkflowInvocations,
-} from "../execution/nextflowScript";
+import { normalizeSubmittedScript } from "../execution/nextflowScript";
 import {
   formatMemory,
   resolveResourceCeiling,
@@ -86,9 +83,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
   if (nextflowScript) {
     let normalizedScript: string;
     try {
-      normalizedScript = stabilizeWorkflowInvocations(
-        normalizeLegacyGeneratedScript(nextflowScript)
-      );
+      normalizedScript = normalizeSubmittedScript(nextflowScript);
     } catch (error: unknown) {
       res.status(400).json({ error: getErrorMessage(error) });
       return;

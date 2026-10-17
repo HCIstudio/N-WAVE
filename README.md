@@ -207,7 +207,9 @@ generated statements.
 
 Generated scripts follow Nextflow's strict syntax: input channels are defined inside the
 `workflow` block and shared helpers are top-level functions, so `nextflow lint` accepts
-them.
+them. CI checks this on every pull request: the built-in examples and representative node
+combinations are exported and linted, as exported and as the backend runs them
+(`scripts/lint-generated-nextflow.sh`).
 
 ### nf-core subworkflows
 

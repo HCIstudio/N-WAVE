@@ -91,6 +91,42 @@ jobs:
       - name: Typecheck & build
         run: pnpm build
 
+  nextflow-lint:
+    name: Generated Nextflow (lint)
+    # The built-in examples and representative node combinations, exported
+    # and as the backend runs them, checked with `nextflow lint` (pinned
+    # image). Fails on lint errors; see scripts/lint-generated-nextflow.sh.
+    if: >-
+      ${{ github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    env:
+      NEXTFLOW_LINT_IMAGE: nextflow/nextflow:25.10.4
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.14.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: |
+            frontend/pnpm-lock.yaml
+            backend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir backend install --frozen-lockfile
+
+      - name: Lint generated Nextflow
+        run: scripts/lint-generated-nextflow.sh
+
   e2e:
     name: E2E (canvas flow)
     # Separate and non-blocking for now: browser tests are slower and can be
