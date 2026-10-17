@@ -67,7 +67,7 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

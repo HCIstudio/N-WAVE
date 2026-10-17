@@ -157,7 +157,7 @@ const HomePage: React.FC = () => {
   // Grow the edit textareas to fit their text as it changes.
   // biome-ignore lint/correctness/useExhaustiveDependencies: editData is the resize trigger.
   useEffect(() => {
-    const resizeTextarea = (ref: React.RefObject<HTMLTextAreaElement>) => {
+    const resizeTextarea = (ref: React.RefObject<HTMLTextAreaElement | null>) => {
       if (ref.current) {
         ref.current.style.height = "auto";
         ref.current.style.height = `${ref.current.scrollHeight}px`;
