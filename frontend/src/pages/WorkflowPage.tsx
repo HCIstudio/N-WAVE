@@ -249,24 +249,19 @@ const WorkflowPageContent: React.FC = () => {
   };
 
   // Interaction flags on the nodes the canvas shows: the node of the panel
-  // under the pointer is highlighted, and a run or a read-only workflow
-  // stops editing.
+  // under the pointer is highlighted, and a run stops editing. Nodes of a
+  // read-only workflow stay draggable: dropping one opens an editable copy.
   const canvasNodes = useMemo(
     () =>
       nodes.map((node) => ({
         ...node,
         data: { ...node.data, isHighlight: node.id === panels.highlightedId },
         selectable: true,
-        draggable: !readOnly && !isRunning,
+        draggable: !isRunning,
         connectable: !isRunning,
         deletable: !isRunning,
-        // React Flow marks draggable nodes "nopan"; without it, the canvas's
-        // double-click zoom swallows the double-click that opens a panel.
-        className: readOnly
-          ? [node.className, "nopan"].filter(Boolean).join(" ")
-          : node.className,
       })),
-    [nodes, panels.highlightedId, readOnly, isRunning]
+    [nodes, panels.highlightedId, isRunning]
   );
 
   if (workflow.loadError) {

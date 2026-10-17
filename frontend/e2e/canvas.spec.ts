@@ -104,4 +104,26 @@ test.describe("canvas flow", () => {
 
     await expect(page.locator(".react-flow__node")).toHaveCount(0);
   });
+
+  test("dragging a node of a built-in demo opens a copy with the node moved", async ({
+    page,
+  }) => {
+    await page.goto("./workflow/builtin:demo-basic");
+    const node = page.locator(".react-flow__node").nth(1);
+    await expect(node).toBeVisible();
+    const before = await node.boundingBox();
+    if (!before) throw new Error("node is not visible");
+
+    await moveNode(page, node, 160, 80);
+    await expect(page).not.toHaveURL(/builtin:demo-basic/);
+    await expect(page).toHaveURL(/\/workflow\//);
+
+    // The copy has the node where it was dropped, the demo is unchanged.
+    await expect
+      .poll(async () => (await node.boundingBox())?.x ?? 0)
+      .toBeGreaterThan(before.x + 100);
+    await page.goto("./workflow/builtin:demo-basic");
+    await expect(node).toBeVisible();
+    expect((await node.boundingBox())?.x).toBeCloseTo(before.x, 0);
+  });
 });

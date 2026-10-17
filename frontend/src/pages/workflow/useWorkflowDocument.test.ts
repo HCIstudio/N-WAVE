@@ -142,4 +142,28 @@ describe("useWorkflowDocument", () => {
     expect(navigate).toHaveBeenCalledWith("/workflow/copy1");
     unmount();
   });
+
+  it("puts nodes the user dragged where they were dropped in the copy", async () => {
+    get.mockResolvedValueOnce({
+      data: { name: "Demo", nodes: [], edges: [], origin: { readOnly: true } },
+    });
+    const other = { ...storedNode, id: "other" };
+    post.mockResolvedValueOnce({
+      data: { _id: "copy2", nodes: [storedNode, other] },
+    });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    await act(async () => {
+      await result.current.duplicateReadOnlyWorkflow({
+        positions: { in: { x: 120, y: 60 } },
+      });
+    });
+    expect(put).toHaveBeenCalledWith("/workflows/copy2", {
+      nodes: [{ ...storedNode, position: { x: 120, y: 60 } }, other],
+    });
+    expect(navigate).toHaveBeenCalledWith("/workflow/copy2");
+    unmount();
+  });
 });
