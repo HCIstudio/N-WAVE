@@ -30,8 +30,8 @@ export const useExecutionStatus = ({
 
   const [isVisible, setIsVisible] = useState(false);
   const statusRef = useRef(status);
-  const progressUpdateInterval = useRef<NodeJS.Timeout>();
-  const runtimeTimer = useRef<NodeJS.Timeout>();
+  const progressUpdateInterval = useRef<NodeJS.Timeout | undefined>(undefined);
+  const runtimeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
 
   // Update ref when status changes
   useEffect(() => {
