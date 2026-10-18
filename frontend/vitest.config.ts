@@ -10,11 +10,17 @@ export default defineConfig({
     setupFiles: ["./src/test/setup.ts"],
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
     coverage: {
-      // Run with `pnpm test:coverage`. CI reports the summary in its logs; no
-      // threshold gate for now (coverage is still low — tightening it is
-      // tracked separately). Enable thresholds here when ready to enforce.
+      // Run with `pnpm test:coverage`; CI runs it and fails below these
+      // thresholds. Raise the global floor as coverage grows, never lower it.
       provider: "v8",
       reporter: ["text", "text-summary"],
+      thresholds: {
+        lines: 74,
+        // Script generation and the .nf importer turn a user's work into
+        // Nextflow and back: keep them well tested.
+        "src/generators/**": { lines: 80 },
+        "src/workflows/importNextflowWorkflow.ts": { lines: 80 },
+      },
       include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "src/**/*.{test,spec}.{ts,tsx}",
