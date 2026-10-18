@@ -11,15 +11,6 @@ import {
   generateMapProcess,
   generateMergeProcess,
 } from "../templates";
-// Input functions for advanced template-based input handling
-// Currently, file inputs are handled inline in generateNextflowScript.ts (simple, no escaping issues)
-// These template functions are for potential future expansion to template-based input generation
-// import {
-//   generateFileInputChannels,
-//   generateValueInputChannel,
-//   generateParameterInput,
-//   type InputConfig,
-// } from "../templates/inputs";
 
 export function generateProcessCode(
   processType: string,
@@ -70,19 +61,3 @@ export function generateOperatorCode(
 export function generateOutputCode(config: OutputDisplayConfig): string {
   return generateOutputDisplayProcess(config);
 }
-
-// Advanced input template functions - not currently used in main script generator
-// File inputs work fine inline (simple, no complex escaping). These are for future template expansion.
-
-// export function generateInputCode(inputType: string, config: any): any {
-//   switch (inputType) {
-//     case "fileInput":
-//       return generateFileInputChannels(config);
-//     case "valueInput":
-//       return generateValueInputChannel(config);
-//     case "parameterInput":
-//       return generateParameterInput(config);
-//     default:
-//       throw new Error(`Unknown input type: ${inputType}`);
-//   }
-// }
