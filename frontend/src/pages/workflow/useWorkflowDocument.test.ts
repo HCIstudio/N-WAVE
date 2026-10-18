@@ -80,6 +80,27 @@ describe("useWorkflowDocument", () => {
     unmount();
   });
 
+  it("drops the old 30-minute default from a workflow's saved settings", async () => {
+    const { version: _version, ...unversioned } = DEFAULT_EXECUTION_SETTINGS;
+    get.mockResolvedValueOnce({
+      data: {
+        name: "Old",
+        nodes: [],
+        edges: [],
+        executionSettings: {
+          ...unversioned,
+          resources: { ...unversioned.resources, maxTime: "PT30M" },
+        },
+      },
+    });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    expect(result.current.executionSettings.resources.maxTime).toBe("");
+    unmount();
+  });
+
   it("shows why a workflow can't be loaded", async () => {
     get.mockRejectedValueOnce({ response: { status: 404 } });
     const { result, unmount } = renderHook(useWorkflowDocument, {

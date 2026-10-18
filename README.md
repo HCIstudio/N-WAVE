@@ -123,6 +123,15 @@ and node settings and notes can't be edited (an amber frame and a notice say so)
 run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
 **Running** button brings it back.
 
+### Undo and redo
+
+Adding, deleting and moving nodes, connecting and disconnecting them, and changing node
+settings can be undone with **Ctrl+Z** (**⌘Z** on macOS) and redone with **Ctrl+Shift+Z**
+or **Ctrl+Y**, or with the undo and redo buttons next to the zoom controls. Typing in a
+field is one step once you pause; inside a text field, the shortcuts undo the typing
+there instead. The history covers the open workflow until you leave it. Undo isn't
+available while a run locks the workflow or on the read-only examples.
+
 ### Which step is running, and what each node produced
 
 While a workflow runs, each node on the canvas shows its state under it: **Running** (with

@@ -59,6 +59,9 @@ export interface ContainerRegistry {
 
 // Enhanced execution settings with validation
 export interface ExecutionSettings {
+  // Settings format version; settings saved before versions have none.
+  version?: number;
+
   // Core execution mode
   mode: ExecutionMode;
 

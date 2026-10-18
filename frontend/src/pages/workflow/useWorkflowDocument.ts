@@ -19,6 +19,7 @@ import { getApiErrorMessage } from "../../utils/errors";
 import {
   DEFAULT_EXECUTION_SETTINGS,
   ensureStoredExecutionSettings,
+  migrateExecutionSettings,
   readStoredExecutionSettings,
   storeExecutionSettings,
 } from "./executionSettings";
@@ -109,8 +110,9 @@ export const useWorkflowDocument = ({
 
       // The workflow's own settings win; without them, the last used ones.
       if (data.executionSettings) {
-        storeExecutionSettings(data.executionSettings);
-        setExecutionSettings(data.executionSettings);
+        const settings = migrateExecutionSettings(data.executionSettings);
+        storeExecutionSettings(settings);
+        setExecutionSettings(settings);
       } else {
         const stored = readStoredExecutionSettings();
         if (stored) setExecutionSettings(stored);
