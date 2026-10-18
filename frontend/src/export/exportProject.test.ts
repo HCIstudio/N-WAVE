@@ -56,6 +56,24 @@ describe("extractNextflowConfig", () => {
   });
 });
 
+describe("extractNextflowConfig with */ in a value", () => {
+  it("restores the escaped */ and still reads unescaped blocks", () => {
+    const { script: cleaned, config } = extractNextflowConfig(
+      [
+        "/* N-WAVE_NEXTFLOW_CONFIG",
+        "params {",
+        String.raw`  reads = 'data/*\/R1.fastq'`,
+        "}",
+        "*/",
+        "/* N-WAVE_NEXTFLOW_CONFIG params.y = 3 */",
+        "workflow {}",
+      ].join("\n"),
+    );
+    expect(config).toBe("params {\n  reads = 'data/*/R1.fastq'\n}\n\nparams.y = 3");
+    expect(cleaned.trim()).toBe("workflow {}");
+  });
+});
+
 describe("getReferencedNfCoreModules", () => {
   it("lists included modules by path", () => {
     expect(getReferencedNfCoreModules(script)).toEqual(["fastqc", "multiqc"]);

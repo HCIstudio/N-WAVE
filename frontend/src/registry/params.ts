@@ -130,7 +130,8 @@ export const validateParameters = (
   return issues;
 };
 
-const singleQuoted = (value: string): string =>
+/** A single-quoted Groovy string literal. */
+export const singleQuoted = (value: string): string =>
   `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
 /** Groovy literal for a parameter's value (script and config). */

@@ -174,7 +174,7 @@ describe("WorkflowContext", () => {
     const [edge] = result.current.edges;
     expect(edge).toEqual(
       expect.objectContaining({
-        id: "e-b-m",
+        id: "e-b-out-m-in",
         source: "b",
         target: "m",
         type: "default",
@@ -184,8 +184,29 @@ describe("WorkflowContext", () => {
     expect(result.current.isDirty).toBe(true);
 
     const onDelete = edge.data?.onDelete as (id: string) => void;
-    act(() => onDelete("e-b-m"));
+    act(() => onDelete("e-b-out-m-in"));
     expect(result.current.edges).toEqual([]);
+  });
+
+  it("gives two edges between the same nodes different ids", () => {
+    const { result } = setup([node("p", "parameters"), node("m", "merge")]);
+    for (const handle of ["fasta", "gtf"]) {
+      act(() =>
+        result.current.onConnect({
+          source: "p",
+          target: "m",
+          sourceHandle: handle,
+          targetHandle: handle,
+        }),
+      );
+    }
+    expect(result.current.edges).toHaveLength(2);
+    const [first, second] = result.current.edges;
+    expect(first.id).not.toBe(second.id);
+
+    const onDelete = first.data?.onDelete as (id: string) => void;
+    act(() => onDelete(first.id));
+    expect(result.current.edges.map((edge) => edge.id)).toEqual([second.id]);
   });
 
   it("rejects invalid connections with an error toast", () => {

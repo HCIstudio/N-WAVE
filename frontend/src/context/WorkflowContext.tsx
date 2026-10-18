@@ -143,7 +143,16 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
         : 0;
       const newEdge: Edge = {
         ...params,
-        id: `e-${params.source || "N/A"}-${params.target || "N/A"}`,
+        // Handles keep two edges between the same nodes apart.
+        id: [
+          "e",
+          params.source || "N/A",
+          params.sourceHandle,
+          params.target || "N/A",
+          params.targetHandle,
+        ]
+          .filter(Boolean)
+          .join("-"),
         type: "default",
         data: {
           order: targetIncomingCount,

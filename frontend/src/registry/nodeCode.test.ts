@@ -7,7 +7,7 @@ describe("getNodeCode", () => {
     const code = getNodeCode(makeNode("filter", { filterText: "hello" }));
     expect(code?.processName).toBe("filter_node_filter");
     expect(code?.processSource).toMatch(/^process filter_node_filter \{/);
-    expect(code?.processSource).toContain('grep  "hello"');
+    expect(code?.processSource).toContain("grep  'hello'");
     expect(code?.nfCoreModule).toBeUndefined();
     expect(code?.workflowSnippet).toContain("filter_node_filter(in_ch)");
   });

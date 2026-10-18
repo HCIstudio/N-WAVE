@@ -42,7 +42,8 @@ export const extractNextflowConfig = (
   const cleaned = script.replace(
     /\/\*\s*N-WAVE_NEXTFLOW_CONFIG\s*([\s\S]*?)\*\//g,
     (_match, block: string) => {
-      configBlocks.push(block.trim());
+      // The generator writes `*/` in values as `*\/`.
+      configBlocks.push(block.replace(/\*\\\//g, "*/").trim());
       return "";
     },
   );

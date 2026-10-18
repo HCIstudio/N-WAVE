@@ -40,13 +40,25 @@ export const getNodeInputFiles = (
   });
 };
 
-/** Input files of all nodes, deduplicated by name (content wins). */
+/**
+ * Input files of all nodes, deduplicated by name (content wins). Throws when
+ * two files share a name but not their content: the input directory is flat.
+ */
 export const getWorkflowInputFiles = (
   nodes: Node<NodeData>[],
 ): WorkflowInputFile[] => {
   const files = new Map<string, WorkflowInputFile>();
   for (const file of nodes.flatMap(getNodeInputFiles)) {
     const existing = files.get(file.name);
+    if (
+      existing?.content !== undefined &&
+      file.content !== undefined &&
+      existing.content !== file.content
+    ) {
+      throw new Error(
+        `Two input files are named "${file.name}" but differ. Rename one of them (input files share one folder).`,
+      );
+    }
     if (!existing || existing.content === undefined) files.set(file.name, file);
   }
   return Array.from(files.values());

@@ -43,7 +43,9 @@ export function generateOutputDisplayProcess(
     .replace(/\{workflow_name\}/g, workflowName)
     .replace(/\{timestamp\}/g, String(timestamp))
     .replace(/\{date\}/g, date)
-    .replace(/\{process_name\}/g, processName);
+    .replace(/\{process_name\}/g, processName)
+    // A file-name prefix that is safe in GStrings, shell and `path "..."`.
+    .replace(/[^A-Za-z0-9._-]/g, "_");
 
   let outputPattern: string;
   let processScript: string;

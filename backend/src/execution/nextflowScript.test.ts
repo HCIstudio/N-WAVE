@@ -46,6 +46,19 @@ describe("extractNwaveNextflowAssets", () => {
     );
   });
 
+  it("restores a */ the generator escaped in a config value", () => {
+    const { script, config } = extractNwaveNextflowAssets(
+      lines(
+        "/* N-WAVE_NEXTFLOW_CONFIG",
+        String.raw`params { reads = 'data/*\/R1.fastq' }`,
+        "*/",
+        "workflow { A() }"
+      )
+    );
+    expect(config).toBe("params { reads = 'data/*/R1.fastq' }");
+    expect(script.trim()).toBe("workflow { A() }");
+  });
+
   it("leaves scripts without config blocks alone", () => {
     expect(extractNwaveNextflowAssets("workflow {}")).toEqual({
       script: "workflow {}",

@@ -9,10 +9,11 @@ const base = { processName: "step_1", cpuCount: 2, memoryAmount: "4.GB" };
 
 describe("Filter template", () => {
   it.each([
-    ["contains", 'grep  "Bee"'],
-    ["startsWith", 'grep  "^Bee"'],
-    ["endsWith", 'grep  "Bee$"'],
-    ["regex", 'grep  -E "Bee"'],
+    ["contains", "grep  'Bee'"],
+    ["startsWith", "grep  '^Bee'"],
+    // `\$` so Groovy doesn't read `$'` as a variable.
+    ["endsWith", String.raw`grep  'Bee\$'`],
+    ["regex", "grep  -E 'Bee'"],
   ])("greps for %s", (filterMode, grep) => {
     const code = generateOperatorCode("filter", {
       ...base,
@@ -31,7 +32,22 @@ describe("Filter template", () => {
         filterMode: "contains",
         filterNegate: true,
       }),
-    ).toContain('grep -v "Bee"');
+    ).toContain("grep -v 'Bee'");
+  });
+
+  it("quotes the filter text for the shell and the Groovy script string", () => {
+    const code = generateOperatorCode("filter", {
+      ...base,
+      filterText: String.raw`it's $HOME\d "x"`,
+      filterMode: "regex",
+    });
+    // Groovy turns `\$`, `\\` and `\"` back into `$`, `\` and `"`.
+    expect(code).toContain(
+      String.raw`grep  -E 'it'\\''s \$HOME\\d \"x\"' `,
+    );
+    expect(code).toContain(
+      String.raw`echo '# Filter: No lines matched regex '\\''it'\\''s \$HOME\\d \"x\"'\\''' >`,
+    );
   });
 
   it("passes the file through without a filter text", () => {
@@ -82,6 +98,17 @@ describe("Map template", () => {
         mapReplaceWith: "b",
       }),
     ).toContain("sed 's/a/b/g'");
+  });
+
+  it("escapes the sed delimiter, & and backslashes in replace text", () => {
+    expect(
+      generateOperatorCode("map", {
+        ...base,
+        mapOperation: "replaceText",
+        mapReplaceFind: "a/b",
+        mapReplaceWith: String.raw`c&d\e's`,
+      }),
+    ).toContain(String.raw`sed 's/a\\/b/c\\&d\\\\e'\\''s/g' `);
   });
 
   it("passes the file through for an unknown operation", () => {
@@ -138,6 +165,16 @@ describe("Display Output template", () => {
     expect(code).toContain(
       'MANIFEST="Flow_2026-10-18_save_out_03_Result_manifest.txt"',
     );
+  });
+
+  it("makes a file-name-safe prefix from the workflow name", () => {
+    const code = generateOutputCode({
+      ...output,
+      workflowName: 'My "QC" $run/1',
+      selectedFileName: "a.txt",
+    });
+    expect(code).toContain("My__QC___run_1_2026-10-18_save_out_03_Result");
+    expect(code).not.toContain('"QC"');
   });
 
   it("falls back to the default naming pattern", () => {
