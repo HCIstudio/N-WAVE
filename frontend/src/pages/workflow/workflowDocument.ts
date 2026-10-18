@@ -110,17 +110,26 @@ export const hydrateNodes = (nodes: Node<NodeData>[]): Node<NodeData>[] =>
     return rest;
   });
 
+/** Input files up to this size are saved with their content. */
+export const SAVED_FILE_CONTENT_LIMIT = 256 * 1024;
+
+const savedFile = (file: FileObject): FileObject =>
+  new TextEncoder().encode(file.content ?? "").length <= SAVED_FILE_CONTENT_LIMIT
+    ? file
+    : withoutContent(file);
+
 /**
- * Nodes as they are saved: file contents are dropped (they stay in the
- * browser and are re-uploaded after a reload; empty content marks that),
- * so saves stay small.
+ * Nodes as they are saved. Small input files keep their content, so a copy of
+ * an example (whose files can't be uploaded again) still runs after a reload.
+ * Larger contents are dropped, so saves stay small: they stay in the browser
+ * and are re-uploaded after a reload (empty content marks that).
  */
 export const sanitizeNodesForSave = (
   nodes: Node<NodeData>[],
 ): Node<NodeData>[] =>
   nodes.map((node) => {
     const data = { ...node.data };
-    if (data.files) data.files = data.files.map(withoutContent);
+    if (data.files) data.files = data.files.map(savedFile);
     data.fileContent = undefined;
     data.processedContent = undefined;
     // Keep which files a filter selected, not their content.
