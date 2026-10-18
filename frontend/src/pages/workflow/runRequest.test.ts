@@ -74,7 +74,7 @@ describe("buildRunRequest", () => {
       workflowName: "My run",
       workflowId: "wf1",
       fileContent: {},
-      executionSettings: { maxCpus: 4, executionTimeout: 30 },
+      executionSettings: { maxCpus: 4, executionTimeout: 0 },
     });
   });
 

@@ -33,7 +33,8 @@ export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
   resources: {
     maxCpus: 4,
     maxMemory: "4.GB",
-    maxTime: "PT30M",
+    // No limit of its own: the server's default applies (24 h unless set).
+    maxTime: "",
     executor: "local",
   },
   errorHandling: {
