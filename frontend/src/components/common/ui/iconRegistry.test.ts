@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { iconRegistry } from "./iconRegistry";
+import { getIcon, hasIcon, iconRegistry } from "./iconRegistry";
 
 // Collect every icon name the source code stores as a string, so adding a
 // node with a new icon fails here instead of silently rendering no icon.
@@ -39,4 +39,12 @@ describe("iconRegistry", () => {
   it.each([...referencedIconNames])("registers %s", (name) => {
     expect(iconRegistry[name]).toBeDefined();
   });
+
+  it.each(["constructor", "__proto__", "toString"])(
+    "doesn't treat Object.prototype's %s as an icon",
+    (name) => {
+      expect(hasIcon(name)).toBe(false);
+      expect(getIcon(name)).toBeUndefined();
+    },
+  );
 });

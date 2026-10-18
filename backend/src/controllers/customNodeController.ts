@@ -66,8 +66,18 @@ export const saveCustomNode = async (
 
     const nodePath = getNodeFilePath(nodeId);
     const existed = fs.existsSync(nodePath);
-    writeNodeFile(nodePath, node);
+    // Ids that differ only in case or punctuation share a file name.
+    const storedId = existed ? readStoredNodeId(nodePath) : undefined;
+    if (storedId !== undefined && storedId !== nodeId) {
+      res.status(409).json({
+        message: `Custom node id "${nodeId}" clashes with the existing node "${storedId}"`,
+      });
+      return;
+    }
+    // Workflows first: if one can't take the definition, the node file stays
+    // as it was.
     const updatedWorkflows = await updateWorkflowsForCustomNode(node);
+    writeNodeFile(nodePath, node);
 
     res.status(existed ? 200 : 201).json({
       node,
@@ -94,7 +104,10 @@ export const deleteCustomNode = async (
     }
 
     const nodePath = getNodeFilePath(nodeId);
-    if (!fs.existsSync(nodePath)) {
+    const storedId = fs.existsSync(nodePath)
+      ? (readStoredNodeId(nodePath) ?? nodeId)
+      : undefined;
+    if (storedId !== nodeId) {
       res.status(404).json({ message: "Custom node not found" });
       return;
     }
@@ -185,15 +198,16 @@ const updateWorkflowsForCustomNode = async (
     });
 
     if (affectedNodeIds.size > 0) {
-      const nextEdges = workflow.edges.filter((edge: WorkflowEdge) => {
-        if (affectedNodeIds.has(edge.source)) {
-          return !edge.sourceHandle || validOutputs.has(edge.sourceHandle);
-        }
-        if (affectedNodeIds.has(edge.target)) {
-          return !edge.targetHandle || validInputs.has(edge.targetHandle);
-        }
-        return true;
-      });
+      // Check both ends: an edge can join two instances of the node.
+      const nextEdges = workflow.edges.filter(
+        (edge: WorkflowEdge) =>
+          (!affectedNodeIds.has(edge.source) ||
+            !edge.sourceHandle ||
+            validOutputs.has(edge.sourceHandle)) &&
+          (!affectedNodeIds.has(edge.target) ||
+            !edge.targetHandle ||
+            validInputs.has(edge.targetHandle))
+      );
 
       if (nextEdges.length !== workflow.edges.length) {
         workflow.edges = nextEdges;
@@ -293,6 +307,15 @@ const writeNodeFile = (nodePath: string, node: unknown): void => {
   fs.renameSync(`${nodePath}.tmp`, nodePath);
 };
 
+const readStoredNodeId = (nodePath: string): string | undefined => {
+  try {
+    const stored = asObject(JSON.parse(fs.readFileSync(nodePath, "utf8")));
+    return typeof stored?.id === "string" ? stored.id.trim() : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const migrateLegacyRegistry = (nodeDirectory: string): void => {
   const legacyPath = getLegacyRegistryPath();
   if (!fs.existsSync(legacyPath)) return;
@@ -307,6 +330,8 @@ const migrateLegacyRegistry = (nodeDirectory: string): void => {
       writeNodeFile(nodePath, node);
     }
   }
+  // Retire the file so nodes deleted later don't come back on the next load.
+  fs.renameSync(legacyPath, `${legacyPath}.migrated`);
 };
 
 const getNodeFilePath = (nodeId: string): string =>

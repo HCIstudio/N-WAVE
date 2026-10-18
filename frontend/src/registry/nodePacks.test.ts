@@ -9,10 +9,12 @@ import {
   type StoredCustomNode,
 } from "./customNodes";
 import { getNodeCode } from "./nodeCode";
+import { nodeDefinitions } from "./nodeDefinitions";
 import {
   buildNodePack,
   findPackConflicts,
   groupInstalledPacks,
+  isReservedNodeId,
   NODE_PACK_FORMAT,
   nfCoreInstallIds,
   nodePackFileName,
@@ -242,6 +244,46 @@ describe("node pack format", () => {
     ]);
   });
 
+  it("takes arguments from the source, not the file", () => {
+    registerCustomNodes([trimReads]);
+    const expected = getNodeCode(makeNode(trimReads.id));
+    const parsed = parseNodePack(
+      withNode((node) => {
+        node.arguments = [null, { kind: "tuple" }];
+      }),
+    );
+    const imported = parsed.nodes[0].node as PackedCustomNode;
+    expect(imported.arguments).toEqual(trimReads.arguments);
+    registerCustomNodes([imported]);
+    expect(getNodeCode(makeNode(imported.id))).toEqual(expected);
+  });
+
+  it("uses the default icon for unknown icon names", () => {
+    for (const icon of ["constructor", "__proto__", "NoSuchIcon"]) {
+      const [result] = parseNodePack(
+        withNode((node) => {
+          node.icon = icon;
+        }),
+      ).nodes;
+      expect(result.errors).toEqual([]);
+      expect(result.node?.icon).toBe("Code");
+    }
+  });
+
+  it("rejects ids of built-in and nf-core nodes", () => {
+    for (const id of ["fastqc", "FastQC", "nfcore_fastqc", "outputDisplay"]) {
+      const [result] = parseNodePack(
+        withNode((node) => {
+          node.id = id;
+        }),
+      ).nodes;
+      expect(result.node).toBeUndefined();
+      expect(result.errors).toEqual([
+        `"${id}" is reserved for a built-in or nf-core node.`,
+      ]);
+    }
+  });
+
   it("rejects duplicate ids inside a pack", () => {
     const copy = JSON.parse(serializeNodePack(pack));
     copy.nodes[1] = { ...copy.nodes[0] };
@@ -251,6 +293,11 @@ describe("node pack format", () => {
     expect(parsed.nodes[1].errors).toEqual([
       `Another node in the pack has the id "${trimReads.id}".`,
     ]);
+
+    // Ids the backend stores in the same file count as the same id.
+    copy.nodes[0].id = "my-tool";
+    copy.nodes[1].id = "My.Tool";
+    expect(parseNodePack(JSON.stringify(copy)).nodes[1].node).toBeUndefined();
   });
 
   it("adds nf-core components the source includes but the pack doesn't list", () => {
@@ -327,10 +374,40 @@ describe("installed packs", () => {
     ).toEqual([bamStats.id]);
   });
 
+  it("treats ids the backend stores under one file name as conflicts", () => {
+    const existing = { ...imported[0], id: "my-tool", processType: "my-tool" };
+    const incoming = { ...imported[0], id: "My.Tool", processType: "My.Tool" };
+    expect(findPackConflicts([incoming], [existing])).toHaveLength(1);
+    // Replace keeps the stored id; keep both picks an id with its own file.
+    expect(
+      resolvePackImport([incoming], [existing], { "My.Tool": "replace" })[0],
+    ).toMatchObject({ id: "my-tool", processType: "my-tool" });
+    const kept = resolvePackImport(
+      [incoming],
+      [existing, { ...existing, id: "my-tool_2" }],
+      { "My.Tool": "keep-both" },
+    );
+    expect(kept[0].id).toBe("My.Tool_3");
+  });
+
   it("renames a node to keep both", () => {
     const renamed = withNewNodeId(imported[0], new Set([`${trimReads.id}_2`]));
     expect(renamed.id).toBe(`${trimReads.id}_3`);
     expect(renamed.processType).toBe(renamed.id);
+  });
+});
+
+// Captured before any custom node registers: the built-in definitions.
+const builtinIds = nodeDefinitions.flatMap((definition) =>
+  [definition.id, definition.processType].filter(
+    (id): id is string => Boolean(id),
+  ),
+);
+
+describe("reserved node ids", () => {
+  it("covers every built-in definition id and process type", () => {
+    expect(builtinIds.length).toBeGreaterThan(5);
+    expect(builtinIds.filter((id) => !isReservedNodeId(id))).toEqual([]);
   });
 });
 

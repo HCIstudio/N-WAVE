@@ -67,15 +67,16 @@ export const applyCustomNodeDefinition = (
         },
       };
     }),
-    edges: edges.filter((edge) => {
-      if (affected.has(edge.source)) {
-        return !edge.sourceHandle || outputNames.has(edge.sourceHandle);
-      }
-      if (affected.has(edge.target)) {
-        return !edge.targetHandle || inputNames.has(edge.targetHandle);
-      }
-      return true;
-    }),
+    // Check both ends: an edge can join two placed copies of the node.
+    edges: edges.filter(
+      (edge) =>
+        (!affected.has(edge.source) ||
+          !edge.sourceHandle ||
+          outputNames.has(edge.sourceHandle)) &&
+        (!affected.has(edge.target) ||
+          !edge.targetHandle ||
+          inputNames.has(edge.targetHandle)),
+    ),
   };
 };
 

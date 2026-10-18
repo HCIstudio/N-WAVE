@@ -40,4 +40,25 @@ describe("custom node tuple inputs", () => {
       "def nwaveLastOf(item) {",
     );
   });
+
+  it("skip malformed stored arguments instead of crashing", () => {
+    const parsed = parseCustomNodeSource(source);
+    const node = createStoredCustomNode(
+      { label: "Trim reads", description: "", icon: "Code", source },
+      parsed,
+      { inputs: parsed.inputs, outputs: parsed.outputs },
+    );
+    registerCustomNodes([node]);
+    const expected = getNodeCode(makeNode(node.id));
+    const broken = {
+      ...node,
+      arguments: [
+        null,
+        { kind: "tuple", name: "x" },
+        ...node.arguments,
+      ] as unknown as typeof node.arguments,
+    };
+    registerCustomNodes([broken]);
+    expect(getNodeCode(makeNode(node.id))).toEqual(expected);
+  });
 });

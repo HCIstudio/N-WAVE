@@ -160,6 +160,50 @@ export const cancelExecutionSchema = z.object({
     .max(512),
 });
 
+/** Custom node ids, as NODE_ID in frontend/src/registry/nodePacks.ts. */
+const CUSTOM_NODE_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/;
+/** Custom node sources, as MAX_SOURCE_LENGTH in frontend/src/registry/nodePacks.ts. */
+const MAX_CUSTOM_NODE_SOURCE_LENGTH = 500_000;
+/**
+ * Built-in node ids and process types a custom node would shadow ("nfcore_"
+ * ids belong to nf-core nodes). Keep in step with RESERVED_NODE_IDS in
+ * frontend/src/registry/nodePacks.ts.
+ */
+export const RESERVED_NODE_IDS = [
+  "fileInput",
+  "samplesheet",
+  "parameters",
+  "filter",
+  "map",
+  "merge",
+  "channelOperator",
+  "process",
+  "fastqc",
+  "trimmomatic",
+  "pipeline",
+  "note",
+  "outputDisplay",
+];
+const isReservedNodeId = (id: string): boolean =>
+  id.toLowerCase().startsWith("nfcore_") ||
+  RESERVED_NODE_IDS.some((reserved) => reserved.toLowerCase() === id.toLowerCase());
+
+const customNodeArgumentFieldSchema = z
+  .object({
+    kind: z.enum(["path", "val"]),
+    name: z.string().min(1).max(MAX_NAME_LENGTH),
+    meta: z.boolean().optional(),
+  })
+  .passthrough();
+
+const customNodeArgumentSchema = z
+  .object({
+    kind: z.enum(["path", "val", "tuple"]),
+    name: z.string().min(1).max(MAX_NAME_LENGTH),
+    fields: z.array(customNodeArgumentFieldSchema).max(500),
+  })
+  .passthrough();
+
 const customNodePortSchema = z
   .object({
     name: z.string().min(1).max(MAX_NAME_LENGTH),
@@ -178,13 +222,26 @@ export const saveCustomNodeSchema = z.object({
           .string({ required_error: "Custom node id is required" })
           .trim()
           .min(1, "Custom node id is required")
-          .max(MAX_NAME_LENGTH),
+          .regex(
+            CUSTOM_NODE_ID,
+            'must be letters, digits, "_", "-" or "." (up to 120 characters)'
+          )
+          .refine((id) => !isReservedNodeId(id), {
+            message: "is reserved for a built-in or nf-core node",
+          }),
         label: z.string().max(MAX_NAME_LENGTH).optional(),
         icon: z.string().max(MAX_NAME_LENGTH).optional(),
-        processType: z.string().max(MAX_NAME_LENGTH).optional(),
-        source: z.string().max(MAX_SCRIPT_LENGTH).optional(),
+        processType: z
+          .string()
+          .max(MAX_NAME_LENGTH)
+          .refine((processType) => !isReservedNodeId(processType), {
+            message: "is reserved for a built-in or nf-core node",
+          })
+          .optional(),
+        source: z.string().max(MAX_CUSTOM_NODE_SOURCE_LENGTH).optional(),
         inputs: z.array(customNodePortSchema).max(500).optional(),
         outputs: z.array(customNodePortSchema).max(500).optional(),
+        arguments: z.array(customNodeArgumentSchema).max(500).optional(),
       },
       { required_error: "Custom node payload is required" }
     )
