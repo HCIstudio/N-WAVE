@@ -59,6 +59,20 @@ const STREAM_HEADERS = {
 };
 
 /**
+ * The run's folder name under `outputDirectory`: `outputName`, or with `_2`,
+ * `_3`… when that folder exists, so runs never share a folder or log (an
+ * empty or `{date}` naming pattern repeats).
+ */
+export const uniqueOutputName = (outputDirectory: string, outputName: string): string => {
+  const base = path.resolve(outputDirectory);
+  let candidate = outputName;
+  for (let n = 2; fs.existsSync(path.join(base, candidate)); n++) {
+    candidate = `${outputName}_${n}`;
+  }
+  return candidate;
+};
+
+/**
  * Run the workflow and stream its output into `res`. The first line names
  * the run ("N-WAVE run: <id>"), which the browser uses to cancel it and
  * find its results. Setup failures before the stream starts answer 500.
@@ -71,11 +85,13 @@ export const runNextflowWorkflow = async (
   // Set once the run is recorded, so setup failures land in its history.
   let runId: string | null = null;
   let runLog: fs.WriteStream | null = null;
+  let cancelledInSetup = false;
   try {
     const name = sanitizeWorkflowName(request.workflowName);
+    const outputDirectory = settings.outputDirectory || "results";
     const dirs = createRunDirectories(
-      settings.outputDirectory || "results",
-      resolveOutputName(settings.outputNaming, name)
+      outputDirectory,
+      uniqueOutputName(outputDirectory, resolveOutputName(settings.outputNaming, name))
     );
     console.log(`Main output directory: ${dirs.main}`);
 
@@ -91,6 +107,13 @@ export const runNextflowWorkflow = async (
     } catch (error: unknown) {
       console.warn(`Could not record run ${id}:`, error);
     }
+    // Live from now, so its history doesn't call it interrupted while it is
+    // set up; a cancel meanwhile stops it before Nextflow starts.
+    registerRun(id, {
+      stop: () => {
+        cancelledInSetup = true;
+      },
+    });
     // Everything sent to the browser is also kept in the run's log.
     const log = fs.createWriteStream(path.join(dirs.main, RUN_LOG_FILE), {
       flags: "a",
@@ -159,6 +182,14 @@ export const runNextflowWorkflow = async (
 
     res.writeHead(200, STREAM_HEADERS);
     send(`N-WAVE run: ${id}\n`);
+    if (cancelledInSetup) {
+      unregisterRun(id);
+      send("\nExecution cancelled\n");
+      finishRun(id, "cancelled");
+      log.end();
+      res.end();
+      return;
+    }
     send(`${describeRunLimits(limits, timeoutMs)}\n`);
     if (pipeline && raisedNextflowVersion) {
       send(
@@ -195,6 +226,7 @@ export const runNextflowWorkflow = async (
     console.error("Setup error:", error);
     const message = `Failed to setup workflow execution: ${getErrorMessage(error)}`;
     if (runId) {
+      unregisterRun(runId);
       runLog?.write(`\n${message}\n`);
       finishRun(runId, "failed", getErrorMessage(error));
     }

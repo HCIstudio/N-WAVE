@@ -49,6 +49,22 @@ describe("applyCustomNodeDefinition", () => {
     expect(next?.edges.map((edge) => edge.id)).toEqual(["in-ok", "out-ok"]);
   });
 
+  it("checks both ends of an edge between two placed copies", () => {
+    const copies = [
+      nodes[0],
+      { ...nodes[0], id: "n3" },
+    ] as Node<NodeData>[];
+    const next = applyCustomNodeDefinition(
+      copies,
+      [
+        { id: "ok", source: "n1", sourceHandle: "counts", target: "n3", targetHandle: "text" },
+        { id: "gone", source: "n1", sourceHandle: "counts", target: "n3", targetHandle: "old" },
+      ] as Edge[],
+      definition,
+    );
+    expect(next?.edges.map((edge) => edge.id)).toEqual(["ok"]);
+  });
+
   it("is null when the workflow doesn't use the custom node", () => {
     expect(applyCustomNodeDefinition([nodes[1]], [], definition)).toBeNull();
   });

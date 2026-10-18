@@ -28,7 +28,7 @@ export interface RunTask {
 export const NEXTFLOW_LOG_PATHS = ["nextflow/.nextflow.log", ".nextflow.log"];
 
 const SUBMITTED =
-  /\[([0-9a-f]{2}\/[0-9a-f]{6})\] (Submitted|Cached) process > (.+)$/;
+  /\[([0-9a-f]{2}\/[0-9a-f]{6})\] (Submitted|Re-submitted|Cached) process > (.+)$/;
 const COMPLETED =
   /Task completed > TaskHandler\[.*?name: (.+?); status: \w+; exit: (\S+); error: (.*?); workDir: (\S+?)\]/;
 
@@ -41,6 +41,14 @@ export const parseTaskEvents = (log: string): RunTask[] => {
     const submitted = line.match(SUBMITTED);
     if (submitted) {
       const [, hash = "", kind, name = ""] = submitted;
+      if (kind === "Re-submitted") {
+        // A retry (errorStrategy 'retry') replaces the attempt that failed,
+        // so a task that later succeeded doesn't count as a failure.
+        const retried = [...tasks.values()]
+          .reverse()
+          .find((task) => task.name === name.trim() && task.status === "failed");
+        if (retried) tasks.delete(retried.hash);
+      }
       tasks.set(hash, {
         hash,
         name: name.trim(),

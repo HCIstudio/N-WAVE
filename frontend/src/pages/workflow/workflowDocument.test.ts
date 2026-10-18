@@ -11,6 +11,7 @@ import {
   hydrateEdges,
   hydrateNodes,
   loadErrorFor,
+  SAVED_FILE_CONTENT_LIMIT,
   sanitizeNodesForSave,
 } from "./workflowDocument";
 
@@ -135,7 +136,7 @@ describe("hydrateEdges with React Flow 12", () => {
 });
 
 describe("sanitizeNodesForSave", () => {
-  it("drops file contents but keeps what was selected", () => {
+  it("keeps small input files and what was selected, without copies", () => {
     const file = { name: "a.txt", size: 3, fileType: "txt", content: "abc" };
     const [saved] = sanitizeNodesForSave([
       node("in", "fileInput", {
@@ -145,11 +146,20 @@ describe("sanitizeNodesForSave", () => {
         processedContent: "ABC",
       }),
     ]);
-    expect(saved.data.files).toEqual([{ ...file, content: "" }]);
+    expect(saved.data.files).toEqual([file]);
     expect(saved.data.selectedFilterFiles).toEqual([{ ...file, content: "" }]);
     expect(saved.data.fileContent).toBeUndefined();
     expect(saved.data.processedContent).toBeUndefined();
     expect(saved.data.label).toBe("in");
+  });
+
+  it("drops the content of large input files", () => {
+    const content = "x".repeat(SAVED_FILE_CONTENT_LIMIT + 1);
+    const file = { name: "big.txt", size: content.length, content };
+    const [saved] = sanitizeNodesForSave([
+      node("in", "fileInput", { files: [file] }),
+    ]);
+    expect(saved.data.files).toEqual([{ ...file, content: "" }]);
   });
 });
 
@@ -174,7 +184,7 @@ describe("execution settings", () => {
       outputNaming: "{workflow_name}_{timestamp}",
       maxCpus: 4,
       maxMemory: "4.GB",
-      executionTimeout: 30,
+      executionTimeout: 0,
       errorStrategy: "terminate",
       cleanupOnFailure: false,
       nextflowVersion: "25.04.4",

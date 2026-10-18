@@ -76,6 +76,10 @@ export const buildRunRequest = ({
   rawSource,
   sourceFormat,
 }: RunRequestOptions) => {
+  // An empty field means the default; "" would name every run's folder the same.
+  const namingPattern =
+    settings.output?.namingPattern?.trim() || "{workflow_name}_{timestamp}";
+
   // Files for the input directory: File Input uploads and samplesheets.
   const fileContent: Record<string, string> = {};
   for (const file of launch?.inputFiles ?? getWorkflowInputFiles(nodes)) {
@@ -91,7 +95,7 @@ export const buildRunRequest = ({
           edges,
           workflowName || "workflow",
           settings.output.directory || "results",
-          settings.output?.namingPattern ?? "{workflow_name}_{timestamp}",
+          namingPattern,
         );
   if (!launch && nextflowScript.trim() === "") {
     throw new Error(
@@ -114,7 +118,10 @@ export const buildRunRequest = ({
     useDocker: settings.container?.enabled,
     containerImage: settings.container?.defaultImage,
     outputDirectory: settings.output.directory,
-    executionSettings: flattenExecutionSettings(settings),
+    executionSettings: {
+      ...flattenExecutionSettings(settings),
+      outputNaming: namingPattern,
+    },
     fileContent,
     // Keeps the run in this workflow's history.
     ...(workflowId ? { workflowId } : {}),

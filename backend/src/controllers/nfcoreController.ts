@@ -125,7 +125,10 @@ export const uninstallNfCoreModule = (req: Request, res: Response): void => {
 
   try {
     const index = loadInstalledIndex();
-    const installed = index[body.id];
+    // Own keys only: ids like "constructor" would otherwise hit Object.prototype.
+    const installed = Object.keys(index).includes(body.id)
+      ? index[body.id]
+      : undefined;
     if (!installed) {
       throw new NfCoreLibraryError(404, `nf-core module ${body.id} is not installed`);
     }

@@ -9,6 +9,12 @@ import {
   sanitizeVarName,
 } from "./generateNextflowScript";
 import { demoWorkflowSeed } from "../../demo/demoWorkflow";
+import { extractNextflowConfig } from "../../export/exportProject";
+import {
+  createStoredCustomNode,
+  parseCustomNodeSource,
+  registerCustomNodes,
+} from "../../registry/customNodes";
 
 // The built-in demo graph is a realistic input: file input -> two filter
 // branches (one mapped to uppercase) -> merge -> display output.
@@ -237,6 +243,98 @@ describe("generateNextflowScript edge cases", () => {
     const script = generate([fileInput([])], []);
     expect(script).toContain("params.selected_files = []");
     expect(script).toContain("ch_files = Channel.empty()");
+  });
+
+  it("gives each File Input its own files param and channel", () => {
+    const second = {
+      ...makeNode("fileInput", {
+        files: [{ name: "b.txt", size: 1, content: "b" }],
+      }),
+      id: "in2",
+    } as Node<NodeData>;
+    const filter2 = { ...filter, id: "f2" } as Node<NodeData>;
+    const script = generate(
+      [fileInput([{ name: "a.txt", size: 1, content: "a" }]), second, filter, filter2],
+      [edge("out"), { ...edge("out"), id: "e2", source: "in2", target: "f2" }],
+    );
+    expect(script).toContain("params.selected_files_in = ['a.txt']");
+    expect(script).toContain("params.selected_files_in2 = ['b.txt']");
+    expect(script).toContain(
+      "ch_files_in2 = Channel.fromList(params.selected_files_in2)",
+    );
+    expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files_in)`);
+    expect(script).toContain(`${getProcessNameForNode(filter2)}(ch_files_in2)`);
+  });
+
+  it("quotes file names and the output directory as Groovy strings", () => {
+    const script = generate(
+      [fileInput([{ name: "patient's.fq", size: 1, content: "a" }])],
+      [],
+      "/home/o'brien/results",
+    );
+    expect(script).toContain(String.raw`params.selected_files = ['patient\'s.fq']`);
+    expect(script).toContain(String.raw`params.outdir = '/home/o\'brien/results'`);
+  });
+
+  it("quotes selected file names in a Filter's file filter", () => {
+    const script = generate(
+      [
+        fileInput([{ name: "o'k.txt", size: 1, content: "a" }]),
+        {
+          ...filter,
+          data: { ...filter.data, selectedFilterFiles: [{ name: "o'k.txt" }] },
+        } as Node<NodeData>,
+      ],
+      [edge("out")],
+    );
+    expect(script).toContain(String.raw`file.name == 'o\'k.txt'`);
+  });
+
+  it("keeps a custom process labelled Save before the steps using it", () => {
+    const source = [
+      "process SAVE_RESULTS {",
+      "  input:",
+      "  path x",
+      "  output:",
+      "  path 'out.txt', emit: out",
+      "  script:",
+      '  """',
+      "  cp $x out.txt",
+      '  """',
+      "}",
+    ].join("\n");
+    const parsed = parseCustomNodeSource(source);
+    const custom = createStoredCustomNode(
+      { label: "Save results", description: "", icon: "Code", source },
+      parsed,
+      { inputs: parsed.inputs, outputs: parsed.outputs },
+    );
+    registerCustomNodes([custom]);
+    const save = { ...makeNode(custom.id), id: "n1" } as Node<NodeData>;
+    const script = generate(
+      [fileInput([]), save, filter],
+      [
+        { ...edge("out"), id: "e1", target: "n1", targetHandle: parsed.inputs[0].name },
+        { id: "e2", source: "n1", sourceHandle: "out", target: "f", targetHandle: "in" },
+      ],
+    );
+    const call = script.indexOf(`${custom.processType}`, script.indexOf("workflow {"));
+    expect(call).toBeGreaterThan(-1);
+    expect(call).toBeLessThan(
+      script.indexOf(`${getProcessNameForNode(filter)}(`, script.indexOf("workflow {")),
+    );
+  });
+
+  it("keeps a */ in a config value inside the embedded config", () => {
+    const parameters = makeNode("parameters", {
+      parameters: [{ name: "reads", type: "text", value: "data/*/R1.fastq" }],
+    });
+    const script = generate([parameters], []);
+    const { script: cleaned, config } = extractNextflowConfig(script);
+    expect(config).toContain("reads = 'data/*/R1.fastq'");
+    expect(cleaned).not.toContain("N-WAVE_NEXTFLOW_CONFIG");
+    expect(cleaned).toContain("workflow {");
+    expect(cleaned).not.toContain("R1.fastq'\n}");
   });
 
   it("uses forward slashes in the output directory", () => {

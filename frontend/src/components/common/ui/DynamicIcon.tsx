@@ -1,13 +1,14 @@
 import type React from "react";
 import type { LucideProps } from "lucide-react";
-import { iconRegistry } from "./iconRegistry";
+import { getIcon } from "./iconRegistry";
 
 interface DynamicIconProps extends LucideProps {
   name: string;
 }
 
 const DynamicIcon: React.FC<DynamicIconProps> = ({ name, ...props }) => {
-  const LucideIcon = iconRegistry[name];
+  // Unknown names (including "constructor", "__proto__") fall back to Code.
+  const LucideIcon = getIcon(name) ?? getIcon("Code");
 
   if (!LucideIcon) {
     return null;

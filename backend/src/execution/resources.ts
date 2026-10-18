@@ -125,19 +125,24 @@ export const buildResourceLimitsConfig = (limits: { cpus: number; memory: string
 /** Default run time limit in minutes when a run doesn't set one (24 hours). */
 export const DEFAULT_TIMEOUT_MINUTES = 24 * 60;
 
+/** The longest delay setTimeout supports (~24.8 days); longer fires at once. */
+export const MAX_TIMEOUT_MS = 2_147_483_647;
+
 /**
  * Run time limit in milliseconds, or 0 for none: the run's own limit when
  * set, otherwise NWAVE_EXECUTION_TIMEOUT (minutes; 0 = no limit), otherwise
- * 24 hours.
+ * 24 hours. At most MAX_TIMEOUT_MS.
  */
 export const resolveTimeoutMs = (
   runMinutes: number | undefined,
   env: NodeJS.ProcessEnv = process.env,
 ): number => {
-  if (runMinutes && runMinutes > 0) return Math.round(runMinutes * 60_000);
+  if (runMinutes && runMinutes > 0) {
+    return Math.min(Math.round(runMinutes * 60_000), MAX_TIMEOUT_MS);
+  }
   const configured = env.NWAVE_EXECUTION_TIMEOUT?.trim();
   if (configured !== undefined && configured !== "" && /^\d+(\.\d+)?$/.test(configured)) {
-    return Math.round(Number(configured) * 60_000);
+    return Math.min(Math.round(Number(configured) * 60_000), MAX_TIMEOUT_MS);
   }
   return DEFAULT_TIMEOUT_MINUTES * 60_000;
 };

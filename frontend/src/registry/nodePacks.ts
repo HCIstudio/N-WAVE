@@ -4,9 +4,11 @@
 // its nodes like any custom node (backend in Docker installs, browser storage
 // in the demo), each tagged with the pack it came from.
 
+import { hasIcon } from "../components/common/ui/iconRegistry";
 import { getSubworkflowIncludes } from "./nfcore/subworkflowSource";
 import {
   type CustomNodeArgument,
+  type CustomNodeInputKind,
   type CustomNodeInput,
   type CustomNodeOutput,
   type CustomNodeSettingType,
@@ -68,6 +70,45 @@ export type PackedCustomNode = StoredCustomNode;
 export const PACK_ID = /^[a-z0-9][a-z0-9._-]{0,79}$/;
 /** Node ids: they become file names and process types. */
 export const NODE_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/;
+/**
+ * The key the backend stores a node under (its file name), so ids that
+ * differ only in case or punctuation share one. Mirrors toFileBaseName in
+ * backend/src/controllers/customNodeController.ts.
+ */
+export const nodeStorageKey = (id: string): string =>
+  id
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "custom-node";
+
+/**
+ * Built-in node ids and process types (nodeDefinitions.ts): a custom node
+ * with one would shadow the built-in. "nfcore_" ids belong to nf-core nodes.
+ * Keep in step with RESERVED_NODE_IDS in backend/src/validation/schemas.ts.
+ */
+export const RESERVED_NODE_IDS = [
+  "fileInput",
+  "samplesheet",
+  "parameters",
+  "filter",
+  "map",
+  "merge",
+  "channelOperator",
+  "process",
+  "fastqc",
+  "trimmomatic",
+  "pipeline",
+  "note",
+  "outputDisplay",
+];
+const RESERVED_NODE_ID_KEYS = new Set(
+  RESERVED_NODE_IDS.map((id) => id.toLowerCase()),
+);
+export const isReservedNodeId = (id: string): boolean =>
+  id.toLowerCase().startsWith("nfcore_") ||
+  RESERVED_NODE_ID_KEYS.has(id.toLowerCase());
+
 const PORT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const NFCORE_COMPONENT = /^[a-z0-9_]+(\/[a-z0-9_]+)*$/;
 const SETTING_TYPES: CustomNodeSettingType[] = [
@@ -348,6 +389,8 @@ export const validatePackNode = (
     errors.push(
       `"${id}" isn't a valid node id (letters, digits, "_", "-", "."; up to 120 characters).`,
     );
+  } else if (id && isReservedNodeId(id)) {
+    errors.push(`"${id}" is reserved for a built-in or nf-core node.`);
   }
   const label = requiredString(raw, "label", errors, where);
   const source = requiredString(raw, "source", errors, where);
@@ -356,7 +399,8 @@ export const validatePackNode = (
   }
   const processName = requiredString(raw, "processName", errors, where);
   const description = optionalString(raw, "description", errors, where) ?? "";
-  const icon = optionalString(raw, "icon", errors, where) ?? "Code";
+  const rawIcon = optionalString(raw, "icon", errors, where);
+  const icon = rawIcon && hasIcon(rawIcon) ? rawIcon : "Code";
   const kind = raw.kind;
   if (kind !== undefined && kind !== "process" && kind !== "workflow") {
     errors.push('"kind" must be "process" or "workflow".');
@@ -446,7 +490,23 @@ export const validatePackNode = (
   };
   if (errors.length > 0) return result;
 
-  const parsedArguments = parseCustomNodeSource(source).arguments;
+  // Arguments come from the source, not the file: the code generator relies
+  // on their shape. Workflow takes keep their input's kind (converted nf-core
+  // subworkflows type value takes from meta.yml, not the source).
+  const inputKinds = new Map(inputs.map((input) => [input.name, input.kind]));
+  const parsedArguments = parseCustomNodeSource(source).arguments.map(
+    (argument): CustomNodeArgument => {
+      if (kind !== "workflow") return argument;
+      const takeKind: CustomNodeInputKind =
+        inputKinds.get(argument.name) ??
+        (argument.kind === "val" ? "val" : "path");
+      return {
+        kind: takeKind,
+        name: argument.name,
+        fields: [{ kind: takeKind, name: argument.name }],
+      };
+    },
+  );
   const now = new Date().toISOString();
   result.node = {
     id,
@@ -459,9 +519,7 @@ export const validatePackNode = (
     source,
     inputs,
     outputs,
-    arguments: Array.isArray(raw.arguments)
-      ? (raw.arguments as CustomNodeArgument[])
-      : parsedArguments,
+    arguments: parsedArguments,
     ...(Array.isArray(raw.config) ? { config: raw.config as string[] } : {}),
     createdAt: now,
     updatedAt: now,
@@ -525,8 +583,9 @@ export const parseNodePack = (text: string): ParsedNodePack => {
   const seen = new Map<string, number>();
   for (const result of nodes) {
     if (!result.node) continue;
-    const count = (seen.get(result.node.id) ?? 0) + 1;
-    seen.set(result.node.id, count);
+    const key = nodeStorageKey(result.node.id);
+    const count = (seen.get(key) ?? 0) + 1;
+    seen.set(key, count);
     if (count > 1) {
       result.errors.push(`Another node in the pack has the id "${result.id}".`);
       result.node = undefined;
@@ -570,14 +629,19 @@ export interface NodePackConflict {
   existingSource: "same-pack" | "other-pack" | "local";
 }
 
-/** Pack nodes whose id is already used by an installed custom node. */
+/**
+ * Pack nodes whose id is already used by an installed custom node, or
+ * stored under the same key (ids differing only in case or punctuation).
+ */
 export const findPackConflicts = (
   incoming: PackedCustomNode[],
   installed: PackedCustomNode[],
 ): NodePackConflict[] => {
-  const byId = new Map(installed.map((node) => [node.id, node]));
+  const byKey = new Map(
+    installed.map((node) => [nodeStorageKey(node.id), node]),
+  );
   return incoming.flatMap((node) => {
-    const existing = byId.get(node.id);
+    const existing = byKey.get(nodeStorageKey(node.id));
     if (!existing) return [];
     return [
       {
@@ -598,9 +662,10 @@ export const withNewNodeId = (
   node: PackedCustomNode,
   taken: Set<string>,
 ): PackedCustomNode => {
+  const takenKeys = new Set(Array.from(taken, nodeStorageKey));
   let suffix = 2;
   let id = `${node.id}_${suffix}`;
-  while (taken.has(id)) {
+  while (takenKeys.has(nodeStorageKey(id))) {
     suffix += 1;
     id = `${node.id}_${suffix}`;
   }
@@ -710,8 +775,16 @@ export const resolvePackImport = (
     const choice = choices[node.id] ?? defaultConflictChoice(conflict);
     if (choice === "skip") return [];
     if (choice === "replace") {
-      // Keep the existing node's creation date.
-      return [{ ...node, createdAt: conflict.existing.createdAt }];
+      // Keep the existing node's creation date, and its id when the two only
+      // share a storage key (the backend refuses to overwrite another id).
+      const { id, processType } = conflict.existing;
+      return [
+        {
+          ...node,
+          ...(id !== node.id ? { id, processType } : {}),
+          createdAt: conflict.existing.createdAt,
+        },
+      ];
     }
     const renamed = withNewNodeId(node, taken);
     taken.add(renamed.id);

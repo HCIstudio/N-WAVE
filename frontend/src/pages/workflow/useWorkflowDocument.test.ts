@@ -90,7 +90,7 @@ describe("useWorkflowDocument", () => {
     unmount();
   });
 
-  it("saves changes automatically, without file contents", async () => {
+  it("saves changes automatically", async () => {
     get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [] } });
     vi.useFakeTimers();
     const props = options();
@@ -110,7 +110,7 @@ describe("useWorkflowDocument", () => {
           ...storedNode,
           data: {
             label: "Reads",
-            files: [{ name: "a.txt", size: 1, content: "" }],
+            files: [{ name: "a.txt", size: 1, content: "abc" }],
             fileContent: undefined,
             processedContent: undefined,
           },

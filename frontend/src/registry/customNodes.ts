@@ -446,6 +446,17 @@ const buildArgumentChannels = ({
       .map((input) => [input.name, input])
   );
   const channels: Array<{ name: string; definition?: string }> = [];
+  // Skip malformed entries (nodes stored before packs were checked).
+  const argumentList = (customNode.arguments ?? []).filter(
+    (argument) =>
+      typeof argument === "object" &&
+      argument !== null &&
+      typeof argument.name === "string" &&
+      Array.isArray(argument.fields) &&
+      argument.fields.every(
+        (field) => typeof field === "object" && field !== null
+      )
+  );
 
   if (customNode.kind === "workflow") {
     // Workflow takes: connected channels, or the input's placeholder while
@@ -454,7 +465,7 @@ const buildArgumentChannels = ({
       customNode.inputs.map((input) => [input.name, input])
     );
     let connected = 0;
-    for (const argument of customNode.arguments) {
+    for (const argument of argumentList) {
       const input = inputsByName.get(argument.name);
       if (argument.kind === "val") {
         channels.push({
@@ -479,7 +490,7 @@ const buildArgumentChannels = ({
     return connected > 0 ? channels : null;
   }
 
-  for (const argument of customNode.arguments) {
+  for (const argument of argumentList) {
     if (argument.kind === "val") {
       const value = valueInputs[argument.name] ?? "";
       channels.push({

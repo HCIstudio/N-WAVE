@@ -40,6 +40,20 @@ describe("parseTaskEvents", () => {
     ]);
   });
 
+  it("keeps only the latest attempt of a retried task", () => {
+    const log = [
+      "Oct-15 15:30:00.000 [Task submitter] INFO  nextflow.Session - [8e/7524e9] Submitted process > SUB:FLAKY (1)",
+      "Oct-15 15:30:01.000 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 1; name: SUB:FLAKY (1); status: COMPLETED; exit: 137; error: -; workDir: /app/results/run/nextflow/work/8e/7524e9aa]",
+      "Oct-15 15:30:01.500 [Task submitter] INFO  nextflow.Session - [11/111111] Submitted process > OTHER (1)",
+      "Oct-15 15:30:02.000 [Task submitter] INFO  nextflow.Session - [c0/42fd42] Re-submitted process > SUB:FLAKY (1)",
+      "Oct-15 15:30:03.000 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 1; name: SUB:FLAKY (1); status: COMPLETED; exit: 0; error: -; workDir: /app/results/run/nextflow/work/c0/42fd42bb]",
+    ].join("\n");
+    expect(parseTaskEvents(log)).toEqual([
+      { hash: "11/111111", name: "OTHER (1)", process: "OTHER", status: "running" },
+      { hash: "c0/42fd42", name: "SUB:FLAKY (1)", process: "SUB:FLAKY", status: "succeeded", exitCode: 0 },
+    ]);
+  });
+
   it("returns nothing for a log without tasks", () => {
     expect(parseTaskEvents("N E X T F L O W\n")).toEqual([]);
   });

@@ -2,6 +2,14 @@
 
 import type { ProcessConfig } from "./processes";
 
+/** A shell word that passes `value` through unchanged. */
+const shellQuote = (value: string): string =>
+  `'${value.replace(/'/g, "'\\''")}'`;
+
+/** Text for a `"""` script block, where `\`, `$` and `"` are special. */
+const scriptText = (value: string): string =>
+  value.replace(/[\\$"]/g, "\\$&");
+
 export function generateFilterProcess(
   config: ProcessConfig & {
     filterText?: string;
@@ -19,18 +27,17 @@ export function generateFilterProcess(
 
   let filterScript = "";
   if (filterText && filterMode) {
+    const negateFlag = filterNegate ? "-v" : "";
+    const grepFilter = (flags: string, pattern: string, message: string) =>
+      `grep ${flags} ${scriptText(shellQuote(pattern))} \${input_file} > "\${input_file.baseName}_filtered.txt" || echo ${scriptText(shellQuote(`# Filter: No lines ${message} '${filterText}'`))} > "\${input_file.baseName}_filtered.txt"`;
     if (filterMode === "contains") {
-      const negateFlag = filterNegate ? "-v" : "";
-      filterScript = `grep ${negateFlag} "${filterText}" \${input_file} > "\${input_file.baseName}_filtered.txt" || echo "# Filter: No lines contained '${filterText}'" > "\${input_file.baseName}_filtered.txt"`;
+      filterScript = grepFilter(negateFlag, filterText, "contained");
     } else if (filterMode === "startsWith") {
-      const negateFlag = filterNegate ? "-v" : "";
-      filterScript = `grep ${negateFlag} "^${filterText}" \${input_file} > "\${input_file.baseName}_filtered.txt" || echo "# Filter: No lines started with '${filterText}'" > "\${input_file.baseName}_filtered.txt"`;
+      filterScript = grepFilter(negateFlag, `^${filterText}`, "started with");
     } else if (filterMode === "endsWith") {
-      const negateFlag = filterNegate ? "-v" : "";
-      filterScript = `grep ${negateFlag} "${filterText}$" \${input_file} > "\${input_file.baseName}_filtered.txt" || echo "# Filter: No lines ended with '${filterText}'" > "\${input_file.baseName}_filtered.txt"`;
+      filterScript = grepFilter(negateFlag, `${filterText}$`, "ended with");
     } else if (filterMode === "regex") {
-      const negateFlag = filterNegate ? "-v" : "";
-      filterScript = `grep ${negateFlag} -E "${filterText}" \${input_file} > "\${input_file.baseName}_filtered.txt" || echo "# Filter: No lines matched regex '${filterText}'" > "\${input_file.baseName}_filtered.txt"`;
+      filterScript = grepFilter(`${negateFlag} -E`, filterText, "matched regex");
     }
   } else {
     filterScript = `cp \${input_file} "\${input_file.baseName}_filtered.txt"`;
@@ -82,7 +89,9 @@ export function generateMapProcess(
   } else if (mapOperation === "replaceText") {
     const findText = mapReplaceFind || "";
     const replaceText = mapReplaceWith || "";
-    transformScript = `sed 's/${findText}/${replaceText}/g' \${input_file} > "\${input_file.baseName}_mapped.txt"`;
+    // `/` is the sed delimiter; `&` in the replacement means the match.
+    const sedExpression = `s/${findText.replace(/[\\/]/g, "\\$&")}/${replaceText.replace(/[\\/&]/g, "\\$&")}/g`;
+    transformScript = `sed ${scriptText(shellQuote(sedExpression))} \${input_file} > "\${input_file.baseName}_mapped.txt"`;
   } else {
     transformScript = `cp \${input_file} "\${input_file.baseName}_mapped.txt"`;
   }

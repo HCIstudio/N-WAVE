@@ -146,10 +146,31 @@ export const findRunResultsDir = (id: string): string | null => {
   return fs.existsSync(dir) ? dir : null;
 };
 
-/** Files under `root` (relative, "/"-separated), up to `limit`. */
+/**
+ * `target`'s real path when, after following symlinks, it is a file inside
+ * `runDir` (also resolved), or null. Nextflow's links into the run's own
+ * work/ resolve inside it; links elsewhere don't.
+ */
+export const realFileInRun = (runDir: string, target: string): string | null => {
+  try {
+    const real = fs.realpathSync(target);
+    if (!real.startsWith(`${fs.realpathSync(runDir)}${path.sep}`)) return null;
+    return fs.statSync(real).isFile() ? real : null;
+  } catch {
+    // Missing (ENOENT), a link loop or unreadable: not there to serve.
+    return null;
+  }
+};
+
+/**
+ * Files under `root` (relative, "/"-separated), up to `limit`. Symlinks are
+ * listed when they lead to a file inside `runDir` (Nextflow publishes
+ * results as symlinks into work/ by default).
+ */
 export const listFiles = (
   root: string,
-  limit = 5_000
+  limit = 5_000,
+  runDir = root
 ): Array<{ path: string; size: number }> => {
   const files: Array<{ path: string; size: number }> = [];
   const walk = (dir: string) => {
@@ -157,10 +178,12 @@ export const listFiles = (
       if (files.length >= limit) return;
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) walk(full);
-      else if (entry.isFile()) {
+      else if (entry.isFile() || entry.isSymbolicLink()) {
+        const real = entry.isFile() ? full : realFileInRun(runDir, full);
+        if (!real) continue;
         files.push({
           path: path.relative(root, full).split(path.sep).join("/"),
-          size: fs.statSync(full).size,
+          size: fs.statSync(real).size,
         });
       }
     }

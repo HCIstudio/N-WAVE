@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import axios from "axios";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app";
@@ -8,7 +9,9 @@ import {
   ensureModulesInstalled,
   ensureSubworkflowsInstalled,
   findCatalogEntry,
+  findSubworkflowEntry,
   installModule,
+  installSubworkflow,
   NfCoreLibraryError,
 } from "../nfcore/library";
 
@@ -55,6 +58,11 @@ const moduleDir = (modulePath: string) =>
   path.join(dataDir, "nf-core/modules/nf-core", modulePath);
 const subworkflowDir = (name: string) =>
   path.join(dataDir, "nf-core/subworkflows/nf-core", name);
+/** Install temp dirs left next to an install dir. */
+const tempDirsNextTo = (dir: string) =>
+  fs
+    .readdirSync(path.dirname(dir))
+    .filter((name) => name.startsWith(`${path.basename(dir)}.tmp`));
 
 describe("GET /api/nfcore/modules/source", () => {
   it("fetches the main.nf and meta.yml of a module that isn't installed from GitHub", async () => {
@@ -160,7 +168,7 @@ describe("installing nf-core modules", () => {
       "tx2gene.py of custom/tx2gene/templates/tx2gene.py"
     );
     expect(fs.existsSync(path.join(dir, "nwave.adapter.json"))).toBe(true);
-    expect(fs.existsSync(`${dir}.tmp`)).toBe(false);
+    expect(tempDirsNextTo(dir)).toEqual([]);
 
     const installed = await request(app).get("/api/nfcore/installed").expect(200);
     expect(installed.body.installed.map((entry: { id: string }) => entry.id)).toEqual([
@@ -201,6 +209,61 @@ describe("installing nf-core modules", () => {
     ).rejects.toMatchObject({ status: 400, reasons: ["Unsupported input"] });
     expect(fs.existsSync(moduleDir("fastqc"))).toBe(false);
   });
+
+  it("lets a second install of the same module wait for the first", async () => {
+    const entry = findCatalogEntry("nf-core/fastqc");
+    if (!entry) throw new Error("nf-core/fastqc is not in the catalog");
+    const [first, second] = await Promise.all([
+      installModule(entry),
+      installModule(entry),
+    ]);
+    expect(second).toBe(first);
+    const dir = moduleDir("fastqc");
+    for (const file of ["main.nf", "meta.yml", "nwave.adapter.json"]) {
+      expect(fs.existsSync(path.join(dir, file))).toBe(true);
+    }
+    expect(tempDirsNextTo(dir)).toEqual([]);
+    // Each file was downloaded once.
+    expect(new Set(githubRequests).size).toBe(githubRequests.length);
+
+    // Once it's done, installing again reinstalls.
+    githubRequests.length = 0;
+    await installModule(entry);
+    expect(githubRequests.length).toBeGreaterThan(0);
+  });
+
+  it("lets a run's install of a subworkflow wait for one already running", async () => {
+    const entry = findSubworkflowEntry("nf-core/subworkflows/bam_stats_samtools");
+    if (!entry) throw new Error("bam_stats_samtools is not in the catalog");
+    await Promise.all([
+      installSubworkflow(entry),
+      ensureSubworkflowsInstalled(["bam_stats_samtools"]),
+    ]);
+    const dir = subworkflowDir("bam_stats_samtools");
+    expect(fs.existsSync(path.join(dir, "main.nf"))).toBe(true);
+    expect(fs.existsSync(path.join(moduleDir("samtools/stats"), "main.nf"))).toBe(
+      true
+    );
+    expect(tempDirsNextTo(dir)).toEqual([]);
+    expect(new Set(githubRequests).size).toBe(githubRequests.length);
+  });
+
+  it("removes the temp dir of a failed install", async () => {
+    vi.mocked(axios.get).mockRejectedValueOnce(new Error("socket hang up"));
+    await request(app)
+      .post("/api/nfcore/install")
+      .send({ id: "nf-core/fastqc" })
+      .expect(500);
+    expect(fs.existsSync(moduleDir("fastqc"))).toBe(false);
+    expect(tempDirsNextTo(moduleDir("fastqc"))).toEqual([]);
+  });
+
+  it.each(["constructor", "__proto__", "toString"])(
+    "answers 404 for uninstalling %j",
+    async (id) => {
+      await request(app).post("/api/nfcore/uninstall").send({ id }).expect(404);
+    }
+  );
 
   it("reports unknown modules and ones that aren't installed", async () => {
     await request(app)

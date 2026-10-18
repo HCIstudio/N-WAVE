@@ -34,7 +34,8 @@ export const extractNwaveNextflowAssets = (
   const cleanedScript = script.replace(
     /\/\*\s*N-WAVE_NEXTFLOW_CONFIG\s*([\s\S]*?)\*\//g,
     (_match, configBlock: string) => {
-      configBlocks.push(configBlock.trim());
+      // The generator writes `*/` in values as `*\/`.
+      configBlocks.push(configBlock.replace(/\*\\\//g, "*/").trim());
       return "";
     }
   );

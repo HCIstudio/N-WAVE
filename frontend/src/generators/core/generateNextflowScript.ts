@@ -6,6 +6,7 @@ import { helperFunctionsFor } from "./helpers";
 import {
   generateParameterDeclarations,
   getNodeParameters,
+  singleQuoted,
   type WorkflowParameter,
 } from "../../registry/params";
 import {
@@ -57,7 +58,7 @@ export const generateNextflowScript = (
   // Convert outputDirectory to use forward slashes for Nextflow compatibility
   const nfOutputDirectory = outputDirectory.replace(/\\/g, "/");
 
-  let paramsScript = `params.outdir = '${nfOutputDirectory}'\n\n`;
+  let paramsScript = `params.outdir = ${singleQuoted(nfOutputDirectory)}\n\n`;
   let firstPassScript = "";
   const processScripts: { [key: string]: string } = {};
   const executionOrder: string[] = [];
@@ -67,6 +68,8 @@ export const generateNextflowScript = (
   let outputDisplayCounter = 1;
   const channelDefinitions: string[] = [];
   const processInvocations: string[] = [];
+  // Display Output calls, which go last.
+  const outputDisplayInvocations = new Set<string>();
   const includeStatements: string[] = [];
   const nextflowConfigBlocks: string[] = [];
   // Top-level input channels defined by file-input nodes (e.g. "ch_files").
@@ -92,6 +95,8 @@ export const generateNextflowScript = (
   // First pass: Define file inputs and map all node outputs to channel names
   // `name = value` lines for the exported config's params { } block.
   const paramConfigLines: string[] = [];
+  const hasSeveralFileInputs =
+    nodes.filter((node) => node.type === "fileInput").length > 1;
 
   for (const node of nodes) {
     if (node.type === "parameters") {
@@ -127,7 +132,11 @@ export const generateNextflowScript = (
       paramsScript += params;
       firstPassScript += `${channel}\n`;
     } else if (node.type === "fileInput") {
-      const channelName = "ch_files";
+      // A lone File Input keeps the historical names; with several, each
+      // gets its own param and channel (the first `params.x =` wins).
+      const suffix = hasSeveralFileInputs ? `_${sanitizeVarName(node.id)}` : "";
+      const channelName = `ch_files${suffix}`;
+      const selectedFilesParam = `params.selected_files${suffix}`;
       const legacyFileOutputChannelName = sanitizeVarName(
         `${node.id}_ch_files_out`
       );
@@ -144,18 +153,18 @@ export const generateNextflowScript = (
       if (filenames.length > 0) {
         // Add parameters for input directory and selected files
         declareInputDir();
-        paramsScript += `params.selected_files = [${filenames
-          .map((name: string) => `'${name}'`)
+        paramsScript += `${selectedFilesParam} = [${filenames
+          .map(singleQuoted)
           .join(", ")}]\n\n`;
 
         // Create channel from file list with proper file staging
-        firstPassScript += `${channelName} = Channel.fromList(params.selected_files)\n`;
+        firstPassScript += `${channelName} = Channel.fromList(${selectedFilesParam})\n`;
         firstPassScript += `    .map { filename -> file("\${params.inputdir}/\${filename}") }\n\n`;
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       } else {
         // Fallback if no files
         declareInputDir();
-        paramsScript += "params.selected_files = []\n\n";
+        paramsScript += `${selectedFilesParam} = []\n\n`;
         firstPassScript += `${channelName} = Channel.empty()\n\n`;
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       }
@@ -265,6 +274,11 @@ export const generateNextflowScript = (
       }
 
       processInvocations.push(...generationResult.processInvocations);
+      if (node.type === "outputDisplay") {
+        for (const invocation of generationResult.processInvocations) {
+          outputDisplayInvocations.add(invocation);
+        }
+      }
       if (generationResult.dependencies) {
         for (const invocation of generationResult.processInvocations) {
           declaredDependencies.set(invocation, {
@@ -284,13 +298,13 @@ export const generateNextflowScript = (
   finalScript += "nextflow.enable.dsl = 2\n\n";
   finalScript += paramsScript;
   if (nextflowConfigBlocks.length > 0 || paramConfigLines.length > 0) {
-    finalScript += "/* N-WAVE_NEXTFLOW_CONFIG\n";
+    let config = "";
     if (paramConfigLines.length > 0) {
-      finalScript += `params {\n${paramConfigLines.map((line) => `  ${line}`).join("\n")}\n}\n`;
+      config += `params {\n${paramConfigLines.map((line) => `  ${line}`).join("\n")}\n}\n`;
     }
     if (nextflowConfigBlocks.length > 0) {
-      finalScript += "process {\n";
-      finalScript += Array.from(new Set(nextflowConfigBlocks))
+      config += "process {\n";
+      config += Array.from(new Set(nextflowConfigBlocks))
         .map((block) =>
           block
             .split("\n")
@@ -298,9 +312,10 @@ export const generateNextflowScript = (
             .join("\n")
         )
         .join("\n\n");
-      finalScript += "\n}";
+      config += "\n}";
     }
-    finalScript += "\n*/\n\n";
+    // `*/` in a value would end the comment; the extractors undo this.
+    finalScript += `/* N-WAVE_NEXTFLOW_CONFIG\n${config.replace(/\*\//g, "*\\/")}\n*/\n\n`;
   }
   const uniqueIncludeStatements = Array.from(new Set(includeStatements));
   if (uniqueIncludeStatements.length > 0) {
@@ -420,7 +435,7 @@ export const generateNextflowScript = (
     }
 
     // Now add this invocation
-    if (invocation.includes("save_")) {
+    if (outputDisplayInvocations.has(invocation)) {
       if (!outputInvocations.includes(invocation)) {
         outputInvocations.push(invocation);
       }
@@ -472,10 +487,7 @@ export const generateNextflowScript = (
         !sortedInvocations.includes(invocation) &&
         !outputInvocations.includes(invocation)
       ) {
-        if (
-          invocation.includes("save_") ||
-          invocation.includes("Save output")
-        ) {
+        if (outputDisplayInvocations.has(invocation)) {
           outputInvocations.push(invocation);
         } else {
           sortedInvocations.push(invocation);

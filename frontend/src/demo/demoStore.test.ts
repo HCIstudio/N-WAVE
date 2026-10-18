@@ -61,4 +61,20 @@ describe("demoStore", () => {
     const names = demoStore.list().map((w) => w.name);
     expect(names).toContain("Persisted");
   });
+
+  it("skips malformed stored entries and defaults missing fields", () => {
+    localStorage.setItem(
+      "nwave.demo.workflows",
+      JSON.stringify([null, 7, { name: "No id" }, { _id: "bare", name: "Bare" }]),
+    );
+    const list = demoStore.list();
+    expect(list.map((w) => w._id).slice(3)).toEqual(["bare"]);
+    expect(list[3]).toMatchObject({
+      nodes: [],
+      edges: [],
+      executionSettings: { mode: expect.any(String) },
+    });
+    expect(() => demoStore.remove("bare")).not.toThrow();
+    expect(demoStore.get("bare")).toBeNull();
+  });
 });

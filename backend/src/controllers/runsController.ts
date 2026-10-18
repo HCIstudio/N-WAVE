@@ -10,6 +10,7 @@ import {
   findRunResultsDir,
   listFiles,
   listRuns,
+  realFileInRun,
 } from "../runs/runIndex";
 import { findTaskWorkDir, listTaskOutputs, readRunTasks } from "../runs/taskEvents";
 
@@ -60,7 +61,7 @@ export const listRunResultFiles = (req: Request, res: Response): void => {
     res.status(404).json({ message: `No results for run ${id}` });
     return;
   }
-  res.json({ id, files: listFiles(dir) });
+  res.json({ id, files: listFiles(dir, undefined, findRunDir(id) ?? dir) });
 };
 
 /** One file from a run's results. */
@@ -68,19 +69,22 @@ export const getRunResultFile = (req: Request, res: Response): void => {
   const id = parseRunId(req, res);
   if (!id) return;
   const dir = findRunResultsDir(id);
+  const runDir = findRunDir(id);
   const relative = typeof req.query.path === "string" ? req.query.path : "";
   const target = path.resolve(dir ?? "", relative);
-  if (
-    !dir ||
-    !relative ||
-    !target.startsWith(`${path.resolve(dir)}${path.sep}`) ||
-    !fs.existsSync(target) ||
-    !fs.statSync(target).isFile()
-  ) {
+  // Followed symlinks must stay inside the run.
+  const real =
+    dir &&
+    runDir &&
+    relative &&
+    target.startsWith(`${path.resolve(dir)}${path.sep}`)
+      ? realFileInRun(runDir, target)
+      : null;
+  if (!real) {
     res.status(404).json({ message: "Result file not found" });
     return;
   }
-  sendSandboxed(res, target);
+  sendSandboxed(res, real);
 };
 
 /** `{ tasks }`: what each task of a run is doing, from Nextflow's log. */
@@ -95,40 +99,46 @@ export const listRunTasks = (req: Request, res: Response): void => {
   res.json({ id, tasks: readRunTasks(dir) });
 };
 
-/** A task's work directory, from the run id and its hash in the URL. */
-const resolveTaskDir = (req: Request, res: Response): string | null => {
+/** A task's work directory (and its run's), from the run id and its hash in the URL. */
+const resolveTaskDir = (
+  req: Request,
+  res: Response
+): { runDir: string; workDir: string } | null => {
   const id = parseRunId(req, res);
   if (!id) return null;
   const hash = `${req.params.prefix ?? ""}/${req.params.rest ?? ""}`;
   const runDir = findRunDir(id);
   const workDir = runDir ? findTaskWorkDir(runDir, hash) : null;
-  if (!workDir) {
+  if (!runDir || !workDir) {
     res.status(404).json({ message: `No work directory for task ${hash}` });
     return null;
   }
-  return workDir;
+  return { runDir, workDir };
 };
 
 /** `{ files }`: the files a task produced. */
 export const listRunTaskFiles = (req: Request, res: Response): void => {
-  const workDir = resolveTaskDir(req, res);
-  if (workDir) res.json({ files: listTaskOutputs(workDir) });
+  const task = resolveTaskDir(req, res);
+  if (task) res.json({ files: listTaskOutputs(task.workDir) });
 };
 
 /** One file a task produced (served like result files). */
 export const getRunTaskFile = (req: Request, res: Response): void => {
-  const workDir = resolveTaskDir(req, res);
-  if (!workDir) return;
+  const task = resolveTaskDir(req, res);
+  if (!task) return;
+  const { runDir, workDir } = task;
   const relative = typeof req.query.path === "string" ? req.query.path : "";
   const target = path.resolve(workDir, relative);
   const inside =
     relative &&
     !relative.split(/[\\/]/).some((part) => part.startsWith(".")) &&
     target.startsWith(`${path.resolve(workDir)}${path.sep}`);
-  // lstat: staged inputs are symlinks that may point anywhere.
-  if (!inside || !fs.existsSync(target) || !fs.lstatSync(target).isFile()) {
+  // Staged inputs are symlinks that may point anywhere: only serve what
+  // resolves inside the run.
+  const real = inside ? realFileInRun(runDir, target) : null;
+  if (!real) {
     res.status(404).json({ message: "Task file not found" });
     return;
   }
-  sendSandboxed(res, target);
+  sendSandboxed(res, real);
 };

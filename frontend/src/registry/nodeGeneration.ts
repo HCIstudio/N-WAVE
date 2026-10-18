@@ -5,6 +5,7 @@ import {
   generateOutputCode,
   generateProcessCode,
 } from "../generators/core/templateEngine";
+import { singleQuoted } from "./params";
 
 export interface NodeGenerationContext {
   node: Node<NodeData>;
@@ -87,7 +88,7 @@ export const generateFilterNode: NodeGenerator = ({
 
   const selectedFileNames = selectedFiles.map((file) => file.name);
   const fileNameFilter = selectedFileNames
-    .map((name: string) => `file.name == '${name}'`)
+    .map((name: string) => `file.name == ${singleQuoted(name)}`)
     .join(" || ");
 
   return {
@@ -199,7 +200,9 @@ export const generateOutputDisplayNode: NodeGenerator = ({
   timestamp,
   date,
 }) => {
-  const outputLabel = (node.data.label || "Output").replace(/[\s-]+/g, "_");
+  const outputLabel = (node.data.label || "Output")
+    .replace(/[\s-]+/g, "_")
+    .replace(/[^A-Za-z0-9._-]/g, "_");
   const downloadFormat = node.data.downloadFormat || "txt";
   const selectedFileName = node.data.selectedFileName || "all";
   const { containerImage, cpus, memory } = getResourceSettings(node);

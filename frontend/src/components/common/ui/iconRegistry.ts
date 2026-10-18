@@ -66,3 +66,12 @@ export const iconRegistry: Record<string, LucideIcon> = {
   Workflow,
   X,
 };
+
+/** Whether a name is a registered icon (not an Object.prototype key). */
+export const hasIcon = (name: string): boolean =>
+  // biome-ignore lint/suspicious/noPrototypeBuiltins: Object.hasOwn is ES2022; the app's lib is ES2020.
+  Object.prototype.hasOwnProperty.call(iconRegistry, name);
+
+/** The icon registered under a name, if any. */
+export const getIcon = (name: string): LucideIcon | undefined =>
+  hasIcon(name) ? iconRegistry[name] : undefined;
