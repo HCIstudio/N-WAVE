@@ -156,6 +156,8 @@ const DEFAULT_MODULE_FILES = ["main.nf", "meta.yml", "environment.yml"];
 
 let catalogCache: NfCoreCatalog | null = null;
 
+// The catalog is kept once, in the frontend (it is generated there). The Docker
+// image copies it into dist; running from a checkout reads the frontend's copy.
 const resolveCatalogPath = (): string => {
 	const candidates = [
 		path.join(
@@ -169,11 +171,11 @@ const resolveCatalogPath = (): string => {
 		),
 		path.join(
 			process.cwd(),
+			"..",
+			"frontend",
 			"src",
-			"workflows",
-			"library",
-			"assets",
-			"nf-core",
+			"registry",
+			"nfcore",
 			"catalog.json",
 		),
 	];

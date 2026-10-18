@@ -24,22 +24,14 @@ const workspaceRoot = path.resolve(
   ".."
 );
 const cacheDir = path.join(workspaceRoot, ".cache", "nfcore-modules");
-const frontendOutputPath = path.join(
+// The only copy: the backend reads it from here too (and its Docker image
+// copies it in), see backend/src/nfcore/library.ts.
+const outputPath = path.join(
   workspaceRoot,
   "frontend",
   "src",
   "registry",
   "nfcore",
-  "catalog.json"
-);
-const backendOutputPath = path.join(
-  workspaceRoot,
-  "backend",
-  "src",
-  "workflows",
-  "library",
-  "assets",
-  "nf-core",
   "catalog.json"
 );
 
@@ -542,19 +534,16 @@ function buildSubworkflows(modules, commit) {
 ensureModulesRepo();
 const catalog = buildCatalog();
 
-[frontendOutputPath, backendOutputPath].forEach((outputPath) => {
-  fs.mkdirSync(path.dirname(outputPath), { recursive: true });
-  fs.writeFileSync(`${outputPath}.tmp`, `${JSON.stringify(catalog, null, 2)}\n`);
-  fs.renameSync(`${outputPath}.tmp`, outputPath);
-});
+fs.mkdirSync(path.dirname(outputPath), { recursive: true });
+fs.writeFileSync(`${outputPath}.tmp`, `${JSON.stringify(catalog, null, 2)}\n`);
+fs.renameSync(`${outputPath}.tmp`, outputPath);
 
 console.log(
   `Generated ${catalog.counts.total} nf-core module catalog entries at ${path.relative(
     workspaceRoot,
-    frontendOutputPath
+    outputPath
   )}`
 );
-console.log(`Copied backend catalog to ${path.relative(workspaceRoot, backendOutputPath)}`);
 console.log(
   `Support: full=${catalog.counts.full}, candidate=${catalog.counts.candidate}, needs_review=${catalog.counts.needsReview}, unsupported=${catalog.counts.unsupported}`
 );

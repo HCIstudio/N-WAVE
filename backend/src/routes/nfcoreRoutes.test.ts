@@ -247,7 +247,7 @@ describe("ensureModulesInstalled", () => {
 describe("installed nf-core modules", () => {
   const catalog = JSON.parse(
     fs.readFileSync(
-      path.join(__dirname, "../workflows/library/assets/nf-core/catalog.json"),
+      path.join(__dirname, "../../../frontend/src/registry/nfcore/catalog.json"),
       "utf8"
     )
   ) as { source: { commit: string } };

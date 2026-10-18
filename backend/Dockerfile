@@ -39,6 +39,10 @@ COPY package.json ./
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/src/workflows/library/assets ./dist/workflows/library/assets
+# The nf-core catalog is kept once, in the frontend. Builds pass that folder as
+# the "nfcore" build context (docker-compose.yml and the release workflow do):
+#   docker build --build-context nfcore=frontend/src/registry/nfcore backend
+COPY --from=nfcore catalog.json ./dist/workflows/library/assets/nf-core/catalog.json
 
 # Listen on the container's network so the frontend container can reach the
 # API; the compose files publish the port on 127.0.0.1 only.
