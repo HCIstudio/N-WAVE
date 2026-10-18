@@ -93,6 +93,20 @@ describe("buildRunRequest", () => {
     );
   });
 
+  it("uses the default naming pattern when the field is empty", () => {
+    const body = buildRunRequest({
+      ...base,
+      nodes: [],
+      settings: {
+        ...DEFAULT_EXECUTION_SETTINGS,
+        output: { ...DEFAULT_EXECUTION_SETTINGS.output, namingPattern: "  " },
+      },
+    });
+    expect(body.executionSettings.outputNaming).toBe(
+      "{workflow_name}_{timestamp}",
+    );
+  });
+
   it("sends a pipeline launch instead of a script", () => {
     const body = buildRunRequest({
       ...base,

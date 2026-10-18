@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { executionSettingsSchema } from "../validation/schemas";
 import {
   buildResourceLimitsConfig,
   DEFAULT_TIMEOUT_MINUTES,
@@ -8,6 +9,7 @@ import {
   parseMemory,
   resolveResourceCeiling,
   resolveRunLimits,
+  MAX_TIMEOUT_MS,
   resolveTimeoutMs,
 } from "./resources";
 
@@ -104,6 +106,18 @@ describe("time limits", () => {
     expect(resolveTimeoutMs(0, { NWAVE_EXECUTION_TIMEOUT: "soon" })).toBe(
       DEFAULT_TIMEOUT_MINUTES * 60_000
     );
+  });
+
+  it("keeps limits within what setTimeout can wait for", () => {
+    // Longer delays overflow and fire at once.
+    expect(MAX_TIMEOUT_MS).toBe(2 ** 31 - 1);
+    expect(resolveTimeoutMs(10_080, {})).toBe(10_080 * 60_000);
+    expect(resolveTimeoutMs(1e9, {})).toBe(MAX_TIMEOUT_MS);
+    expect(resolveTimeoutMs(0, { NWAVE_EXECUTION_TIMEOUT: "100000" })).toBe(MAX_TIMEOUT_MS);
+    const timeout = (executionTimeout: number) =>
+      executionSettingsSchema.safeParse({ executionTimeout }).success;
+    expect(timeout(10_080)).toBe(true);
+    expect(timeout(1e9)).toBe(false);
   });
 });
 

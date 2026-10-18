@@ -95,7 +95,8 @@ export const executionSettingsSchema = z.object({
   outputNaming: outputNaming.default("{workflow_name}"),
   maxCpus: z.number().int().min(1).max(1_024).default(4),
   maxMemory: memoryAmount.default("4 GB"),
-  executionTimeout: z.number().min(0).default(0),
+  // Minutes; 35_791 is the most setTimeout can wait (the UI allows 10_080).
+  executionTimeout: z.number().min(0).max(35_791).default(0),
   errorStrategy: z.string().max(64).default("terminate"),
   publishMode: z.string().max(64).optional(),
   cleanupOnFailure: z.boolean().default(true),
