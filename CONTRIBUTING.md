@@ -38,6 +38,10 @@ pnpm test            # Vitest (pnpm test:coverage for a coverage report)
 pnpm build           # TypeScript typecheck + build
 ```
 
+CI runs `pnpm test:coverage`. In `frontend/` it fails when line coverage drops below the
+thresholds in `vitest.config.ts`: a floor for all code, and 80% for script generation
+(`src/generators/`) and the `.nf` importer. New code needs tests to keep the floor.
+
 The nf-core catalog parser has its own tests (run from the repository root):
 
 ```bash

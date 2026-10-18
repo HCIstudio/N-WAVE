@@ -116,9 +116,11 @@ export const useExecutionStatus = ({
       // Process discovery lines ("[-        ] NAME -") are intentionally
       // ignored: nodes are only updated from execution data below.
 
-      // Parse process execution with progress - Main pattern
+      // Parse process execution with progress, e.g.
+      // "[86/f75e3e] BAD_STEP (1) | 0 of 2, failed: 1 ✘". Nextflow marks a
+      // finished process with ✔ and a failed one with ✘.
       const executionMatch = line.match(
-        /\[([\w/]+)\]\s+([^\s]+(?:\s+\([^)]+\))?)\s*\|\s*(\d+)\s+of\s+(\d+)\s*(✔|❌|⚠)?/
+        /\[([\w/]+)\]\s+([^\s]+(?:\s+\([^)]+\))?)\s*\|\s*(\d+)\s+of\s+(\d+)(?:,[^✔✘❌⚠]*)?\s*(✔|✘|❌|⚠)?/
       );
 
       if (executionMatch) {
@@ -132,6 +134,12 @@ export const useExecutionStatus = ({
           .replace(/…/g, "");
         const completedNum = Number.parseInt(completed, 10);
         const totalNum = Number.parseInt(total, 10);
+        const failed = statusSymbol === "✘" || statusSymbol === "❌";
+        const processStatus: NodeExecutionStatus["status"] = failed
+          ? "error"
+          : completedNum === totalNum
+            ? "success"
+            : "running";
 
         // Create user-friendly names for display
         const getDisplayName = (nfProcessName: string) => {
@@ -164,7 +172,7 @@ export const useExecutionStatus = ({
             const newNodeStatus: NodeExecutionStatus = {
               nodeId: nextflowProcessName, // Use actual Nextflow process name as stable ID
               nodeName: displayName, // Use friendly display name
-              status: completedNum === totalNum ? "success" : "running",
+              status: processStatus,
               startTime: new Date(),
               progress: (completedNum / totalNum) * 100,
             };
@@ -176,16 +184,11 @@ export const useExecutionStatus = ({
 
             if (
               existingNode.progress !== newProgress ||
-              existingNode.status === "waiting"
+              existingNode.status !== processStatus
             ) {
               const updatedNode = { ...existingNode };
               updatedNode.progress = newProgress;
-              updatedNode.status =
-                completedNum === totalNum
-                  ? statusSymbol === "❌"
-                    ? "error"
-                    : "success"
-                  : "running";
+              updatedNode.status = processStatus;
 
               if (
                 updatedNode.status === "success" ||
@@ -435,7 +438,9 @@ export const useExecutionStatus = ({
       endTime: new Date(),
       currentStage: "Workflow cancelled",
       overallProgress:
-        (prevStatus.completedNodes / prevStatus.totalNodes) * 100,
+        prevStatus.totalNodes > 0
+          ? (prevStatus.completedNodes / prevStatus.totalNodes) * 100
+          : 0,
     }));
 
     // Clear node statuses immediately

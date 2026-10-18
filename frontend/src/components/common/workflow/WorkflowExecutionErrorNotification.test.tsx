@@ -1,0 +1,176 @@
+import { act, fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import WorkflowExecutionErrorNotification from "./WorkflowExecutionErrorNotification";
+
+type Props = React.ComponentProps<typeof WorkflowExecutionErrorNotification>;
+
+const show = (props: Partial<Props> = {}) => {
+  const all: Props = {
+    isVisible: true,
+    onClose: vi.fn(),
+    onRetry: vi.fn(async () => {}),
+    error: { message: "Something broke" },
+    ...props,
+  };
+  return { ...render(<WorkflowExecutionErrorNotification {...all} />), all };
+};
+
+const suggestionsFor = (message: string) => {
+  const { unmount } = show({ error: { message } });
+  const heading = screen.getByText("Suggested Fixes");
+  const list = heading.closest("div")?.querySelectorAll("p") ?? [];
+  const texts = Array.from(list, (p) => p.textContent);
+  unmount();
+  return texts;
+};
+
+describe("WorkflowExecutionErrorNotification", () => {
+  // fireEvent rather than userEvent: user-event waits on timers, which are fake.
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+
+  it("renders nothing when hidden", () => {
+    const { container } = show({ isVisible: false });
+    expect(container.innerHTML).toBe("");
+  });
+
+  it("shows the error, its output and generic fixes", () => {
+    show({ error: { message: "Something broke", output: "line 1\nline 2" } });
+    expect(screen.getByText("Workflow Execution Failed")).toBeTruthy();
+    expect(screen.getByText("Something broke")).toBeTruthy();
+    expect(screen.getByText("Execution Output")).toBeTruthy();
+    expect(screen.getByText(/line 1/).textContent).toBe("line 1\nline 2");
+    expect(
+      screen.getByText("Review workflow configuration and node settings"),
+    ).toBeTruthy();
+  });
+
+  it("suggests fixes that match the error", () => {
+    expect(suggestionsFor("No such file: reads.fq")).toEqual([
+      "Verify that all input files are properly uploaded and selected",
+      "Check file paths in your File Input nodes",
+    ]);
+    expect(suggestionsFor("Permission denied")).toContain(
+      "Check file permissions on input/output directories",
+    );
+    expect(suggestionsFor("Out of memory")).toContain(
+      "Increase memory allocation in execution settings",
+    );
+    expect(suggestionsFor("docker daemon not running")).toContain(
+      "Verify Docker is installed and running",
+    );
+    expect(suggestionsFor("samtools: command not found")).toContain(
+      "Check that required tools are installed in the environment",
+    );
+    expect(suggestionsFor("Syntax error at line 3")).toContain(
+      "Review Nextflow script syntax",
+    );
+    expect(suggestionsFor("Network unreachable")).toContain(
+      "Check network connectivity",
+    );
+  });
+
+  it("shows at most four fixes", () => {
+    // Matches file, docker and syntax rules: seven suggestions in all.
+    expect(
+      suggestionsFor("file not found in container: syntax error"),
+    ).toHaveLength(4);
+  });
+
+  it("collapses and expands the details", () => {
+    show();
+    const toggle = screen.getByTitle("Collapse details");
+    fireEvent.click(toggle);
+    expect(screen.getByTitle("Expand details")).toBe(toggle);
+    fireEvent.click(toggle);
+    expect(screen.getByTitle("Collapse details")).toBe(toggle);
+  });
+
+  it("closes from the close button", () => {
+    const { all } = show();
+    const buttons = screen.getAllByRole("button");
+    // The close button is the icon-only one next to the toggle.
+    fireEvent.click(buttons[1]);
+    expect(all.onClose).toHaveBeenCalledOnce();
+  });
+
+  it("opens the full log", () => {
+    const onShowLog = vi.fn();
+    show({ onShowLog });
+    fireEvent.click(screen.getByRole("button", { name: "Show full log" }));
+    expect(onShowLog).toHaveBeenCalledOnce();
+  });
+
+  it("has no log button without a handler", () => {
+    show();
+    expect(screen.queryByRole("button", { name: "Show full log" })).toBeNull();
+  });
+
+  it("retries, reports success, then closes", async () => {
+    let finish: () => void = () => {};
+    const onRetry = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { all } = show({ onRetry });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(screen.getByText("Retrying Workflow Execution...")).toBeTruthy();
+    expect(screen.getByText("Attempt 1")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Retrying..." }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(screen.queryByText("Suggested Fixes")).toBeNull();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+    expect(onRetry).toHaveBeenCalledOnce();
+    await act(async () => {
+      finish();
+    });
+    expect(screen.getByText("Workflow Executed Successfully!")).toBeTruthy();
+    expect(screen.queryByText("Something broke")).toBeNull();
+    expect(all.onClose).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+    expect(all.onClose).toHaveBeenCalledOnce();
+  });
+
+  it("keeps the error up when the retry fails", async () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    const onRetry = vi.fn(async () => {
+      throw new Error("still broken");
+    });
+    const { all } = show({ onRetry });
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    expect(onRetry).toHaveBeenCalledOnce();
+    expect(screen.getByText("Workflow Execution Failed")).toBeTruthy();
+    expect(screen.getByText("Suggested Fixes")).toBeTruthy();
+    expect(
+      (screen.getByRole("button", { name: "Retry" }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(all.onClose).not.toHaveBeenCalled();
+    consoleError.mockRestore();
+  });
+});

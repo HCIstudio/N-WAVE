@@ -94,3 +94,121 @@ describe("importNextflowWorkflow", () => {
     expect(draft.importWarnings.join(" ")).toMatch(/no nextflow process/i);
   });
 });
+
+const proc = (name: string, script: string) => `
+process ${name} {
+  input:
+  path input_file
+  script:
+  """
+  ${script}
+  """
+}
+`;
+
+describe("importNextflowWorkflow node types", () => {
+  const nodeFor = (name: string, script: string) =>
+    importNextflowWorkflow({ rawSource: proc(name, script) }).nodes.find(
+      (node) => node.data.label !== "File Input",
+    );
+
+  it("reads sed as a replace-text Map", () => {
+    expect(
+      nodeFor("rename", "sed 's/a/b/g' ${input_file} > out.txt")?.data,
+    ).toMatchObject({
+      operatorType: "map",
+      mapOperation: "replaceText",
+    });
+  });
+
+  it("reads tr to lower case as a lowercase Map", () => {
+    expect(
+      nodeFor(
+        "lower",
+        "cat ${input_file} | tr '[:upper:]' '[:lower:]' > out.txt",
+      )?.data,
+    ).toMatchObject({
+      operatorType: "map",
+      mapOperation: "changeCase",
+      mapChangeCase: "toLowerCase",
+    });
+  });
+
+  it("reads cat of all inputs as a Merge", () => {
+    expect(
+      nodeFor("combine", "cat $input_files > all.txt")?.data,
+    ).toMatchObject({
+      operatorType: "merge",
+      mergeOperation: "join",
+    });
+  });
+
+  it("keeps anything else as a generic process", () => {
+    const node = nodeFor("ALIGN", "bwa mem ref.fa ${input_file} > out.sam");
+    expect(node?.type).toBe("process");
+    expect(node?.data).toMatchObject({
+      label: "ALIGN",
+      subtitle: "Imported process",
+    });
+  });
+});
+
+describe("importNextflowWorkflow names and warnings", () => {
+  it("names the workflow after a named workflow, then a process", () => {
+    expect(
+      importNextflowWorkflow({ rawSource: "workflow MAIN {\n}" }).name,
+    ).toBe("MAIN");
+    expect(
+      importNextflowWorkflow({ rawSource: proc("ONLY", "echo hi") }).name,
+    ).toBe("ONLY");
+    expect(importNextflowWorkflow({ rawSource: "params.x = 1" }).name).toBe(
+      "Imported Nextflow Workflow",
+    );
+    expect(
+      importNextflowWorkflow({
+        rawSource: proc("ONLY", "echo hi"),
+        name: "  Mine ",
+      }).name,
+    ).toBe("Mine");
+  });
+
+  it("warns without a workflow block or without connections", () => {
+    const noWorkflow = importNextflowWorkflow({
+      rawSource: proc("A", "echo a"),
+    });
+    expect(noWorkflow.importWarnings.join(" ")).toMatch(
+      /No workflow block was found/,
+    );
+    const unconnected = importNextflowWorkflow({
+      rawSource: `${proc("A", "echo a")}\nworkflow {\n  x = 1\n}`,
+    });
+    expect(unconnected.importWarnings.join(" ")).toMatch(
+      /no workflow connections could be inferred/,
+    );
+  });
+
+  it("connects calls without an assignment and channels built from other channels", () => {
+    const draft = importNextflowWorkflow({
+      rawSource: `
+params.selected_files = ['a.txt', 'b.txt']
+ch_files = Channel.fromList(params.selected_files)
+${proc("filter_x", 'grep "a" ${input_file} > out.txt')}
+${proc("ALIGN", "bwa mem ${input_file}")}
+workflow {
+  picked = ch_files.map { it }
+  filtered = filter_x(picked)
+  ALIGN(filtered)
+}`,
+    });
+    const input = draft.nodes.find((node) => node.data.label === "File Input");
+    expect(input?.data.subtitle).toBe("2 imported file references");
+    const align = draft.nodes.find((node) => node.data.label === "ALIGN");
+    const filter = draft.nodes.find(
+      (node) => node.data.operatorType === "filter",
+    );
+    expect(draft.edges.map((edge) => [edge.source, edge.target])).toEqual([
+      [input?.id, filter?.id],
+      [filter?.id, align?.id],
+    ]);
+  });
+});

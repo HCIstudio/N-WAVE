@@ -1,6 +1,13 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Edge, Node } from "@xyflow/react";
-import { generateNextflowScript } from "./generateNextflowScript";
+import type { NodeData } from "../../components/nodes/BaseNode";
+import { makeNode } from "../../test/nodes";
+import {
+  buildMixedChannelExpression,
+  generateNextflowScript,
+  getProcessNameForNode,
+  sanitizeVarName,
+} from "./generateNextflowScript";
 import { demoWorkflowSeed } from "../../demo/demoWorkflow";
 
 // The built-in demo graph is a realistic input: file input -> two filter
@@ -190,5 +197,112 @@ describe("generateNextflowScript with nf-core modules", () => {
     const used = workflowBlock.search(/\(op_joined\b|= op_joined\b|op_joined\./);
     expect(defined).toBeGreaterThan(-1);
     expect(used).toBeGreaterThan(defined);
+  });
+});
+
+describe("generateNextflowScript edge cases", () => {
+  const fileInput = (
+    files: { name: string; size: number; content: string }[],
+  ) => ({ ...makeNode("fileInput", { files }), id: "in" }) as Node<NodeData>;
+  const filter = {
+    ...makeNode("filter", { filterText: "x", filterMode: "contains" }),
+    id: "f",
+  } as Node<NodeData>;
+  const edge = (sourceHandle: string): Edge => ({
+    id: "e",
+    source: "in",
+    sourceHandle,
+    target: "f",
+    targetHandle: "in",
+  });
+  const generate = (
+    nodesIn: Node<NodeData>[],
+    edgesIn: Edge[],
+    outdir = "results",
+  ) =>
+    generateNextflowScript(nodesIn, edgesIn, "Flow", outdir, "{workflow_name}");
+
+  it("lists the selected files as params", () => {
+    const script = generate(
+      [fileInput([{ name: "a.txt", size: 1, content: "a" }])],
+      [],
+    );
+    expect(script).toContain("params.selected_files = ['a.txt']");
+    expect(script).toContain(
+      "ch_files = Channel.fromList(params.selected_files)",
+    );
+  });
+
+  it("gives a File Input without files an empty channel", () => {
+    const script = generate([fileInput([])], []);
+    expect(script).toContain("params.selected_files = []");
+    expect(script).toContain("ch_files = Channel.empty()");
+  });
+
+  it("uses forward slashes in the output directory", () => {
+    expect(generate([], [], "out\\run")).toContain("params.outdir = 'out/run'");
+  });
+
+  it("skips a node nothing is connected to", () => {
+    const script = generate([fileInput([]), filter], []);
+    expect(script).not.toContain(getProcessNameForNode(filter));
+  });
+
+  it("falls back to another output of the source when the handle is unknown", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const script = generate(
+        [fileInput([]), filter],
+        [edge("no_such_handle")],
+      );
+      expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files)`);
+      expect(
+        warn.mock.calls.map((args) => String(args[0])).join("\n"),
+      ).toContain("Using fallback channel mapping");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it("skips a node whose source has no channel", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      const note = { ...makeNode("note"), id: "in" } as Node<NodeData>;
+      const script = generate([note, filter], [edge("out")]);
+      expect(script).not.toContain(getProcessNameForNode(filter));
+      expect(
+        warn.mock.calls.map((args) => String(args[0])).join("\n"),
+      ).toContain("No upstream channel found for in.out");
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe("generator helpers", () => {
+  it("names a node's process after its type and ID", () => {
+    expect(
+      getProcessNameForNode({
+        id: "node 1-a",
+        type: "operator",
+        position: { x: 0, y: 0 },
+        data: { operatorType: "filter" },
+      }),
+    ).toBe("filter_node_1_a");
+    expect(
+      getProcessNameForNode({ id: "n", position: { x: 0, y: 0 }, data: {} }),
+    ).toBe("process_n");
+  });
+
+  it("concatenates several channels", () => {
+    expect(buildMixedChannelExpression(["a"])).toBe("a");
+    expect(buildMixedChannelExpression(["a", "b", "c"])).toBe(
+      "a.concat(b).concat(c)",
+    );
+  });
+
+  it("makes Groovy variable names", () => {
+    expect(sanitizeVarName("node-1 out")).toBe("node_1_out");
+    expect(sanitizeVarName("1st")).toBe("v_1st");
   });
 });
