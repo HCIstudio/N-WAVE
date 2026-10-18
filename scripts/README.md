@@ -8,9 +8,9 @@ wrong.
 
 ## The catalog
 
-`frontend/src/registry/nfcore/catalog.json` (copied to
-`backend/src/workflows/library/assets/nf-core/catalog.json`) lists every module with the
-information N-WAVE needs to call it. It is generated from a checkout of nf-core/modules:
+`frontend/src/registry/nfcore/catalog.json` lists every module with the information N-WAVE
+needs to call it. It is the only copy: the frontend loads it as a separate chunk, the backend
+reads it from there when run from a checkout, and the backend Docker image copies it in. It is generated from a checkout of nf-core/modules:
 
 ```bash
 cd frontend

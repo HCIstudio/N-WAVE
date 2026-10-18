@@ -18,6 +18,9 @@
     build:
       context: ./backend
       dockerfile: Dockerfile
+      # The nf-core catalog, kept once in the frontend (see backend/Dockerfile).
+      additional_contexts:
+        nfcore: ./frontend/src/registry/nfcore
     container_name: nwave-backend
     restart: unless-stopped
     depends_on:

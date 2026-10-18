@@ -171,6 +171,9 @@ jobs:
         with:
           context: ./backend
           file: ./backend/Dockerfile
+          # The nf-core catalog, kept once in the frontend (see backend/Dockerfile).
+          build-contexts: |
+            nfcore=./frontend/src/registry/nfcore
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
