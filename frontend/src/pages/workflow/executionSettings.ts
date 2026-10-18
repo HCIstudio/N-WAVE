@@ -7,7 +7,11 @@ import { isoDurationToMinutes } from "../../utils/duration";
 
 const STORAGE_KEY = "executionSettings";
 
+/** Version 2: no time limit of the app's own by default (was 30 minutes). */
+export const EXECUTION_SETTINGS_VERSION = 2;
+
 export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
+  version: EXECUTION_SETTINGS_VERSION,
   mode: ExecutionMode.DOCKER,
   nextflow: {
     version: "25.04.4",
@@ -62,11 +66,35 @@ export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
   },
 };
 
+/**
+ * Settings saved by an older version, brought up to date. Settings from
+ * before versions still carry the old 30-minute default limit, which stopped
+ * most nf-core pipeline runs early: it becomes the server's default. A limit
+ * chosen later is saved with a version and kept.
+ */
+export const migrateExecutionSettings = (
+  settings: ExecutionSettings,
+): ExecutionSettings => {
+  if ((settings.version ?? 1) >= EXECUTION_SETTINGS_VERSION) return settings;
+  const resources = settings.resources
+    ? {
+        ...settings.resources,
+        maxTime:
+          settings.resources.maxTime === "PT30M"
+            ? ""
+            : settings.resources.maxTime,
+      }
+    : settings.resources;
+  return { ...settings, resources, version: EXECUTION_SETTINGS_VERSION };
+};
+
 /** The settings kept in browser storage, or null. */
 export const readStoredExecutionSettings = (): ExecutionSettings | null => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? (JSON.parse(saved) as ExecutionSettings) : null;
+    return saved
+      ? migrateExecutionSettings(JSON.parse(saved) as ExecutionSettings)
+      : null;
   } catch (error) {
     console.error("Failed to load execution settings from localStorage:", error);
     return null;

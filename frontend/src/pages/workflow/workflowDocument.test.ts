@@ -5,6 +5,7 @@ import {
   DEFAULT_EXECUTION_SETTINGS,
   ensureStoredExecutionSettings,
   flattenExecutionSettings,
+  migrateExecutionSettings,
   readStoredExecutionSettings,
 } from "./executionSettings";
 import {
@@ -176,6 +177,36 @@ describe("loadErrorFor", () => {
 });
 
 describe("execution settings", () => {
+  const withTime = (maxTime: string, version?: number) => {
+    const { version: _version, ...rest } = DEFAULT_EXECUTION_SETTINGS;
+    return {
+      ...rest,
+      ...(version === undefined ? {} : { version }),
+      resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxTime },
+    };
+  };
+
+  it("drops the old 30-minute default from settings saved before versions", () => {
+    const migrated = migrateExecutionSettings(withTime("PT30M"));
+    expect(migrated.resources.maxTime).toBe("");
+    expect(migrated.version).toBe(2);
+  });
+
+  it("keeps other limits, and 30 minutes chosen in current settings", () => {
+    expect(migrateExecutionSettings(withTime("PT2H")).resources.maxTime).toBe(
+      "PT2H",
+    );
+    expect(
+      migrateExecutionSettings(withTime("PT30M", 2)).resources.maxTime,
+    ).toBe("PT30M");
+  });
+
+  it("migrates the settings kept in browser storage", () => {
+    localStorage.setItem("executionSettings", JSON.stringify(withTime("PT30M")));
+    expect(readStoredExecutionSettings()?.resources.maxTime).toBe("");
+    localStorage.removeItem("executionSettings");
+  });
+
   it("flattens settings for the execute endpoint", () => {
     expect(flattenExecutionSettings(DEFAULT_EXECUTION_SETTINGS)).toEqual({
       useDocker: true,
