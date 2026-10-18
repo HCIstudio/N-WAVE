@@ -393,7 +393,7 @@ MongoDB (easiest via Docker):
 docker run -d --name nwave-mongo -p 127.0.0.1:27017:27017 mongo:7
 ```
 
-Backend (`http://localhost:5001`, hot-reloads via nodemon):
+Backend (`http://localhost:5001`, hot-reloads via `tsx watch`):
 
 ```bash
 cd backend

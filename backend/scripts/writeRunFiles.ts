@@ -4,7 +4,7 @@
 //   project/nwave_modules.config  the config the backend writes for it
 // so `nextflow lint` checks what actually runs, not only what is exported.
 //
-//   npx ts-node --transpile-only scripts/writeRunFiles.ts <out>
+//   npx tsx scripts/writeRunFiles.ts <out>
 
 import fs from "node:fs";
 import path from "node:path";
