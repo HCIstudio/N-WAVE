@@ -54,7 +54,15 @@ const readStore = (): StoredWorkflow[] => {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? (parsed as StoredWorkflow[]) : [];
+    // Drop malformed entries so one bad record can't hide the whole library.
+    return Array.isArray(parsed)
+      ? (parsed as unknown[]).filter(
+          (workflow): workflow is StoredWorkflow =>
+            !!workflow &&
+            typeof workflow === "object" &&
+            typeof (workflow as StoredWorkflow)._id === "string",
+        )
+      : [];
   } catch {
     return [];
   }
@@ -68,18 +76,18 @@ const writeStore = (workflows: StoredWorkflow[]): void => {
 const materialize = (stored: StoredWorkflow): WorkflowDescriptor => ({
   _id: stored._id,
   name: stored.name,
-  description: stored.description,
-  nodes: stored.nodes,
-  edges: stored.edges,
-  executionSettings: stored.executionSettings,
-  rawSource: stored.rawSource,
-  importWarnings: stored.importWarnings,
+  description: stored.description ?? "",
+  nodes: stored.nodes ?? [],
+  edges: stored.edges ?? [],
+  executionSettings: stored.executionSettings ?? defaultExecutionSettings,
+  rawSource: stored.rawSource ?? null,
+  importWarnings: stored.importWarnings ?? [],
   isBuiltin: false,
   isReadOnly: false,
   origin: {
-    type: stored.originType,
-    sourceFormat: stored.sourceFormat,
-    sourceKey: stored.sourceKey,
+    type: stored.originType ?? "database",
+    sourceFormat: stored.sourceFormat ?? "visual",
+    sourceKey: stored.sourceKey ?? null,
     readOnly: false,
     canDuplicate: true,
   },
