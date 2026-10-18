@@ -424,6 +424,8 @@ const downloadFile = async (url: string): Promise<Buffer | null> => {
 		const response = await axios.get<ArrayBuffer>(url, {
 			responseType: "arraybuffer",
 			headers: { "User-Agent": "N-WAVE-nfcore-installer" },
+			// Fail a stalled download instead of hanging the install.
+			timeout: 60_000,
 		});
 		return Buffer.from(response.data);
 	} catch (error: unknown) {
@@ -470,18 +472,38 @@ const downloadEntryFiles = async (
 	}
 };
 
+// Installs running now, by module or subworkflow id. A second install of the
+// same id (a double-click, or a run installing a missing module) gets the
+// running one's result instead of racing it on the same directory.
+const installsInFlight = new Map<string, Promise<unknown>>();
+
+const installOnce = <T>(id: string, install: () => Promise<T>): Promise<T> => {
+	const running = installsInFlight.get(id);
+	if (running) return running as Promise<T>;
+	const promise = install().finally(() => installsInFlight.delete(id));
+	installsInFlight.set(id, promise);
+	return promise;
+};
+
+/** A new temp dir next to `installRoot` to download into. */
+const makeTempRoot = (installRoot: string): string => {
+	fs.mkdirSync(path.dirname(installRoot), { recursive: true });
+	return fs.mkdtempSync(`${installRoot}.tmp-`);
+};
+
 /**
  * Download a module's files at the catalog commit into the data dir, write
  * its adapter manifest and record it in the install index.
  */
-export const installModule = async (entry: NfCoreCatalogEntry) => {
+export const installModule = (entry: NfCoreCatalogEntry) =>
+	installOnce(entry.id, () => writeModule(entry));
+
+const writeModule = async (entry: NfCoreCatalogEntry) => {
 	assertInstallable(entry);
 
 	const installRoot = getInstalledModuleRoot(entry);
-	const tempRoot = `${installRoot}.tmp`;
 	ensureInside(getNwaveDataRoot(), installRoot);
-	fs.rmSync(tempRoot, { recursive: true, force: true });
-	fs.mkdirSync(tempRoot, { recursive: true });
+	const tempRoot = makeTempRoot(installRoot);
 
 	try {
 		await downloadEntryFiles(entry, moduleFilePaths(entry), tempRoot);
@@ -567,13 +589,14 @@ export const installSubworkflow = async (
 };
 
 /** Download a subworkflow's own files, manifest and index entry. */
-const writeSubworkflow = async (entry: NfCoreSubworkflowEntry) => {
+const writeSubworkflow = (entry: NfCoreSubworkflowEntry) =>
+	installOnce(entry.id, () => writeSubworkflowFiles(entry));
+
+const writeSubworkflowFiles = async (entry: NfCoreSubworkflowEntry) => {
 	assertInstallable(entry);
 	const installRoot = getInstalledSubworkflowRoot(entry);
-	const tempRoot = `${installRoot}.tmp`;
 	ensureInside(getNwaveDataRoot(), installRoot);
-	fs.rmSync(tempRoot, { recursive: true, force: true });
-	fs.mkdirSync(tempRoot, { recursive: true });
+	const tempRoot = makeTempRoot(installRoot);
 
 	try {
 		await downloadEntryFiles(
