@@ -28,6 +28,7 @@ import { findFreePosition } from "../utils/nodePlacement";
 import CanvasNotices from "./workflow/CanvasNotices";
 import NodePanels from "./workflow/NodePanels";
 import { findMissingFileContents } from "./workflow/runRequest";
+import { useCanvasHistory } from "./workflow/useCanvasHistory";
 import { useCustomNodeActions } from "./workflow/useCustomNodeActions";
 import { useEditGuards } from "./workflow/useEditGuards";
 import { useLibraryNodes } from "./workflow/useLibraryNodes";
@@ -117,6 +118,16 @@ const WorkflowPageContent: React.FC = () => {
     onConnect,
   });
   const { blockedByRun, canEdit, ensureEditable } = guards;
+  const history = useCanvasHistory({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    setIsDirty,
+    enabled: !workflow.isLoading && !readOnly && !isRunning,
+    documentKey: workflowId,
+    isLoading: workflow.isLoading,
+  });
   const { onAddNode } = tutorial;
   const panels = useNodePanels();
   const deletion = useNodeDeletion({
@@ -305,6 +316,7 @@ const WorkflowPageContent: React.FC = () => {
               isValidConnection={isValidConnection}
               onConnectStart={onConnectStart}
               onConnectEnd={onConnectEnd}
+              history={history}
             />
           </ErrorBoundary>
           <WorkflowTutorial tutorial={tutorial} />

@@ -19,7 +19,7 @@ import type {
   OnNodeDrag,
 } from "@xyflow/react";
 
-import CustomControls from "./CustomControls";
+import CustomControls, { type HistoryControls } from "./CustomControls";
 import CustomEdge from "./CustomEdge";
 import BaseNode from "../nodes/BaseNode";
 import NoteNode from "../nodes/note/NoteNode";
@@ -60,6 +60,8 @@ interface CanvasProps {
   onNodeDragStop: OnNodeDrag;
   onConnectStart: OnConnectStart;
   onConnectEnd: OnConnectEnd;
+  /** Undo and redo buttons in the control bar. */
+  history?: HistoryControls;
 }
 
 /**
@@ -91,6 +93,7 @@ const Canvas: FC<CanvasProps> = ({
   onNodeDragStop,
   onConnectStart,
   onConnectEnd,
+  history,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
@@ -117,7 +120,7 @@ const Canvas: FC<CanvasProps> = ({
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <CustomControls />
+        <CustomControls history={history} />
       </ReactFlow>
     </div>
   );
