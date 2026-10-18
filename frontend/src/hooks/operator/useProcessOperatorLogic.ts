@@ -96,7 +96,7 @@ export const useProcessOperatorLogic = (
           break;
         default:
           pastTense =
-            `${operatorType.charAt(0).toUpperCase() + operatorType.slice(2)}ed`;
+            `${operatorType.charAt(0).toUpperCase() + operatorType.slice(1)}ed`;
       }
 
       // For filter operations, don't show "(unedited)" if files were selected

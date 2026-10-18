@@ -14,12 +14,16 @@ interface FileObject {
   fileType?: string; // Detected file type
 }
 
+// One shared empty list, so a node without files doesn't get a new array on
+// every render (the selection effect below depends on it).
+const NO_FILES: FileObject[] = [];
+
 const FileInputPanel: React.FC<{
   node: Node<NodeData>;
   onSave: (nodeId: string, data: Partial<NodeData>) => void;
 }> = ({ node }) => {
   const { updateNodeData } = useWorkflowContext();
-  const nodeFiles: FileObject[] = node.data.files || [];
+  const nodeFiles: FileObject[] = node.data.files ?? NO_FILES;
 
   // Check if any files are missing content (loaded from saved workflow)
   const filesWithoutContent = nodeFiles.filter(
