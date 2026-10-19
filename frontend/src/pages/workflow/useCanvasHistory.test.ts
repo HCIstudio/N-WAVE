@@ -106,6 +106,15 @@ describe("useCanvasHistory", () => {
     expect(result.current.history.canUndo).toBe(false);
   });
 
+  it("keeps two quick additions apart, like pressing Ctrl+D twice", () => {
+    const { result, change, settle } = setup([node("a")], []);
+    change(({ setNodes }) => setNodes((nodes) => [...nodes, node("b", 40)]));
+    change(({ setNodes }) => setNodes((nodes) => [...nodes, node("c", 80)]));
+    settle();
+    act(() => result.current.history.undo());
+    expect(ids(result.current.nodes)).toEqual(["a", "b"]);
+  });
+
   it("makes one step of a node removed with its connections in two updates", () => {
     const { result, change, settle } = setup();
     change(({ setNodes }) => setNodes((nodes) => nodes.slice(0, 1)));

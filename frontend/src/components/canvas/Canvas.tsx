@@ -62,6 +62,8 @@ interface CanvasProps {
   onConnectEnd: OnConnectEnd;
   /** Undo and redo buttons in the control bar. */
   history?: HistoryControls;
+  /** Opens the keyboard shortcuts overview. */
+  onShowShortcuts?: () => void;
 }
 
 /**
@@ -94,6 +96,7 @@ const Canvas: FC<CanvasProps> = ({
   onConnectStart,
   onConnectEnd,
   history,
+  onShowShortcuts,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
@@ -116,11 +119,12 @@ const Canvas: FC<CanvasProps> = ({
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         connectionMode={ConnectionMode.Loose}
+        deleteKeyCode={["Backspace", "Delete"]}
         className="bg-background"
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <CustomControls history={history} />
+        <CustomControls history={history} onShowShortcuts={onShowShortcuts} />
       </ReactFlow>
     </div>
   );

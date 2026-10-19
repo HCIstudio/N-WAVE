@@ -16,6 +16,7 @@ import {
   WorkflowExecutionErrorNotification,
 } from "../components/common";
 import CustomNodeModal from "../components/common/forms/CustomNodeModal";
+import ShortcutsDialog from "../components/canvas/ShortcutsDialog";
 import ExecutionStatusPanel from "../components/common/workflow/ExecutionStatusPanel";
 import Header from "../components/layout/Header";
 import type { NodeData } from "../components/nodes/BaseNode";
@@ -29,6 +30,7 @@ import CanvasNotices from "./workflow/CanvasNotices";
 import NodePanels from "./workflow/NodePanels";
 import { findMissingFileContents } from "./workflow/runRequest";
 import { useCanvasHistory } from "./workflow/useCanvasHistory";
+import { useCanvasShortcuts } from "./workflow/useCanvasShortcuts";
 import { useCustomNodeActions } from "./workflow/useCustomNodeActions";
 import { useEditGuards } from "./workflow/useEditGuards";
 import { useLibraryNodes } from "./workflow/useLibraryNodes";
@@ -70,7 +72,7 @@ const WorkflowPageContent: React.FC = () => {
     [showToast]
   );
   const { id: workflowId } = useParams<{ id: string }>();
-  const { screenToFlowPosition, getNodes } = useReactFlow();
+  const { screenToFlowPosition, getNodes, fitView } = useReactFlow();
 
   const workflow = useWorkflowDocument({
     workflowId,
@@ -127,6 +129,29 @@ const WorkflowPageContent: React.FC = () => {
     enabled: !workflow.isLoading && !readOnly && !isRunning,
     documentKey: workflowId,
     isLoading: workflow.isLoading,
+  });
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  useCanvasShortcuts({
+    nodes,
+    edges,
+    setNodes,
+    setEdges,
+    setIsDirty,
+    enabled: !workflow.isLoading,
+    readOnly,
+    blockedByRun,
+    showToast,
+    onSave: workflow.save,
+    onRun: () => {
+      if (isRunning) return;
+      if (findMissingFileContents(nodes).length > 0) {
+        showToast("Upload the missing input files again before running.", "info");
+        return;
+      }
+      void run.run(executionSettings);
+    },
+    onFitView: () => void fitView({ duration: 200 }),
+    onShowShortcuts: () => setShowShortcuts(true),
   });
   const { onAddNode } = tutorial;
   const panels = useNodePanels();
@@ -317,6 +342,7 @@ const WorkflowPageContent: React.FC = () => {
               onConnectStart={onConnectStart}
               onConnectEnd={onConnectEnd}
               history={history}
+              onShowShortcuts={() => setShowShortcuts(true)}
             />
           </ErrorBoundary>
           <WorkflowTutorial tutorial={tutorial} />
@@ -363,6 +389,10 @@ const WorkflowPageContent: React.FC = () => {
           executionSettings={executionSettings}
           onExecutionSettingsChange={handleExecutionSettingsChange}
           onShowRuns={run.openPanel}
+        />
+        <ShortcutsDialog
+          isOpen={showShortcuts}
+          onClose={() => setShowShortcuts(false)}
         />
         {deletion.nodeToDelete && (
           <ConfirmDialog

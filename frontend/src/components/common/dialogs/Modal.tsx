@@ -6,7 +6,7 @@ declare global {
 
 // Resource Management Modal
 import type React from "react";
-import { useId, type FC, type PropsWithChildren } from "react";
+import { useEffect, useId, useRef, type FC, type PropsWithChildren } from "react";
 import { X } from "lucide-react";
 
 interface ModalProps {
@@ -24,6 +24,16 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
   footer,
 }) => {
   const titleId = useId();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+
+  // Opened from the keyboard (e.g. a shortcut), focus starts in the dialog,
+  // so Escape closes it; a field inside that took focus keeps it.
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (isOpen && dialog && !dialog.contains(document.activeElement)) {
+      dialog.focus();
+    }
+  }, [isOpen]);
 
   if (!isOpen) {
     return null;
@@ -42,6 +52,8 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
       }}
     >
       <dialog
+        ref={dialogRef}
+        tabIndex={-1}
         open
         aria-modal="true"
         aria-labelledby={titleId}

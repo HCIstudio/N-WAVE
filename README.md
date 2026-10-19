@@ -123,14 +123,22 @@ and node settings and notes can't be edited (an amber frame and a notice say so)
 run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
 **Running** button brings it back.
 
-### Undo and redo
+### Undo, copy and paste, and shortcuts
 
 Adding, deleting and moving nodes, connecting and disconnecting them, and changing node
 settings can be undone with **Ctrl+Z** (**⌘Z** on macOS) and redone with **Ctrl+Shift+Z**
 or **Ctrl+Y**, or with the undo and redo buttons next to the zoom controls. Typing in a
-field is one step once you pause; inside a text field, the shortcuts undo the typing
-there instead. The history covers the open workflow until you leave it. Undo isn't
-available while a run locks the workflow or on the read-only examples.
+field is one step once you pause. The history covers the open workflow until you leave it.
+
+**Ctrl+C**, **Ctrl+X** and **Ctrl+V** copy, cut and paste the selected nodes with their
+settings and the connections between them, also into another workflow in the same
+browser; **Ctrl+D** duplicates them. Pasted nodes land beside the originals, or where
+they were if that spot is free. Other shortcuts: **Ctrl+A** selects all nodes,
+**Delete** or **Backspace** deletes the selection, **Ctrl+S** saves, **Ctrl+Enter** runs,
+**F** fits the workflow into view, and **?** (or the keyboard button next to the zoom
+controls) lists them all. Shortcuts don't fire while you type in a field, where they keep
+their usual meaning. While a run locks the workflow, and on the read-only examples, nodes
+can be copied but the canvas doesn't change.
 
 ### Which step is running, and what each node produced
 
