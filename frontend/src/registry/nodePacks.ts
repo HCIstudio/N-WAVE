@@ -84,7 +84,9 @@ export const nodeStorageKey = (id: string): string =>
 
 /**
  * Built-in node ids and process types (nodeDefinitions.ts): a custom node
- * with one would shadow the built-in. "nfcore_" ids belong to nf-core nodes.
+ * with one would shadow the built-in. "nfcore_" ids belong to nf-core nodes;
+ * "fastqc" and "trimmomatic" to the once built-in nodes that saved workflows
+ * still name (they load as nf-core nodes, see registry/nfcore/legacyNodes.ts).
  * Keep in step with RESERVED_NODE_IDS in backend/src/validation/schemas.ts.
  */
 export const RESERVED_NODE_IDS = [

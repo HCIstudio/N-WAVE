@@ -35,10 +35,6 @@ const outputPath = path.join(
   "catalog.json"
 );
 
-// Modules with a hand-written N-WAVE node (curated settings panel); their
-// support level is "full". Their files are installed like any other module.
-const curatedAdapterModules = new Set(["fastqc", "trimmomatic"]);
-
 function run(command, args, options = {}) {
   execFileSync(command, args, {
     cwd: workspaceRoot,
@@ -249,9 +245,8 @@ function applyChannelModeOverrides(modulePath, inputGroups) {
   return inputGroups;
 }
 
-function getInstallability({ modulePath, processName, outputs, emits, hasMeta, inputGroups }) {
+function getInstallability({ processName, outputs, emits, hasMeta, inputGroups }) {
   const reasons = [];
-  const isFull = curatedAdapterModules.has(modulePath);
 
   if (!hasMeta) reasons.push("Missing meta.yml");
   if (!processName) reasons.push("Missing process declaration");
@@ -271,14 +266,12 @@ function getInstallability({ modulePath, processName, outputs, emits, hasMeta, i
   }
 
   return {
-    automatic: isFull || reasons.length === 0,
-    requiresReview: !isFull,
+    automatic: reasons.length === 0,
     reasons,
   };
 }
 
-function classifyModule({ modulePath, processName, outputs, emits, hasMeta, installability }) {
-  if (curatedAdapterModules.has(modulePath)) return "full";
+function classifyModule({ processName, outputs, emits, hasMeta, installability }) {
   if (!hasMeta || !processName) return "unsupported";
   if (outputs.length === 0 || emits.length === 0) return "needs_review";
   return installability.automatic ? "candidate" : "needs_review";
@@ -413,7 +406,6 @@ function buildCatalog() {
     },
     counts: {
       total: modules.length,
-      full: modules.filter((module) => module.support === "full").length,
       candidate: modules.filter((module) => module.support === "candidate")
         .length,
       needsReview: modules.filter((module) => module.support === "needs_review")
@@ -502,7 +494,6 @@ function buildSubworkflows(modules, commit) {
         support: reasons.length === 0 ? "candidate" : "unsupported",
         installability: {
           automatic: reasons.length === 0,
-          requiresReview: true,
           reasons,
         },
       };
@@ -545,7 +536,7 @@ console.log(
   )}`
 );
 console.log(
-  `Support: full=${catalog.counts.full}, candidate=${catalog.counts.candidate}, needs_review=${catalog.counts.needsReview}, unsupported=${catalog.counts.unsupported}`
+  `Support: candidate=${catalog.counts.candidate}, needs_review=${catalog.counts.needsReview}, unsupported=${catalog.counts.unsupported}`
 );
 console.log(
   `Subworkflows: ${catalog.counts.subworkflows} (unsupported=${catalog.counts.subworkflowsUnsupported})`

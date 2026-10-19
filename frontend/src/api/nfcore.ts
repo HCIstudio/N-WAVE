@@ -63,11 +63,10 @@ export interface NfCoreCatalogModule {
     }>;
     resources: boolean;
   };
-  support: "full" | "candidate" | "needs_review" | "unsupported";
+  support: "candidate" | "needs_review" | "unsupported";
   installed?: boolean;
   installability?: {
     automatic: boolean;
-    requiresReview: boolean;
     reasons: string[];
   };
 }

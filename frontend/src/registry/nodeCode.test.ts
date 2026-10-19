@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { makeNode } from "../test/nodes";
+import { installNfCoreModule, makeNode } from "../test/nodes";
 import { getNodeCode } from "./nodeCode";
 
 describe("getNodeCode", () => {
@@ -22,7 +22,9 @@ describe("getNodeCode", () => {
   );
 
   it("references the nf-core module of an nf-core node", () => {
-    const code = getNodeCode(makeNode("fastqc", { nogroup: true }));
+    const code = getNodeCode(
+      makeNode(installNfCoreModule("nf-core/fastqc"), { nfcoreExtArgs: "--nogroup --kmers 7" }),
+    );
     expect(code?.processSource).toBe("");
     expect(code?.nfCoreModule).toEqual({
       id: "nf-core/fastqc",
@@ -33,7 +35,7 @@ describe("getNodeCode", () => {
     expect(code?.configBlocks.join("\n")).toContain(
       "ext.args = '--nogroup --kmers 7'",
     );
-    expect(code?.workflowSnippet).toContain("reads_ch.map");
+    expect(code?.workflowSnippet).toMatch(/_reads_nfcore = reads_ch\s+\.map/);
   });
 
   it("returns null for nodes that don't generate a process", () => {

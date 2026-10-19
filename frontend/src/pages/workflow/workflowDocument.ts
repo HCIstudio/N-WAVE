@@ -3,6 +3,7 @@
 import type { Edge, Node } from "@xyflow/react";
 import { isDemoMode } from "../../api";
 import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
+import { migrateLegacyNfCoreNode } from "../../registry/nfcore/legacyNodes";
 import { getApiErrorMessage, getResponseStatus } from "../../utils/errors";
 
 /** The handle an edge end attaches to, given the ports on its side of the node. */
@@ -16,6 +17,22 @@ const handleFor = (
     return ports[0].name;
   }
   return handle;
+};
+
+/**
+ * An nf-core module's versions output is named after its emit
+ * ("versions_fastqc"); the old built-in FastQC and Trimmomatic called it
+ * "versions".
+ */
+const outputHandleFor = (
+  handle: string | null | undefined,
+  ports: { name: string }[] | undefined,
+): string | null | undefined => {
+  if (handle === "versions" && ports && !ports.some((port) => port.name === handle)) {
+    const versions = ports.filter((port) => port.name.startsWith("versions_"));
+    if (versions.length === 1) return versions[0].name;
+  }
+  return handleFor(handle, ports);
 };
 
 /**
@@ -39,7 +56,7 @@ export const hydrateEdges = (
 
       return {
         ...edge,
-        sourceHandle: handleFor(
+        sourceHandle: outputHandleFor(
           sourceNode?.type === "fileInput" && edge.sourceHandle === "out"
             ? "ch_files_out"
             : edge.sourceHandle,
@@ -87,10 +104,11 @@ const withFileInputPort = (node: Node<NodeData>): Node<NodeData> =>
  * Nodes as React Flow 12 takes them. Workflows saved with React Flow 11 carry
  * its measured `width`/`height` (and `positionAbsolute`) on each node; React
  * Flow 12 would read those as fixed sizes, so they are dropped and the nodes
- * are measured again. File Input's old "out" port gets its current name.
+ * are measured again. File Input's old "out" port gets its current name, and
+ * the once built-in FastQC and Trimmomatic become their nf-core modules' nodes.
  */
 export const hydrateNodes = (nodes: Node<NodeData>[]): Node<NodeData>[] =>
-  nodes.map(withFileInputPort).map((node) => {
+  nodes.map(withFileInputPort).map(migrateLegacyNfCoreNode).map((node) => {
     const legacy = node as Node<NodeData> & { positionAbsolute?: unknown };
     if (
       legacy.width === undefined &&

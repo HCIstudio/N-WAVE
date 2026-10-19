@@ -95,6 +95,65 @@ describe("hydrateNodes", () => {
   });
 });
 
+describe("the once built-in FastQC and Trimmomatic", () => {
+  const fastqc = node("qc", "process", {
+    processType: "fastqc",
+    label: "FastQC",
+    subtitle: "Quality Control",
+    inputs: [{ name: "reads" }],
+    outputs: [{ name: "html" }, { name: "zip" }, { name: "versions" }],
+    nogroup: true,
+    kmers: 7,
+    format: "",
+    containerImage: "biocontainers/fastqc:latest",
+    cpus: 2,
+  });
+
+  it("become the nf-core module's node, with their settings as its arguments", () => {
+    const [hydrated] = hydrateNodes([fastqc]);
+    expect(hydrated.data).toMatchObject({
+      processType: "nfcore_fastqc",
+      nwaveNfCoreModuleId: "nf-core/fastqc",
+      nwaveExecutionBackend: "nf-core",
+      nfcoreExtArgs: "--nogroup --kmers 7",
+      label: "FastQC",
+      cpus: 2,
+    });
+    expect(hydrated.data.outputs?.map((port) => port.name)).toEqual(["html", "zip", "versions_fastqc"]);
+    expect(hydrated.data).not.toHaveProperty("nogroup");
+    expect(hydrated.data).not.toHaveProperty("containerImage");
+  });
+
+  it("keep their connections, also from the versions output", () => {
+    const nodes = hydrateNodes([fastqc, node("out", "outputDisplay", { inputs: [{ name: "in" }, { name: "other" }] })]);
+    const [edge] = hydrateEdges(
+      [{ id: "e", source: "qc", sourceHandle: "versions", target: "out", targetHandle: "in" } as Edge],
+      nodes,
+    );
+    expect(edge.sourceHandle).toBe("versions_fastqc");
+  });
+
+  it("turn Trimmomatic's steps into its arguments", () => {
+    const [hydrated] = hydrateNodes([
+      node("trim", "process", {
+        processType: "trimmomatic",
+        outputs: [{ name: "trimmed_reads" }, { name: "versions" }],
+        leading: 5,
+        minlen: 50,
+        adapter_file: "TruSeq3-PE.fa:2:30:10",
+        custom_steps: "CROP:100\n",
+      }),
+    ]);
+    expect(hydrated.data).toMatchObject({
+      processType: "nfcore_trimmomatic",
+      nwaveNfCoreModuleId: "nf-core/trimmomatic",
+      nfcoreExtArgs:
+        "-phred33 LEADING:5 TRAILING:3 SLIDINGWINDOW:4:15 MINLEN:50 ILLUMINACLIP:TruSeq3-PE.fa:2:30:10 CROP:100",
+    });
+    expect(hydrated.data.outputs?.map((port) => port.name)).toEqual(["trimmed_reads", "versions_trimmomatic"]);
+  });
+});
+
 describe("hydrateEdges with React Flow 12", () => {
   const edge = (sourceHandle: string, targetHandle: string) =>
     ({ id: "e", source: "a", sourceHandle, target: "b", targetHandle }) as Edge;

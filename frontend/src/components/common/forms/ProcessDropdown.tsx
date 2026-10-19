@@ -76,6 +76,7 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
           type="button"
           onClick={() => setIsLibraryOpen(true)}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
+          title="Install bioinformatics tools from nf-core, such as FastQC, Trimmomatic or STAR, as nodes"
         >
           <DynamicIcon name="PackagePlus" className="h-4 w-4" />
           nf-core Library
@@ -178,7 +179,15 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
           ))
         ) : (
           <p className="text-center text-sm text-text-light p-4">
-            No nodes found.
+            No nodes found. Tools such as FastQC or Trimmomatic come from the{" "}
+            <button
+              type="button"
+              onClick={() => setIsLibraryOpen(true)}
+              className="text-nextflow-green hover:underline"
+            >
+              nf-core Library
+            </button>
+            .
           </p>
         )}
       </div>

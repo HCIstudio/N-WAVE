@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, installNfCoreModule, moveNode, test } from "./fixtures";
 
 test.describe("samplesheet node", () => {
   test("parses, validates and exports a samplesheet", async ({ page }) => {
@@ -43,7 +43,8 @@ test.describe("samplesheet node", () => {
     await expect(sheet).toContainText("2 samples, 1 paired-end");
     await page.getByRole("button", { name: "Close Panel" }).click();
 
-    const fastqc = await addNode(page, "FastQC");
+    await installNfCoreModule(page, "nf-core/fastqc");
+    const fastqc = await addNode(page, "fastqc");
     await moveNode(page, fastqc, 100, 100);
     await connect(page, sheet, fastqc);
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);

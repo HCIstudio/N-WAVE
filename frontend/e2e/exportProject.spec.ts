@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { Download, Page } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, installNfCoreModule, moveNode, test } from "./fixtures";
 
 const exportProject = async (page: Page): Promise<Download> => {
   const downloadPromise = page.waitForEvent("download");
@@ -69,7 +69,8 @@ test.describe("export project", () => {
       mimeType: "text/plain",
       buffer: Buffer.from("@r1\nACGT\n+\nIIII\n"),
     });
-    const fastqc = await addNode(page, "FastQC");
+    await installNfCoreModule(page, "nf-core/fastqc");
+    const fastqc = await addNode(page, "fastqc");
     await connect(page, input, fastqc);
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 

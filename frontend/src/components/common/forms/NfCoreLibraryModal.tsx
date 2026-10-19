@@ -21,10 +21,18 @@ interface NfCoreLibraryModalProps {
 }
 
 const supportLabels: Record<NfCoreCatalogModule["support"], string> = {
-  full: "Ready",
   candidate: "Generated",
   needs_review: "Needs review",
-  unsupported: "Unsupported",
+  unsupported: "Can't be built",
+};
+
+/** What each label means, for the badges' tooltips and the legend. */
+const supportHelp: Record<NfCoreCatalogModule["support"], string> = {
+  candidate:
+    "N-WAVE builds the node automatically from the module's own files (main.nf and meta.yml) and understood every input.",
+  needs_review:
+    "N-WAVE couldn't read some of the module's inputs or outputs, so it can't build a complete node; the reason is shown under the module.",
+  unsupported: "N-WAVE can't build a node for this module yet.",
 };
 const pageSize = 150;
 
@@ -186,7 +194,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
             <p className="text-xs text-text-light">
               {isDemoMode
                 ? "Modules install into this browser. Build workflows with them and export the code here; run them with the Docker version of N-WAVE."
-                : "Install local module adapters from the pinned catalog."}
+                : "Tools from nf-core, such as FastQC, Trimmomatic or STAR. Installing one adds its node to the Add node menu."}
             </p>
           </div>
           <button
@@ -246,6 +254,31 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
             </span>
             {isLoading && <span>Loading catalog...</span>}
           </div>
+          <details className="mt-2 text-xs text-text-light">
+            <summary className="cursor-pointer select-none hover:text-text">
+              What do the labels mean?
+            </summary>
+            <dl className="mt-2 space-y-1.5 rounded-md border border-accent p-3">
+              {(Object.keys(supportLabels) as NfCoreCatalogModule["support"][]).map(
+                (support) => (
+                  <div key={support} className="flex gap-2">
+                    <dt
+                      className={`h-fit shrink-0 rounded-md px-2 py-0.5 ${supportClass(support)}`}
+                    >
+                      {supportLabels[support]}
+                    </dt>
+                    <dd>{supportHelp[support]}</dd>
+                  </div>
+                ),
+              )}
+              <p className="pt-1">
+                Nodes are built from what each module declares, so after
+                installing one, check its inputs, outputs and settings in the
+                node's panel (its Code tab shows the module's code, and the
+                panel links to its documentation).
+              </p>
+            </dl>
+          </details>
           {error && (
             <div
               role="alert"
@@ -271,12 +304,6 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
               module.support !== "unsupported" &&
               module.installability?.automatic !== false &&
               !isInstalled;
-            const installabilityText =
-              module.installability?.automatic === false
-                ? "Manual adapter needed"
-                : module.installability?.requiresReview
-                  ? "Auto install, review recommended"
-                  : "Auto install";
 
             return (
               <div
@@ -295,6 +322,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                       className={`rounded-md px-2 py-0.5 text-xs ${supportClass(
                         module.support
                       )}`}
+                      title={supportHelp[module.support]}
                     >
                       {supportLabels[module.support]}
                     </span>
@@ -303,9 +331,11 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                         Installed
                       </span>
                     )}
-                    <span className="rounded-md border border-accent px-2 py-0.5 text-xs text-text-light">
-                      {installabilityText}
-                    </span>
+                    {module.installability?.automatic === false && (
+                      <span className="rounded-md border border-accent px-2 py-0.5 text-xs text-text-light">
+                        Can't be installed automatically
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 line-clamp-2 text-sm text-text-light">
                     {module.description || "No description available."}
@@ -408,6 +438,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                         className={`rounded-md px-2 py-0.5 text-xs ${supportClass(
                           subworkflow.support
                         )}`}
+                        title={supportHelp[subworkflow.support]}
                       >
                         {supportLabels[subworkflow.support]}
                       </span>
@@ -504,14 +535,13 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
 };
 
 const supportRank = (support: NfCoreCatalogModule["support"]): number => {
-  if (support === "full") return 0;
-  if (support === "candidate") return 1;
-  if (support === "needs_review") return 2;
-  return 3;
+  if (support === "candidate") return 0;
+  if (support === "needs_review") return 1;
+  return 2;
 };
 
 const supportClass = (support: NfCoreCatalogModule["support"]): string => {
-  if (support === "full") return "bg-nextflow-green/15 text-nextflow-green";
+  if (support === "candidate") return "bg-nextflow-green/15 text-nextflow-green";
   if (support === "unsupported") return "bg-red-900/30 text-red-200";
   return "bg-yellow-900/30 text-yellow-200";
 };

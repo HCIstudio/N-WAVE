@@ -25,6 +25,7 @@ import {
   isNfCoreSubworkflowId,
   type NfCoreSubworkflowCatalogEntry,
 } from "../../src/registry/nfcore/subworkflow";
+import { migrateLegacyNfCoreNode } from "../../src/registry/nfcore/legacyNodes";
 import { createNodeDefinitionFromNfCoreManifest } from "../../src/registry/nfcoreModuleAdapters";
 import {
   nodeDefinitions,
@@ -241,22 +242,44 @@ const customNodes = (): LintFixture => {
   };
 };
 
-/** The bundled FastQC and Trimmomatic nodes of older workflows. */
-const bundledNodes = (): LintFixture => {
+/**
+ * FastQC and Trimmomatic nodes of workflows saved when they were built in,
+ * as they load now: nf-core module nodes with their settings as arguments.
+ */
+const migratedNodes = (): LintFixture => {
   const input = node("fileInput", {
     files: [{ name: "reads.fastq", size: 4, content: "@r\nA\n+\nI\n" }],
   });
-  const fastqc = node("fastqc");
-  const trimmomatic = node("trimmomatic");
+  const legacy = (id: string, data: Partial<NodeData>): Node<NodeData> =>
+    migrateLegacyNfCoreNode({
+      id,
+      type: "process",
+      position: { x: 0, y: 0 },
+      data: { inputs: [{ name: "reads" }], ...data },
+    });
+  const fastqc = legacy("fastqc_legacy", {
+    processType: "fastqc",
+    label: "FastQC",
+    outputs: [{ name: "html" }, { name: "zip" }, { name: "versions" }],
+    nogroup: true,
+    kmers: 7,
+  });
+  const trimmomatic = legacy("trimmomatic_legacy", {
+    processType: "trimmomatic",
+    label: "Trimmomatic",
+    outputs: [{ name: "trimmed_reads" }, { name: "versions" }],
+    leading: 3,
+    adapter_file: "TruSeq3-SE.fa:2:30:10",
+  });
+  registerNfCoreNodes([fastqc, trimmomatic]);
   const outputName = (n: Node<NodeData>) => n.data.outputs?.[0]?.name ?? "out";
-  const inputName = (n: Node<NodeData>) => n.data.inputs?.[0]?.name ?? "in";
   return {
-    name: "bundled-nodes",
-    description: "The bundled FastQC and Trimmomatic nodes",
+    name: "migrated-fastqc-trimmomatic",
+    description: "FastQC and Trimmomatic nodes of workflows saved when they were built in",
     nodes: [input, fastqc, trimmomatic],
     edges: [
-      edge(input, outputName(input), fastqc, inputName(fastqc)),
-      edge(input, outputName(input), trimmomatic, inputName(trimmomatic)),
+      edge(input, outputName(input), fastqc, "reads"),
+      edge(input, outputName(input), trimmomatic, "reads"),
     ],
   };
 };
@@ -282,6 +305,6 @@ export const buildLintFixtures = (): LintFixture[] => {
     },
     channelOperators(),
     customNodes(),
-    bundledNodes(),
+    migratedNodes(),
   ];
 };

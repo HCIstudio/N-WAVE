@@ -202,7 +202,6 @@ describe("installing nf-core modules", () => {
         ...entry,
         installability: {
           automatic: false,
-          requiresReview: true,
           reasons: ["Unsupported input"],
         },
       })

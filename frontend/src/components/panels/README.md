@@ -15,8 +15,7 @@ panels/
 │   ├── FloatingPanel.tsx          # Floating panel base component
 │   └── index.ts                   # Base exports
 ├── process/                       # Process-specific panels
-│   ├── FastQCPanel.tsx            # FastQC configuration panel
-│   ├── TrimmomaticPanel.tsx       # Trimmomatic configuration panel
+│   ├── NfCoreModulePanel.tsx      # Settings of an installed nf-core module
 │   ├── ProcessNodePanel.tsx       # Generic process node panel
 │   └── index.ts                   # Process exports
 ├── input/                         # Input-related panels
@@ -43,7 +42,7 @@ panels/
 ### 1. Category-Based Organization
 
 - **Base**: Foundation components that provide common functionality
-- **Process**: Panels specific to Nextflow processes (FastQC, Trimmomatic, etc.)
+- **Process**: Panels specific to Nextflow processes (nf-core modules, custom nodes, pipelines)
 - **Input**: Panels for configuring input nodes (file inputs, parameters, etc.)
 - **Output**: Panels for configuring output nodes (displays, publishing, etc.)
 - **Operator**: Panels for operator nodes (filter, map, reduce, etc.)
@@ -60,8 +59,8 @@ panels/
 
 - Centralized exports through index.ts files at every level
 - Main index.ts provides all exports for the entire module
-- Individual category imports available (e.g., `import { FastQCPanel } from '@/components/panels/process'`)
-- Full module imports available (e.g., `import { FastQCPanel } from '@/components/panels'`)
+- Individual category imports available (e.g., `import { ProcessNodePanel } from '@/components/panels/process'`)
+- Full module imports available (e.g., `import { ProcessNodePanel } from '@/components/panels'`)
 
 ## Usage Examples
 
@@ -69,13 +68,13 @@ panels/
 
 ```tsx
 // Import from specific categories
-import { FastQCPanel, TrimmomaticPanel } from "@/components/panels/process";
+import { ProcessNodePanel } from "@/components/panels/process";
 import { FileInputPanel } from "@/components/panels/input";
 import { FilterPanel, MapPanel } from "@/components/panels/operator";
 
 // Import from main module
 import {
-  FastQCPanel,
+  ProcessNodePanel,
   FileInputPanel,
   PropertiesPanel,
   DocumentationPanelContent,
@@ -135,7 +134,7 @@ const getPanelComponent = (category: PanelCategory) => {
 **Before:**
 
 ```tsx
-import FastQCPanel from "@/components/panels/FastQCPanel";
+import ProcessNodePanel from "@/components/panels/ProcessNodePanel";
 import FileInputPanel from "@/components/panels/FileInputPanel";
 ```
 
@@ -143,18 +142,18 @@ import FileInputPanel from "@/components/panels/FileInputPanel";
 
 ```tsx
 // Option 1: Category-specific imports
-import { FastQCPanel } from "@/components/panels/process";
+import { ProcessNodePanel } from "@/components/panels/process";
 import { FileInputPanel } from "@/components/panels/input";
 
 // Option 2: Main module imports
-import { FastQCPanel, FileInputPanel } from "@/components/panels";
+import { ProcessNodePanel, FileInputPanel } from "@/components/panels";
 ```
 
 ### File Locations
 
 Update any direct file path imports:
 
-- `@/components/panels/FastQCPanel` → `@/components/panels/process/FastQCPanel`
+- `@/components/panels/ProcessNodePanel` → `@/components/panels/process/ProcessNodePanel`
 - `@/components/panels/FileInputPanel` → `@/components/panels/input/FileInputPanel`
 - etc.
 

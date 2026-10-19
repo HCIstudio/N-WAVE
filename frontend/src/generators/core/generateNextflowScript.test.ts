@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
-import { makeNode } from "../../test/nodes";
+import { installNfCoreModule, makeNode } from "../../test/nodes";
 import {
   buildMixedChannelExpression,
   generateNextflowScript,
@@ -107,6 +107,7 @@ describe("generateNextflowScript with nf-core modules", () => {
       buildNfCoreManifest(multiqcEntry)
     );
     registerDynamicNodeDefinitions([multiqcDefinition]);
+    const fastqcId = installNfCoreModule("nf-core/fastqc");
 
     const node = (id: string, definitionId: string, data = {}): Node => {
       const definition = nodeDefinitions.find(
@@ -126,7 +127,7 @@ describe("generateNextflowScript with nf-core modules", () => {
       node("reads", "fileInput", {
         files: [{ name: "sample.fastq", content: "@r1\nACGT\n+\nIIII\n" }],
       }),
-      node("fastqc", "fastqc"),
+      node("fastqc", fastqcId),
     ];
     const graphEdges: Edge[] = [
       { id: "e1", source: "reads", sourceHandle: "out", target: "fastqc", targetHandle: "reads" },
@@ -141,8 +142,8 @@ describe("generateNextflowScript with nf-core modules", () => {
       "{workflow_name}"
     );
     const workflowBlock = generated.slice(generated.indexOf("workflow {"));
-    const fastqcCall = workflowBlock.search(/\bFASTQC_FASTQC\(/);
-    const zipAssignment = workflowBlock.search(/\bfastqc_zip = FASTQC_FASTQC\.out\.zip/);
+    const fastqcCall = workflowBlock.search(/\bNFCORE_FASTQC_FASTQC\(/);
+    const zipAssignment = workflowBlock.search(/\bfastqc_zip = NFCORE_FASTQC_FASTQC\.out\.zip/);
     const multiqcInput = workflowBlock.search(
       /\bch_\w*multiqc_files_nfcore = fastqc_zip\b/
     );

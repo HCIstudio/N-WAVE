@@ -117,13 +117,10 @@ export const getNodeCode = (node: Node<NodeData>): NodeCode | null => {
     : includeStatements
         .map((statement) => statement.match(INCLUDE_PATTERN))
         .find(Boolean);
-  // Bundled nf-core nodes (FastQC, Trimmomatic) don't store their module id,
-  // so fall back to the include path: ./modules/nf-core/<path>/main.
-  const modulePath = includeMatch?.[2] ?? "";
   const moduleId =
     typeof node.data.nwaveNfCoreModuleId === "string"
       ? node.data.nwaveNfCoreModuleId
-      : modulePath.match(/modules\/(nf-core\/.+)\/main$/)?.[1];
+      : undefined;
 
   return {
     processName,
@@ -133,7 +130,7 @@ export const getNodeCode = (node: Node<NodeData>): NodeCode | null => {
         ? {
             id: moduleId,
             processName: includeMatch[1] ?? "",
-            modulePath,
+            modulePath: includeMatch[2] ?? "",
           }
         : undefined,
     includeStatements,

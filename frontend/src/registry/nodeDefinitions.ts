@@ -18,8 +18,6 @@ import FilterPanel from "../components/panels/operator/FilterPanel";
 import MapPanel from "../components/panels/operator/MapPanel";
 import MergePanel from "../components/panels/operator/MergePanel";
 import ProcessNodePanel from "../components/panels/process/ProcessNodePanel";
-import FastQCPanel from "../components/panels/process/FastQCPanel";
-import TrimmomaticPanel from "../components/panels/process/TrimmomaticPanel";
 import { useFilterOperator } from "../hooks/operator/useFilterOperator";
 import { useMapOperator } from "../hooks/operator/useMapOperator";
 import { useMergeOperator } from "../hooks/operator/useMergeOperator";
@@ -31,11 +29,6 @@ import {
   generateOutputDisplayNode,
   type NodeGenerator,
 } from "./nodeGeneration";
-import {
-  fastqcNfCoreAdapter,
-  generateNfCoreModuleNode,
-  trimmomaticNfCoreAdapter,
-} from "./nfcoreModuleAdapters";
 
 export type NodeKind =
   | "input"
@@ -274,109 +267,6 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     executionLabel: "Process",
     // Superseded by "Custom process" (a custom node with real code).
     hiddenFromPalette: true,
-  },
-  {
-    id: "fastqc",
-    kind: "process",
-    category: "Core",
-    label: "FastQC",
-    description:
-      "Runs FastQC on raw sequencing data for quality control assessment.",
-    type: "process",
-    icon: "ClipboardCheck",
-    processType: "fastqc",
-    inputs: [{ name: "reads", label: "FASTQ Files", isConnectable: true }],
-    outputs: [
-      { name: "html", label: "HTML Reports", isConnectable: true },
-      { name: "zip", label: "ZIP Archives", isConnectable: true },
-      { name: "versions", label: "Versions", isConnectable: true },
-    ],
-    defaults: {
-      processType: "fastqc",
-      label: "FastQC",
-      subtitle: "Quality Control",
-      inputs: [{ name: "reads", label: "FASTQ Files", isConnectable: true }],
-      outputs: [
-        { name: "html", label: "HTML Reports", isConnectable: true },
-        { name: "zip", label: "ZIP Archives", isConnectable: true },
-        { name: "versions", label: "Versions", isConnectable: true },
-      ],
-      threads: 1,
-      format: "",
-      kmers: 7,
-      nogroup: false,
-      adapters: "",
-      limits: "",
-      containerImage: "biocontainers/fastqc:latest",
-      cpus: 2,
-      memory: "4.GB",
-      timeLimit: "2.h",
-    },
-    panel: FastQCPanel,
-    generateNextflow: generateNfCoreModuleNode(fastqcNfCoreAdapter),
-    executionLabel: "FastQC",
-  },
-  {
-    id: "trimmomatic",
-    kind: "process",
-    category: "Core",
-    label: "Trimmomatic",
-    description:
-      "Quality trimming and filtering of FASTQ reads using Trimmomatic.",
-    type: "process",
-    icon: "Scissors",
-    processType: "trimmomatic",
-    inputs: [{ name: "reads", label: "FASTQ", isConnectable: true }],
-    outputs: [
-      { name: "trimmed_reads", label: "Trimmed", isConnectable: true },
-      { name: "unpaired_reads", label: "Unpaired", isConnectable: true },
-      { name: "trim_log", label: "Log", isConnectable: true },
-      { name: "out_log", label: "Output Log", isConnectable: true },
-      { name: "summary", label: "Summary", isConnectable: true },
-      { name: "versions", label: "Versions", isConnectable: true },
-    ],
-    defaults: {
-      processType: "trimmomatic",
-      label: "Trimmomatic",
-      subtitle: "Quality Trimming",
-      inputs: [{ name: "reads", label: "FASTQ", isConnectable: true }],
-      outputs: [
-        { name: "trimmed_reads", label: "Trimmed", isConnectable: true },
-        { name: "unpaired_reads", label: "Unpaired", isConnectable: true },
-        { name: "trim_log", label: "Log", isConnectable: true },
-        { name: "out_log", label: "Output Log", isConnectable: true },
-        { name: "summary", label: "Summary", isConnectable: true },
-        { name: "versions", label: "Versions", isConnectable: true },
-      ],
-      leading: 3,
-      trailing: 3,
-      slidingwindow: "4:15",
-      minlen: 36,
-      adapter_file: "",
-      custom_steps: "",
-      phred_score: "33",
-      containerImage: "staphb/trimmomatic:latest",
-      cpus: 4,
-      memory: "4.GB",
-      timeLimit: "4.h",
-    },
-    panel: TrimmomaticPanel,
-    generateNextflow: generateNfCoreModuleNode(trimmomaticNfCoreAdapter),
-    executionLabel: "Trimmomatic",
-    validateConnection: ({ sourceNode, targetNode }) => {
-      if (
-        targetNode?.data?.processType === "trimmomatic" &&
-        sourceNode?.data?.processType === "fastqc"
-      ) {
-        return {
-          valid: false,
-          message:
-            "Cannot connect FastQC to Trimmomatic. FastQC produces quality reports (ZIP/HTML), not FASTQ files. Connect both to the same File Input instead.",
-        };
-      }
-
-      return { valid: true };
-    },
   },
   {
     id: "pipeline",

@@ -56,6 +56,18 @@ export const addNode = async (page: Page, label: string): Promise<Locator> => {
   return nodes.nth(before);
 };
 
+/** Install an nf-core module from the nf-core Library, e.g. "nf-core/fastqc". */
+export const installNfCoreModule = async (page: Page, moduleId: string): Promise<void> => {
+  await page.getByRole("button", { name: "Add node" }).click();
+  await page.getByRole("button", { name: "nf-core Library" }).click();
+  await page.getByPlaceholder("Search nf-core modules...").fill(moduleId.replace(/^nf-core\//, ""));
+  await page.getByRole("button", { name: `Install ${moduleId}`, exact: true }).click();
+  await expect(page.getByText(`Installed ${moduleId}.`)).toBeVisible();
+  await page.getByRole("button", { name: "Close nf-core library" }).click();
+  // The node menu stays open; addNode opens it again.
+  await page.getByRole("button", { name: "Add node" }).click();
+};
+
 /** Move a node by dragging it, so freshly added nodes don't overlap. */
 export const moveNode = async (
   page: Page,
