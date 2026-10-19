@@ -1,12 +1,8 @@
 import type React from "react";
 import type { WorkflowEdge, WorkflowNode } from "../../../types/backend";
+import { NODE_KINDS, nodeKindOf } from "../../../workflows/nodeKinds";
 
-const INPUT_TYPES = new Set(["fileInput", "samplesheet", "parameters"]);
 const DEFAULT_SIZE = { width: 120, height: 90 };
-
-const isNfCore = (node: WorkflowNode): boolean =>
-  node.type === "pipeline" ||
-  String(node.data?.processType ?? "").startsWith("nfcore");
 
 /** The workflow's nodes, without notes. */
 export const countNodes = (nodes: WorkflowNode[]): number =>
@@ -17,7 +13,7 @@ const WorkflowPreview: React.FC<{
   nodes: WorkflowNode[];
   edges: WorkflowEdge[];
 }> = ({ nodes, edges }) => {
-  const steps = nodes.filter((node) => node.type !== "note" && node.position);
+  const steps = nodes.filter((node) => nodeKindOf(node) && node.position);
   if (steps.length === 0) {
     return (
       <div className="flex h-24 items-center justify-center rounded-md bg-background text-xs text-text-light">
@@ -69,21 +65,22 @@ const WorkflowPreview: React.FC<{
       })}
       {steps.map((node) => {
         const b = boxes.get(node.id);
-        if (!b) return null;
-        const fill = INPUT_TYPES.has(node.type ?? "")
-          ? "#7dd3fc"
-          : isNfCore(node)
-            ? "#00A878"
-            : "#e5e5e5";
+        const kind = nodeKindOf(node);
+        if (!b || !kind) return null;
+        const { color, shape } = NODE_KINDS[kind];
+        const stroke = Math.max(6, width / 120);
         return (
           <rect
             key={node.id}
-            x={b.x}
-            y={b.y}
-            width={b.width}
-            height={b.height}
-            rx={12}
-            fill={fill}
+            data-kind={kind}
+            x={b.x + (shape === "outline" ? stroke / 2 : 0)}
+            y={b.y + (shape === "outline" ? stroke / 2 : 0)}
+            width={b.width - (shape === "outline" ? stroke : 0)}
+            height={b.height - (shape === "outline" ? stroke : 0)}
+            rx={shape === "pill" ? b.height / 2 : 12}
+            fill={shape === "outline" ? "none" : color}
+            stroke={color}
+            strokeWidth={shape === "outline" ? stroke : 0}
           />
         );
       })}

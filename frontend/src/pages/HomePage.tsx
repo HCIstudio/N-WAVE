@@ -28,6 +28,7 @@ import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
+import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
 import WorkflowPreview, {
   countNodes,
 } from "../components/common/workflow/WorkflowPreview";
@@ -643,7 +644,10 @@ const HomePage: React.FC = () => {
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 p-8">
           <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <h1 className="text-3xl font-bold text-text">Workflows</h1>
+            <div>
+              <h1 className="text-3xl font-bold text-text">Workflows</h1>
+              <NodeKindLegend className="mt-2" />
+            </div>
             <div className="flex flex-wrap items-center gap-3">
               {!isHomeTutorialActive && (
                 <button

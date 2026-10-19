@@ -11,6 +11,7 @@ import clsx from "clsx";
 import { AlertTriangle, XCircle } from "lucide-react";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
+import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
 import type { SelectedFile } from "../../data/types";
 
 export interface PortData {
@@ -121,6 +122,8 @@ const BaseNode = ({
     "ease-in-out",
   ];
 
+  const kind = nodeKindOf({ type, data });
+
   // What the workflow check found here: errors block the run.
   const problems = useNodeProblems(id);
   const problemLevel = problems.some((problem) => problem.level === "error")
@@ -174,6 +177,17 @@ const BaseNode = ({
       })}
       style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
     >
+      {/* What kind of node this is, in the colors of the workflow previews. */}
+      {kind && (
+        <div
+          aria-hidden="true"
+          data-kind={kind}
+          title={NODE_KINDS[kind].label}
+          className="absolute inset-x-0 top-0 h-1.5 rounded-t-lg"
+          style={{ backgroundColor: NODE_KINDS[kind].color }}
+        />
+      )}
+
       {/* Input Handles */}
       {data.inputs?.map((port, index, arr) => (
         <div

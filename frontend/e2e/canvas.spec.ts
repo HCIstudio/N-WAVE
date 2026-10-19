@@ -191,6 +191,18 @@ test.describe("canvas flow", () => {
     await expect(edges).toHaveCount(count);
   });
 
+  test("marks each node's kind like the previews, with the same legend", async ({ page }) => {
+    await page.goto("./");
+    await expect(page.getByRole("list", { name: "Node kinds" })).toContainText("Inputs");
+
+    await page.goto("./workflow/builtin:demo-basic");
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    await expect(page.locator('[data-id="demo-file-input"] [data-kind="input"]')).toHaveCount(1);
+    await expect(page.locator('[data-id="demo-output"] [data-kind="step"]')).toHaveCount(1);
+    const legend = page.getByRole("list", { name: "Node kinds" });
+    await expect(legend).toContainText("nf-core steps");
+  });
+
   test("a node can't be connected to itself", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
