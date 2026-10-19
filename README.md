@@ -137,6 +137,16 @@ and node settings and notes can't be edited (an amber frame and a notice say so)
 run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
 **Running** button brings it back.
 
+### Node kinds
+
+The previews on the workflow cards and the nodes on the canvas share one coding of what each
+node is: **inputs** (File Input, Samplesheet, Parameters) are light blue, **nf-core steps**
+(modules, subworkflows, pipelines) green and **other steps** (operators, custom processes,
+Display Output) grey. In the previews the kinds also differ in shape (rounded inputs, filled
+nf-core steps, outlined other steps); on the canvas each node carries the color as a band
+along its top, next to its icon and subtitle. A legend under the Workflows heading and in the
+canvas's corner names them. The colors live in `frontend/src/workflows/nodeKinds.ts`.
+
 ### Editing the examples
 
 The built-in examples are read-only. The first time you change one (move or delete a node,

@@ -4,6 +4,7 @@ import {
   Background,
   BackgroundVariant,
   ConnectionMode,
+  Panel,
   useNodesInitialized,
   useReactFlow,
 } from "@xyflow/react";
@@ -21,6 +22,7 @@ import type {
 
 import CustomControls, { type HistoryControls } from "./CustomControls";
 import CustomEdge from "./CustomEdge";
+import NodeKindLegend from "../common/workflow/NodeKindLegend";
 import BaseNode from "../nodes/BaseNode";
 import NoteNode from "../nodes/note/NoteNode";
 import FileInputNode from "../nodes/input/FileInputNode";
@@ -125,6 +127,9 @@ const Canvas: FC<CanvasProps> = ({
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
         <CustomControls history={history} onShowShortcuts={onShowShortcuts} />
+        <Panel position="bottom-right" className="hidden rounded-md bg-background/80 px-3 py-2 xl:block">
+          <NodeKindLegend />
+        </Panel>
       </ReactFlow>
     </div>
   );
