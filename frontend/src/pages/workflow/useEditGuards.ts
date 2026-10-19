@@ -1,7 +1,7 @@
 // Which edits the canvas accepts. While a run goes the workflow is locked:
 // the run uses what was on the canvas when it started, so edits would only
 // be confusing (and are lost if the run's results don't match them). A
-// read-only workflow (a built-in demo) is copied on its first edit.
+// read-only workflow (a built-in demo) offers a copy on its first edit.
 
 import { useCallback } from "react";
 import type {
@@ -93,7 +93,7 @@ export const edgeChangesWhileReadOnly = (
 interface Options {
   isRunning: boolean;
   readOnly: boolean;
-  duplicateReadOnlyWorkflow: (options?: CopyOptions) => Promise<boolean>;
+  requestCopy: (options?: CopyOptions) => Promise<boolean>;
   showToast: (message: string, type: ToastType) => void;
   setIsDirty: (dirty: boolean) => void;
   onNodesChange: OnNodesChange;
@@ -104,7 +104,7 @@ interface Options {
 export const useEditGuards = ({
   isRunning,
   readOnly,
-  duplicateReadOnlyWorkflow,
+  requestCopy,
   showToast,
   setIsDirty,
   onNodesChange,
@@ -119,23 +119,23 @@ export const useEditGuards = ({
   }, [isRunning, showToast]);
 
   /**
-   * Whether an edit may go ahead here. A read-only workflow is copied
+   * Whether an edit may go ahead here. A read-only workflow offers a copy
    * instead (the edit is then made in the copy by the user).
    */
   const canEdit = useCallback(() => {
     if (blockedByRun()) return false;
     if (!readOnly) return true;
-    void duplicateReadOnlyWorkflow();
+    void requestCopy();
     return false;
-  }, [blockedByRun, readOnly, duplicateReadOnlyWorkflow]);
+  }, [blockedByRun, readOnly, requestCopy]);
 
-  /** Like canEdit, but waits for the copy to be made. */
+  /** Like canEdit, but waits for the answer (and the copy). */
   const ensureEditable = useCallback(async () => {
     if (blockedByRun()) return false;
     if (!readOnly) return true;
-    await duplicateReadOnlyWorkflow();
+    await requestCopy();
     return false;
-  }, [blockedByRun, readOnly, duplicateReadOnlyWorkflow]);
+  }, [blockedByRun, readOnly, requestCopy]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -147,7 +147,7 @@ export const useEditGuards = ({
       }
       if (readOnly) {
         const { allowed, wantsCopy, moved } = nodeChangesWhileReadOnly(changes);
-        if (wantsCopy) void duplicateReadOnlyWorkflow({ positions: moved });
+        if (wantsCopy) void requestCopy({ positions: moved });
         if (allowed.length > 0) {
           onNodesChange(allowed);
           // Selection isn't an edit worth saving.
@@ -162,7 +162,7 @@ export const useEditGuards = ({
       readOnly,
       blockedByRun,
       onNodesChange,
-      duplicateReadOnlyWorkflow,
+      requestCopy,
       setIsDirty,
     ],
   );
@@ -177,7 +177,7 @@ export const useEditGuards = ({
       }
       if (readOnly) {
         const { allowed, wantsCopy } = edgeChangesWhileReadOnly(changes);
-        if (wantsCopy) void duplicateReadOnlyWorkflow();
+        if (wantsCopy) void requestCopy();
         if (allowed.length > 0) {
           onEdgesChange(allowed);
           setIsDirty(false);
@@ -191,7 +191,7 @@ export const useEditGuards = ({
       readOnly,
       blockedByRun,
       onEdgesChange,
-      duplicateReadOnlyWorkflow,
+      requestCopy,
       setIsDirty,
     ],
   );

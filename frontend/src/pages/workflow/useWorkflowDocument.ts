@@ -1,11 +1,13 @@
 // The open workflow as a document: loading it, saving it (and saving
-// automatically), its name and settings, and copying a read-only one.
+// automatically), its name and settings, and copying a read-only one (after
+// asking the user).
 
 import {
   type Dispatch,
   type SetStateAction,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { useNavigate } from "react-router";
@@ -35,6 +37,20 @@ import {
 export interface CopyOptions {
   /** Nodes the user moved, by ID: the copy has them there. */
   positions?: Record<string, XYPosition>;
+  /** Called with the copy's ID once it exists. */
+  onCopied?: (copyId: string) => void;
+}
+
+/** Navigation state of a fresh copy: its name and what it was copied from. */
+export interface CopiedFromState {
+  copiedFrom: string;
+  copyName: string;
+}
+
+/** An edit waiting for the user to agree to a copy. */
+interface PendingCopy {
+  options?: CopyOptions;
+  resolvers: ((copied: boolean) => void)[];
 }
 
 /** Saves happen this long after the last change. */
@@ -143,9 +159,7 @@ export const useWorkflowDocument = ({
 
   /** Open an editable copy of a read-only workflow (e.g. a built-in demo). */
   const duplicateReadOnlyWorkflow = useCallback(
-    async (
-      options?: CopyOptions & { onCopied?: (copyId: string) => void },
-    ) => {
+    async (options?: CopyOptions) => {
       if (!workflowId || !readOnly || isDuplicating) return false;
       try {
         setIsDuplicating(true);
@@ -164,7 +178,12 @@ export const useWorkflowDocument = ({
           });
         }
         if (copy._id) options?.onCopied?.(copy._id);
-        navigate(`/workflow/${copy._id}`);
+        navigate(`/workflow/${copy._id}`, {
+          state: {
+            copiedFrom: workflowName,
+            copyName: copy.name ?? `${workflowName} Copy`,
+          } satisfies CopiedFromState,
+        });
         return true;
       } catch (error) {
         showError(
@@ -175,8 +194,53 @@ export const useWorkflowDocument = ({
         return false;
       }
     },
-    [workflowId, readOnly, isDuplicating, navigate, showError],
+    [workflowId, readOnly, isDuplicating, workflowName, navigate, showError],
   );
+
+  // An edit of a read-only workflow asks first; nothing is copied meanwhile.
+  // Edits while the question is open wait for the same answer.
+  const pendingCopy = useRef<PendingCopy | null>(null);
+  const [isCopyPromptOpen, setIsCopyPromptOpen] = useState(false);
+
+  /** Ask for an editable copy; resolves to whether it was made. */
+  const requestCopy = useCallback(
+    (options?: CopyOptions) => {
+      if (!workflowId || !readOnly || isDuplicating) {
+        return Promise.resolve(false);
+      }
+      return new Promise<boolean>((resolve) => {
+        if (pendingCopy.current) {
+          pendingCopy.current.resolvers.push(resolve);
+          return;
+        }
+        pendingCopy.current = { options, resolvers: [resolve] };
+        setIsCopyPromptOpen(true);
+      });
+    },
+    [workflowId, readOnly, isDuplicating],
+  );
+
+  const takePendingCopy = useCallback(() => {
+    const pending = pendingCopy.current;
+    pendingCopy.current = null;
+    setIsCopyPromptOpen(false);
+    return pending;
+  }, []);
+
+  const confirmCopy = useCallback(async () => {
+    const pending = takePendingCopy();
+    if (!pending) return;
+    const copied = await duplicateReadOnlyWorkflow(pending.options);
+    for (const resolve of pending.resolvers) resolve(copied);
+  }, [takePendingCopy, duplicateReadOnlyWorkflow]);
+
+  /** Keep looking: the workflow goes back to how it is (e.g. a moved node). */
+  const declineCopy = useCallback(() => {
+    const pending = takePendingCopy();
+    if (!pending) return;
+    for (const resolve of pending.resolvers) resolve(false);
+    void load();
+  }, [takePendingCopy, load]);
 
   const save = async () => {
     if (!workflowId) {
@@ -184,7 +248,7 @@ export const useWorkflowDocument = ({
       return;
     }
     if (readOnly) {
-      await duplicateReadOnlyWorkflow();
+      await requestCopy();
       return;
     }
     setIsSaving(true);
@@ -253,7 +317,10 @@ export const useWorkflowDocument = ({
     isSaving,
     isSaved,
     save,
-    duplicateReadOnlyWorkflow,
+    requestCopy,
+    isCopyPromptOpen,
+    confirmCopy,
+    declineCopy,
     executionSettings,
     /** Settings a run used, kept for retrying it (not saved). */
     setExecutionSettings,

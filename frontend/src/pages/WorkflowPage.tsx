@@ -1,7 +1,7 @@
 import { Loader } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
-import { useParams } from "react-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate, useParams } from "react-router";
 import { type Node, ReactFlowProvider, useReactFlow } from "@xyflow/react";
 import { isDemoMode } from "../api";
 import { refreshCustomNodes } from "../api/customNodes";
@@ -27,6 +27,7 @@ import type { ExecutionSettings } from "../types/execution";
 import { getApiErrorMessage } from "../utils/errors";
 import { findFreePosition } from "../utils/nodePlacement";
 import CanvasNotices from "./workflow/CanvasNotices";
+import CopyPromptDialog from "./workflow/CopyPromptDialog";
 import NodePanels from "./workflow/NodePanels";
 import { findMissingFileContents } from "./workflow/runRequest";
 import { useCanvasHistory } from "./workflow/useCanvasHistory";
@@ -37,7 +38,10 @@ import { useLibraryNodes } from "./workflow/useLibraryNodes";
 import { useNodeDeletion } from "./workflow/useNodeDeletion";
 import { useNodePanels } from "./workflow/useNodePanels";
 import { useRunTasks } from "./workflow/useRunTasks";
-import { useWorkflowDocument } from "./workflow/useWorkflowDocument";
+import {
+  type CopiedFromState,
+  useWorkflowDocument,
+} from "./workflow/useWorkflowDocument";
 import { useWorkflowRun } from "./workflow/useWorkflowRun";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
 import {
@@ -86,15 +90,28 @@ const WorkflowPageContent: React.FC = () => {
   });
   const {
     readOnly,
-    duplicateReadOnlyWorkflow,
+    requestCopy,
+    workflowName,
     executionSettings,
     rename,
     changeExecutionSettings,
   } = workflow;
+  // A fresh copy of an example says so once it's open.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const copied = location.state as CopiedFromState | null;
+  useEffect(() => {
+    if (!copied?.copiedFrom) return;
+    showToast(
+      `You're editing “${copied.copyName}”, your own copy. The example “${copied.copiedFrom}” is unchanged.`,
+      "success",
+    );
+    navigate(location.pathname, { replace: true, state: null });
+  }, [copied, showToast, navigate, location.pathname]);
   const tutorial = useWorkflowTutorial({
     workflowId,
     readOnly,
-    duplicateReadOnlyWorkflow,
+    requestCopy,
     showError,
   });
   const run = useWorkflowRun({
@@ -112,7 +129,7 @@ const WorkflowPageContent: React.FC = () => {
   const guards = useEditGuards({
     isRunning,
     readOnly,
-    duplicateReadOnlyWorkflow,
+    requestCopy,
     showToast,
     setIsDirty,
     onNodesChange,
@@ -157,7 +174,7 @@ const WorkflowPageContent: React.FC = () => {
   const panels = useNodePanels();
   const deletion = useNodeDeletion({
     readOnly,
-    duplicateReadOnlyWorkflow,
+    requestCopy,
     canEdit,
     setNodes,
     setEdges,
@@ -183,7 +200,7 @@ const WorkflowPageContent: React.FC = () => {
       // The tutorial's add-node step may continue in a copy instead.
       if (onAddNode()) return;
       if (readOnly) {
-        void duplicateReadOnlyWorkflow();
+        void requestCopy();
         return;
       }
       const desired = screenToFlowPosition({
@@ -208,7 +225,7 @@ const WorkflowPageContent: React.FC = () => {
       blockedByRun,
       onAddNode,
       readOnly,
-      duplicateReadOnlyWorkflow,
+      requestCopy,
       screenToFlowPosition,
       getNodes,
       setNodes,
@@ -389,6 +406,12 @@ const WorkflowPageContent: React.FC = () => {
           executionSettings={executionSettings}
           onExecutionSettingsChange={handleExecutionSettingsChange}
           onShowRuns={run.openPanel}
+        />
+        <CopyPromptDialog
+          isOpen={workflow.isCopyPromptOpen}
+          workflowName={workflowName}
+          onCopy={() => void workflow.confirmCopy()}
+          onJustLook={workflow.declineCopy}
         />
         <ShortcutsDialog
           isOpen={showShortcuts}

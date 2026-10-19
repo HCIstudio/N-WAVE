@@ -143,7 +143,7 @@ describe("useWorkflowDocument", () => {
     unmount();
   });
 
-  it("copies a read-only workflow and opens the copy", async () => {
+  it("asks before copying a read-only workflow, then opens the copy", async () => {
     get.mockResolvedValueOnce({
       data: { name: "Demo", nodes: [], edges: [], origin: { readOnly: true } },
     });
@@ -153,14 +153,82 @@ describe("useWorkflowDocument", () => {
     });
     await flush();
     const onCopied = vi.fn();
-    let copied = false;
-    await act(async () => {
-      copied = await result.current.duplicateReadOnlyWorkflow({ onCopied });
+    let copied: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      copied = result.current.requestCopy({ onCopied });
     });
-    expect(copied).toBe(true);
+    expect(result.current.isCopyPromptOpen).toBe(true);
+    expect(post).not.toHaveBeenCalled();
+    await act(async () => {
+      await result.current.confirmCopy();
+    });
+    expect(await copied).toBe(true);
+    expect(result.current.isCopyPromptOpen).toBe(false);
     expect(post).toHaveBeenCalledWith("/workflows/wf1/duplicate");
     expect(onCopied).toHaveBeenCalledWith("copy1");
-    expect(navigate).toHaveBeenCalledWith("/workflow/copy1");
+    expect(navigate).toHaveBeenCalledWith("/workflow/copy1", {
+      state: { copiedFrom: "Demo", copyName: "Demo Copy" },
+    });
+    unmount();
+  });
+
+  it("asks once for edits made while the question is open", async () => {
+    get.mockResolvedValueOnce({
+      data: { name: "Demo", nodes: [], edges: [], origin: { readOnly: true } },
+    });
+    post.mockResolvedValueOnce({ data: { _id: "copy1" } });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    let first: Promise<boolean> = Promise.resolve(false);
+    let second: Promise<boolean> = Promise.resolve(false);
+    act(() => {
+      first = result.current.requestCopy();
+      second = result.current.requestCopy();
+    });
+    await act(async () => {
+      await result.current.confirmCopy();
+    });
+    expect(await first).toBe(true);
+    expect(await second).toBe(true);
+    expect(post).toHaveBeenCalledTimes(1);
+    unmount();
+  });
+
+  it("copies nothing and reloads the workflow when the user just looks", async () => {
+    get.mockResolvedValue({
+      data: { name: "Demo", nodes: [], edges: [], origin: { readOnly: true } },
+    });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    let copied: Promise<boolean> = Promise.resolve(true);
+    act(() => {
+      copied = result.current.requestCopy();
+    });
+    act(() => result.current.declineCopy());
+    await flush();
+    expect(await copied).toBe(false);
+    expect(result.current.isCopyPromptOpen).toBe(false);
+    expect(post).not.toHaveBeenCalled();
+    expect(get).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it("doesn't ask in an editable workflow", async () => {
+    get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [] } });
+    const { result, unmount } = renderHook(useWorkflowDocument, {
+      initialProps: options(),
+    });
+    await flush();
+    let copied = true;
+    await act(async () => {
+      copied = await result.current.requestCopy();
+    });
+    expect(copied).toBe(false);
+    expect(result.current.isCopyPromptOpen).toBe(false);
     unmount();
   });
 
@@ -176,15 +244,16 @@ describe("useWorkflowDocument", () => {
       initialProps: options(),
     });
     await flush();
+    act(() => {
+      void result.current.requestCopy({ positions: { in: { x: 120, y: 60 } } });
+    });
     await act(async () => {
-      await result.current.duplicateReadOnlyWorkflow({
-        positions: { in: { x: 120, y: 60 } },
-      });
+      await result.current.confirmCopy();
     });
     expect(put).toHaveBeenCalledWith("/workflows/copy2", {
       nodes: [{ ...storedNode, position: { x: 120, y: 60 } }, other],
     });
-    expect(navigate).toHaveBeenCalledWith("/workflow/copy2");
+    expect(navigate).toHaveBeenCalledWith("/workflow/copy2", expect.anything());
     unmount();
   });
 });

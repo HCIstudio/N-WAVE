@@ -16,7 +16,8 @@ test.describe("copy, paste and duplicate", () => {
     await page.getByLabel(/filter text/i).fill("hello");
     await page.getByRole("button", { name: "Close Panel" }).first().click();
 
-    await page.locator(".react-flow__pane").click();
+    // A corner of the canvas: its middle may hold the connection's delete button.
+    await page.locator(".react-flow__pane").click({ position: { x: 10, y: 10 } });
     await page.keyboard.press("ControlOrMeta+a");
     await page.keyboard.press("ControlOrMeta+c");
 
@@ -26,8 +27,10 @@ test.describe("copy, paste and duplicate", () => {
     expect(page.url()).not.toBe(firstUrl);
     const nodes = page.locator(".react-flow__node");
     await expect(nodes).toHaveCount(0);
+    // A paste before the workflow has loaded would be replaced by it.
+    await expect(page.getByText("Loading Workflow...")).toHaveCount(0);
 
-    await page.locator(".react-flow__pane").click();
+    await page.locator(".react-flow__pane").click({ position: { x: 10, y: 10 } });
     await page.keyboard.press("ControlOrMeta+v");
     await expect(nodes).toHaveCount(2);
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);

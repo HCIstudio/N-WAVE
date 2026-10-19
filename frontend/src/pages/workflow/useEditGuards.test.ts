@@ -67,7 +67,7 @@ describe("useEditGuards", () => {
   const setup = (state: { isRunning: boolean; readOnly: boolean }) => {
     const props = {
       ...state,
-      duplicateReadOnlyWorkflow: vi.fn(async () => true),
+      requestCopy: vi.fn(async () => true),
       showToast: vi.fn(),
       setIsDirty: vi.fn(),
       onNodesChange: vi.fn(),
@@ -92,7 +92,7 @@ describe("useEditGuards", () => {
   it("copies a read-only workflow instead of editing it", async () => {
     const { props, guards, unmount } = setup({ isRunning: false, readOnly: true });
     expect(guards.canEdit()).toBe(false);
-    expect(props.duplicateReadOnlyWorkflow).toHaveBeenCalledTimes(1);
+    expect(props.requestCopy).toHaveBeenCalledTimes(1);
     expect(await guards.ensureEditable()).toBe(false);
     guards.handleNodesChange([select]);
     expect(props.onNodesChange).toHaveBeenCalledWith([select]);
@@ -100,7 +100,7 @@ describe("useEditGuards", () => {
     expect(props.setIsDirty).toHaveBeenCalledWith(false);
     // Dropping a dragged node copies the workflow with the node where it was dropped.
     guards.handleNodesChange([drop]);
-    expect(props.duplicateReadOnlyWorkflow).toHaveBeenLastCalledWith({
+    expect(props.requestCopy).toHaveBeenLastCalledWith({
       positions: { a: { x: 2, y: 3 } },
     });
     unmount();

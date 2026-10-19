@@ -19,7 +19,7 @@ export const removeNodeWithEdges = (
 
 interface Options {
   readOnly: boolean;
-  duplicateReadOnlyWorkflow: () => Promise<boolean>;
+  requestCopy: () => Promise<boolean>;
   /** Whether an edit may go ahead (the run lock, read-only copies). */
   canEdit: () => boolean;
   setNodes: Dispatch<SetStateAction<Node[]>>;
@@ -28,7 +28,7 @@ interface Options {
 
 export const useNodeDeletion = ({
   readOnly,
-  duplicateReadOnlyWorkflow,
+  requestCopy,
   canEdit,
   setNodes,
   setEdges,
@@ -62,7 +62,7 @@ export const useNodeDeletion = ({
   const onNodeDragStop = (_: unknown, node: Node) => {
     setIsDragging(false);
     if (isHoveringDropZone) {
-      if (readOnly) void duplicateReadOnlyWorkflow();
+      if (readOnly) void requestCopy();
       else removeNodeWithEdges(node.id, setNodes, setEdges);
     }
     setIsHoveringDropZone(false);
@@ -75,7 +75,7 @@ export const useNodeDeletion = ({
 
   const confirmDelete = () => {
     if (!nodeToDelete) return;
-    if (readOnly) void duplicateReadOnlyWorkflow();
+    if (readOnly) void requestCopy();
     else removeNodeWithEdges(nodeToDelete.id, setNodes, setEdges);
     setNodeToDelete(null);
   };
