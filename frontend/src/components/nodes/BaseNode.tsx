@@ -8,6 +8,8 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
+import { AlertTriangle, XCircle } from "lucide-react";
+import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import type { SelectedFile } from "../../data/types";
 
@@ -119,8 +121,18 @@ const BaseNode = ({
     "ease-in-out",
   ];
 
+  // What the workflow check found here: errors block the run.
+  const problems = useNodeProblems(id);
+  const problemLevel = problems.some((problem) => problem.level === "error")
+    ? "error"
+    : problems.length > 0
+      ? "warning"
+      : null;
+
   // Conditional classes based on node state
-  if (data._hasWarning) {
+  if (problemLevel === "error") {
+    nodeClasses.push("ring-2", "ring-red-500", "border-red-500");
+  } else if (data._hasWarning) {
     // Warning state takes precedence: missing files or content
     nodeClasses.push(
       "ring-2",
@@ -235,6 +247,28 @@ const BaseNode = ({
             />
           )}
         </div>
+      )}
+
+      {/* The workflow check's problems; the full text shows on hover. */}
+      {problemLevel && (
+        <span
+          role="img"
+          aria-label={`${problemLevel === "error" ? "Problem" : "Warning"}: ${problems.map((problem) => problem.message).join(" ")}`}
+          title={problems.map((problem) => problem.message).join("\n")}
+          className={clsx(
+            "absolute -top-3 -left-3 flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-full border px-1 text-[10px] font-semibold shadow-sm",
+            problemLevel === "error"
+              ? "border-red-500 bg-red-100 text-red-700"
+              : "border-yellow-500 bg-yellow-100 text-yellow-800",
+          )}
+        >
+          {problemLevel === "error" ? (
+            <XCircle className="h-3.5 w-3.5" aria-hidden />
+          ) : (
+            <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
+          )}
+          {problems.length > 1 && problems.length}
+        </span>
       )}
 
       {/* What the last run did here; double-click shows its results. */}

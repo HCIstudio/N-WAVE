@@ -8,6 +8,7 @@ import { refreshCustomNodes } from "../api/customNodes";
 import BottomBar from "../components/canvas/BottomBar";
 import Canvas from "../components/canvas/Canvas";
 import DeleteDropZone from "../components/canvas/DeleteDropZone";
+import WorkflowCheckButton from "../components/canvas/WorkflowCheckButton";
 import {
   ConfirmDialog,
   ErrorBoundary,
@@ -22,6 +23,7 @@ import Header from "../components/layout/Header";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { useWorkflowContext, WorkflowProvider } from "../context/WorkflowContext";
 import type { NextflowProcess } from "../data/types";
+import { NodeProblemsContext } from "../execution/NodeProblemsContext";
 import { RunTasksContext } from "../execution/RunTasksContext";
 import type { ExecutionSettings } from "../types/execution";
 import { getApiErrorMessage } from "../utils/errors";
@@ -29,7 +31,6 @@ import { findFreePosition } from "../utils/nodePlacement";
 import CanvasNotices from "./workflow/CanvasNotices";
 import CopyPromptDialog from "./workflow/CopyPromptDialog";
 import NodePanels from "./workflow/NodePanels";
-import { findMissingFileContents } from "./workflow/runRequest";
 import { useCanvasHistory } from "./workflow/useCanvasHistory";
 import { useCanvasShortcuts } from "./workflow/useCanvasShortcuts";
 import { useCustomNodeActions } from "./workflow/useCustomNodeActions";
@@ -42,6 +43,7 @@ import {
   type CopiedFromState,
   useWorkflowDocument,
 } from "./workflow/useWorkflowDocument";
+import { useWorkflowCheck } from "./workflow/useWorkflowCheck";
 import { useWorkflowRun } from "./workflow/useWorkflowRun";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
 import {
@@ -147,6 +149,30 @@ const WorkflowPageContent: React.FC = () => {
     documentKey: workflowId,
     isLoading: workflow.isLoading,
   });
+  const { missingNfCoreComponents, reloadInstalledNfCore } =
+    useLibraryNodes(nodes);
+  const check = useWorkflowCheck({
+    nodes,
+    edges,
+    settings: executionSettings,
+    missingNfCoreComponents,
+  });
+  const nodeLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        nodes.map((node) => [node.id, String(node.data.label || node.type || node.id)]),
+      ),
+    [nodes]
+  );
+  const showNode = useCallback(
+    (nodeId: string) => {
+      setNodes((current) =>
+        current.map((node) => ({ ...node, selected: node.id === nodeId }))
+      );
+      void fitView({ nodes: [{ id: nodeId }], duration: 300, maxZoom: 1.2 });
+    },
+    [setNodes, fitView]
+  );
   const [showShortcuts, setShowShortcuts] = useState(false);
   useCanvasShortcuts({
     nodes,
@@ -161,8 +187,8 @@ const WorkflowPageContent: React.FC = () => {
     onSave: workflow.save,
     onRun: () => {
       if (isRunning) return;
-      if (findMissingFileContents(nodes).length > 0) {
-        showToast("Upload the missing input files again before running.", "info");
+      if (check.blockedReason) {
+        showToast(check.blockedReason, "info");
         return;
       }
       void run.run(executionSettings);
@@ -189,8 +215,6 @@ const WorkflowPageContent: React.FC = () => {
     showToast,
     showError,
   });
-  const { missingNfCoreComponents, reloadInstalledNfCore } =
-    useLibraryNodes(nodes);
   const runTasks = useRunTasks(isDemoMode ? null : run.lastRunId, isRunning, nodes);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -326,6 +350,7 @@ const WorkflowPageContent: React.FC = () => {
 
   return (
     <RunTasksContext.Provider value={runTasks}>
+      <NodeProblemsContext.Provider value={check.nodeProblems}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
         <Header
           onProcessSelect={handleProcessSelect}
@@ -401,7 +426,16 @@ const WorkflowPageContent: React.FC = () => {
           isSaved={workflow.isSaved}
           isSaving={workflow.isSaving}
           isRunning={isRunning}
-          canExecute={findMissingFileContents(nodes).length === 0}
+          runBlockedReason={check.blockedReason}
+          checkControl={
+            <WorkflowCheckButton
+              problems={check.problems}
+              nodeLabels={nodeLabels}
+              onShowNode={showNode}
+              onRecheck={isDemoMode ? undefined : () => void check.recheck()}
+              isChecking={check.isChecking}
+            />
+          }
           isLoading={workflow.isLoading}
           executionSettings={executionSettings}
           onExecutionSettingsChange={handleExecutionSettingsChange}
@@ -486,6 +520,7 @@ const WorkflowPageContent: React.FC = () => {
           }))}
         />
       </div>
+      </NodeProblemsContext.Provider>
     </RunTasksContext.Provider>
   );
 };

@@ -41,7 +41,7 @@ test.describe("nf-core pipeline node", () => {
     await page.getByLabel("Filter parameters").fill("skip_trimming");
     await page.getByLabel("--skip_trimming", { exact: true }).check();
 
-    await page.getByLabel(/test profile/).check();
+    await page.getByRole("checkbox", { name: /test profile/ }).check();
     await expect(problems).toHaveCount(0);
     await expect(page.getByLabel("Launch command", { exact: true })).toContainText(
       "nextflow run nf-core/rnaseq -r 3.27.0 -profile test,docker -params-file params.json --outdir results"

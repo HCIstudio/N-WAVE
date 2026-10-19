@@ -134,12 +134,10 @@ describe("BottomBar", () => {
       expect(button("Execution Settings").title).toBe("Local execution");
     });
 
-    it("cannot run when files are missing", () => {
-      show({ onRun: vi.fn(), canExecute: false });
+    it("cannot run while the workflow check finds a problem, and says why", () => {
+      show({ onRun: vi.fn(), runBlockedReason: "Can't run yet: add a file." });
       expect(button("Run Workflow").disabled).toBe(true);
-      expect(button("Run Workflow").title).toBe(
-        "Cannot run: Some files are missing content",
-      );
+      expect(button("Run Workflow").title).toBe("Can't run yet: add a file.");
     });
 
     it("shows the run panel while running", async () => {
@@ -324,7 +322,7 @@ describe("BottomBar", () => {
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
     });
 
-    it("cannot run from the dialog while running or with missing files", async () => {
+    it("cannot run from the dialog while running or blocked by the check", async () => {
       const { rerender, all } = show({ onRun: vi.fn(), isRunning: true });
       await open();
       const running = screen.getByTitle("Workflow is currently running");
@@ -332,14 +330,12 @@ describe("BottomBar", () => {
       expect(running.textContent).toContain("Running...");
       rerender(
         <MemoryRouter>
-          <BottomBar {...all} isRunning={false} canExecute={false} />
+          <BottomBar {...all} isRunning={false} runBlockedReason="Can't run yet: add a file." />
         </MemoryRouter>,
       );
       expect(
         (
-          screen.getAllByTitle(
-            "Cannot run: Some files are missing content",
-          )[0] as HTMLButtonElement
+          screen.getAllByTitle("Can't run yet: add a file.")[0] as HTMLButtonElement
         ).disabled,
       ).toBe(true);
     });
