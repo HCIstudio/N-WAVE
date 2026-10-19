@@ -30,7 +30,10 @@ interface BottomBarProps {
   isSaved: boolean;
   isSaving: boolean;
   isRunning?: boolean;
-  canExecute?: boolean; // Whether the workflow can be executed (no missing files)
+  /** Why the workflow can't run yet (from the workflow check), or null. */
+  runBlockedReason?: string | null;
+  /** The workflow check, shown before the Run button. */
+  checkControl?: React.ReactNode;
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
   onExecutionSettingsChange: (settings: ExecutionSettings) => void;
@@ -49,7 +52,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
   isSaved,
   isSaving,
   isRunning = false,
-  canExecute = true,
+  runBlockedReason = null,
+  checkControl,
   isLoading = false,
   executionSettings,
   onExecutionSettingsChange,
@@ -330,11 +334,11 @@ const BottomBar: React.FC<BottomBarProps> = ({
                     <button
                       type="button"
                       onClick={handleRunAndClose}
-                      disabled={isRunning || !canExecute}
+                      disabled={isRunning || runBlockedReason !== null}
                       className="px-4 py-2 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                       title={
-                        !canExecute
-                          ? "Cannot run: Some files are missing content"
+                        runBlockedReason
+                          ? runBlockedReason
                           : isRunning
                           ? "Workflow is currently running"
                           : "Run workflow"
@@ -414,6 +418,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
           )}
         </button>
 
+        {checkControl}
+
         {/* Run Button: while a run goes, it shows the run panel's hourglass
             and brings that panel back. */}
         {onRun &&
@@ -432,12 +438,12 @@ const BottomBar: React.FC<BottomBarProps> = ({
             <button
               type="button"
               onClick={handleRun}
-              disabled={!canExecute}
+              disabled={runBlockedReason !== null}
               className="p-1.5 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Run Workflow"
               title={
-                !canExecute
-                  ? "Cannot run: Some files are missing content"
+                runBlockedReason
+                  ? runBlockedReason
                   : executionSettings.container?.enabled
                   ? "Run with Docker"
                   : "Run locally"

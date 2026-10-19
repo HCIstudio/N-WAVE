@@ -28,9 +28,8 @@ test.describe("a new workflow", () => {
     // A File Input connects before it has a file...
     await connect(page, input, filter);
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
-    // ...and a run asks for one.
-    await page.getByRole("button", { name: "Run Workflow" }).click();
-    await expect(page.getByText(/Add a file to "File Input" before running/).first()).toBeVisible();
+    // ...and the workflow check asks for one before it runs.
+    await expect(page.getByRole("button", { name: "Run Workflow" })).toBeDisabled();
 
     // Home leaves the canvas (an operator node used to re-render endlessly,
     // which kept the navigation from finishing).

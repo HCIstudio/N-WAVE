@@ -93,6 +93,20 @@ reject clients that old ("client version 1.32 is too old"), so the backend asks 
 for its minimum API version and passes it to the runner as `DOCKER_API_VERSION`. Set
 `DOCKER_API_VERSION` on the backend to choose the version yourself.
 
+### Checking a workflow before it runs
+
+N-WAVE checks the workflow while you build it. The check next to the **Run** button shows
+how many problems it found, and clicking it lists them in plain language; **Show** moves the
+canvas to the node a problem is about, and that node carries a red (problem) or yellow
+(warning) mark with the message on hover. Problems stop the run, and Run says why while it's
+disabled: a required input that isn't connected, a connected File Input without a file (or
+whose file has to be uploaded again after a reload), samplesheet or parameter errors, nf-core
+components that aren't installed, a pipeline that can't launch, and a server without Nextflow,
+or without Docker when the workflow needs it. Warnings let it run: nodes that aren't connected
+to anything, empty parameters, samplesheet warnings and a run that asks for more CPUs or
+memory than the server allows (it gets the server's limit). **Check again** asks the server
+again whether Docker and Nextflow are there, for example after starting Docker Desktop.
+
 ### Resource limits and long runs
 
 Each run asks for CPUs, memory and a time limit in the **Execution Settings** (Resources
