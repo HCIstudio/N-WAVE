@@ -1,5 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import {
   DEFAULT_EXECUTION_SETTINGS,
@@ -25,7 +25,6 @@ describe("hydrateEdges", () => {
       node("in", "fileInput"),
       node("merge", "operator", { operatorType: "merge" }),
     ];
-    const onDelete = vi.fn();
     const [edge] = hydrateEdges(
       [
         {
@@ -37,13 +36,12 @@ describe("hydrateEdges", () => {
         } as Edge,
       ],
       nodes,
-      onDelete,
     );
     expect(edge).toMatchObject({
       sourceHandle: "ch_files_out",
       targetHandle: "in",
       type: "default",
-      data: { order: 1, onDelete },
+      data: { order: 1 },
     });
   });
 
@@ -60,7 +58,6 @@ describe("hydrateEdges", () => {
         } as Edge,
       ],
       [node("a", "process"), node("b", "process")],
-      () => undefined,
     );
     expect(edge).toMatchObject({
       sourceHandle: "out",
@@ -109,7 +106,6 @@ describe("hydrateEdges with React Flow 12", () => {
         node("a", "process", { outputs: [{ name: "out" }] }),
         node("b", "process", { inputs: [{ name: "in" }] }),
       ],
-      () => undefined,
     );
     expect(hydrated).toMatchObject({ sourceHandle: "out", targetHandle: "in" });
   });
@@ -118,7 +114,6 @@ describe("hydrateEdges with React Flow 12", () => {
     const hydrated = hydrateEdges(
       [{ id: "loop", source: "a", sourceHandle: "out", target: "a", targetHandle: "in" } as Edge],
       [node("a", "process")],
-      () => undefined,
     );
     expect(hydrated).toEqual([]);
   });
@@ -130,7 +125,6 @@ describe("hydrateEdges with React Flow 12", () => {
         node("a", "process", { outputs: [{ name: "bam" }, { name: "log" }] }),
         node("b", "process", { inputs: [{ name: "x" }, { name: "y" }] }),
       ],
-      () => undefined,
     );
     expect(hydrated).toMatchObject({ sourceHandle: "bam", targetHandle: "reads" });
   });

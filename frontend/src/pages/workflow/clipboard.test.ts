@@ -23,7 +23,7 @@ const edge = (source: string, target: string): Edge => ({
   target,
   sourceHandle: "out",
   targetHandle: "in",
-  data: { order: 0, onDelete: () => {} },
+  data: { order: 0 },
 });
 
 const nodes = [

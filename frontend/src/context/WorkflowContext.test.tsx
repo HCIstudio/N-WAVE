@@ -182,10 +182,6 @@ describe("WorkflowContext", () => {
       }),
     );
     expect(result.current.isDirty).toBe(true);
-
-    const onDelete = edge.data?.onDelete as (id: string) => void;
-    act(() => onDelete("e-b-out-m-in"));
-    expect(result.current.edges).toEqual([]);
   });
 
   it("gives two edges between the same nodes different ids", () => {
@@ -203,10 +199,6 @@ describe("WorkflowContext", () => {
     expect(result.current.edges).toHaveLength(2);
     const [first, second] = result.current.edges;
     expect(first.id).not.toBe(second.id);
-
-    const onDelete = first.data?.onDelete as (id: string) => void;
-    act(() => onDelete(first.id));
-    expect(result.current.edges.map((edge) => edge.id)).toEqual([second.id]);
   });
 
   it("rejects invalid connections with an error toast", () => {

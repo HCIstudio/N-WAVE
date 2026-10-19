@@ -76,7 +76,6 @@ describe("useCanvasShortcuts", () => {
     expect(result.current.nodes.slice(0, 3).some((n) => n.selected)).toBe(false);
     expect(result.current.edges).toHaveLength(2);
     expect(result.current.edges[1]).toMatchObject({ source: pasted[0].id, target: pasted[1].id });
-    expect(typeof result.current.edges[1].data?.onDelete).toBe("function");
     expect(setIsDirty).toHaveBeenCalledWith(true);
   });
 

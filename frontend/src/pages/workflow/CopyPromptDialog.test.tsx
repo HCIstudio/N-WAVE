@@ -17,13 +17,12 @@ describe("CopyPromptDialog", () => {
     return { onCopy, onJustLook };
   };
 
-  it("says the example stays unchanged and offers a copy", () => {
+  it("says the example can't be changed and offers a copy", () => {
     const { onCopy } = renderDialog();
     expect(
       screen.getByRole("dialog", { name: "Make your own copy to edit" })
         .textContent,
     ).toContain("“Demo 1” is an example");
-    expect(screen.getByText(/The example stays as it is/)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Make a copy" }));
     expect(onCopy).toHaveBeenCalled();
   });

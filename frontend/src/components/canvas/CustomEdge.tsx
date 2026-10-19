@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState } from "react";
-import { getBezierPath, EdgeLabelRenderer, BaseEdge } from "@xyflow/react";
+import { getBezierPath, EdgeLabelRenderer, BaseEdge, useReactFlow } from "@xyflow/react";
 import type { EdgeProps } from "@xyflow/react";
 
 const CustomEdge: React.FC<EdgeProps> = ({
@@ -13,9 +13,9 @@ const CustomEdge: React.FC<EdgeProps> = ({
   targetPosition,
   style = {},
   markerEnd,
-  data,
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const { deleteElements } = useReactFlow();
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -27,7 +27,9 @@ const CustomEdge: React.FC<EdgeProps> = ({
 
   const onEdgeClick = (evt: React.MouseEvent) => {
     evt.stopPropagation();
-    (data?.onDelete as ((edgeId: string) => void) | undefined)?.(id);
+    // As a change of the canvas, so a run lock or a read-only example
+    // (which asks for a copy) applies, as to any other edit.
+    void deleteElements({ edges: [{ id }] });
   };
 
   return (
