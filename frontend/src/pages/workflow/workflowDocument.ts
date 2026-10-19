@@ -27,7 +27,6 @@ const handleFor = (
 export const hydrateEdges = (
   edges: Edge[],
   nodes: Node<NodeData>[],
-  onDelete: (edgeId: string) => void,
 ): Edge[] =>
   edges
     .filter((edge) => edge.source !== edge.target)
@@ -61,7 +60,6 @@ export const hydrateEdges = (
               : legacyMergeInputMatch?.[1]
                 ? Number(legacyMergeInputMatch[1]) - 1
                 : undefined,
-          onDelete,
         },
       };
     });

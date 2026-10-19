@@ -156,9 +156,6 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
         type: "default",
         data: {
           order: targetIncomingCount,
-          onDelete: (edgeId: string) => {
-            setEdges((eds) => eds.filter((e) => e.id !== edgeId));
-          },
         },
       };
       setEdges((els) => addEdge(newEdge, els));

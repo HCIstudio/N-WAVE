@@ -118,11 +118,7 @@ export const useWorkflowDocument = ({
 
       const loadedNodes = hydrateNodes(data.nodes || []);
       setNodes(loadedNodes);
-      setEdges(
-        hydrateEdges(data.edges || [], loadedNodes, (edgeId) =>
-          setEdges((current) => current.filter((edge) => edge.id !== edgeId)),
-        ),
-      );
+      setEdges(hydrateEdges(data.edges || [], loadedNodes));
 
       // The workflow's own settings win; without them, the last used ones.
       if (data.executionSettings) {

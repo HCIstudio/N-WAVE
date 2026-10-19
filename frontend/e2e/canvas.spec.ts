@@ -116,7 +116,7 @@ test.describe("canvas flow", () => {
 
     await moveNode(page, node, 160, 80);
     const dialog = page.getByRole("dialog", { name: "Make your own copy to edit" });
-    await expect(dialog).toContainText("The example stays as it is");
+    await expect(dialog).toContainText("is an example, so it can't be changed");
     // Nothing is copied while the question is open.
     await expect(page).toHaveURL(/builtin:demo-basic/);
     await dialog.getByRole("button", { name: "Make a copy" }).click();
@@ -156,6 +156,39 @@ test.describe("canvas flow", () => {
     await page.goto("./");
     await expect(page.getByText(/Demo 1 - Text basics/).first()).toBeVisible();
     await expect(page.getByText(/Demo 1 - Text basics Copy/)).toHaveCount(0);
+  });
+
+  test("a connection's × button removes it", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const filter = await addNode(page, "Filter");
+    const output = await addNode(page, "Display Output");
+    await fitView(page);
+    await connect(page, filter, output);
+    const edges = page.locator(".react-flow__edge");
+    await expect(edges).toHaveCount(1);
+    await edges.first().hover();
+    await page.locator(".edge-delete-button").click();
+    await expect(edges).toHaveCount(0);
+  });
+
+  test("removing a connection of a built-in demo asks first and keeps it on Just look", async ({
+    page,
+  }) => {
+    await page.goto("./workflow/builtin:demo-basic");
+    const edges = page.locator(".react-flow__edge");
+    await expect(edges.first()).toBeVisible();
+    const count = await edges.count();
+
+    await edges.first().hover();
+    await page.locator(".edge-delete-button").click();
+    const dialog = page.getByRole("dialog", { name: "Make your own copy to edit" });
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Just look" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/builtin:demo-basic/);
+    await expect(edges).toHaveCount(count);
   });
 
   test("a node can't be connected to itself", async ({ page }) => {

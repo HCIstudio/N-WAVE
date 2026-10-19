@@ -42,16 +42,10 @@ const CopyPromptDialog: React.FC<CopyPromptDialogProps> = ({
       title="Make your own copy to edit"
       footer={footer}
     >
-      <div className="space-y-2 text-text">
-        <p>
-          “{workflowName}” is an example, so it can't be changed. You can
-          change your own copy of it instead.
-        </p>
-        <p>
-          The example stays as it is. Your copy is a workflow of your own: you
-          can rename it, change it or delete it whenever you like.
-        </p>
-      </div>
+      <p className="text-text">
+        “{workflowName}” is an example, so it can't be changed. You can change
+        your own copy of it instead.
+      </p>
     </Modal>,
     document.body,
   );

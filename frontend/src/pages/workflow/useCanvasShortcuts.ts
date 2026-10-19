@@ -68,11 +68,6 @@ export const useCanvasShortcuts = ({
     return true;
   }, [blockedByRun, readOnly, showToast]);
 
-  const removeEdge = useCallback(
-    (edgeId: string) => setEdges((current) => current.filter((edge) => edge.id !== edgeId)),
-    [setEdges],
-  );
-
   /** Add the clipboard's (or the given) nodes, selected instead of the current ones. */
   const insert = useCallback(
     (content = readClipboard()) => {
@@ -86,10 +81,10 @@ export const useCanvasShortcuts = ({
       setNodes((current) =>
         current.map((node) => (node.selected ? { ...node, selected: false } : node)).concat(pasted.nodes),
       );
-      setEdges((current) => current.concat(hydrateEdges(pasted.edges, pasted.nodes, removeEdge)));
+      setEdges((current) => current.concat(hydrateEdges(pasted.edges, pasted.nodes)));
       setIsDirty(true);
     },
-    [nodes, canChange, setNodes, setEdges, setIsDirty, removeEdge, showToast],
+    [nodes, canChange, setNodes, setEdges, setIsDirty, showToast],
   );
 
   const copy = useCallback(() => {
