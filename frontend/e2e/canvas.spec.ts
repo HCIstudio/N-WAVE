@@ -105,7 +105,7 @@ test.describe("canvas flow", () => {
     await expect(page.locator(".react-flow__node")).toHaveCount(0);
   });
 
-  test("dragging a node of a built-in demo opens a copy with the node moved", async ({
+  test("dragging a node of a built-in demo asks, then opens a copy with the node moved", async ({
     page,
   }) => {
     await page.goto("./workflow/builtin:demo-basic");
@@ -115,8 +115,16 @@ test.describe("canvas flow", () => {
     if (!before) throw new Error("node is not visible");
 
     await moveNode(page, node, 160, 80);
+    const dialog = page.getByRole("dialog", { name: "Make your own copy to edit" });
+    await expect(dialog).toContainText("The example stays as it is");
+    // Nothing is copied while the question is open.
+    await expect(page).toHaveURL(/builtin:demo-basic/);
+    await dialog.getByRole("button", { name: "Make a copy" }).click();
     await expect(page).not.toHaveURL(/builtin:demo-basic/);
     await expect(page).toHaveURL(/\/workflow\//);
+    await expect(
+      page.getByText("You're editing “Demo 1 - Text basics Copy”, your own copy."),
+    ).toBeVisible();
 
     // The copy has the node where it was dropped, the demo is unchanged.
     await expect
@@ -125,6 +133,29 @@ test.describe("canvas flow", () => {
     await page.goto("./workflow/builtin:demo-basic");
     await expect(node).toBeVisible();
     expect((await node.boundingBox())?.x).toBeCloseTo(before.x, 0);
+  });
+
+  test("choosing Just look keeps the demo unchanged and copies nothing", async ({ page }) => {
+    await page.goto("./workflow/builtin:demo-basic");
+    const node = page.locator(".react-flow__node").nth(1);
+    await expect(node).toBeVisible();
+    const before = await node.boundingBox();
+    if (!before) throw new Error("node is not visible");
+
+    await moveNode(page, node, 160, 80);
+    const dialog = page.getByRole("dialog", { name: "Make your own copy to edit" });
+    await dialog.getByRole("button", { name: "Just look" }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/builtin:demo-basic/);
+    // The node goes back to where it was.
+    await expect
+      .poll(async () => (await node.boundingBox())?.x ?? 0)
+      .toBeCloseTo(before.x, 0);
+
+    // No copy was made.
+    await page.goto("./");
+    await expect(page.getByText(/Demo 1 - Text basics/).first()).toBeVisible();
+    await expect(page.getByText(/Demo 1 - Text basics Copy/)).toHaveCount(0);
   });
 
   test("a node can't be connected to itself", async ({ page }) => {

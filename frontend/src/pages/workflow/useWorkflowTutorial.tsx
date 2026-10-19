@@ -1,12 +1,13 @@
 // The demo tutorial on the canvas: its steps, where the user is in it
-// (kept in session storage across the copy a read-only demo needs), and
-// the callout.
+// (kept in session storage across the copy a read-only demo needs, which
+// the user is asked for like any other), and the callout.
 
 import type React from "react";
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router";
 import api from "../../api";
 import TutorialCallout from "../../components/tutorial/TutorialCallout";
+import type { CopyOptions } from "./useWorkflowDocument";
 
 const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
@@ -59,7 +60,8 @@ export const tutorialSteps = [
     text: (
       <>
         To <strong>expand the workflow</strong> click here to see a collection of
-        all available nodes. Feel free to select one.
+        all available nodes. Feel free to select one. The example itself
+        stays as it is: you'll be asked to make your own copy to change.
       </>
     ),
     targetSelector: "[data-tutorial-add-node]",
@@ -101,16 +103,14 @@ const storedStep = (): number | null => {
 interface Options {
   workflowId: string | undefined;
   readOnly: boolean;
-  duplicateReadOnlyWorkflow: (options?: {
-    onCopied?: (copyId: string) => void;
-  }) => Promise<boolean>;
+  requestCopy: (options?: CopyOptions) => Promise<boolean>;
   showError: (message: string) => void;
 }
 
 export const useWorkflowTutorial = ({
   workflowId,
   readOnly,
-  duplicateReadOnlyWorkflow,
+  requestCopy,
   showError,
 }: Options) => {
   const navigate = useNavigate();
@@ -130,23 +130,26 @@ export const useWorkflowTutorial = ({
   /** Copy the read-only demo, remembering the copy to remove it at the end. */
   const duplicateForTutorial = useCallback(
     () =>
-      duplicateReadOnlyWorkflow({
+      requestCopy({
         onCopied: (copyId) =>
           sessionStorage.setItem(TUTORIAL_COPY_ID_KEY, copyId),
       }),
-    [duplicateReadOnlyWorkflow],
+    [requestCopy],
   );
 
   /**
    * Adding a node completes the add-node step. In a read-only demo the
-   * node can't be added: the tutorial continues in an editable copy.
-   * Returns whether the tutorial took over (the caller adds nothing).
+   * node can't be added: the tutorial continues in an editable copy, if
+   * the user wants one. Returns whether the tutorial took over (the caller
+   * adds nothing).
    */
   const onAddNode = useCallback(() => {
     if (stepIndex !== ADD_NODE_STEP) return false;
     setStep(ADD_NODE_STEP + 1);
     if (!readOnly) return false;
-    void duplicateForTutorial();
+    void duplicateForTutorial().then((duplicated) => {
+      if (!duplicated) setStep(ADD_NODE_STEP);
+    });
     return true;
   }, [stepIndex, readOnly, setStep, duplicateForTutorial]);
 

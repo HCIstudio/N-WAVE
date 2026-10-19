@@ -86,11 +86,12 @@ describe("useWorkflowTutorial", () => {
     vi.clearAllMocks();
   });
 
-  const start = (step: number, readOnly: boolean) => {
+  const start = (step: number, readOnly: boolean, accepts = true) => {
     sessionStorage.setItem("nwave.demoTutorial.active", "true");
     sessionStorage.setItem("nwave.demoTutorial.step", String(step));
-    const duplicateReadOnlyWorkflow = vi.fn(
+    const requestCopy = vi.fn(
       async (options?: { onCopied?: (id: string) => void }) => {
+        if (!accepts) return false;
         options?.onCopied?.("copy1");
         return true;
       },
@@ -99,11 +100,11 @@ describe("useWorkflowTutorial", () => {
       initialProps: {
         workflowId: "copy1",
         readOnly,
-        duplicateReadOnlyWorkflow,
+        requestCopy,
         showError: vi.fn(),
       },
     });
-    return { ...hook, duplicateReadOnlyWorkflow };
+    return { ...hook, requestCopy };
   };
 
   it("resumes where the user was and steps through", () => {
@@ -118,7 +119,7 @@ describe("useWorkflowTutorial", () => {
   });
 
   it("continues the add-node step in a copy of a read-only demo", async () => {
-    const { result, duplicateReadOnlyWorkflow, unmount } = start(4, true);
+    const { result, requestCopy, unmount } = start(4, true);
     let tookOver = false;
     act(() => {
       tookOver = result.current.onAddNode();
@@ -126,8 +127,19 @@ describe("useWorkflowTutorial", () => {
     await flush();
     expect(tookOver).toBe(true);
     expect(result.current.stepIndex).toBe(5);
-    expect(duplicateReadOnlyWorkflow).toHaveBeenCalled();
+    expect(requestCopy).toHaveBeenCalled();
     expect(sessionStorage.getItem("nwave.demoTutorial.copyId")).toBe("copy1");
+    unmount();
+  });
+
+  it("stays at the add-node step when the user just looks", async () => {
+    const { result, unmount } = start(4, true, false);
+    act(() => {
+      result.current.onAddNode();
+    });
+    await flush();
+    expect(result.current.stepIndex).toBe(4);
+    expect(sessionStorage.getItem("nwave.demoTutorial.copyId")).toBeNull();
     unmount();
   });
 

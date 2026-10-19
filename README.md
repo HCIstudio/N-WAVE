@@ -123,6 +123,14 @@ and node settings and notes can't be edited (an amber frame and a notice say so)
 run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
 **Running** button brings it back.
 
+### Editing the examples
+
+The built-in examples are read-only. The first time you change one (move or delete a node,
+connect nodes, add one, edit a setting or the name), N-Wave asks whether to **Make a copy**.
+The copy is a workflow of your own that opens in place of the example, with your change
+already in it, and a notice names it; the example stays as it is. **Just look** keeps the
+example open unchanged, and nothing is copied.
+
 ### Undo, copy and paste, and shortcuts
 
 Adding, deleting and moving nodes, connecting and disconnecting them, and changing node
