@@ -59,7 +59,7 @@ const nfModule = (
   inputs: ["reads"],
   outputs: ["html"],
   emits: ["html", "versions"],
-  support: "full",
+  support: "candidate",
   ...extra,
 });
 
@@ -80,7 +80,7 @@ const subworkflow = (
   ] as NfCoreCatalogSubworkflow["takes"],
   emits: [{ name: "stats", description: "" }],
   components: { modules: ["samtools/sort", "samtools/stats"], subworkflows: [] },
-  support: "full",
+  support: "candidate",
   source,
   keywords: ["bam"],
   ...extra,
@@ -106,7 +106,7 @@ const fastqc = nfModule("fastqc", {
 });
 const multiqc = nfModule("multiqc", {
   support: "needs_review",
-  installability: { automatic: true, requiresReview: true, reasons: [] },
+  installability: { automatic: true, reasons: [] },
 });
 const custom = nfModule("custom/tool", {
   support: "candidate",
@@ -117,7 +117,6 @@ const manual = nfModule("manual", {
   support: "needs_review",
   installability: {
     automatic: false,
-    requiresReview: true,
     reasons: ["Takes a channel of channels."],
   },
 });
@@ -179,8 +178,10 @@ describe("NfCoreLibraryModal", () => {
   it("shows what a module takes, emits and links to", async () => {
     await setup(catalog([fastqc]));
     const fastqcRow = row("FASTQC");
-    expect(within(fastqcRow).getByText("Ready")).toBeTruthy();
-    expect(within(fastqcRow).getByText("Auto install")).toBeTruthy();
+    expect(within(fastqcRow).getByText("Generated").title).toContain(
+      "builds the node automatically from the module's own files",
+    );
+    expect(within(fastqcRow).queryByText("Can't be installed automatically")).toBeNull();
     expect(fastqcRow.textContent).toContain(
       "FASTQC - inputs 1 - settings 2 - outputs 2",
     );
@@ -193,9 +194,21 @@ describe("NfCoreLibraryModal", () => {
     ]);
   });
 
+  it("explains its labels and what to check after installing", async () => {
+    await setup(catalog([fastqc]));
+    const legend = screen.getByText("What do the labels mean?").closest("details");
+    if (!legend) throw new Error("no legend");
+    for (const label of ["Generated", "Needs review", "Can't be built"]) {
+      expect(within(legend).getByText(label)).toBeTruthy();
+    }
+    expect(legend.textContent).toContain("check its inputs, outputs and settings");
+  });
+
   it("can't install modules that need a manual adapter", async () => {
     await setup(catalog([manual, unsupported, multiqc]));
-    expect(within(row("MANUAL")).getByText("Manual adapter needed")).toBeTruthy();
+    expect(
+      within(row("MANUAL")).getByText("Can't be installed automatically"),
+    ).toBeTruthy();
     expect(
       within(row("MANUAL")).getByText("Takes a channel of channels."),
     ).toBeTruthy();
@@ -204,10 +217,10 @@ describe("NfCoreLibraryModal", () => {
       expect(action.textContent).toBe("Needs config");
       expect(action.disabled).toBe(true);
     }
-    expect(within(row("WEIRD")).getByText("Unsupported")).toBeTruthy();
-    expect(
-      within(row("MULTIQC")).getByText("Auto install, review recommended"),
-    ).toBeTruthy();
+    expect(within(row("WEIRD")).getByText("Can't be built")).toBeTruthy();
+    expect(within(row("MULTIQC")).getByText("Needs review").title).toContain(
+      "can't build a complete node",
+    );
     expect(button("Install nf-core/multiqc").disabled).toBe(false);
   });
 
@@ -333,7 +346,6 @@ describe("NfCoreLibraryModal", () => {
       support: "unsupported",
       installability: {
         automatic: false,
-        requiresReview: false,
         reasons: ["Emits a nested channel."],
       },
     });

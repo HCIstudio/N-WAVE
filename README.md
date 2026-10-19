@@ -365,8 +365,10 @@ nf-core modules are installed from the **nf-core Library**. How their inputs bec
 and settings, and how to fix a module the automatic mapping gets wrong, is described in
 [scripts/README.md](scripts/README.md).
 
-To add one, open **Add node → nf-core Library**, search for it (e.g. `star/align`) and
-install it; it then appears in the node list like any other node. Its inputs and outputs are
+To add one, open **Add node → nf-core Library**, search for it (e.g. `fastqc` or
+`star/align`) and install it; it then appears in the node list like any other node. Every
+nf-core node is built automatically from its module, FastQC and Trimmomatic included, and the
+library's labels say how well that worked ("What do the labels mean?" explains them). Its inputs and outputs are
 the module's own channels, so a module like STAR alignment comes with many ports. An nf-core
 node's Settings tab explains them: it shows the module's description, a link to its page on
 nf-co.re and what each input and output holds, read from the module's `meta.yml`. A node

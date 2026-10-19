@@ -22,7 +22,7 @@ import {
  * error-free script generation. Complex inline string building has been
  * replaced with calls to specialized template functions:
  *
- * - Process nodes (FastQC, Trimmomatic, Generic) → generateProcessCode()
+ * - Process nodes (nf-core modules, custom nodes) → their definitions
  * - Operator nodes (Filter, Map, Merge) → generateOperatorCode()
  * - Output nodes → generateOutputCode()
  * - File inputs remain inline (simple, no escaping issues)
@@ -170,7 +170,7 @@ export const generateNextflowScript = (
       }
     } else {
       for (const output of node.data.outputs ?? []) {
-        // Use the actual output name for better mapping, especially for processes like FastQC
+        // Named after the output, so nodes with several outputs keep them apart
         const channelName = `${node.id.replace(/[\s-]+/g, "_")}_${output.name}`;
         channelNameMap.set(`${node.id}.${output.name}`, channelName);
       }
@@ -225,14 +225,10 @@ export const generateNextflowScript = (
       // Output display nodes don't have outputs, so skip this check for them
       let outputChannelName = null;
       if (node.type !== "outputDisplay") {
-        // For processes with multiple outputs (like FastQC), we'll handle them specially
-        // Skip the early return check for FastQC since it handles outputs differently
-        if (node.data.processType !== "fastqc") {
-          outputChannelName = channelNameMap.get(
-            `${node.id}.${node.data.outputs?.[0]?.name}`
-          );
-          if (!outputChannelName) continue;
-        }
+        outputChannelName = channelNameMap.get(
+          `${node.id}.${node.data.outputs?.[0]?.name}`
+        );
+        if (!outputChannelName) continue;
       }
 
       const nodeDefinition = getNodeDefinitionForNode(node);

@@ -14,7 +14,6 @@ import {
 // missing modules and subworkflows on demand.
 
 export type SupportLevel =
-	| "full"
 	| "candidate"
 	| "needs_review"
 	| "unsupported";
@@ -76,7 +75,6 @@ export interface NfCoreCatalogEntry {
 	support: SupportLevel;
 	installability?: {
 		automatic: boolean;
-		requiresReview: boolean;
 		reasons: string[];
 	};
 }
@@ -109,7 +107,6 @@ export interface NfCoreSubworkflowEntry {
 	support: SupportLevel;
 	installability: {
 		automatic: boolean;
-		requiresReview: boolean;
 		reasons: string[];
 	};
 }

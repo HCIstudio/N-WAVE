@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { makeNode } from "../test/nodes";
+import { installNfCoreModule, makeNode } from "../test/nodes";
 import {
   buildConvertedNode,
   buildCustomNodeFromNode,
@@ -20,8 +20,10 @@ import { getNodeCode } from "./nodeCode";
 import { publishDirLines, resultsFolderFor } from "./nfcore/publish";
 import { registerDynamicNodeDefinitions } from "./nodeDefinitions";
 
+const fastqc = installNfCoreModule("nf-core/fastqc");
+
 const convert = (definitionId: string, moduleSource?: string) => {
-  const node = makeNode(definitionId);
+  const node = makeNode(definitionId, definitionId === fastqc ? { nfcoreExtArgs: "--kmers 7" } : {});
   const code = getNodeCode(node);
   if (!code) throw new Error("no code");
   const conversion = buildCustomNodeFromNode(node, code, moduleSource);
@@ -65,19 +67,19 @@ describe("convert to custom node", () => {
       join(__dirname, "../test/fixtures/nfcore-fastqc.main.nf"),
       "utf8",
     );
-    const { conversion, convertedCode } = convert("fastqc", moduleSource);
+    const { conversion, convertedCode } = convert(fastqc, moduleSource);
 
     expect(conversion.customNode.processName).toBe("FASTQC");
     // ext.args, then saving outputs to results/ (kept after the conversion).
     expect(conversion.customNode.config?.[0]).toBe("ext.args = '--kmers 7'");
     expect(conversion.customNode.config?.slice(1)).toEqual(
-      publishDirLines(resultsFolderFor(makeNode("fastqc").data, "")).map((line) =>
+      publishDirLines(resultsFolderFor(makeNode(fastqc).data, "")).map((line) =>
         line.trim(),
       ),
     );
     expect(conversion.ports).toEqual({
       inputs: { reads: "reads" },
-      outputs: { html: "html", zip: "zip", versions: "versions_fastqc" },
+      outputs: { html: "html", zip: "zip", versions_fastqc: "versions_fastqc" },
     });
     expect(convertedCode?.processSource).toContain("fastqc");
     expect(convertedCode?.configBlocks.join("\n")).toContain(
@@ -86,7 +88,7 @@ describe("convert to custom node", () => {
   });
 
   it("refuses nf-core nodes without module source", () => {
-    const node = makeNode("fastqc");
+    const node = makeNode(fastqc);
     const code = getNodeCode(node);
     if (!code) throw new Error("no code");
     expect(() => buildCustomNodeFromNode(node, code)).toThrow(

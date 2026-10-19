@@ -67,7 +67,7 @@ export interface NfCoreAdapterManifest {
   processType: string;
   modulePath: string;
   processName: string;
-  support: "full" | "candidate" | "needs_review" | "unsupported";
+  support: "candidate" | "needs_review" | "unsupported";
   needsReview?: boolean;
   /** Installed from an older catalog commit; reinstall to update. */
   outdated?: boolean;
@@ -82,7 +82,6 @@ export interface NfCoreAdapterManifest {
   };
   installability?: {
     automatic: boolean;
-    requiresReview: boolean;
     reasons: string[];
   };
   inputs: Array<{
@@ -104,123 +103,6 @@ export interface NfCoreAdapterManifest {
   /** Subworkflows: the modules and subworkflows included directly. */
   components?: { modules: string[]; subworkflows: string[] };
 }
-
-export const fastqcNfCoreAdapter: NfCoreModuleAdapter = {
-    id: "nf-core/fastqc",
-    label: "FastQC",
-    description:
-      "Run nf-core FastQC on raw sequencing reads and emit HTML/ZIP QC reports.",
-    category: "Quality Control",
-    icon: "ClipboardCheck",
-    processType: "nfcore_fastqc",
-    modulePath: "./modules/nf-core/fastqc/main",
-    processName: "FASTQC",
-    inputs: [
-      {
-        handle: "reads",
-        nfcoreName: "reads",
-        adapter: "fastq_reads_with_meta",
-        label: "FASTQ",
-      },
-    ],
-    outputs: [
-      { handle: "html", emit: "html", label: "HTML Reports" },
-      { handle: "zip", emit: "zip", label: "ZIP Archives" },
-      { handle: "versions", emit: "versions_fastqc", label: "Versions" },
-    ],
-    defaults: {
-      processType: "nfcore_fastqc",
-      label: "FastQC",
-      subtitle: "nf-core module",
-      note: "Adapter generated",
-      cpus: 2,
-      memory: "4.GB",
-    },
-    buildExtArgs: (node) => {
-      const parts = [
-        node.data.nogroup ? "--nogroup" : "",
-        node.data.format ? `--format ${shellQuote(String(node.data.format))}` : "",
-        node.data.kmers ? `--kmers ${Number(node.data.kmers)}` : "",
-        node.data.adapters ? `--adapters ${shellQuote(String(node.data.adapters))}` : "",
-        node.data.limits ? `--limits ${shellQuote(String(node.data.limits))}` : "",
-      ];
-
-      return parts.filter(Boolean).join(" ");
-    },
-  };
-
-export const trimmomaticNfCoreAdapter: NfCoreModuleAdapter = {
-    id: "nf-core/trimmomatic",
-    label: "Trimmomatic",
-    description:
-      "Run nf-core Trimmomatic for FASTQ quality trimming and filtering.",
-    category: "Preprocessing",
-    icon: "Scissors",
-    processType: "nfcore_trimmomatic",
-    modulePath: "./modules/nf-core/trimmomatic/main",
-    processName: "TRIMMOMATIC",
-    inputs: [
-      {
-        handle: "reads",
-        nfcoreName: "reads",
-        adapter: "fastq_reads_with_meta",
-        label: "FASTQ",
-      },
-    ],
-    outputs: [
-      { handle: "trimmed_reads", emit: "trimmed_reads", label: "Trimmed" },
-      { handle: "unpaired_reads", emit: "unpaired_reads", label: "Unpaired" },
-      { handle: "trim_log", emit: "trim_log", label: "Trim Log" },
-      { handle: "out_log", emit: "out_log", label: "Output Log" },
-      { handle: "summary", emit: "summary", label: "Summary" },
-      {
-        handle: "versions",
-        emit: "versions_trimmomatic",
-        label: "Versions",
-      },
-    ],
-    defaults: {
-      processType: "nfcore_trimmomatic",
-      label: "Trimmomatic",
-      subtitle: "nf-core module",
-      note: "Adapter generated",
-      leading: 3,
-      trailing: 3,
-      slidingwindow: "4:15",
-      minlen: 36,
-      phred_score: "33",
-      cpus: 4,
-      memory: "4.GB",
-    },
-    buildExtArgs: (node) => {
-      const steps = [
-        `LEADING:${node.data.leading ?? 3}`,
-        `TRAILING:${node.data.trailing ?? 3}`,
-        `SLIDINGWINDOW:${node.data.slidingwindow ?? "4:15"}`,
-        `MINLEN:${node.data.minlen ?? 36}`,
-      ];
-
-      if (node.data.adapter_file) {
-        steps.push(`ILLUMINACLIP:${node.data.adapter_file}`);
-      }
-
-      if (node.data.custom_steps) {
-        steps.push(
-          ...String(node.data.custom_steps)
-            .split("\n")
-            .map((step) => step.trim())
-            .filter(Boolean)
-        );
-      }
-
-      return `-phred${node.data.phred_score ?? "33"} ${steps.join(" ")}`;
-    },
-  };
-
-export const nfCoreModuleAdapters: NfCoreModuleAdapter[] = [
-  fastqcNfCoreAdapter,
-  trimmomaticNfCoreAdapter,
-];
 
 export const createNodeDefinitionFromNfCoreAdapter = (
   adapter: NfCoreModuleAdapter
@@ -513,11 +395,3 @@ function sanitizeProcessName(name: string): string {
 function groovyString(value: string): string {
   return `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 }
-
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, "'\\''")}'`;
-}
-
-export const nfCoreNodeDefinitions: NodeDefinition[] = nfCoreModuleAdapters.map(
-  createNodeDefinitionFromNfCoreAdapter
-);

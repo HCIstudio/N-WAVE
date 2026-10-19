@@ -1,4 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
+import { installNfCoreModule } from "../test/nodes";
 import { describe, expect, it } from "vitest";
 import { summarizeSamplesheet } from "../components/panels/input/SamplesheetPanel";
 import { generateNextflowScript } from "../generators";
@@ -199,7 +200,7 @@ describe("Samplesheet node in a workflow", () => {
     node("sheet", "samplesheet", {
       samplesheet: "sample,fastq_1,fastq_2\na,a_R1.fastq.gz,a_R2.fastq.gz\n",
     }),
-    node("qc", "fastqc"),
+    node("qc", installNfCoreModule("nf-core/fastqc")),
   ];
   const edges: Edge[] = [
     {
@@ -224,8 +225,8 @@ describe("Samplesheet node in a workflow", () => {
       'params.samplesheet_sheet = "${params.inputdir}/samplesheet.csv"',
     );
     expect(script).toContain("sheet_samples = Channel.fromPath(");
-    expect(script).toMatch(/ch_\w+_reads_nfcore = sheet_samples\.map/);
-    expect(script).toMatch(/FASTQC_QC\(ch_\w+_reads_nfcore\)/);
+    expect(script).toMatch(/ch_\w+_reads_nfcore = sheet_samples\s+\.map/);
+    expect(script).toMatch(/NFCORE_FASTQC_QC\(ch_\w+_reads_nfcore\)/);
   });
 
   it("puts the samplesheet into the input files", () => {

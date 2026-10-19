@@ -24,13 +24,19 @@ The generator (`generate-nfcore-catalog.mjs` in this directory) reads each modul
 recorded in the catalog's `source.commit`; installing a module downloads its files at that
 commit.
 
-Each module gets a support level:
+Each module gets a support level, shown in the nf-core Library with a plain-language label
+(its legend, "What do the labels mean?", explains them):
 
-| Level | Meaning |
-|-------|---------|
-| `full` | Has a curated N-WAVE node with its own settings panel (FastQC, Trimmomatic). |
-| `candidate` | Every input was understood; the module installs automatically. |
-| `needs_review` | Some input or output couldn't be mapped; installing is disabled and `installability.reasons` says why. |
+| Level | Label | Meaning |
+|-------|-------|---------|
+| `candidate` | Generated | Every input was understood; the node is built from the module and installs automatically. |
+| `needs_review` | Needs review | Some input or output couldn't be mapped; installing is disabled and `installability.reasons` says why. |
+| `unsupported` | Can't be built | The module has no `meta.yml` or no process declaration. |
+
+Every node is built the same way, FastQC and Trimmomatic included: N-WAVE has no hand-written
+nodes for nf-core modules. Workflows saved when FastQC and Trimmomatic were built-in nodes
+load with the modules' nodes instead (their settings become the module's `ext.args`), and
+the canvas offers to install the modules if they aren't yet.
 
 ## How inputs become ports and settings
 
@@ -104,8 +110,8 @@ library again (`POST /api/nfcore/uninstall`).
 No module files ship with N-WAVE. Installing downloads every file the catalog lists for the
 module (`files.paths`: `main.nf`, `meta.yml`, `environment.yml`, `templates/…`; not
 `tests/`) from `raw.githubusercontent.com` at the catalog's commit. When a run uses a module
-that isn't installed yet, the backend installs it before starting Nextflow, so curated nodes
-such as FastQC and imported workflows work on a fresh install. The Code tab and Export
+that isn't installed yet, the backend installs it before starting Nextflow, so imported
+workflows work on a fresh install. The Code tab and Export
 Project read an installed module's files, or fetch them from GitHub when it isn't installed.
 
 In the online demo there is no backend: the library installs modules into the browser
@@ -165,7 +171,7 @@ placeholders and process config are kept.
 
 ## Manual adapters
 
-When the automatic mapping is wrong for a module, there are three levels of fixes.
+When the automatic mapping is wrong for a module, there are two levels of fixes.
 
 1. **Channel mode override.** If only a field's mode is wrong (for example MultiQC, whose
    first input must collect every QC file), add it to `channelModeOverrides` in
@@ -181,18 +187,6 @@ When the automatic mapping is wrong for a module, there are three levels of fixe
    names it (`Unsupported tuple token: …`). Extend `parseQualifier` /
    `parseInputDeclaration` in `scripts/nfcoreModuleParser.mjs`, add a test for the form in
    `scripts/nfcoreModuleParser.test.mjs`, and regenerate.
-
-3. **Curated adapter.** For a module that needs custom settings or input handling, write an
-   `NfCoreModuleAdapter` in `frontend/src/registry/nfcoreModuleAdapters.ts`, as FastQC and
-   Trimmomatic do:
-   - `inputs` / `inputGroups` describe the ports and the call arguments;
-   - `outputs` map ports to the module's `emit` names;
-   - `defaults` and a panel component provide settings;
-   - `buildExtArgs(node)` turns those settings into `task.ext.args`.
-
-   Register it in `nfCoreModuleAdapters` and add the module to `curatedAdapterModules` in
-   the catalog generator. Its files are installed on demand like any other module, at the
-   catalog's commit.
 
 Without changing N-WAVE at all, any module can also be used by converting its node to a
 custom node (**Code** tab → **Convert to custom node**) and editing the code there.

@@ -166,8 +166,9 @@ const CUSTOM_NODE_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,119}$/;
 const MAX_CUSTOM_NODE_SOURCE_LENGTH = 500_000;
 /**
  * Built-in node ids and process types a custom node would shadow ("nfcore_"
- * ids belong to nf-core nodes). Keep in step with RESERVED_NODE_IDS in
- * frontend/src/registry/nodePacks.ts.
+ * ids belong to nf-core nodes; "fastqc" and "trimmomatic" to once built-in
+ * nodes that saved workflows still name). Keep in step with
+ * RESERVED_NODE_IDS in frontend/src/registry/nodePacks.ts.
  */
 export const RESERVED_NODE_IDS = [
   "fileInput",
