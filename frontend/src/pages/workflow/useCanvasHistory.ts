@@ -14,7 +14,10 @@ import type { NodeData } from "../../components/nodes/BaseNode";
 export const HISTORY_SETTLE_MS = 500;
 /** Steps kept; older ones are dropped. */
 export const HISTORY_LIMIT = 100;
-/** Node and edge changes this close together are one step (a node and its edges). */
+/**
+ * A change of connections only this soon after another node or connection
+ * change is the same step (a node removed, then its connections).
+ */
 const STRUCTURE_MERGE_MS = 100;
 
 /** Node data that records what happened, not what was edited: never undone. */
@@ -199,7 +202,12 @@ export const useCanvasHistory = ({
     ) {
       // A node or connection was added or removed: a step from the state just
       // before it (an edit still settling then is a step of its own).
-      if (Date.now() - lastStructureStep.current > STRUCTURE_MERGE_MS) {
+      const sameNodes =
+        before.nodes.length === nodes.length &&
+        before.nodes.every((node, index) => node.id === nodes[index]?.id);
+      const followUp =
+        sameNodes && Date.now() - lastStructureStep.current <= STRUCTURE_MERGE_MS;
+      if (!followUp) {
         const prior = snapshotOf(before.nodes, before.edges);
         if (!absorbNext.current && baseline.current.key !== prior.key) {
           pushStep(baseline.current);

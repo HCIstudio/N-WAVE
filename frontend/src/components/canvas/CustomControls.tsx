@@ -1,7 +1,7 @@
 import type React from "react";
 import { memo } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { ZoomIn, ZoomOut, Maximize, Undo2, Redo2 } from "lucide-react";
+import { Keyboard, Maximize, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 
 export interface HistoryControls {
   canUndo: boolean;
@@ -13,9 +13,10 @@ export interface HistoryControls {
 const buttonClass =
   "p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent disabled:opacity-40 disabled:hover:bg-background disabled:cursor-not-allowed";
 
-const CustomControls: React.FC<{ history?: HistoryControls }> = ({
-  history,
-}) => {
+const CustomControls: React.FC<{
+  history?: HistoryControls;
+  onShowShortcuts?: () => void;
+}> = ({ history, onShowShortcuts }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
 
   return (
@@ -73,6 +74,17 @@ const CustomControls: React.FC<{ history?: HistoryControls }> = ({
             <Redo2 size={16} />
           </button>
         </>
+      )}
+      {onShowShortcuts && (
+        <button
+          type="button"
+          onClick={onShowShortcuts}
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+          className={buttonClass}
+        >
+          <Keyboard size={16} />
+        </button>
       )}
     </div>
   );
