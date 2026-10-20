@@ -1,0 +1,5 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [serene_brown] DSL2 - revision: 9523785d63
+ERROR ~ No such file or directory: /home/nwave/runs/a1b2c3/missing/inputs/reads_R1.fastq.gz
+
+ -- Check '.nextflow.log' file for details

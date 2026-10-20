@@ -16,6 +16,8 @@ import {
 import { useState } from "react";
 import RunResultsList from "./RunResultsList";
 import RunHistory, { RunLog } from "./RunHistory";
+import FailureExplanationCard from "./FailureExplanationCard";
+import type { FailureExplanation } from "../../../execution/failureExplanations";
 import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 
@@ -75,6 +77,11 @@ interface ExecutionStatusPanelProps {
   /** Collapsed to a small bar; the bottom bar's Run button expands it. */
   minimized?: boolean;
   onMinimizedChange?: (minimized: boolean) => void;
+  /** Why the finished run failed, when its log shows a common reason. */
+  failure?: FailureExplanation | null;
+  /** The canvas step that failed, and how to show it. */
+  failedStepLabel?: string;
+  onShowFailedStep?: () => void;
 }
 
 export interface RunStep {
@@ -113,6 +120,9 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   steps = [],
   minimized = false,
   onMinimizedChange,
+  failure,
+  failedStepLabel,
+  onShowFailedStep,
 }) => {
   const [maximized, setMaximized] = useState(false);
   if (!isVisible) return null;
@@ -155,6 +165,13 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
     </button>
   );
   const stepsDone = steps.filter((step) => step.status === "succeeded").length;
+  const failureCard = isFailed && failure && (
+    <FailureExplanationCard
+      explanation={failure}
+      stepLabel={failedStepLabel}
+      onShowStep={onShowFailedStep}
+    />
+  );
 
   if (minimized) {
     return (
@@ -299,8 +316,11 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
       </div>
 
       {tab === "log" && (
-        <div role="tabpanel" aria-label="Log" className="min-h-0 flex-1">
-          <RunLog text={output} />
+        <div role="tabpanel" aria-label="Log" className="flex min-h-0 flex-1 flex-col">
+          {failureCard && <div className="shrink-0 p-2 pb-0">{failureCard}</div>}
+          <div className="min-h-0 flex-1">
+            <RunLog text={output} />
+          </div>
         </div>
       )}
       {tab === "history" && (
@@ -327,6 +347,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
           aria-label="Steps"
           className="min-h-0 flex-1 overflow-y-auto"
         >
+          {failureCard && <div className="p-2 pb-0">{failureCard}</div>}
           {/* Progress Overview */}
           <div className="p-4 border-b border-gray-300">
             <div className="grid grid-cols-2 gap-4 mb-3">

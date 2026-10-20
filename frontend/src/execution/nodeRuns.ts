@@ -21,6 +21,21 @@ const normalize = (name: string): string =>
   name.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 /**
+ * The canvas node that runs a Nextflow process ("<ALIAS>:<PROCESS>" inside
+ * an nf-core subworkflow node); every process of a pipeline run belongs to
+ * its Pipeline node.
+ */
+export const nodeIdForProcess = (
+  process: string,
+  nodes: Node[],
+  pipelineNodeId?: string | null,
+): string | undefined => {
+  if (pipelineNodeId) return pipelineNodeId;
+  const wanted = normalize(process.split(":")[0] ?? "");
+  return nodes.find((node) => normalize(getProcessNameForNode(node)) === wanted)?.id;
+};
+
+/**
  * Groups a run's tasks by the canvas node that generated them.
  *
  * A task belongs to the node whose process (or nf-core alias) it runs; for

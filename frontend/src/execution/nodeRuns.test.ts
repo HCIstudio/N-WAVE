@@ -4,7 +4,7 @@ import type { RunTask } from "../api/runs";
 import { generateNextflowScript } from "../generators/core/generateNextflowScript";
 import { registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
 import { buildRnaseqStarSalmonExample } from "../test/examples/rnaseqStarSalmon";
-import { summarizeNodeRuns } from "./nodeRuns";
+import { nodeIdForProcess, summarizeNodeRuns } from "./nodeRuns";
 
 const task = (
   process: string,
@@ -76,5 +76,21 @@ describe("summarizeNodeRuns", () => {
     );
     expect(labelled).toContain("STAR alignment");
     expect(labelled).toContain("SAMtools sort, index, stats");
+  });
+});
+
+describe("nodeIdForProcess", () => {
+  const nodes = [
+    { id: "demo-merge", type: "operator", position: { x: 0, y: 0 }, data: { operatorType: "merge" } },
+  ] as Node[];
+
+  it("finds the node that runs a failed process", () => {
+    expect(nodeIdForProcess("MERGE_DEMO_MERGE", nodes)).toBe("demo-merge");
+    expect(nodeIdForProcess("merge_demo_merge:INNER", nodes)).toBe("demo-merge");
+    expect(nodeIdForProcess("UNKNOWN", nodes)).toBeUndefined();
+  });
+
+  it("gives a pipeline run's processes to its Pipeline node", () => {
+    expect(nodeIdForProcess("NFCORE_RNASEQ:RNASEQ:FASTQC", nodes, "pipe")).toBe("pipe");
   });
 });

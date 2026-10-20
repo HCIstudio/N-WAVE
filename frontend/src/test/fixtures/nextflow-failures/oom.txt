@@ -1,0 +1,32 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [stoic_lavoisier] DSL2 - revision: ef4710b627
+[d4/22f1bc] Submitted process > SALMON_INDEX
+ERROR ~ Error executing process > 'SALMON_INDEX'
+
+Caused by:
+  Process `SALMON_INDEX` terminated with an error exit status (137)
+
+
+Command executed:
+
+  head -c 300000000 /dev/zero | tail > /dev/null && touch done.txt
+
+Command exit status:
+  137
+
+Command output:
+  (empty)
+
+Command error:
+  .command.sh: line 2:     7 Broken pipe             head -c 300000000 /dev/zero
+           8 Killed                  | tail > /dev/null
+
+Work dir:
+  /home/nwave/runs/a1b2c3/oom/work/d4/22f1bc982ffbbd43110f75ff30e91f
+
+Container:
+  ubuntu:22.04
+
+Tip: when you have fixed the problem you can continue the execution adding the option `-resume` to the run command line
+
+ -- Check '.nextflow.log' file for details

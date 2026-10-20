@@ -1,0 +1,24 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [trusting_pauling] DSL2 - revision: 09c33feaf4
+WARN: Unable to stage foreign file: https://data.nonexistent-host-nwave.invalid/genome.fa (try 1 of 3) -- Cause: data.nonexistent-host-nwave.invalid
+WARN: Unable to stage foreign file: https://data.nonexistent-host-nwave.invalid/genome.fa (try 2 of 3) -- Cause: data.nonexistent-host-nwave.invalid
+WARN: Unable to stage foreign file: https://data.nonexistent-host-nwave.invalid/genome.fa (try 3 of 3) -- Cause: data.nonexistent-host-nwave.invalid
+ERROR ~ Error executing process > 'CAT_REF (1)'
+
+Caused by:
+  Can't stage file https://data.nonexistent-host-nwave.invalid/genome.fa -- reason: data.nonexistent-host-nwave.invalid
+
+
+Command executed:
+
+  cat genome.fa > ref.txt
+
+Command exit status:
+  -
+
+Command output:
+  (empty)
+
+Tip: view the complete command output by changing to the process work dir and entering the command `cat .command.out`
+
+ -- Check '.nextflow.log' file for details
