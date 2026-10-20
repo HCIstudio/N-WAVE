@@ -11,6 +11,8 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import type { FailureExplanation } from "../../../execution/failureExplanations";
+import FailureExplanationCard from "./FailureExplanationCard";
 
 interface ExecutionError {
   message: string;
@@ -25,11 +27,25 @@ interface WorkflowExecutionErrorNotificationProps {
   /** Open the run panel's full log. */
   onShowLog?: () => void;
   error: ExecutionError;
+  /** Why it failed, when the log shows a common reason. */
+  explanation?: FailureExplanation | null;
+  /** The canvas step that failed, and how to show it. */
+  stepLabel?: string;
+  onShowStep?: () => void;
 }
 
 const WorkflowExecutionErrorNotification: React.FC<
   WorkflowExecutionErrorNotificationProps
-> = ({ isVisible, onClose, onRetry, onShowLog, error }) => {
+> = ({
+  isVisible,
+  onClose,
+  onRetry,
+  onShowLog,
+  error,
+  explanation,
+  stepLabel,
+  onShowStep,
+}) => {
   const [isRetrying, setIsRetrying] = useState(false);
   const [retryAttempt, setRetryAttempt] = useState(0);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -224,7 +240,7 @@ const WorkflowExecutionErrorNotification: React.FC<
           {/* Expandable Content */}
           <div
             className={`overflow-hidden transition-all duration-300 ease-out ${
-              isExpanded ? "max-h-96 opacity-100 mt-3" : "max-h-0 opacity-0"
+              isExpanded ? "max-h-[70vh] overflow-y-auto opacity-100 mt-3" : "max-h-0 opacity-0"
             }`}
           >
             <div className="space-y-3">
@@ -284,8 +300,18 @@ const WorkflowExecutionErrorNotification: React.FC<
                 </div>
               )}
 
+              {/* A recognised reason, explained, instead of guesses. */}
+              {!retrySuccess && !isRetrying && explanation && (
+                <FailureExplanationCard
+                  explanation={explanation}
+                  stepLabel={stepLabel}
+                  onShowStep={onShowStep}
+                  tone="dark"
+                />
+              )}
+
               {/* Suggested Fixes - Hide when retry succeeds or during retry */}
-              {!retrySuccess && !isRetrying && (
+              {!retrySuccess && !isRetrying && !explanation && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-text text-sm flex items-center space-x-2">
                     <Lightbulb className="w-3 h-3 text-nextflow-green" />

@@ -75,6 +75,25 @@ describe("ExecutionStatusPanel", () => {
     expect(log?.textContent).toContain("ERROR ~ boom");
   });
 
+  it("explains a failed run above its steps and its log", () => {
+    const failure = {
+  kind: "command-not-found" as const,
+  title: "A program the step needs isn't installed",
+  explanation: "The step runs “fastqc”, which isn't installed where it ran (exit status 127).",
+  fix: "Turn on Docker in the execution settings.",
+  docs: "https://github.com/HCIstudio/N-WAVE#command-not-found",
+  process: "NFCORE_FASTQC_QC",
+};
+    for (const tab of ["steps", "log"] as const) {
+      render({ status: failed, tab, output: "ERROR ~ boom", failure, failedStepLabel: "FastQC" });
+      const card = container.querySelector('[aria-label="Why the run failed"]');
+      expect(card?.textContent).toContain("A program the step needs isn't installed");
+      expect(card?.textContent).toContain("In “FastQC”");
+    }
+    render({ status: { ...failed, isRunning: true }, tab: "log", output: "", failure });
+    expect(container.querySelector('[aria-label="Why the run failed"]')).toBeNull();
+  });
+
   it("switches tabs and maximizes", () => {
     const onTabChange = vi.fn();
     render({ status: failed, onTabChange });

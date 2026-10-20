@@ -21,7 +21,10 @@ const runs: RunSummary[] = [
   },
 ];
 const listRuns = vi.fn(async (_workflowId: string) => runs);
-const getRunLog = vi.fn(async (id: string) => `log of ${id}\nERROR ~ boom`);
+const getRunLog = vi.fn(
+  async (id: string) =>
+    `log of ${id}\nERROR ~ boom\nCommand error:\n  .command.sh: line 2: fastqc: command not found`,
+);
 const listRunResults = vi.fn(async (_id: string) => []);
 vi.mock("../../../api/runs", () => ({
   listRuns: (id: string) => listRuns(id),
@@ -74,6 +77,10 @@ describe("RunHistory", () => {
     expect(log?.querySelector(".text-red-300")?.textContent).toContain(
       "ERROR ~ boom",
     );
+    // A recognised reason is explained above the log.
+    expect(
+      container.querySelector('[aria-label="Why the run failed"]')?.textContent,
+    ).toContain("runs “fastqc”, which isn't installed");
   });
 
   it("asks to save a workflow that has no id", async () => {

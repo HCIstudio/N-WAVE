@@ -34,6 +34,27 @@ describe("WorkflowExecutionErrorNotification", () => {
   });
 
 
+  it("explains a recognised failure instead of guessing fixes", () => {
+    const onShowStep = vi.fn();
+    show({ explanation: {
+  kind: "command-not-found" as const,
+  title: "A program the step needs isn't installed",
+  explanation: "The step runs “fastqc”, which isn't installed where it ran (exit status 127).",
+  fix: "Turn on Docker in the execution settings.",
+  docs: "https://github.com/HCIstudio/N-WAVE#command-not-found",
+  process: "NFCORE_FASTQC_QC",
+}, stepLabel: "FastQC", onShowStep });
+    const card = screen.getByRole("region", { name: "Why the run failed" });
+    expect(card.textContent).toContain("In “FastQC”: The step runs “fastqc”");
+    expect(card.textContent).toContain("Turn on Docker");
+    expect(screen.queryByText("Suggested Fixes")).toBeNull();
+    expect(screen.getByRole("link", { name: /More about this/ }).getAttribute("href")).toBe(
+      "https://github.com/HCIstudio/N-WAVE#command-not-found",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Show “FastQC”" }));
+    expect(onShowStep).toHaveBeenCalled();
+  });
+
   it("renders nothing when hidden", () => {
     const { container } = show({ isVisible: false });
     expect(container.innerHTML).toBe("");

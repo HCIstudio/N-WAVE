@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { getRunLog, listRuns, type RunSummary } from "../../../api/runs";
 import { getErrorMessage } from "../../../utils/errors";
+import { explainFailure } from "../../../execution/failureExplanations";
+import FailureExplanationCard from "./FailureExplanationCard";
 import RunResultsList from "./RunResultsList";
 
 /** Lines that point at the problem in a Nextflow log. */
@@ -126,6 +128,7 @@ const RunDetails: React.FC<{ run: RunSummary }> = ({ run }) => {
       cancelled = true;
     };
   }, [run.id]);
+  const failure = log ? explainFailure(log) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -133,6 +136,9 @@ const RunDetails: React.FC<{ run: RunSummary }> = ({ run }) => {
         <p className="rounded bg-red-50 p-2 text-xs text-red-800">
           {run.message}
         </p>
+      )}
+      {run.status === "failed" && failure && (
+        <FailureExplanationCard explanation={failure} />
       )}
       {run.status === "succeeded" && (
         <section aria-label="Run results" className="space-y-1 text-gray-800">

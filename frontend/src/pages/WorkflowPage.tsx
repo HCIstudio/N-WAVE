@@ -23,6 +23,8 @@ import Header from "../components/layout/Header";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { useWorkflowContext, WorkflowProvider } from "../context/WorkflowContext";
 import type { NextflowProcess } from "../data/types";
+import { explainFailure } from "../execution/failureExplanations";
+import { nodeIdForProcess } from "../execution/nodeRuns";
 import { NodeProblemsContext } from "../execution/NodeProblemsContext";
 import { RunTasksContext } from "../execution/RunTasksContext";
 import type { ExecutionSettings } from "../types/execution";
@@ -217,6 +219,21 @@ const WorkflowPageContent: React.FC = () => {
   });
   const runTasks = useRunTasks(isDemoMode ? null : run.lastRunId, isRunning, nodes);
   const [isExporting, setIsExporting] = useState(false);
+
+  // Why the last run failed, and the step it failed in, if the log says.
+  const failure = useMemo(
+    () => (!isRunning && run.output ? explainFailure(run.output) : null),
+    [isRunning, run.output]
+  );
+  const failedNodeId = failure?.process
+    ? nodeIdForProcess(
+        failure.process,
+        nodes,
+        nodes.find((node) => node.type === "pipeline")?.id
+      )
+    : undefined;
+  const failedStepLabel = failedNodeId ? nodeLabels[failedNodeId] : undefined;
+  const showFailedStep = failedNodeId ? () => showNode(failedNodeId) : undefined;
 
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
@@ -494,6 +511,9 @@ const WorkflowPageContent: React.FC = () => {
             onRetry={() => run.run(executionSettings)}
             onShowLog={run.showLog}
             error={run.error}
+            explanation={failure}
+            stepLabel={failedStepLabel}
+            onShowStep={showFailedStep}
           />
         )}
         <ExecutionStatusPanel
@@ -510,6 +530,9 @@ const WorkflowPageContent: React.FC = () => {
           onTabChange={run.setPanelTab}
           minimized={run.panelMinimized}
           onMinimizedChange={run.setPanelMinimized}
+          failure={failure}
+          failedStepLabel={failedStepLabel}
+          onShowFailedStep={showFailedStep}
           // In the order their first task started.
           steps={Object.entries(runTasks.nodeRuns).map(([id, nodeRun]) => ({
             id,

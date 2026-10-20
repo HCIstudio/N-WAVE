@@ -107,6 +107,60 @@ to anything, empty parameters, samplesheet warnings and a run that asks for more
 memory than the server allows (it gets the server's limit). **Check again** asks the server
 again whether Docker and Nextflow are there, for example after starting Docker Desktop.
 
+### Troubleshooting failed runs
+
+When a run fails for a common reason, the failure notice, the run panel and the run's entry
+under **History** say what happened in plain language, name the step it happened in
+(**Show** moves the canvas to it) and suggest a fix. The reasons are recognised in Nextflow's
+log by `frontend/src/execution/failureExplanations.ts`, tested against real logs in
+`frontend/src/test/fixtures/nextflow-failures/`.
+
+#### Out of memory
+
+The step used more memory than it was given and was killed (exit status 137). Raise
+**Maximum Memory** in the execution settings, or the step's memory in its panel; on Docker
+Desktop, also give Docker more memory (Settings → Resources).
+
+#### Docker isn't reachable
+
+The step runs in a container, but Docker isn't running or N-WAVE can't reach its socket. Start
+Docker (Docker Desktop on Windows and macOS) and wait until it's running. **Check again** in
+the workflow check shows when N-WAVE can reach it.
+
+#### Container image can't be pulled
+
+Docker couldn't download the step's image: the name or tag is wrong, the image doesn't exist,
+or the registry can't be reached through this computer's network or proxy. Check the image of
+a custom process, or that the computer can reach `quay.io` and `docker.io`.
+
+#### Command not found
+
+The step runs a program that isn't installed where it ran (exit status 127). Without Docker,
+the program isn't installed on the computer itself: turn on Docker in the execution settings.
+In a container, the image doesn't have it: give a custom process an image that does. Either
+way, check the command for typos.
+
+#### No space left on device
+
+The disk the run writes to is full. Remove old runs and unused Docker images
+(`docker system prune`); on Docker Desktop, raise the disk image size.
+
+#### URL can't be reached
+
+An input given as an address (`https://…`) couldn't be downloaded: the address is wrong, or
+the server can't be reached from this computer. Open it in a browser, check the network or
+proxy, or upload the file instead.
+
+#### Input file not found
+
+A file the workflow reads isn't where it looks: upload it to a File Input node, and check that
+the names in samplesheets and parameters match the uploaded files.
+
+#### Missing output files
+
+The step finished but didn't write a file it declares as output. For a custom process, check
+that its script writes exactly the file names of its `output:` block.
+
 ### Resource limits and long runs
 
 Each run asks for CPUs, memory and a time limit in the **Execution Settings** (Resources
