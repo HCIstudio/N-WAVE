@@ -1,0 +1,25 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [extravagant_hilbert] DSL2 - revision: ed6109ac4e
+[8b/083fab] Submitted process > TRIM_READS
+ERROR ~ Error executing process > 'TRIM_READS'
+
+Caused by:
+  Missing output file(s) `trimmed.fastq.gz` expected by process `TRIM_READS`
+
+
+Command executed:
+
+  echo done > trimmed.fq.gz
+
+Command exit status:
+  0
+
+Command output:
+  (empty)
+
+Work dir:
+  /home/nwave/runs/a1b2c3/missingout/work/8b/083fabc58f7715866b1a3bd4d12da0
+
+Tip: you can replicate the issue by changing to the process work dir and entering the command `bash .command.run`
+
+ -- Check '.nextflow.log' file for details

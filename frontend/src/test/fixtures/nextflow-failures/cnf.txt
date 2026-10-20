@@ -1,0 +1,28 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [insane_varahamihira] DSL2 - revision: 5bf3d8740d
+[02/7f17e2] Submitted process > FASTQC_QC (1)
+ERROR ~ Error executing process > 'FASTQC_QC (1)'
+
+Caused by:
+  Process `FASTQC_QC (1)` terminated with an error exit status (127)
+
+
+Command executed:
+
+  fastqc --threads 2 sample1.fastq.gz > out.txt
+
+Command exit status:
+  127
+
+Command output:
+  (empty)
+
+Command error:
+  .command.sh: line 2: fastqc: command not found
+
+Work dir:
+  /home/nwave/runs/a1b2c3/cnf/work/02/7f17e241c9d661808ca39fb29288f6
+
+Tip: you can replicate the issue by changing to the process work dir and entering the command `bash .command.run`
+
+ -- Check '.nextflow.log' file for details

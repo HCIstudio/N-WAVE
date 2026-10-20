@@ -1,0 +1,31 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [tender_mandelbrot] DSL2 - revision: ef4710b627
+[f0/cd1f5c] Submitted process > SALMON_INDEX
+ERROR ~ Error executing process > 'SALMON_INDEX'
+
+Caused by:
+  Process `SALMON_INDEX` terminated with an error exit status (1)
+
+
+Command executed:
+
+  head -c 300000000 /dev/zero | tail > /dev/null && touch done.txt
+
+Command exit status:
+  1
+
+Command output:
+  (empty)
+
+Command error:
+  failed to connect to the docker API at unix:///var/run/nodocker.sock; check if the path is correct and if the daemon is running: dial unix /var/run/nodocker.sock: connect: no such file or directory
+
+Work dir:
+  /home/nwave/runs/a1b2c3/nodocker/work/f0/cd1f5c09f445da010a5a9a6d9c317e
+
+Container:
+  ubuntu:22.04
+
+Tip: you can try to figure out what's wrong by changing to the process work dir and showing the script file named `.command.sh`
+
+ -- Check '.nextflow.log' file for details

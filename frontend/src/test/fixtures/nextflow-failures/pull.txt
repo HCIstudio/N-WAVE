@@ -1,0 +1,34 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [angry_blackwell] DSL2 - revision: 0bf6929c89
+[14/4905d7] Submitted process > SALMON_QUANT
+ERROR ~ Error executing process > 'SALMON_QUANT'
+
+Caused by:
+  Process `SALMON_QUANT` terminated with an error exit status (125)
+
+
+Command executed:
+
+  echo hi > x.txt
+
+Command exit status:
+  125
+
+Command output:
+  (empty)
+
+Command error:
+  Unable to find image 'quay.io/biocontainers/salmon-nwave-doesnotexist:9.9.9--0' locally
+  docker: Error response from daemon: failed to resolve reference "quay.io/biocontainers/salmon-nwave-doesnotexist:9.9.9--0": failed to do request: Head "https://quay.io/v2/biocontainers/salmon-nwave-doesnotexist/manifests/9.9.9--0": Forbidden
+  
+  Run 'docker run --help' for more information
+
+Work dir:
+  /home/nwave/runs/a1b2c3/pull/work/14/4905d790819135aed7fd29bfebc73f
+
+Container:
+  quay.io/biocontainers/salmon-nwave-doesnotexist:9.9.9--0
+
+Tip: you can try to figure out what's wrong by changing to the process work dir and showing the script file named `.command.sh`
+
+ -- Check '.nextflow.log' file for details

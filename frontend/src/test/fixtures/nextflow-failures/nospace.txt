@@ -1,0 +1,31 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [gloomy_faraday] DSL2 - revision: 7bac30782b
+[b4/d51ace] Submitted process > STAR_INDEX
+ERROR ~ Error executing process > 'STAR_INDEX'
+
+Caused by:
+  Process `STAR_INDEX` terminated with an error exit status (1)
+
+
+Command executed:
+
+  dd if=/dev/zero of=/scratch/genome.idx bs=1M count=50 && touch done.txt
+
+Command exit status:
+  1
+
+Command output:
+  (empty)
+
+Command error:
+  dd: error writing '/scratch/genome.idx': No space left on device
+  6+0 records in
+  5+0 records out
+  5242880 bytes (5.2 MB, 5.0 MiB) copied, 0.00250227 s, 2.1 GB/s
+
+Work dir:
+  /home/nwave/runs/a1b2c3/nospace/work/b4/d51acea616cecf931ac266b1f29bd0
+
+Tip: view the complete command output by changing to the process work dir and entering the command `cat .command.out`
+
+ -- Check '.nextflow.log' file for details

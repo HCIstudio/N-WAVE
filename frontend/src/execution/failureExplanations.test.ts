@@ -5,7 +5,7 @@ import { explainFailure, failedProcessOf } from "./failureExplanations";
 
 // Real Nextflow 25.10 output of runs that failed each way (paths shortened).
 const log = (name: string) =>
-  readFileSync(join(__dirname, "../test/fixtures/nextflow-failures", `${name}.log`), "utf8");
+  readFileSync(join(__dirname, "../test/fixtures/nextflow-failures", `${name}.txt`), "utf8");
 
 describe("explainFailure", () => {
   it.each([
