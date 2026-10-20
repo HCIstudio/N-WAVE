@@ -114,19 +114,24 @@
           {
             "name": "archive",
             "label": "Archive",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.*"
           }
         ],
         "outputs": [
           {
             "name": "gunzip",
             "label": "Gunzip",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.*"
           },
           {
             "name": "versions_gunzip",
             "label": "Versions Gunzip",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -165,24 +170,32 @@
           {
             "name": "gtf",
             "label": "Gtf",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{gtf}"
           },
           {
             "name": "fasta",
             "label": "Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{fasta,fa}"
           }
         ],
         "outputs": [
           {
             "name": "gtf",
             "label": "Gtf",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{gtf}"
           },
           {
             "name": "versions",
             "label": "Versions",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "versions.yml"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -230,39 +243,52 @@
           {
             "name": "gff",
             "label": "Gff",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{gff,gff3,gtf}{,.gz}"
           },
           {
             "name": "fasta",
             "label": "Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{fasta,fa,faa,fas,fsa}{,.gz}"
           }
         ],
         "outputs": [
           {
             "name": "gtf",
             "label": "Gtf",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{gtf}"
           },
           {
             "name": "gffread_gff",
             "label": "Gffread Gff",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.gff3"
           },
           {
             "name": "gffread_fasta",
             "label": "Gffread Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.fasta"
           },
           {
             "name": "bed",
             "label": "Bed",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.bed"
           },
           {
             "name": "versions_gffread",
             "label": "Versions Gffread",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -302,34 +328,40 @@
           {
             "name": "fasta",
             "label": "Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           },
           {
             "name": "gtf",
             "label": "Gtf",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           }
         ],
         "outputs": [
           {
             "name": "index",
             "label": "Index",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "directory"
           },
           {
             "name": "versions_star",
             "label": "Versions Star",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           },
           {
             "name": "versions_samtools",
             "label": "Versions Samtools",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           },
           {
             "name": "versions_gawk",
             "label": "Versions Gawk",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -369,24 +401,28 @@
           {
             "name": "transcript_fasta",
             "label": "Transcript Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           },
           {
             "name": "genome_fasta",
             "label": "Genome Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           }
         ],
         "outputs": [
           {
             "name": "index",
             "label": "Index",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "directory"
           },
           {
             "name": "versions_salmon",
             "label": "Versions Salmon",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -429,24 +465,30 @@
           {
             "name": "reads",
             "label": "Reads",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           }
         ],
         "outputs": [
           {
             "name": "html",
             "label": "Html",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_{fastqc.html}"
           },
           {
             "name": "zip",
             "label": "Zip",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_{fastqc.zip}"
           },
           {
             "name": "versions_fastqc",
             "label": "Versions Fastqc",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -489,44 +531,58 @@
           {
             "name": "reads",
             "label": "Reads",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           }
         ],
         "outputs": [
           {
             "name": "reads",
             "label": "Reads",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*{3prime,5prime,trimmed,val}{,_1,_2}.fq.gz"
           },
           {
             "name": "log",
             "label": "Log",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*report.txt"
           },
           {
             "name": "json",
             "label": "Json",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*report.json"
           },
           {
             "name": "unpaired",
             "label": "Unpaired",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*unpaired*.fq.gz"
           },
           {
             "name": "html",
             "label": "Html",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_fastqc.html"
           },
           {
             "name": "zip",
             "label": "Zip",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_fastqc.zip"
           },
           {
             "name": "versions_trimgalore",
             "label": "Versions Trimgalore",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -574,114 +630,153 @@
           {
             "name": "reads",
             "label": "Reads",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           },
           {
             "name": "index",
             "label": "Index",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "directory"
           },
           {
             "name": "gtf",
             "label": "Gtf",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{gtf}"
           }
         ],
         "outputs": [
           {
             "name": "log_final",
             "label": "Log Final",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*Log.final.out"
           },
           {
             "name": "log_out",
             "label": "Log Out",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*Log.out"
           },
           {
             "name": "log_progress",
             "label": "Log Progress",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*Log.progress.out"
           },
           {
             "name": "versions_star",
             "label": "Versions Star",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           },
           {
             "name": "versions_samtools",
             "label": "Versions Samtools",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           },
           {
             "name": "versions_gawk",
             "label": "Versions Gawk",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           },
           {
             "name": "bam",
             "label": "Bam",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{bam}"
           },
           {
             "name": "bam_sorted",
             "label": "Bam Sorted",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*sortedByCoord.out.bam"
           },
           {
             "name": "bam_sorted_aligned",
             "label": "Bam Sorted Aligned",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.Aligned.sortedByCoord.out.bam"
           },
           {
             "name": "bam_transcript",
             "label": "Bam Transcript",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*toTranscriptome.out.bam"
           },
           {
             "name": "bam_unsorted",
             "label": "Bam Unsorted",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*Aligned.unsort.out.bam"
           },
           {
             "name": "fastq",
             "label": "Fastq",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*fastq.gz"
           },
           {
             "name": "tab",
             "label": "Tab",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.tab"
           },
           {
             "name": "spl_junc_tab",
             "label": "Spl Junc Tab",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.SJ.out.tab"
           },
           {
             "name": "read_per_gene_tab",
             "label": "Read Per Gene Tab",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.ReadsPerGene.out.tab"
           },
           {
             "name": "junction",
             "label": "Junction",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.out.junction"
           },
           {
             "name": "sam",
             "label": "Sam",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.out.sam"
           },
           {
             "name": "wig",
             "label": "Wig",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.wig"
           },
           {
             "name": "bedgraph",
             "label": "Bedgraph",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.bg"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -721,44 +816,54 @@
           {
             "name": "reads",
             "label": "Reads",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           },
           {
             "name": "index",
             "label": "Index",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "directory"
           },
           {
             "name": "gtf",
             "label": "Gtf",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           },
           {
             "name": "transcript_fasta",
             "label": "Transcript Fasta",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           }
         ],
         "outputs": [
           {
             "name": "results",
             "label": "Results",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "directory"
           },
           {
             "name": "json_info",
             "label": "Json Info",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*info.json"
           },
           {
             "name": "lib_format_counts",
             "label": "Lib Format Counts",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*lib_format_counts.json"
           },
           {
             "name": "versions_salmon",
             "label": "Versions Salmon",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -947,49 +1052,64 @@
           {
             "name": "multiqc_files",
             "label": "Multiqc Files",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file"
           },
           {
             "name": "multiqc_config",
             "label": "Multiqc Config",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{yml,yaml}"
           },
           {
             "name": "multiqc_logo",
             "label": "Multiqc Logo",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{png}"
           },
           {
             "name": "replace_names",
             "label": "Replace Names",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{tsv}"
           },
           {
             "name": "sample_names",
             "label": "Sample Names",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{tsv}"
           }
         ],
         "outputs": [
           {
             "name": "report",
             "label": "Report",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": ".html"
           },
           {
             "name": "data",
             "label": "Data",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "directory"
           },
           {
             "name": "plots",
             "label": "Plots",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_plots"
           },
           {
             "name": "versions",
             "label": "Versions",
-            "isConnectable": true
+            "isConnectable": true,
+            "kind": "version"
           }
         ],
         "nwaveNfCoreNeedsReview": false,

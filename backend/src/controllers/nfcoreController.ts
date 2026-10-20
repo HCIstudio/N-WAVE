@@ -254,6 +254,7 @@ const enrichInstalledManifest = (
     inputGroups: refreshedManifest.inputGroups,
     valueInputs: refreshedManifest.valueInputs,
     inputs: refreshedManifest.inputs,
+    outputs: refreshedManifest.outputs,
     defaults: {
       ...(currentManifest.defaults as Record<string, unknown> | undefined),
       nwaveNfCoreSupportsExtArgs:

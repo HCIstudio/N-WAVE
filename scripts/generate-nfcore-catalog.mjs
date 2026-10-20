@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -10,12 +11,27 @@ import {
   getMetaInputs,
   getValueInputs,
 } from "./nfcoreModuleParser.mjs";
+import { getPortTypes } from "./nfcorePortTypes.mjs";
 import {
   getEmits as getSubworkflowEmits,
   getIncludes,
   getTakes,
   getWorkflowSections,
 } from "./nfcoreSubworkflowParser.mjs";
+
+// The frontend's YAML parser, for meta.yml port types.
+const { parse: parseYaml } = createRequire(
+  new URL("../frontend/package.json", import.meta.url)
+)("yaml");
+
+/** A module's meta.yml as data; null when it can't be parsed. */
+function parseMeta(metaYaml) {
+  try {
+    return parseYaml(metaYaml);
+  } catch {
+    return null;
+  }
+}
 
 const repoUrl = "https://github.com/nf-core/modules.git";
 const repoRef = process.env.NFCORE_MODULES_REF || "master";
@@ -375,6 +391,8 @@ function buildCatalog() {
       valueInputs: getValueInputs(inputGroups, getMetaInputs(metaYaml)),
       outputs,
       emits,
+      // What each input and output carries (file pattern, directory, ...).
+      portTypes: getPortTypes(parseMeta(metaYaml)),
       containers: getContainerNames(metaYaml),
       settings: {
         extArgs: extArgNames.length > 0,

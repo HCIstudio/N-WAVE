@@ -3,6 +3,8 @@ import {
   Position,
   type Node,
   type NodeProps,
+  useConnection,
+  useReactFlow,
   useUpdateNodeInternals,
 } from "@xyflow/react";
 import { memo, type ReactNode, useEffect } from "react";
@@ -12,6 +14,7 @@ import { AlertTriangle, XCircle } from "lucide-react";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
+import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
 
 export interface PortData {
@@ -20,7 +23,12 @@ export interface PortData {
   label?: string; // Display label for the port
   fileType?: string;
   filePattern?: string;
+  /** What the port carries, when its module says (nf-core meta.yml). */
+  kind?: PortKind;
 }
+
+/** Files, a folder (e.g. an index), a value, or a tool's versions. */
+export type PortKind = "file" | "directory" | "value" | "version";
 
 export interface FileObject {
   name: string;
@@ -84,6 +92,26 @@ const BaseNode = ({
   // Ports can change at runtime (Parameters references, custom node edits);
   // React Flow has to re-measure the handles to connect to new ones.
   const updateNodeInternals = useUpdateNodeInternals();
+
+  // While a connection is dragged from an output: which inputs here fit it.
+  // The selector gives a string, so nodes only re-render when a drag starts
+  // or ends, not on every pointer move.
+  const dragFrom = useConnection((connection) =>
+    connection.inProgress && connection.fromHandle?.type === "source"
+      ? `${connection.fromNode.id}\n${connection.fromHandle.id ?? ""}`
+      : "",
+  );
+  const { getNode } = useReactFlow();
+  const fitOf = (portName: string): { fits: boolean; message?: string } | null => {
+    if (!dragFrom) return null;
+    const [fromId, fromHandle = ""] = dragFrom.split("\n");
+    const from = fromId === id ? undefined : (getNode(fromId) as Node<NodeData> | undefined);
+    if (!from) return null;
+    const self = { id, type, position: { x: 0, y: 0 }, data } as Node<NodeData>;
+    const hint = checkPortFit(from, fromHandle, self, portName);
+    if (hint) return { fits: false, message: hint.message };
+    return sourceContents(from, fromHandle) && targetContents(self, portName) ? { fits: true } : null;
+  };
   const portKey = [...(data.inputs ?? []), ...(data.outputs ?? [])]
     .map((port) => port.name)
     .join("|");
@@ -189,7 +217,12 @@ const BaseNode = ({
       )}
 
       {/* Input Handles */}
-      {data.inputs?.map((port, index, arr) => (
+      {data.inputs?.map((port, index, arr) => {
+        const fit = fitOf(port.name);
+        const detail = port.fileType || port.filePattern
+          ? [port.fileType, port.filePattern].filter(Boolean).join(" ")
+          : portSummary({ type, data }, port.name, "inputs");
+        return (
         <div
           key={port.name}
           className="absolute left-0"
@@ -199,22 +232,26 @@ const BaseNode = ({
             type="target"
             position={Position.Left}
             id={port.name}
-            className="!w-3 !h-3 !-left-1.5 !bg-gray-400"
+            className={clsx(
+              "!w-3 !h-3 !-left-1.5",
+              fit?.fits === true && "!bg-nextflow-green ring-4 ring-nextflow-green/40",
+              fit?.fits === false && "!bg-yellow-400 ring-4 ring-yellow-300/70",
+              !fit && "!bg-gray-400",
+            )}
+            data-fit={fit ? (fit.fits ? "fits" : "mismatch") : undefined}
+            title={fit?.message}
             isConnectable={isConnectable}
             onMouseDown={onMouseDown}
           />
           {port.label && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
               <div className="text-xs text-gray-600">{port.label}</div>
-              {(port.fileType || port.filePattern) && (
-                <div className="text-[10px] text-gray-400">
-                  {[port.fileType, port.filePattern].filter(Boolean).join(" ")}
-                </div>
-              )}
+              {detail && <div className="text-[10px] text-gray-400">{detail}</div>}
             </div>
           )}
         </div>
-      ))}
+        );
+      })}
 
       <div className="flex items-center justify-center w-10 h-10 mb-1">
         <DynamicIcon name={iconName} className="w-8 h-8 text-gray-700" />
@@ -332,9 +369,11 @@ const BaseNode = ({
           {port.label && (
             <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
               <div className="text-xs text-gray-600">{port.label}</div>
-              {(port.fileType || port.filePattern) && (
+              {(port.fileType || port.filePattern || portSummary({ type, data }, port.name, "outputs")) && (
                 <div className="text-[10px] text-gray-400">
-                  {[port.fileType, port.filePattern].filter(Boolean).join(" ")}
+                  {port.fileType || port.filePattern
+                    ? [port.fileType, port.filePattern].filter(Boolean).join(" ")
+                    : portSummary({ type, data }, port.name, "outputs")}
                 </div>
               )}
             </div>

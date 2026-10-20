@@ -1,4 +1,4 @@
-import type { NfCoreAdapterManifest } from "../nfcoreModuleAdapters";
+import type { NfCoreAdapterManifest, NfCorePortKind } from "../nfcoreModuleAdapters";
 import {
   getGroupItems,
   type NfCoreModuleInputGroup,
@@ -19,7 +19,23 @@ export interface NfCoreCatalogEntryForManifest {
   settings?: NfCoreAdapterManifest["settings"];
   support: NfCoreAdapterManifest["support"];
   installability?: NfCoreAdapterManifest["installability"];
+  /** What each port carries, from meta.yml (catalogs from #119 on). */
+  portTypes?: {
+    inputs: Record<string, NfCorePortType>;
+    outputs: Record<string, NfCorePortType>;
+  };
 }
+
+export interface NfCorePortType {
+  type: NonNullable<NfCorePortKind["kind"]>;
+  pattern?: string;
+}
+
+/** A port's kind fields from the catalog's port types. */
+const kindOf = (type?: NfCorePortType): NfCorePortKind =>
+  type
+    ? { kind: type.type, ...(type.pattern ? { filePattern: type.pattern } : {}) }
+    : {};
 
 const toTitle = (value: string): string =>
   value.replace(/[_-]+/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
@@ -65,11 +81,13 @@ export const buildNfCoreManifest = (
         ? "fastq_reads_with_meta"
         : "path",
     label: toTitle(name),
+    ...kindOf(entry.portTypes?.inputs[name]),
   })),
   outputs: entry.emits.map((emit) => ({
     handle: emit,
     emit,
     label: toTitle(emit),
+    ...kindOf(entry.portTypes?.outputs[emit]),
   })),
   defaults: {
     label: entry.label,

@@ -25,7 +25,9 @@ import { useWorkflowContext, WorkflowProvider } from "../context/WorkflowContext
 import type { NextflowProcess } from "../data/types";
 import { explainFailure } from "../execution/failureExplanations";
 import { nodeIdForProcess } from "../execution/nodeRuns";
+import { ConnectionHintsContext } from "../execution/ConnectionHintsContext";
 import { NodeProblemsContext } from "../execution/NodeProblemsContext";
+import { connectionHints } from "../registry/portTypes";
 import { RunTasksContext } from "../execution/RunTasksContext";
 import type { ExecutionSettings } from "../types/execution";
 import { getApiErrorMessage } from "../utils/errors";
@@ -159,6 +161,12 @@ const WorkflowPageContent: React.FC = () => {
     settings: executionSettings,
     missingNfCoreComponents,
   });
+  // Connections whose ports don't fit; stable while a drag moves nodes.
+  const hintsKey = useMemo(
+    () => JSON.stringify(connectionHints(nodes, edges)),
+    [nodes, edges]
+  );
+  const edgeHints = useMemo(() => JSON.parse(hintsKey), [hintsKey]);
   const nodeLabels = useMemo(
     () =>
       Object.fromEntries(
@@ -368,6 +376,7 @@ const WorkflowPageContent: React.FC = () => {
   return (
     <RunTasksContext.Provider value={runTasks}>
       <NodeProblemsContext.Provider value={check.nodeProblems}>
+      <ConnectionHintsContext.Provider value={edgeHints}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
         <Header
           onProcessSelect={handleProcessSelect}
@@ -543,6 +552,7 @@ const WorkflowPageContent: React.FC = () => {
           }))}
         />
       </div>
+      </ConnectionHintsContext.Provider>
       </NodeProblemsContext.Provider>
     </RunTasksContext.Provider>
   );
