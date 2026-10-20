@@ -6,6 +6,7 @@ import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { getNodeParameters, validateParameters } from "../../registry/params";
 import { getPipelineLaunchIssues } from "../../registry/pipelines/launch";
+import { connectionHints } from "../../registry/portTypes";
 import { getSamplesheetMapping, parseSamplesheet } from "../../registry/samplesheet";
 import type { ExecutionSettings } from "../../types/execution";
 import { getNodeInputFiles, getWorkflowInputFiles } from "../../utils/inputFiles";
@@ -185,6 +186,15 @@ const checkWorkflowWide = (
   const pipeline = nodes.find((node) => node.type === "pipeline");
   for (const [index, message] of getPipelineLaunchIssues(nodes, edges).entries()) {
     problems.push({ id: `pipeline${index}`, level: "error", message, nodeId: pipeline?.id });
+  }
+  // Ports that don't fit: a warning on the step the connection feeds.
+  for (const [edgeId, hint] of Object.entries(connectionHints(nodes, edges))) {
+    problems.push({
+      id: `fit:${edgeId}`,
+      level: "warning",
+      message: `${hint.message} ${hint.fix}`,
+      nodeId: edges.find((edge) => edge.id === edgeId)?.target,
+    });
   }
   try {
     getWorkflowInputFiles(nodes);

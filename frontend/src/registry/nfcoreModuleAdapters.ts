@@ -4,7 +4,7 @@ import {
   savesOutputs,
 } from "./nfcore/publish";
 import type { Node } from "@xyflow/react";
-import type { NodeData, PortData } from "../components/nodes/BaseNode";
+import type { NodeData, PortData, PortKind } from "../components/nodes/BaseNode";
 import NfCoreModulePanel from "../components/panels/process/NfCoreModulePanel";
 import type { NodeDefinition } from "./nodeDefinitions";
 import type {
@@ -26,14 +26,21 @@ export type {
 
 export type NfCoreInputAdapter = "path" | "fastq_reads_with_meta";
 
-export interface NfCoreModuleInput {
+/** What a port carries, from the module's meta.yml (see registry/portTypes.ts). */
+export interface NfCorePortKind {
+  kind?: PortKind;
+  /** File name pattern, e.g. "*.{bam}". */
+  filePattern?: string;
+}
+
+export interface NfCoreModuleInput extends NfCorePortKind {
   handle: string;
   nfcoreName: string;
   adapter: NfCoreInputAdapter;
   label?: string;
 }
 
-export interface NfCoreModuleOutput {
+export interface NfCoreModuleOutput extends NfCorePortKind {
   handle: string;
   emit: string;
   label?: string;
@@ -84,7 +91,7 @@ export interface NfCoreAdapterManifest {
     automatic: boolean;
     reasons: string[];
   };
-  inputs: Array<{
+  inputs: Array<NfCorePortKind & {
     handle: string;
     nfcoreName: string;
     adapter: NfCoreInputAdapter;
@@ -92,7 +99,7 @@ export interface NfCoreAdapterManifest {
   }>;
   inputGroups?: NfCoreModuleInputGroup[];
   valueInputs?: NfCoreValueInput[];
-  outputs: Array<{
+  outputs: Array<NfCorePortKind & {
     handle: string;
     emit: string;
     label?: string;
@@ -104,6 +111,12 @@ export interface NfCoreAdapterManifest {
   components?: { modules: string[]; subworkflows: string[] };
 }
 
+/** A port's kind fields, only those it has. */
+const portKind = ({ kind, filePattern }: NfCorePortKind): NfCorePortKind => ({
+  ...(kind ? { kind } : {}),
+  ...(filePattern ? { filePattern } : {}),
+});
+
 export const createNodeDefinitionFromNfCoreAdapter = (
   adapter: NfCoreModuleAdapter
 ): NodeDefinition => {
@@ -111,11 +124,13 @@ export const createNodeDefinitionFromNfCoreAdapter = (
     name: input.handle,
     label: input.label,
     isConnectable: true,
+    ...portKind(input),
   }));
   const outputs: PortData[] = adapter.outputs.map((output) => ({
     name: output.handle,
     label: output.label,
     isConnectable: output.isConnectable ?? true,
+    ...portKind(output),
   }));
 
   return {
@@ -177,11 +192,13 @@ export const createNodeDefinitionFromNfCoreManifest = (
         name: input.handle,
         label: input.label,
         isConnectable: true,
+        ...portKind(input),
       })),
       outputs: manifest.outputs.map((output) => ({
         name: output.handle,
         label: output.label,
         isConnectable: true,
+        ...portKind(output),
       })),
       nwaveExecutionBackend: "nf-core",
       nwaveNfCoreModuleId: manifest.id,

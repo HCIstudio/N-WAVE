@@ -29,6 +29,11 @@ interface NfCoreInputGroup {
 	items?: Array<{ kind: "meta" | "path" | "val"; name: string }>;
 }
 
+export interface NfCorePortType {
+	type: "file" | "directory" | "value" | "version";
+	pattern?: string;
+}
+
 export interface NfCoreCatalogEntry {
 	id: string;
 	moduleName: string;
@@ -62,6 +67,11 @@ export interface NfCoreCatalogEntry {
 	}>;
 	outputs: string[];
 	emits: string[];
+	/** What each input and output carries, from meta.yml. */
+	portTypes?: {
+		inputs: Record<string, NfCorePortType>;
+		outputs: Record<string, NfCorePortType>;
+	};
 	containers: string[];
 	settings?: {
 		extArgs: boolean;
@@ -302,6 +312,12 @@ const getInputPorts = (entry: NfCoreCatalogEntry): string[] =>
 			)
 		: entry.inputs;
 
+/** A port's kind (file pattern, directory, ...) for its node's port. */
+const portKind = (type?: NfCorePortType) =>
+	type
+		? { kind: type.type, ...(type.pattern ? { filePattern: type.pattern } : {}) }
+		: {};
+
 // Mirrored in the frontend by buildNfCoreManifest
 // (frontend/src/registry/nfcore/manifest.ts).
 export const buildAdapterManifest = (entry: NfCoreCatalogEntry) => ({
@@ -328,11 +344,13 @@ export const buildAdapterManifest = (entry: NfCoreCatalogEntry) => ({
 				? "fastq_reads_with_meta"
 				: "path",
 		label: toTitle(inputName),
+		...portKind(entry.portTypes?.inputs[inputName]),
 	})),
 	outputs: entry.emits.map((emit) => ({
 		handle: emit,
 		emit,
 		label: toTitle(emit),
+		...portKind(entry.portTypes?.outputs[emit]),
 	})),
 	defaults: {
 		label: entry.label,

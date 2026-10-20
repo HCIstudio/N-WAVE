@@ -107,6 +107,18 @@ to anything, empty parameters, samplesheet warnings and a run that asks for more
 memory than the server allows (it gets the server's limit). **Check again** asks the server
 again whether Docker and Nextflow are there, for example after starting Docker Desktop.
 
+### Connecting ports that fit
+
+Hovering a port shows what it carries: the file types an nf-core module declares for it (for
+example `*.{bam}`), a folder such as an index, or tool versions. While you drag a connection
+from an output, the inputs it fits are ringed green and those it doesn't amber, with what they
+expect on hover. A connection whose ports don't fit is still made, but drawn dashed amber with
+a warning mark: clicking the mark says what the input expects, what the output gives and how to
+fix it (connect reads, a reference from a Parameters node or a File Input, the index a step
+builds, or a data output instead of versions). The workflow check lists these as warnings, so
+they never stop a run: a module's patterns aren't always complete. Ports whose contents N-WAVE
+doesn't know, such as those of custom processes, are never flagged.
+
 ### Troubleshooting failed runs
 
 When a run fails for a common reason, the failure notice, the run panel and the run's entry
