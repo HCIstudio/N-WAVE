@@ -35,6 +35,7 @@ const summaryOf = (
   done: tasks.length,
   failed: 0,
   running: 0,
+  cached: 0,
   tasks,
   ...extra,
 });

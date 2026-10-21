@@ -7,6 +7,10 @@ export const DEFAULT_NEXTFLOW_VERSION = "25.04.4";
 export const shellQuote = (value: string): string =>
   `'${value.replace(/'/g, "'\\''")}'`;
 
+/** A path as one shell word: as is when it is plain, quoted otherwise. */
+const shellPath = (value: string): string =>
+  /^[\w./-]+$/.test(value) ? value : shellQuote(value);
+
 /**
  * Translate a host path reported by `docker inspect` into a path the Docker
  * daemon can mount. Windows paths (Docker Desktop) live under
@@ -82,7 +86,14 @@ interface NextflowRunOptions {
   withModuleConfig: boolean;
   maxCpus: number;
   maxMemory: string;
+  /** Reuse the tasks of the folder's last run that are unchanged (-resume). */
+  resume?: boolean;
+  /** Nextflow's log, relative to the run directory. */
+  logFile?: string;
 }
+
+/** Where Nextflow writes its log, unless the run names its own. */
+export const DEFAULT_NEXTFLOW_LOG = "nextflow/.nextflow.log";
 
 const buildNextflowRunArgs = ({
   scriptPath,
@@ -90,15 +101,19 @@ const buildNextflowRunArgs = ({
   withModuleConfig,
   maxCpus,
   maxMemory,
+  resume = false,
+  logFile = DEFAULT_NEXTFLOW_LOG,
 }: NextflowRunOptions): string => {
   const configOption = withModuleConfig ? "-c nwave_modules.config " : "";
+  const log = `-log ${shellPath(logFile)}`;
+  const resumeOption = resume ? " -resume" : "";
   if (pipeline) {
     // Pipelines declare their own params; resources are capped by the run's
     // config (process.resourceLimits, see resources.ts).
     const paramsFile = pipeline.withParamsFile ? " -params-file params.json" : "";
-    return `nextflow -log nextflow/.nextflow.log ${configOption}run ${shellQuote(`nf-core/${pipeline.name}`)} -r ${shellQuote(pipeline.version)} -profile ${shellQuote(pipeline.profiles.join(","))}${paramsFile} --outdir results -work-dir nextflow/work`;
+    return `nextflow ${log} ${configOption}run ${shellQuote(`nf-core/${pipeline.name}`)} -r ${shellQuote(pipeline.version)} -profile ${shellQuote(pipeline.profiles.join(","))}${paramsFile} --outdir results -work-dir nextflow/work${resumeOption}`;
   }
-  return `nextflow -log nextflow/.nextflow.log ${configOption}run ./${scriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory ${shellQuote(maxMemory)} -work-dir nextflow/work`;
+  return `nextflow ${log} ${configOption}run ./${scriptPath} --outdir results --inputdir inputs --max_cpus ${maxCpus} --max_memory ${shellQuote(maxMemory)} -work-dir nextflow/work${resumeOption}`;
 };
 
 /**
@@ -109,7 +124,7 @@ const buildNextflowRunArgs = ({
 export const buildLocalNextflowCommand = (
   options: NextflowRunOptions & { nextflowVersion?: string }
 ): string =>
-  `${options.nextflowVersion ? `NXF_VER=${shellQuote(options.nextflowVersion)} ` : ""}NXF_LOG_FILE=nextflow/.nextflow.log ${buildNextflowRunArgs(options)}`;
+  `${options.nextflowVersion ? `NXF_VER=${shellQuote(options.nextflowVersion)} ` : ""}NXF_LOG_FILE=${shellPath(options.logFile ?? DEFAULT_NEXTFLOW_LOG)} ${buildNextflowRunArgs(options)}`;
 
 interface ContainerNextflowOptions extends NextflowRunOptions {
   /** Docker platform for the runner, e.g. linux/amd64; null for native. */
@@ -169,7 +184,7 @@ export const buildContainerNextflowCommand = (
     ? ` -e NXF_ASSETS=${shellQuote(options.assetsDir)}`
     : "";
 
-  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion}${assets} -e NXF_LOG_FILE=nextflow/.nextflow.log -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
+  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion}${assets} -e NXF_LOG_FILE=${shellPath(options.logFile ?? DEFAULT_NEXTFLOW_LOG)} -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
 };
 
 /** Docker API version of the CLI in the nextflow/nextflow images (17.09). */

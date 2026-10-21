@@ -94,7 +94,23 @@ describe("ExecutionStatusPanel", () => {
     expect(container.querySelector('[aria-label="Why the run failed"]')).toBeNull();
   });
 
-  it("switches tabs and maximizes", () => {
+  it("tells which steps were reused from the cache", () => {
+    render({
+      status: { ...idle, startTime: new Date("2026-10-15T10:00:00Z"), endTime: new Date() },
+      steps: [
+        { id: "a", label: "FastQC", status: "cached", done: 2, total: 2, cached: 2 },
+        { id: "b", label: "Trim", status: "succeeded", done: 2, total: 2, cached: 1 },
+        { id: "c", label: "MultiQC", status: "succeeded", done: 1, total: 1 },
+      ],
+    });
+    expect(container.textContent).toContain("1 step was reused from the cache of the last run");
+    const steps = container.querySelector('[aria-label="Steps of this run"]')?.textContent ?? "";
+    expect(steps).toContain("FastQCreused from cache");
+    expect(steps).toContain("Trim2 of 2, 1 reused");
+    expect(steps).toContain("MultiQC1 of 1");
+  });
+
+    it("switches tabs and maximizes", () => {
     const onTabChange = vi.fn();
     render({ status: failed, onTabChange });
     const tabs = [...container.querySelectorAll('[role="tab"]')];

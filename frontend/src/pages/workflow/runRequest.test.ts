@@ -78,7 +78,16 @@ describe("buildRunRequest", () => {
     });
   });
 
-  it("sends binary input files as base64 and names them", () => {
+  it("asks to resume only for a saved workflow", () => {
+    const script = { ...base, nodes: [], rawSource: "workflow {}", sourceFormat: "nextflow" as const };
+    expect(buildRunRequest({ ...script, resume: true })).toMatchObject({ resume: true });
+    expect(buildRunRequest({ ...script })).not.toHaveProperty("resume");
+    expect(buildRunRequest({ ...script, workflowId: undefined, resume: true })).not.toHaveProperty(
+      "resume",
+    );
+  });
+
+    it("sends binary input files as base64 and names them", () => {
     const body = buildRunRequest({
       ...base,
       nodes: [

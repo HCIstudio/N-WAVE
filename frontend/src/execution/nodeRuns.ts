@@ -4,11 +4,14 @@ import { getProcessNameForNode } from "../generators/core/generateNextflowScript
 
 /** What the last run did for one node of the canvas. */
 export interface NodeRunSummary {
-  status: "running" | "succeeded" | "failed";
+  /** "cached": every task was reused from an earlier run (a resumed run). */
+  status: "running" | "succeeded" | "failed" | "cached";
   total: number;
   done: number;
   failed: number;
   running: number;
+  /** Tasks reused from the cache, counted in `done` too. */
+  cached: number;
   tasks: RunTask[];
 }
 
@@ -65,13 +68,22 @@ export const summarizeNodeRuns = (
   for (const [nodeId, nodeTasks] of grouped) {
     const failed = nodeTasks.filter((task) => task.status === "failed").length;
     const running = nodeTasks.filter((task) => task.status === "running").length;
+    const cached = nodeTasks.filter((task) => task.status === "cached").length;
     const done = nodeTasks.length - failed - running;
     summaries[nodeId] = {
-      status: failed > 0 ? "failed" : running > 0 ? "running" : "succeeded",
+      status:
+        failed > 0
+          ? "failed"
+          : running > 0
+            ? "running"
+            : cached === nodeTasks.length
+              ? "cached"
+              : "succeeded",
       total: nodeTasks.length,
       done,
       failed,
       running,
+      cached,
       tasks: nodeTasks,
     };
   }

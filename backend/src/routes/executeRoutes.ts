@@ -7,7 +7,9 @@ import {
   getExecutionLimits,
 } from "../controllers/executeController";
 import {
+  deleteWorkflowCache,
   getRunLog,
+  getWorkflowCache,
   getRunResultFile,
   getRunTaskFile,
   listRunResultFiles,
@@ -24,6 +26,8 @@ router.get("/docker-status", checkDockerStatus);
 router.get("/nextflow-status", checkNextflowStatus);
 router.get("/limits", getExecutionLimits);
 router.get("/runs", listRunsHandler);
+router.get("/cache", getWorkflowCache);
+router.delete("/cache", deleteWorkflowCache);
 router.get("/runs/:id/log", getRunLog);
 router.get("/runs/:id/files", listRunResultFiles);
 router.get("/runs/:id/file", getRunResultFile);

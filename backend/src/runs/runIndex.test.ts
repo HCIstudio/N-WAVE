@@ -3,9 +3,13 @@ import os from "node:os";
 import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
+  findResumableRun,
   findRunLog,
+  findRunNextflowLog,
   finishRun,
+  isRunDirInUse,
   listRuns,
+  listWorkflowRunDirs,
   RUN_LOG_FILE,
   recordRun,
 } from "./runIndex";
@@ -60,5 +64,32 @@ describe("run index", () => {
     fs.writeFileSync(path.join(root, "a_1", RUN_LOG_FILE), "N-WAVE run: a_1\n");
     expect(findRunLog("a_1")).toBe(path.join(root, "a_1", RUN_LOG_FILE));
     expect(findRunLog("missing")).toBeNull();
+  });
+
+  it("finds the run to resume, and a resumed run's own logs", () => {
+    const dir = path.join(root, "resume_1");
+    fs.mkdirSync(dir, { recursive: true });
+    recordRun("r_1", dir, { workflowId: "wf-r" });
+    // Without Nextflow's cache there is nothing to resume.
+    expect(findResumableRun("wf-r")).toBeNull();
+    fs.mkdirSync(path.join(dir, "nextflow", ".nextflow"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "nextflow", ".nextflow", "history"), "");
+    expect(findResumableRun("wf-r")).toEqual({ id: "r_1", dir });
+
+    fs.writeFileSync(path.join(dir, "nwave-run.r_2.log"), "second");
+    recordRun("r_2", dir, {
+      workflowId: "wf-r",
+      log: "nwave-run.r_2.log",
+      nextflowLog: "nextflow/.nextflow.r_2.log",
+      resumedFrom: "r_1",
+    });
+    expect(findResumableRun("wf-r")?.id).toBe("r_2");
+    expect(findRunLog("r_2")).toBe(path.join(dir, "nwave-run.r_2.log"));
+    expect(findRunNextflowLog("r_2")).toBe("nextflow/.nextflow.r_2.log");
+    expect(findRunNextflowLog("r_1")).toBeUndefined();
+    expect(listRuns({ workflowId: "wf-r" }).map((run) => run.resumedFrom)).toEqual(["r_1", undefined]);
+    expect(listWorkflowRunDirs("wf-r")).toEqual([dir]);
+    expect(isRunDirInUse(dir, (id) => id === "r_1")).toBe(true);
+    expect(isRunDirInUse(dir, () => false)).toBe(false);
   });
 });

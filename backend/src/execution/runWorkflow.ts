@@ -9,7 +9,13 @@ import {
   getPipelineNextflowRequirement,
   resolvePipelineNextflowVersion,
 } from "../pipelines/nextflowRequirement";
-import { finishRun, RUN_LOG_FILE, recordRun } from "../runs/runIndex";
+import {
+  findResumableRun,
+  finishRun,
+  isRunDirInUse,
+  RUN_LOG_FILE,
+  recordRun,
+} from "../runs/runIndex";
 import { getErrorMessage } from "../utils/errors";
 import type { PipelineRunRequest } from "../validation/schemas";
 import {
@@ -28,11 +34,13 @@ import {
 import {
   createRunDirectories,
   moveNextflowMetadata,
+  openRunDirectories,
+  restoreNextflowMetadata,
   writeInputFiles,
 } from "./runDirectory";
 import { describeRunExit } from "./runExit";
 import { startRun } from "./runner";
-import { registerRun, unregisterRun } from "./runRegistry";
+import { isRunLive, registerRun, unregisterRun } from "./runRegistry";
 import type { ExecutionSettings } from "./types";
 import { removeRunTaskContainers } from "./taskContainers";
 import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
@@ -48,6 +56,8 @@ export interface WorkflowRunRequest {
   pipeline?: PipelineRunRequest;
   /** Keeps the run in this workflow's history. */
   workflowId?: string;
+  /** Resume the workflow's last run: reuse its unchanged steps (Nextflow -resume). */
+  resume?: boolean;
 }
 
 /** Headers for the streamed run output. */
@@ -77,6 +87,22 @@ export const uniqueOutputName = (outputDirectory: string, outputName: string): s
 };
 
 /**
+ * The run a resumed run continues: the workflow's last run with a cache,
+ * unless a run is still going in its folder (two runs can't share one).
+ */
+const findRunToResume = (workflowId: string | undefined): { id: string; dir: string } | null => {
+  if (!workflowId) return null;
+  const run = findResumableRun(workflowId);
+  return run && !isRunDirInUse(run.dir, isRunLive) ? run : null;
+};
+
+/** Log files of a resumed run, in the folder it shares with earlier runs. */
+export const resumedRunLogs = (id: string): { log: string; nextflowLog: string } => ({
+  log: `nwave-run.${id}.log`,
+  nextflowLog: `nextflow/.nextflow.${id}.log`,
+});
+
+/**
  * Run the workflow and stream its output into `res`. The first line names
  * the run ("N-WAVE run: <id>"), which the browser uses to cancel it and
  * find its results. Setup failures before the stream starts answer 500.
@@ -104,20 +130,29 @@ export const runNextflowWorkflow = async (
   try {
     const name = sanitizeWorkflowName(request.workflowName);
     const outputDirectory = settings.outputDirectory || "results";
-    const dirs = createRunDirectories(
-      outputDirectory,
-      uniqueOutputName(outputDirectory, resolveOutputName(settings.outputNaming, name))
-    );
-    console.log(`Main output directory: ${dirs.main}`);
-
     // Identifies the run for cancellation, results, its log and the runner
-    // container. Recorded now, so a failure while setting up is listed too.
+    // container.
     const id = `${name}_${Date.now()}`;
+    const resumed = request.resume ? findRunToResume(request.workflowId) : null;
+    const dirs = resumed
+      ? openRunDirectories(resumed.dir)
+      : createRunDirectories(
+          outputDirectory,
+          uniqueOutputName(outputDirectory, resolveOutputName(settings.outputNaming, name))
+        );
+    console.log(`Main output directory: ${dirs.main}`);
+    // A resumed run shares the folder, so it keeps its logs apart.
+    const logs = resumed ? resumedRunLogs(id) : null;
+
+    // Recorded now, so a failure while setting up is listed too.
     runId = id;
     try {
       recordRun(id, dirs.main, {
         workflowId: request.workflowId,
         workflowName: request.workflowName,
+        log: logs?.log,
+        nextflowLog: logs?.nextflowLog,
+        resumedFrom: resumed?.id,
       });
     } catch (error: unknown) {
       console.warn(`Could not record run ${id}:`, error);
@@ -130,7 +165,7 @@ export const runNextflowWorkflow = async (
       },
     });
     // Everything sent to the browser is also kept in the run's log.
-    const log = fs.createWriteStream(path.join(dirs.main, RUN_LOG_FILE), {
+    const log = fs.createWriteStream(path.join(dirs.main, logs?.log ?? RUN_LOG_FILE), {
       flags: "a",
     });
     // A full disk ends the log, not the server; the browser still gets it all.
@@ -164,6 +199,7 @@ export const runNextflowWorkflow = async (
           resourceConfig,
         });
     writeInputFiles(dirs.inputs, request.fileContent, request.fileEncoding);
+    if (resumed) restoreNextflowMetadata(dirs);
 
     const selectedNextflowVersion =
       settings.nextflowVersion || DEFAULT_NEXTFLOW_VERSION;
@@ -197,6 +233,8 @@ export const runNextflowWorkflow = async (
       maxMemory: limits.memory,
       nextflowVersion,
       raisedNextflowVersion,
+      resume: Boolean(resumed),
+      nextflowLog: logs?.nextflowLog,
     });
     console.log(`Executing: ${launch.command}`);
     console.log(`Working directory: ${dirs.main}`);
@@ -212,6 +250,13 @@ export const runNextflowWorkflow = async (
       return;
     }
     send(`${describeRunLimits(limits, timeoutMs)}\n`);
+    if (resumed) {
+      send(
+        `N-WAVE: resuming run ${resumed.id}; steps whose code and inputs haven't changed are reused from its cache.\n`
+      );
+    } else if (request.resume) {
+      send("N-WAVE: nothing to resume (no earlier run of this workflow has a cache, or one is still running); running every step.\n");
+    }
     if (pipeline && raisedNextflowVersion) {
       send(
         `N-WAVE: nf-core/${pipeline.name} ${pipeline.version} needs Nextflow ${requiredNextflowVersion} or newer; this run uses ${nextflowVersion}.\n`

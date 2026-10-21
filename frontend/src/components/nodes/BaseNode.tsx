@@ -129,7 +129,7 @@ const BaseNode = ({
   // The last run's state for this node wins over a stored status.
   const { summary: run } = useNodeRun(id);
   const status = run
-    ? ({ running: "running", succeeded: "success", failed: "error" } as const)[
+    ? ({ running: "running", succeeded: "success", cached: "success", failed: "error" } as const)[
         run.status
       ]
     : data.status;
@@ -353,6 +353,8 @@ const BaseNode = ({
               "border-yellow-400 bg-yellow-100 text-yellow-900",
             run.status === "succeeded" &&
               "border-green-500 bg-green-100 text-green-900",
+            run.status === "cached" &&
+              "border-sky-500 bg-sky-100 text-sky-900",
             run.status === "failed" && "border-red-500 bg-red-100 text-red-900"
           )}
         >
@@ -360,7 +362,9 @@ const BaseNode = ({
             ? `Running${run.total > 1 ? ` ${run.done}/${run.total}` : ""}`
             : run.status === "failed"
               ? `Failed${run.total > 1 ? ` ${run.failed}/${run.total}` : ""}`
-              : "Results ready"}
+              : run.status === "cached"
+                ? "Reused from cache"
+                : "Results ready"}
         </output>
       )}
 

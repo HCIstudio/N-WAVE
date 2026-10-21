@@ -36,14 +36,37 @@ export interface RunSummary {
   finishedAt?: string;
   /** Why it failed, in one line. */
   message?: string;
+  /** Set when it resumed this earlier run. */
+  resumedFrom?: string;
 }
 
 /** Recorded runs of a workflow, newest first. */
-export const listRuns = async (workflowId: string): Promise<RunSummary[]> => {
+export const listRuns = async (workflowId: string, limit?: number): Promise<RunSummary[]> => {
   const response = await api.get<{ runs: RunSummary[] }>("/execute/runs", {
-    params: { workflowId },
+    params: { workflowId, ...(limit ? { limit } : {}) },
   });
   return response.data.runs;
+};
+
+/**
+ * What a workflow's runs keep so a later run can resume: each step's work
+ * folder and Nextflow's record of them.
+ */
+export interface WorkflowCache {
+  bytes: number;
+  /** Run folders holding some of it (0: nothing to resume). */
+  folders: number;
+}
+
+export const getWorkflowCache = async (workflowId: string): Promise<WorkflowCache> => {
+  const response = await api.get<WorkflowCache>("/execute/cache", { params: { workflowId } });
+  return response.data;
+};
+
+/** Delete a workflow's cache: its next run runs every step. */
+export const clearWorkflowCache = async (workflowId: string): Promise<WorkflowCache> => {
+  const response = await api.delete<WorkflowCache>("/execute/cache", { params: { workflowId } });
+  return response.data;
 };
 
 /** A run's full output. */

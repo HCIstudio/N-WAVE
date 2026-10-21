@@ -13,6 +13,7 @@ import {
   FolderDown,
   History,
   Hourglass,
+  RotateCcw,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
@@ -39,6 +40,13 @@ interface BottomBarProps {
   onExecutionSettingsChange: (settings: ExecutionSettings) => void;
   /** Open the run panel: the last run's steps and log, and earlier runs. */
   onShowRuns?: () => void;
+  /**
+   * The Resume choice next to Run, when earlier runs left a cache: the next
+   * run then reuses the steps that haven't changed.
+   */
+  resume?: { available: boolean; on: boolean; onChange: (on: boolean) => void };
+  /** More sections at the end of the execution settings (the run cache). */
+  settingsExtra?: React.ReactNode;
 }
 
 const BottomBar: React.FC<BottomBarProps> = ({
@@ -58,6 +66,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
   executionSettings,
   onExecutionSettingsChange,
   onShowRuns,
+  resume,
+  settingsExtra,
 }) => {
   const [isEditingName, setIsEditingName] = useState(false);
   const [tempName, setTempName] = useState(workflowName);
@@ -222,7 +232,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
     <>
       {/* Execution Settings Modal */}
       {showExecutionSettings && (
-        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-50">
+        // Above the run panel (z-50), which stays open beside the canvas.
+        <div className="fixed inset-0 bg-overlay flex items-center justify-center z-[60]">
           <div
             ref={modalRef}
             className="bg-panel-background rounded-lg shadow-2xl w-full max-w-4xl mx-4 max-h-[85vh] overflow-hidden border border-panel-border flex flex-col"
@@ -280,6 +291,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
                 settings={executionSettings}
                 onSettingsChange={handleSettingsChange}
               />
+              {settingsExtra}
             </div>
 
             {/* Footer */}
@@ -452,6 +464,27 @@ const BottomBar: React.FC<BottomBarProps> = ({
               <Play className="w-4 h-4" />
             </button>
           ))}
+
+        {onRun && !isRunning && resume?.available && (
+          <button
+            type="button"
+            onClick={() => resume.onChange(!resume.on)}
+            aria-pressed={resume.on}
+            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition-colors ${
+              resume.on
+                ? "bg-sky-100 text-sky-900 ring-1 ring-sky-500"
+                : "text-text hover:bg-accent"
+            }`}
+            title={
+              resume.on
+                ? "Resume is on: the next run reuses the steps whose code and inputs haven't changed. Click to run every step."
+                : "Resume is off: the next run runs every step. Click to reuse unchanged steps from the last run."
+            }
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
+            Resume
+          </button>
+        )}
 
         {onShowRuns && (
           <button

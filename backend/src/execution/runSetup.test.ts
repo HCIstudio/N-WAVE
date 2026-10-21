@@ -12,6 +12,8 @@ import { MODULE_CONFIG_FILE, preparePipelineRun, prepareScriptRun } from "./prep
 import {
   createRunDirectories,
   moveNextflowMetadata,
+  openRunDirectories,
+  restoreNextflowMetadata,
   writeInputFiles,
 } from "./runDirectory";
 import { describeRunExit } from "./runExit";
@@ -117,6 +119,33 @@ describe("run directories", () => {
     expect(fs.readFileSync(path.join(dirs.nextflow, ".nextflow.log"), "utf8")).toBe("log");
   });
 
+  it("leaves unchanged inputs alone and removes ones the workflow dropped", () => {
+    const dirs = createRunDirectories(root, "flow_resume");
+    writeInputFiles(dirs.inputs, { "a.txt": "same", "b.txt": "old", "gone.txt": "x" });
+    // Nextflow's cache compares modification times, so they must not move.
+    const before = new Date("2020-01-01T00:00:00Z");
+    for (const name of ["a.txt", "b.txt"]) fs.utimesSync(path.join(dirs.inputs, name), before, before);
+
+    writeInputFiles(openRunDirectories(dirs.main).inputs, { "a.txt": "same", "b.txt": "new" });
+    expect(fs.readdirSync(dirs.inputs).sort()).toEqual(["a.txt", "b.txt"]);
+    expect(fs.statSync(path.join(dirs.inputs, "a.txt")).mtime).toEqual(before);
+    expect(fs.statSync(path.join(dirs.inputs, "b.txt")).mtime).not.toEqual(before);
+    expect(fs.readFileSync(path.join(dirs.inputs, "b.txt"), "utf8")).toBe("new");
+  });
+
+  it("puts Nextflow's cache back before a resumed run", () => {
+    const dirs = createRunDirectories(root, "flow_restore");
+    fs.mkdirSync(path.join(dirs.main, ".nextflow"));
+    fs.writeFileSync(path.join(dirs.main, ".nextflow", "history"), "run 1");
+    moveNextflowMetadata(dirs);
+    restoreNextflowMetadata(dirs);
+    expect(fs.readFileSync(path.join(dirs.main, ".nextflow", "history"), "utf8")).toBe("run 1");
+    expect(fs.existsSync(path.join(dirs.nextflow, ".nextflow"))).toBe(false);
+    // After a failed run it is still in place, and stays.
+    restoreNextflowMetadata(dirs);
+    expect(fs.existsSync(path.join(dirs.main, ".nextflow", "history"))).toBe(true);
+  });
+
   it("writes a script's config next to it, with Docker for its tasks if asked", async () => {
     const dirs = createRunDirectories(root, "flow_3");
     const scriptPath = path.join(dirs.workflow, "flow.nf");
@@ -145,6 +174,9 @@ describe("run directories", () => {
       input: "x.csv",
     });
     expect(fs.readFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), "utf8")).toBe("limits\n");
+    // Resumed without params, the last run's are gone.
+    preparePipelineRun(dirs, { name: "rnaseq", version: "3.27.0", profiles: ["docker"], params: {} }, "limits");
+    expect(fs.existsSync(path.join(dirs.main, "params.json"))).toBe(false);
   });
 });
 

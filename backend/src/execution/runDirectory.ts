@@ -23,6 +23,11 @@ export const createRunDirectories = (
   const main = path.isAbsolute(outputDirectory)
     ? path.join(outputDirectory, outputName)
     : path.join(process.cwd(), outputDirectory, outputName);
+  return openRunDirectories(main);
+};
+
+/** A run's folders at `main` (an earlier run's, when resuming), created when missing. */
+export const openRunDirectories = (main: string): RunDirectories => {
   const dirs = {
     main,
     workflow: path.join(main, "workflow"),
@@ -47,12 +52,41 @@ export const writeInputFiles = (
   fileContent: Record<string, string> | undefined,
   fileEncoding: Record<string, "base64"> = {}
 ): void => {
-  for (const [fileName, content] of Object.entries(fileContent ?? {})) {
-    fs.writeFileSync(
-      path.join(inputsDir, fileName),
-      fileEncoding[fileName] === "base64" ? Buffer.from(content, "base64") : content
-    );
+  const files = fileContent ?? {};
+  // A resumed run reuses the folder: files the workflow no longer has go,
+  // and unchanged ones are left alone, because Nextflow's cache compares
+  // an input's modification time as well as its path and size.
+  const names = new Set(Object.keys(files));
+  for (const entry of fs.readdirSync(inputsDir, { withFileTypes: true })) {
+    if (!names.has(entry.name)) {
+      fs.rmSync(path.join(inputsDir, entry.name), { recursive: true, force: true });
+    }
   }
+  for (const [fileName, content] of Object.entries(files)) {
+    const file = path.join(inputsDir, fileName);
+    const bytes =
+      fileEncoding[fileName] === "base64" ? Buffer.from(content, "base64") : Buffer.from(content);
+    if (isSameFile(file, bytes)) continue;
+    fs.writeFileSync(file, bytes);
+  }
+};
+
+const isSameFile = (file: string, bytes: Buffer): boolean => {
+  try {
+    return fs.statSync(file).size === bytes.length && fs.readFileSync(file).equals(bytes);
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Before resuming, put Nextflow's .nextflow/ (its cache and run history)
+ * back where Nextflow looks for it, after a successful run moved it.
+ */
+export const restoreNextflowMetadata = (dirs: RunDirectories): void => {
+  const from = path.join(dirs.nextflow, ".nextflow");
+  const to = path.join(dirs.main, ".nextflow");
+  if (fs.existsSync(from) && !fs.existsSync(to)) fs.renameSync(from, to);
 };
 
 /** Move Nextflow's .nextflow/ and .nextflow.log into nextflow/. */

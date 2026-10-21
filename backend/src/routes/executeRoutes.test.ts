@@ -229,6 +229,23 @@ describe("run history", () => {
     await request(app).get("/api/execute/runs/other_1/log").expect(404);
     await request(app).get("/api/execute/runs/bad..id/log").expect(400);
   });
+
+  it("measures and clears a workflow's run cache", async () => {
+    const runDir = path.join(dataDir, "bee_1");
+    fs.mkdirSync(path.join(runDir, ".nextflow"), { recursive: true });
+    fs.writeFileSync(path.join(runDir, ".nextflow", "history"), "x");
+    await request(app).get("/api/execute/cache").expect(400);
+    const cache = await request(app).get("/api/execute/cache").query({ workflowId: "wf1" }).expect(200);
+    expect(cache.body.folders).toBe(1);
+    expect(cache.body.bytes).toBeGreaterThan(0);
+    const cleared = await request(app)
+      .delete("/api/execute/cache")
+      .query({ workflowId: "wf1" })
+      .expect(200);
+    expect(cleared.body).toEqual({ bytes: 0, folders: 0 });
+    expect(fs.existsSync(path.join(runDir, "nextflow/work"))).toBe(false);
+    expect(fs.existsSync(path.join(runDir, RUN_LOG_FILE))).toBe(true);
+  });
 });
 
 describe("GET /api/execute/limits", () => {

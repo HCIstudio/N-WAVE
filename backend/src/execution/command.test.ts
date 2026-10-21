@@ -97,6 +97,19 @@ describe("buildLocalNextflowCommand", () => {
       })
     ).toContain("-c nwave_modules.config run ./workflow/demo.nf");
   });
+
+  it("resumes with the run's own Nextflow log", () => {
+    const command = buildLocalNextflowCommand({
+      scriptPath: "workflow/demo.nf",
+      withModuleConfig: false,
+      maxCpus: 2,
+      maxMemory: "4GB",
+      resume: true,
+      logFile: "nextflow/.nextflow.demo_2.log",
+    });
+    expect(command).toMatch(/^NXF_LOG_FILE=nextflow\/\.nextflow\.demo_2\.log nextflow -log nextflow\/\.nextflow\.demo_2\.log run /);
+    expect(command).toMatch(/-work-dir nextflow\/work -resume$/);
+  });
 });
 
 describe("buildContainerNextflowCommand", () => {
