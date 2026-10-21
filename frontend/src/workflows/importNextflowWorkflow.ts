@@ -121,14 +121,28 @@ const getWorkflowBody = (rawSource: string): string => {
   return rawSource.slice(start, cursor - 1);
 };
 
-const parseSelectedFiles = (rawSource: string): string[] => {
-  const match = rawSource.match(/params\.selected_files\s*=\s*\[([\s\S]*?)\]/);
-  if (!match?.[1]) return [];
-
-  return match[1]
-    .split(",")
-    .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ""))
-    .filter(Boolean);
+/**
+ * The file lists of the script's File Inputs, by suffix: "" for a lone File
+ * Input (`params.selected_files`), "_<node>" for each of several
+ * (`params.selected_files_<node>`, read from channel `ch_files_<node>`).
+ */
+const parseSelectedFiles = (rawSource: string): Map<string, string[]> => {
+  const lists = new Map<string, string[]>();
+  for (const match of rawSource.matchAll(
+    /params\.selected_files(_[A-Za-z0-9_]+)?\s*=\s*\[([\s\S]*?)\]/g
+  )) {
+    const suffix = match[1] ?? "";
+    // The first assignment wins, as in Nextflow.
+    if (lists.has(suffix)) continue;
+    lists.set(
+      suffix,
+      (match[2] ?? "")
+        .split(",")
+        .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ""))
+        .filter(Boolean)
+    );
+  }
+  return lists;
 };
 
 const inferProcessNode = (
@@ -264,24 +278,27 @@ const buildVisualGraph = (
   const processNodes = new Map<string, VisualNodeDraft>();
   const variableSources = new Map<string, string[]>();
 
-  const needsFileInput =
-    selectedFiles.length > 0 || /\bch_files\b/.test(rawSource);
-  if (needsFileInput) {
-    const fileInputId = "import-file-input";
+  // One File Input per file list; a script reading ch_files without a list
+  // still gets one.
+  if (selectedFiles.size === 0 && /\bch_files\b/.test(rawSource)) {
+    selectedFiles.set("", []);
+  }
+  [...selectedFiles].forEach(([suffix, files], index) => {
+    const fileInputId = `import-file-input${suffix.replace(/_/g, "-")}`;
     nodes.push({
       id: fileInputId,
       type: "fileInput",
-      position: { x: 80, y: 180 },
+      position: { x: 80, y: 180 + index * 180 },
       data: {
         label: "File Input",
         icon: "FolderOpen",
         subtitle:
-          selectedFiles.length > 0
-            ? `${selectedFiles.length} imported file reference${
-                selectedFiles.length === 1 ? "" : "s"
+          files.length > 0
+            ? `${files.length} imported file reference${
+                files.length === 1 ? "" : "s"
               }`
             : "Imported input channel",
-        files: selectedFiles.map((name) => ({
+        files: files.map((name) => ({
           name,
           size: 0,
           fileType: name.split(".").pop() || "txt",
@@ -290,8 +307,8 @@ const buildVisualGraph = (
         outputs: [{ name: "out", isConnectable: true }],
       },
     });
-    variableSources.set("ch_files", [fileInputId]);
-  }
+    variableSources.set(`ch_files${suffix}`, [fileInputId]);
+  });
 
   processes.forEach((process, index) => {
     const node = inferProcessNode(process, index);

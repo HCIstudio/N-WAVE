@@ -67,4 +67,44 @@ describe.skipIf(process.platform !== "linux")("startRun", () => {
     await new Promise((resolve) => setTimeout(resolve, 200));
     expect(isRunning(grandchild)).toBe(false);
   });
+
+  it("ends a stopped run only after cleaning up what it left behind", async () => {
+    const order: string[] = [];
+    const exit = await new Promise<RunExit>((resolve) => {
+      const handle = startRun({
+        command: "sleep 30",
+        cwd: os.tmpdir(),
+        timeoutMs: 0,
+        cleanUpAfterStop: async () => {
+          await new Promise((wait) => setTimeout(wait, 50));
+          order.push("cleaned up");
+        },
+        onOutput: () => {},
+        onExit: (result) => {
+          order.push("ended");
+          resolve(result);
+        },
+      });
+      setTimeout(() => handle.stop("cancelled"), 200);
+    });
+    expect(exit.stopReason).toBe("cancelled");
+    expect(order).toEqual(["cleaned up", "ended"]);
+  });
+
+  it("doesn't clean up after a run that finished on its own", async () => {
+    let cleanedUp = false;
+    await new Promise<RunExit>((resolve) =>
+      startRun({
+        command: "true",
+        cwd: os.tmpdir(),
+        timeoutMs: 0,
+        cleanUpAfterStop: async () => {
+          cleanedUp = true;
+        },
+        onOutput: () => {},
+        onExit: resolve,
+      }),
+    );
+    expect(cleanedUp).toBe(false);
+  });
 });

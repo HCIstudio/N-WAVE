@@ -32,6 +32,7 @@ export const startRun = ({
   cwd,
   timeoutMs,
   containerName,
+  cleanUpAfterStop,
   onOutput,
   onExit,
 }: {
@@ -41,6 +42,8 @@ export const startRun = ({
   timeoutMs: number;
   /** Name of the Nextflow runner container, when there is one. */
   containerName?: string;
+  /** After a stop, before the run ends: e.g. remove its task containers. */
+  cleanUpAfterStop?: () => Promise<unknown>;
   onOutput: (chunk: string) => void;
   onExit: (exit: RunExit) => void;
 }): RunHandle => {
@@ -97,7 +100,15 @@ export const startRun = ({
     ended = true;
     if (timeoutTimer) clearTimeout(timeoutTimer);
     if (killTimer) clearTimeout(killTimer);
-    onExit({ code, signal, stopReason, outputTail });
+    const exit = () => onExit({ code, signal, stopReason, outputTail });
+    // A stopped run ends once what it left behind is gone.
+    if (stopReason && cleanUpAfterStop) {
+      cleanUpAfterStop()
+        .catch((error: unknown) => console.warn("Cleaning up a stopped run failed:", error))
+        .finally(exit);
+    } else {
+      exit();
+    }
   };
   child.on("close", finish);
   child.on("error", (error) => {

@@ -16,6 +16,7 @@ import {
 } from "../../registry/samplesheet";
 import { edgesIntoPort } from "../../registry/portArity";
 import { buildMixedChannelExpression } from "./mixChannels";
+import { describeCycle, findCycle } from "../../registry/workflowCycles";
 
 /**
  * Generates a Nextflow script from the current workflow nodes.
@@ -52,6 +53,15 @@ export const generateNextflowScript = (
   outputDirectory: string,
   outputNamingPattern: string
 ): string => {
+  // A loop has no order to write its channels in (the workflow check and the
+  // canvas say so first; downloads and exports show this message).
+  const cycle = findCycle(edges);
+  if (cycle) {
+    throw new Error(
+      `The workflow has a loop (${describeCycle(cycle, nodes)}), so its Nextflow script can't be written. Remove one of these connections.`
+    );
+  }
+
   // Add timestamp to ensure unique process names
   const timestamp = Date.now();
   const now = new Date();

@@ -1,0 +1,59 @@
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { loadInstalledIndex, readModuleFiles, resolveInstalledPath, writeInstalledIndex } from "./library";
+
+describe("installed nf-core components", () => {
+  let root: string;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-installed-"));
+    vi.stubEnv("NWAVE_DATA_DIR", root);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const entry = (moduleDir: string) => ({
+    id: "nf-core/fastqc",
+    kind: "module" as const,
+    installedAt: "2026-10-01T00:00:00.000Z",
+    moduleDir,
+    manifestPath: `${moduleDir}/nwave.adapter.json`,
+    sourceCommit: "abc",
+    support: "candidate" as never,
+  });
+
+  it("are found under a moved data directory", () => {
+    // Written by an older version, before the data directory moved.
+    const old = "/old/volume/data/nf-core/modules/nf-core/fastqc";
+    expect(resolveInstalledPath(old, root)).toBe(path.join(root, "nf-core/modules/nf-core/fastqc"));
+    expect(resolveInstalledPath("nf-core/subworkflows/nf-core/x", root)).toBe(path.join(root, "nf-core/subworkflows/nf-core/x"));
+    expect(resolveInstalledPath("/elsewhere/file", root)).toBe("/elsewhere/file");
+
+    fs.mkdirSync(path.join(root, "nf-core"), { recursive: true });
+    fs.writeFileSync(path.join(root, "nf-core", "installed.json"), JSON.stringify({ "nf-core/fastqc": entry(old) }));
+    const loaded = loadInstalledIndex()["nf-core/fastqc"];
+    expect(loaded?.moduleDir).toBe(path.join(root, "nf-core/modules/nf-core/fastqc"));
+    expect(loaded?.manifestPath).toBe(path.join(root, "nf-core/modules/nf-core/fastqc/nwave.adapter.json"));
+
+    // Saved again, the paths are relative to the data directory.
+    writeInstalledIndex(loadInstalledIndex());
+    const stored = JSON.parse(fs.readFileSync(path.join(root, "nf-core", "installed.json"), "utf8"));
+    expect(stored["nf-core/fastqc"].moduleDir).toBe("nf-core/modules/nf-core/fastqc");
+  });
+
+  it("export the files their install has, also ones the current catalog doesn't list", async () => {
+    const dir = path.join(root, "nf-core", "modules", "nf-core", "fastqc");
+    fs.mkdirSync(path.join(dir, "templates"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "main.nf"), "process FASTQC {}\n");
+    fs.writeFileSync(path.join(dir, "templates", "old_helper.py"), "print('older')\n");
+    fs.writeFileSync(path.join(dir, "nwave.adapter.json"), "{}");
+    writeInstalledIndex({ "nf-core/fastqc": entry(dir) });
+
+    const files = await readModuleFiles("nf-core/fastqc");
+    expect(Object.keys(files).sort()).toEqual(["main.nf", "templates/old_helper.py"]);
+    expect(Object.keys(await readModuleFiles("nf-core/fastqc", ["main.nf"]))).toEqual(["main.nf"]);
+  });
+});

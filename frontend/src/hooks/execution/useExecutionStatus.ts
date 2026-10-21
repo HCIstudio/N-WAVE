@@ -247,19 +247,16 @@ export const useExecutionStatus = ({
         }));
       }
 
-      // Parse workflow completion - Multiple patterns
+      // A run is complete when the backend says so, once Nextflow has
+      // exited: not on Nextflow's summary lines (Duration:, Succeeded:, …),
+      // which any task can print too.
       const completionPatterns = [
-        /Completed at:.*/,
-        /Duration:\s+.*/,
-        /CPU hours:\s+.*/,
-        /Succeeded:\s+\d+/,
-        /Process completed with exit code:\s*0/,
-        /Nextflow execution completed successfully/,
-        /Pipeline completed successfully/,
+        /^Nextflow execution completed successfully$/,
+        /^Process completed with exit code:\s*0$/,
       ];
 
       const isCompleted = completionPatterns.some((pattern) =>
-        pattern.test(line)
+        pattern.test(line.trim())
       );
 
       if (isCompleted) {

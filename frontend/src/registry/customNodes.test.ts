@@ -62,3 +62,36 @@ describe("custom node tuple inputs", () => {
     expect(getNodeCode(makeNode(node.id))).toEqual(expected);
   });
 });
+
+describe("custom node settings", () => {
+  it("use their default on copies placed before the setting was added", () => {
+    const v1 = parseCustomNodeSource(source);
+    const placed = createStoredCustomNode(
+      { label: "Count lines", description: "", icon: "Code", source },
+      v1,
+      { inputs: v1.inputs, outputs: v1.outputs },
+    );
+    registerCustomNodes([placed]);
+    // A copy saved in another workflow, before the edit below.
+    const saved = makeNode(placed.id);
+
+    const withSetting = source.replace("tuple val(meta), path(reads)", "tuple val(meta), path(reads)\n  val max_lines");
+    const v2 = parseCustomNodeSource(withSetting);
+    registerCustomNodes([
+      {
+        ...createStoredCustomNode(
+          { label: "Count lines", description: "", icon: "Code", source: withSetting },
+          v2,
+          { inputs: v2.inputs, outputs: v2.outputs },
+        ),
+        // Editing keeps the node's id and process.
+        id: placed.id,
+        processType: placed.processType,
+      },
+    ]);
+    const snippet = getNodeCode(saved)?.workflowSnippet ?? "";
+    // Not 0 (an empty value as an integer).
+    expect(snippet).toMatch(/, 20\)\n/);
+  });
+});
+

@@ -131,20 +131,27 @@ interface ContainerNextflowOptions extends NextflowRunOptions {
    * runner) reaches the host's daemon as an empty folder.
    */
   assetsDir?: string;
-  /** Either a `-v host:container` bind or `--volumes-from <container>`. */
+  /** Either a bind mount (`--mount type=bind`) or `--volumes-from <container>`. */
   mount: { type: "bind"; source: string; target: string } | {
     type: "volumes-from";
     container: string;
   };
 }
 
+/** A `--mount` field; values with a comma or quote are quoted, CSV style. */
+const mountField = (key: string, value: string): string =>
+  /[",]/.test(value) ? `"${key}=${value.replace(/"/g, '""')}"` : `${key}=${value}`;
+
 /** Command that runs Nextflow inside the official nextflow/nextflow image. */
 export const buildContainerNextflowCommand = (
   options: ContainerNextflowOptions
 ): string => {
+  // --mount, not -v: a source with a colon (C:\Users\…) breaks `-v src:dst`.
   const mount =
     options.mount.type === "bind"
-      ? `-v ${shellQuote(`${options.mount.source}:${options.mount.target}`)}`
+      ? `--mount ${shellQuote(
+          `type=bind,${mountField("source", options.mount.source)},${mountField("target", options.mount.target)}`
+        )}`
       : `--volumes-from ${shellQuote(options.mount.container)}`;
 
   const platform = options.platform

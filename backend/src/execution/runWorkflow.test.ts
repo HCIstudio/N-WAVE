@@ -105,4 +105,38 @@ describe("runNextflowWorkflow setup", () => {
     expect(entry?.status).toBe("cancelled");
     expect(isRunLive(entry?.id ?? "")).toBe(false);
   });
+
+  it("ends normally when neither its log nor its history can be written", async () => {
+    const openLog = fs.createWriteStream;
+    // The log can't be opened (as on a full or broken disk).
+    const createWriteStream = vi
+      .spyOn(fs, "createWriteStream")
+      .mockImplementationOnce(() => openLog("/proc/version/nwave-run.log"));
+    vi.mocked(prepareScriptRun).mockResolvedValue({ hasNfCoreModules: false, useProcessDocker: false });
+    vi.mocked(startRun).mockImplementationOnce(({ onOutput, onExit }) => {
+      setTimeout(() => {
+        onOutput("working\n");
+        // Nor can the run history be written any more (its temporary file
+        // can't be created).
+        fs.mkdirSync(path.join(root, "data", `runs.json.${process.pid}.tmp`), { recursive: true });
+        onExit({ code: 0, signal: null, stopReason: null, outputTail: "" });
+      }, 20);
+      return { stop: () => {} };
+    });
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+
+    const res = await run("d");
+    await vi.waitFor(() => expect(res.end).toHaveBeenCalled());
+    expect(res.output).toContain("working");
+    expect(warn.mock.calls.map(([message]) => String(message))).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("can't be written"),
+        expect.stringContaining("Could not record how run"),
+      ]),
+    );
+    warn.mockRestore();
+    createWriteStream.mockRestore();
+    // What afterEach waits for (this run's log never opened).
+    fs.writeFileSync(path.join(root, "same", RUN_LOG_FILE), "");
+  });
 });

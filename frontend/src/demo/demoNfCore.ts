@@ -194,15 +194,23 @@ export const fetchNfCoreModuleFiles = async (
   const paths = (
     entry.files?.paths ?? ["main.nf", "meta.yml", "environment.yml"]
   ).filter((filePath) => filePath !== "main.nf");
+  // The other files at the commit main.nf came from: an install from an
+  // older commit (outdated) mustn't be mixed with the current files. Files
+  // the current catalog lists may not exist there yet.
+  const installedCommit = read().find((module) => module.id === id)?.sourceCommit;
+  const olderInstall = Boolean(installedCommit && installedCommit !== entry.source.commit);
+  const source = olderInstall
+    ? { ...entry.source, commit: installedCommit as string }
+    : entry.source;
   const files: Record<string, string> = { "main.nf": mainNf };
   await Promise.all(
     paths.map(async (filePath) => {
       const response = await fetch(
-        nfCoreModuleFileUrl(entry.source, filePath),
+        nfCoreModuleFileUrl(source, filePath),
       ).catch(() => null);
       if (response?.ok) {
         files[filePath] = await response.text();
-      } else if (!OPTIONAL_MODULE_FILES.has(filePath)) {
+      } else if (!olderInstall && !OPTIONAL_MODULE_FILES.has(filePath)) {
         throw new Error(
           `Could not load ${filePath} of ${id} from GitHub (HTTP ${response?.status ?? "error"}).`,
         );
@@ -210,6 +218,29 @@ export const fetchNfCoreModuleFiles = async (
     }),
   );
   return files;
+};
+
+/**
+ * An install from the catalog's commit gets its manifest from the current
+ * catalog, as the backend does (enrichInstalledManifest): newer N-WAVE
+ * versions read more from it (port types, connection limits). Installs from
+ * another commit keep theirs and are marked outdated.
+ */
+const refreshManifest = (
+  module: StoredModule,
+  catalog: NfCoreCatalogResponse | undefined,
+): StoredModule => {
+  const entry = isNfCoreSubworkflowId(module.id)
+    ? catalog?.subworkflows?.find((subworkflow) => subworkflow.id === module.id)
+    : catalog?.modules.find((candidate) => candidate.id === module.id);
+  if (!entry || entry.source.commit !== module.sourceCommit) return module;
+  return {
+    ...module,
+    manifest:
+      "kind" in entry && entry.kind === "subworkflow"
+        ? buildNfCoreSubworkflowManifest(entry)
+        : buildNfCoreManifest(entry as NfCoreCatalogModule),
+  };
 };
 
 const toInstalledEntry = (
@@ -245,14 +276,14 @@ export const demoNfCore = {
 
   async installed(): Promise<InstalledNfCoreResponse> {
     const modules = read();
-    // The catalog is only needed to flag outdated installs; skip it (and its
-    // download) when nothing is installed.
-    const catalogCommit =
-      modules.length > 0 ? (await loadCatalog()).source?.commit : undefined;
+    // The catalog flags outdated installs and refreshes current ones; skip
+    // it (and its download) when nothing is installed.
+    const catalog = modules.length > 0 ? await loadCatalog() : undefined;
+    const catalogCommit = catalog?.source?.commit;
     return {
       dataRoot: "browser",
       installed: modules.map((module) =>
-        toInstalledEntry(module, catalogCommit),
+        toInstalledEntry(refreshManifest(module, catalog), catalogCommit),
       ),
     };
   },

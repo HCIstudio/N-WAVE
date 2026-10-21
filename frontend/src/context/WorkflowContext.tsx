@@ -28,6 +28,7 @@ import { isNodeDataPatchNoop } from "../utils/nodeData";
 import type { ToastType } from "../components/common";
 import { validateConnectionWithNodeDefinitions } from "../registry";
 import { connectionLimitMessage } from "../registry/portArity";
+import { cycleThroughConnection, describeCycle } from "../registry/workflowCycles";
 
 interface ToastState {
   message: string;
@@ -131,6 +132,16 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
 
       if (!validation.valid) {
         showToast(validation.message || "Invalid connection.", "error");
+        return false;
+      }
+
+      // Channels flow one way: a connection back into its own path is a loop.
+      const loop = cycleThroughConnection(connection, currentEdges);
+      if (loop) {
+        showToast(
+          `This connection would make a loop (${describeCycle(loop, currentNodes)}). A step's output can't come back to its own input; use a new node instead.`,
+          "error"
+        );
         return false;
       }
 

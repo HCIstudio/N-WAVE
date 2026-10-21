@@ -113,6 +113,23 @@ describe("buildProjectFiles", () => {
     expect(files["inputs/sample.txt"]).toBe("hello");
   });
 
+  it("says so in the README when an input's name can't be a file in the project", () => {
+    const odd = buildProjectFiles({
+      workflowName: "QC run",
+      script,
+      inputFiles: [
+        { name: "ok.txt", content: "fine" },
+        { name: "runs/sample.txt", content: "nested" },
+      ],
+      moduleFiles,
+    });
+    expect(Object.keys(odd).filter((name) => name.startsWith("inputs/"))).toEqual(["inputs/ok.txt"]);
+    const readme = String(odd["README.md"]);
+    expect(readme).toContain("- `inputs/ok.txt` (included)");
+    expect(readme).toContain("- `runs/sample.txt`: **not included**, its name isn't a plain file name");
+    expect(readme).not.toContain("runs/sample.txt` (included)");
+  });
+
   it("writes binary input files as their bytes", () => {
     const binary = buildProjectFiles({
       workflowName: "QC run",

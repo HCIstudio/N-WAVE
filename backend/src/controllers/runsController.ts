@@ -21,6 +21,16 @@ const sendSandboxed = (res: Response, file: string): void => {
   res.sendFile(file);
 };
 
+/**
+ * The requested file's path in the run: from the URL (`/results/<path>`,
+ * so a report's relative links reach its sibling files) or `?path=`.
+ */
+const requestedPath = (req: Request): string => {
+  const fromUrl = (req.params as Record<string, string | undefined>)[0];
+  if (typeof fromUrl === "string" && fromUrl) return fromUrl;
+  return typeof req.query.path === "string" ? req.query.path : "";
+};
+
 const parseRunId = (req: Request, res: Response): string | null => {
   const id = String(req.params.id ?? "");
   if (!/^[A-Za-z0-9_-]{1,300}$/.test(id)) {
@@ -70,7 +80,7 @@ export const getRunResultFile = (req: Request, res: Response): void => {
   if (!id) return;
   const dir = findRunResultsDir(id);
   const runDir = findRunDir(id);
-  const relative = typeof req.query.path === "string" ? req.query.path : "";
+  const relative = requestedPath(req);
   const target = path.resolve(dir ?? "", relative);
   // Followed symlinks must stay inside the run.
   const real =
@@ -127,7 +137,7 @@ export const getRunTaskFile = (req: Request, res: Response): void => {
   const task = resolveTaskDir(req, res);
   if (!task) return;
   const { runDir, workDir } = task;
-  const relative = typeof req.query.path === "string" ? req.query.path : "";
+  const relative = requestedPath(req);
   const target = path.resolve(workDir, relative);
   const inside =
     relative &&

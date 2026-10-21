@@ -16,9 +16,15 @@ export const listRunResults = async (
   return response.data.files;
 };
 
-/** URL that serves one result file (reports open in a new tab). */
+/** A file path in a URL, each part encoded ("report/a b.html" → "report/a%20b.html"). */
+const pathInUrl = (path: string): string => path.split("/").map(encodeURIComponent).join("/");
+
+/**
+ * URL that serves one result file (reports open in a new tab). Path-style,
+ * so a report's relative links (report_files/plot.png) reach its siblings.
+ */
 export const runResultUrl = (runId: string, path: string): string =>
-  `${import.meta.env.VITE_API_BASE_URL || "/api"}/execute/runs/${encodeURIComponent(runId)}/file?path=${encodeURIComponent(path)}`;
+  `${import.meta.env.VITE_API_BASE_URL || "/api"}/execute/runs/${encodeURIComponent(runId)}/results/${pathInUrl(path)}`;
 
 /** A run the backend recorded. */
 export interface RunSummary {
@@ -81,7 +87,7 @@ export const listTaskFiles = async (
 
 /** URL that serves one file a task produced. */
 export const taskFileUrl = (runId: string, hash: string, path: string): string =>
-  `${import.meta.env.VITE_API_BASE_URL || "/api"}/execute/runs/${encodeURIComponent(runId)}/tasks/${hash}/file?path=${encodeURIComponent(path)}`;
+  `${import.meta.env.VITE_API_BASE_URL || "/api"}/execute/runs/${encodeURIComponent(runId)}/tasks/${hash}/output/${pathInUrl(path)}`;
 
 /** The text of a file a task produced. */
 export const getTaskFileText = async (

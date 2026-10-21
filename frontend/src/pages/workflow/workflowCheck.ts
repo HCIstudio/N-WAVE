@@ -11,6 +11,7 @@ import { connectionHints } from "../../registry/portTypes";
 import { getSamplesheetMapping, parseSamplesheet } from "../../registry/samplesheet";
 import type { ExecutionSettings } from "../../types/execution";
 import { getNodeInputFiles, getWorkflowInputFiles } from "../../utils/inputFiles";
+import { describeCycle, findCycle } from "../../registry/workflowCycles";
 
 export type ProblemLevel = "error" | "warning";
 
@@ -188,6 +189,17 @@ const checkWorkflowWide = (
   for (const [index, message] of getPipelineLaunchIssues(nodes, edges).entries()) {
     problems.push({ id: `pipeline${index}`, level: "error", message, nodeId: pipeline?.id });
   }
+  // A loop can't be generated (channels flow one way).
+  const cycle = findCycle(edges);
+  if (cycle) {
+    problems.push({
+      id: "cycle",
+      level: "error",
+      message: `The workflow has a loop: ${describeCycle(cycle, nodes)}. A step's output can't come back to its own input; remove one of these connections.`,
+      nodeId: cycle[0],
+    });
+  }
+
   // Several connections into a one-connection input (saved before the rule):
   // the run would use them all, which the step doesn't expect.
   for (const { node, handle, count } of findExtraConnections(nodes, edges)) {

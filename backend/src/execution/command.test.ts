@@ -126,8 +126,22 @@ describe("buildContainerNextflowCommand", () => {
       workDir: "/srv/results/demo",
       mount: { type: "bind", source: "/srv/results", target: "/srv/results" },
     });
-    expect(command).toContain("-v '/srv/results:/srv/results'");
+    expect(command).toContain("--mount 'type=bind,source=/srv/results,target=/srv/results'");
     expect(command).toContain("-w '/srv/results/demo'");
+  });
+
+  it("bind-mounts host paths with a colon or a comma", () => {
+    const command = (source: string) =>
+      buildContainerNextflowCommand({
+        ...base,
+        workDir: "/run/desktop/mnt/host/c/results/demo",
+        mount: { type: "bind", source, target: "/run/desktop/mnt/host/c/results" },
+      });
+    // `-v C:\Users\…:/target` would split at the drive's colon.
+    expect(command("C:\\Users\\me\\results")).toContain(
+      "--mount 'type=bind,source=C:\\Users\\me\\results,target=/run/desktop/mnt/host/c/results'",
+    );
+    expect(command("/data/a,b")).toContain(`--mount 'type=bind,"source=/data/a,b",target=`);
   });
 
   it("omits --platform for the native platform", () => {
