@@ -6,6 +6,7 @@ test.describe("copy, paste and duplicate", () => {
   }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const firstUrl = page.url();
     const filter = await addNode(page, "Filter");
@@ -23,6 +24,7 @@ test.describe("copy, paste and duplicate", () => {
 
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     expect(page.url()).not.toBe(firstUrl);
     const nodes = page.locator(".react-flow__node");
@@ -42,6 +44,7 @@ test.describe("copy, paste and duplicate", () => {
   test("Ctrl+D duplicates the selected node, and undo removes the copy", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const filter = await addNode(page, "Filter");
     const nodes = page.locator(".react-flow__node");
@@ -59,6 +62,7 @@ test.describe("copy, paste and duplicate", () => {
   test("cut removes the selection and paste brings it back", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const filter = await addNode(page, "Filter");
     const nodes = page.locator(".react-flow__node");

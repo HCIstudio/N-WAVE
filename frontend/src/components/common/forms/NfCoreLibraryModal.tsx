@@ -13,6 +13,7 @@ import { getNfCoreInputPorts } from "../../../registry/nfcore/manifest";
 import DynamicIcon from "../ui/DynamicIcon";
 import SearchInput from "./SearchInput";
 import { getErrorMessage } from "../../../utils/errors";
+import Term from "../ui/Term";
 
 interface NfCoreLibraryModalProps {
   isOpen: boolean;
@@ -190,7 +191,9 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
       <div className="flex max-h-[82vh] w-[min(980px,calc(100vw-2rem))] flex-col rounded-md border border-accent bg-background shadow-2xl">
         <div className="flex items-center justify-between border-b border-accent px-4 py-3">
           <div>
-            <h2 className="text-base font-semibold text-text">nf-core Library</h2>
+            <h2 className="flex items-center gap-1 text-base font-semibold text-text">
+              nf-core Library <Term id="nf-core" />
+            </h2>
             <p className="text-xs text-text-light">
               {isDemoMode
                 ? "Modules install into this browser. Build workflows with them and export the code here; run them with the Docker version of N-WAVE."
@@ -235,6 +238,10 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
               </button>
             ))}
           </div>
+          <p className="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-text-light">
+            <Term id="module">A module is one tool</Term>
+            <Term id="subworkflow">a subworkflow, several wired together</Term>
+          </p>
           <SearchInput
             value={searchTerm}
             onChange={(event) => {

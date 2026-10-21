@@ -213,6 +213,23 @@ nf-core steps, outlined other steps); on the canvas each node carries the color 
 along its top, next to its icon and subtitle. A legend under the Workflows heading and in the
 canvas's corner names them. The colors live in `frontend/src/workflows/nodeKinds.ts`.
 
+### Starting a workflow and the glossary
+
+**New Workflow** on the home page asks what to start from: an **empty workflow**, the **QC of
+FASTQ files** template (a Samplesheet with two samples of the nf-core test data, FastQC on each
+sample and one MultiQC report), or an editable copy of one of the built-in demos. A template's
+nf-core nodes are installed from the prompt the canvas shows for missing components. Templates
+live in `frontend/src/templates/`; the QC template is built from the pinned nf-core catalog by
+`frontend/src/test/examples/qcFastq.ts` (regenerate it with
+`UPDATE_EXAMPLES=1 npx vitest run src/test/examples`) and its Nextflow is linted in CI with
+the examples.
+
+Terms novices meet, such as process, channel, tuple, `meta`, samplesheet and container, have
+an ⓘ button where they appear: in the node menu's sections, the nf-core Library, the panels and
+the execution settings. Hovering, focusing or clicking it explains the term in a sentence or two,
+with a link to the **Glossary** page (`/glossary`, also linked from the home page), which lists
+every term with a search. The explanations live in `frontend/src/glossary/glossary.ts`.
+
 ### Editing the examples
 
 The built-in examples are read-only. The first time you change one (move or delete a node,

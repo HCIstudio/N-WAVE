@@ -4,6 +4,7 @@ test.describe("File Input panel", () => {
   test("adds files from the picker and by dropping them", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const input = await addNode(page, "File Input");
     await input.dblclick();

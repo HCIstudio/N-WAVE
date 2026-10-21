@@ -12,6 +12,7 @@ test.describe("operator nodes", () => {
 
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     // Upload while the node is in view (setting a file scrolls its field into

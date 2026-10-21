@@ -28,7 +28,7 @@ import type { NodeDefinition } from "../../registry/nodeDefinitions";
 
 export const RNASEQ_STAR_SALMON_ID = "builtin:rnaseq-star-salmon";
 
-const TEST_DATA =
+export const TEST_DATA =
   "https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004";
 const TEST_REFERENCE =
   "https://raw.githubusercontent.com/nf-core/test-datasets/626c8fab639062eade4b10747e919341cbf9b41a/reference";
@@ -66,7 +66,7 @@ const subworkflows = (
   catalog as unknown as { subworkflows: NfCoreSubworkflowCatalogEntry[] }
 ).subworkflows;
 
-const moduleDefinition = (id: string): NodeDefinition => {
+export const moduleDefinition = (id: string): NodeDefinition => {
   const entry = modules.find((candidate) => candidate.id === id);
   if (!entry) throw new Error(`${id} is not in the nf-core catalog`);
   return createNodeDefinitionFromNfCoreManifest(buildNfCoreManifest(entry));
@@ -83,7 +83,7 @@ const subworkflowDefinition = (id: string): NodeDefinition => {
 type Position = { x: number; y: number };
 
 /** A canvas node made from a definition, as the node menu makes it. */
-const fromDefinition = (
+export const fromDefinition = (
   id: string,
   definition: NodeDefinition,
   position: Position,
@@ -100,7 +100,7 @@ const fromDefinition = (
   } as NodeData,
 });
 
-const note = (
+export const note = (
   id: string,
   position: Position,
   label: string,
@@ -112,7 +112,7 @@ const note = (
   data: { label, icon: "StickyNote", noteText, inputs: [], outputs: [] },
 });
 
-const edge = (
+export const edge = (
   source: string,
   sourceHandle: string,
   target: string,

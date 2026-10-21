@@ -14,6 +14,7 @@ import {
 } from "../../../registry/samplesheet";
 import { getNodeInputFiles } from "../../../utils/inputFiles";
 import type { NodeData } from "../../nodes/BaseNode";
+import Term from "../../common/ui/Term";
 
 interface SamplesheetPanelProps {
   node: Node<NodeData>;
@@ -136,8 +137,12 @@ const SamplesheetPanel: React.FC<SamplesheetPanelProps> = ({
   return (
     <div className="space-y-4">
       <p className="text-sm text-text-light">
-        One row per sample, as in nf-core pipelines. Each row becomes{" "}
-        <code>[ meta, [ reads ] ]</code> with <code>meta.id</code>,{" "}
+        One row per sample, as in nf-core pipelines (a{" "}
+        <Term id="samplesheet">samplesheet</Term>). Each row becomes{" "}
+        <Term id="tuple">
+          <code>[ meta, [ reads ] ]</code>
+        </Term>{" "}
+        with <Term id="meta"><code>meta.id</code></Term>,{" "}
         <code>meta.single_end</code> and the other columns. Read paths are names
         of files uploaded to a File Input node, or absolute paths and URLs for
         local runs.

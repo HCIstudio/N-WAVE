@@ -3,6 +3,7 @@ import { useId } from "react";
 import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 import type { CustomNodeInput } from "../../../registry/customNodes";
+import Term from "../../common/ui/Term";
 
 interface CustomNodePanelProps {
   node: Node<NodeData>;
@@ -33,7 +34,8 @@ const CustomNodePanel: React.FC<CustomNodePanelProps> = ({ node, onSave }) => {
           {node.data.label || "Custom Node"}
         </h3>
         <p className="mt-1 text-sm text-text-light">
-          {node.data.customNodeId || "User-defined Nextflow process"}
+          {node.data.customNodeId || "User-defined Nextflow process"}{" "}
+          <Term id="custom-process" />
         </p>
       </div>
 

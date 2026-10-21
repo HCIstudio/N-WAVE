@@ -44,6 +44,7 @@ test.describe("node packs", () => {
     // Install A: make a custom node and use it.
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await page.getByRole("button", { name: "Add node" }).click();
     await page.getByRole("button", { name: "Custom process" }).click();
     await nameField(page).fill("Head lines");
@@ -86,6 +87,7 @@ test.describe("node packs", () => {
     const other = await context.newPage();
     await other.goto("./");
     await other.getByRole("button", { name: "New Workflow" }).click();
+    await other.getByRole("button", { name: "Empty workflow" }).click();
     await expect(other).toHaveURL(/\/workflow\//);
 
     // A broken file is rejected with the reason.
@@ -202,6 +204,7 @@ test.describe("node packs", () => {
 
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await openPacks(page);
     await page.getByRole("tab", { name: "Import" }).click();
     await page.getByText("Community packs").click();

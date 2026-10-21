@@ -5,6 +5,7 @@ import { MemoryInput, TimeInput } from "../../common/forms";
 import type { NfCoreValueInput } from "../../../registry/nfcore/inputChannels";
 import NfCoreValueInputs from "./NfCoreValueInputs";
 import SaveOutputsToggle from "./SaveOutputsToggle";
+import Term from "../../common/ui/Term";
 
 interface NfCoreModulePanelProps {
   node: Node<NodeData>;
@@ -81,7 +82,9 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-text">nf-core Settings</h3>
+        <h3 className="flex items-center gap-1 text-lg font-semibold text-text">
+          nf-core Settings <Term id="module" />
+        </h3>
         <p className="mt-1 text-sm text-text-light">
           {node.data.nwaveNfCoreModuleId || "Installed nf-core module"}
         </p>
@@ -110,9 +113,12 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
 
       {supportsExtArgs && (
         <div className="space-y-2">
-          <label htmlFor={`${fieldId}-extra-arguments`} className="block text-sm font-medium text-text mb-1">
-            Extra arguments
-          </label>
+          <div className="mb-1 flex items-center gap-1">
+            <label htmlFor={`${fieldId}-extra-arguments`} className="block text-sm font-medium text-text">
+              Extra arguments
+            </label>
+            <Term id="ext-args" />
+          </div>
           {extArgNames.length > 0 && (
             <p className="text-xs text-text-light">
               Supported nf-core extension fields: {extArgNames.join(", ")}
@@ -168,8 +174,9 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
           placeholder="Default: the sample id"
         />
         <p className="text-xs text-text-light">
-          Names the output files (task.ext.prefix). Use {"${meta.id}"} for the
-          sample id, e.g. {"${meta.id}.filtered"}.
+          Names the output files (task.ext.prefix). Use{" "}
+          <Term id="meta">{"${meta.id}"}</Term> for the sample id, e.g.{" "}
+          {"${meta.id}.filtered"}.
         </p>
       </div>
 

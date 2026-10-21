@@ -22,6 +22,7 @@ test("the home page separates the built-in demos from your workflows", async ({
   const own = page.getByRole("region", { name: "Your workflows" });
   await expect(own).toContainText("You haven't created any workflows yet.");
   await own.getByRole("button", { name: "New Workflow" }).click();
+  await page.getByRole("button", { name: "Empty workflow" }).click();
   await expect(page).toHaveURL(/\/workflow\//);
   await page.getByRole("link", { name: "Home" }).click();
   const card = own.getByRole("link");

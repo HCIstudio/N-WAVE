@@ -21,6 +21,7 @@ import {
   minutesToIsoDuration,
 } from "../../../utils/duration";
 import { getErrorMessage, getErrorName } from "../../../utils/errors";
+import Term from "../ui/Term";
 
 /** GET /execute/limits: the most a run may use on this server. */
 interface ServerLimits {
@@ -171,6 +172,8 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   <h4 className="text-sm font-medium text-text">
                     Container Execution
                   </h4>
+                  <Term id="container" />
+                  <Term id="docker" />
                 </div>
                 <button
                   type="button"

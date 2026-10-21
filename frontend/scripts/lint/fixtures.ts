@@ -1,5 +1,5 @@
 // Workflows whose generated Nextflow is linted in CI (see README.md here):
-// the built-in examples, and node combinations the examples don't cover.
+// the built-in examples and templates, and node combinations the examples don't cover.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -7,6 +7,7 @@ import type { Edge, Node } from "reactflow";
 import type { NodeData } from "../../src/components/nodes/BaseNode";
 import { demoWorkflowSeed } from "../../src/demo/demoWorkflow";
 import rnaseqStarSalmon from "../../src/demo/rnaseqStarSalmonExample.json";
+import qcFastqTemplate from "../../src/templates/qcFastqTemplate.json";
 import { CHANNEL_OPERATOR_TEMPLATES } from "../../src/registry/channelOperator";
 import {
   createStoredCustomNode,
@@ -290,6 +291,12 @@ export const buildLintFixtures = (): LintFixture[] => {
     edges: Edge[];
   };
   registerNfCoreNodes(starSalmon.nodes);
+  const qcFastq = qcFastqTemplate as unknown as {
+    name: string;
+    nodes: Node<NodeData>[];
+    edges: Edge[];
+  };
+  registerNfCoreNodes(qcFastq.nodes);
   return [
     {
       name: "demo-1-text-basics",
@@ -302,6 +309,12 @@ export const buildLintFixtures = (): LintFixture[] => {
       description: "Demo 3 - nf-core/rnaseq rebuilt from nodes",
       nodes: starSalmon.nodes,
       edges: starSalmon.edges,
+    },
+    {
+      name: "template-qc-fastq",
+      description: `Template: ${qcFastq.name}`,
+      nodes: qcFastq.nodes,
+      edges: qcFastq.edges,
     },
     channelOperators(),
     customNodes(),

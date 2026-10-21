@@ -172,10 +172,11 @@ describe("HomePage", () => {
     expect(await screen.findByText("Opened wf-1")).toBeTruthy();
   });
 
-  it("creates a new workflow and opens it", async () => {
+  it("creates an empty workflow and opens it", async () => {
     post.mockResolvedValue({ data: { _id: "new-1" } });
     const { user } = await setup([]);
     await user.click(button("New Workflow"));
+    await user.click(button("Empty workflow"));
 
     expect(post).toHaveBeenCalledWith(
       "/workflows",
@@ -189,18 +190,48 @@ describe("HomePage", () => {
     expect(await screen.findByText("Opened new-1")).toBeTruthy();
   });
 
+  it("starts a workflow from a template", async () => {
+    post.mockResolvedValue({ data: { _id: "new-2" } });
+    const { user } = await setup([]);
+    await user.click(button("New Workflow"));
+    await user.click(button("QC of FASTQ files"));
+
+    const [path, body] = post.mock.calls[0];
+    expect(path).toBe("/workflows");
+    expect(body.name).toBe("QC of FASTQ files");
+    expect(body.nodes.map((node: { id: string }) => node.id)).toEqual(
+      expect.arrayContaining(["samples", "fastqc", "multiqc"]),
+    );
+    expect(body.edges).toHaveLength(2);
+    expect(await screen.findByText("Opened new-2")).toBeTruthy();
+  });
+
+  it("offers each built-in demo as an editable copy", async () => {
+    post.mockResolvedValue({ data: { _id: "copy-1" } });
+    const { user } = await setup([demo]);
+    await user.click(button("New Workflow"));
+    const dialog = screen.getByRole("dialog", { name: "Start a new workflow" });
+    const copy = within(dialog).getByRole("button", { name: "Basic demo" });
+    expect(copy.getAttribute("aria-describedby")).toBeTruthy();
+    await user.click(copy);
+
+    expect(post).toHaveBeenCalledWith("/workflows/builtin:demo-basic/duplicate");
+    expect(await screen.findByText("Opened copy-1")).toBeTruthy();
+  });
+
   it("shows creating while it waits and reports a failure", async () => {
     let reject: (error: unknown) => void = () => {};
     post.mockReturnValue(new Promise((_, fail) => { reject = fail; }));
     const { user } = await setup([]);
     await user.click(button("New Workflow"));
-    expect(button("Creating...").disabled).toBe(true);
+    await user.click(button("Empty workflow"));
+    expect(button("Empty workflow").disabled).toBe(true);
 
     reject({ response: { data: { error: "Database is read-only" } } });
     expect((await toast()).textContent).toBe(
       "Failed to create new workflow. Database is read-only",
     );
-    expect(button("New Workflow").disabled).toBe(false);
+    expect(button("Empty workflow").disabled).toBe(false);
   });
 
   describe("renaming", () => {

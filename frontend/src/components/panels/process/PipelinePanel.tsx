@@ -24,6 +24,7 @@ import { getApiErrorMessage } from "../../../utils/errors";
 import CodeBlock from "../../common/data/CodeBlock";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
 import PipelineResults from "./PipelineResults";
+import Term from "../../common/ui/Term";
 
 interface PipelinePanelProps {
   node: Node<NodeData>;
@@ -171,7 +172,8 @@ const PipelinePanel: React.FC<PipelinePanelProps> = ({ node, onSave }) => {
   return (
     <div className="space-y-4">
       <p className="text-sm text-text-light">
-        Runs a complete nf-core pipeline with Docker. Connect a Samplesheet node
+        Runs a complete nf-core <Term id="pipeline">pipeline</Term> with
+        Docker. Connect a Samplesheet node
         to its input and set parameters below; the settings come from the
         pipeline&apos;s <code>nextflow_schema.json</code>.
       </p>

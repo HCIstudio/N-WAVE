@@ -6,6 +6,7 @@ import type { NfCoreSubworkflowTake } from "../../../registry/nfcore/subworkflow
 import type { NodeData } from "../../nodes/BaseNode";
 import NfCoreValueInputs from "./NfCoreValueInputs";
 import SaveOutputsToggle from "./SaveOutputsToggle";
+import Term from "../../common/ui/Term";
 
 interface NfCoreSubworkflowPanelProps {
   node: Node<NodeData>;
@@ -45,7 +46,9 @@ const NfCoreSubworkflowPanel: React.FC<NfCoreSubworkflowPanelProps> = ({
     <div className="space-y-4">
       <SaveOutputsToggle node={node} onSave={onSave} />
       <div>
-        <h3 className="text-lg font-semibold text-text">nf-core Subworkflow</h3>
+        <h3 className="flex items-center gap-1 text-lg font-semibold text-text">
+          nf-core Subworkflow <Term id="subworkflow" />
+        </h3>
         <p className="mt-1 text-sm text-text-light">
           {node.data.nwaveNfCoreModuleId || "Installed nf-core subworkflow"}
         </p>
