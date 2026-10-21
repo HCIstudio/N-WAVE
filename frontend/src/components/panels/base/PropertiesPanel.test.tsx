@@ -77,6 +77,7 @@ const show = (props: Partial<Props> = {}, ran = false) => {
                 done: 0,
                 failed: 0,
                 running: 0,
+                cached: 0,
                 tasks: [],
               },
             }

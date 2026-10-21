@@ -16,6 +16,7 @@ const runs: RunSummary[] = [
     id: "bee_1",
     workflowId: "wf1",
     status: "succeeded",
+    resumedFrom: "bee_0",
     startedAt: "2026-10-15T09:00:00.000Z",
     finishedAt: "2026-10-15T09:00:30.000Z",
   },
@@ -67,6 +68,8 @@ describe("RunHistory", () => {
     expect(buttons).toHaveLength(2);
     expect(buttons[0].textContent).toContain("failed");
     expect(buttons[0].textContent).toContain("1m 5s");
+    expect(buttons[0].textContent).not.toContain("resumed");
+    expect(buttons[1].textContent).toContain("resumed");
 
     act(() => (buttons[0] as HTMLButtonElement).click());
     await flush();

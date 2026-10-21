@@ -33,11 +33,12 @@ export const preparePipelineRun = (
   resourceConfig: string
 ): PreparedRun => {
   fs.writeFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), `${resourceConfig}\n`);
+  const paramsFile = path.join(dirs.main, "params.json");
   if (Object.keys(pipeline.params).length > 0) {
-    fs.writeFileSync(
-      path.join(dirs.main, "params.json"),
-      `${JSON.stringify(pipeline.params, null, 2)}\n`
-    );
+    fs.writeFileSync(paramsFile, `${JSON.stringify(pipeline.params, null, 2)}\n`);
+  } else {
+    // A resumed run's folder may still have the last run's params.
+    fs.rmSync(paramsFile, { force: true });
   }
   return { hasNfCoreModules: true, useProcessDocker: true };
 };

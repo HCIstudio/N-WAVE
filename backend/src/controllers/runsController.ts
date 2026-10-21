@@ -7,12 +7,20 @@ import { isRunLive } from "../execution/runRegistry";
 import {
   findRunDir,
   findRunLog,
+  findRunNextflowLog,
   findRunResultsDir,
   listFiles,
   listRuns,
   realFileInRun,
 } from "../runs/runIndex";
 import { findTaskWorkDir, listTaskOutputs, readRunTasks } from "../runs/taskEvents";
+import {
+  clearWorkflowCache,
+  measureWorkflowCache,
+  WorkflowCacheInUseError,
+} from "../runs/workflowCache";
+import { getErrorMessage } from "../utils/errors";
+import { workflowCacheQuerySchema } from "../validation/schemas";
 
 /** HTML reports (MultiQC) run their scripts, but without access to this origin. */
 const sendSandboxed = (res: Response, file: string): void => {
@@ -106,7 +114,7 @@ export const listRunTasks = (req: Request, res: Response): void => {
     res.status(404).json({ message: `Unknown run ${id}` });
     return;
   }
-  res.json({ id, tasks: readRunTasks(dir) });
+  res.json({ id, tasks: readRunTasks(dir, findRunNextflowLog(id)) });
 };
 
 /** A task's work directory (and its run's), from the run id and its hash in the URL. */
@@ -151,4 +159,33 @@ export const getRunTaskFile = (req: Request, res: Response): void => {
     return;
   }
   sendSandboxed(res, real);
+};
+
+const parseWorkflowId = (req: Request, res: Response): string | null => {
+  const parsed = workflowCacheQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ message: "workflowId is required" });
+    return null;
+  }
+  return parsed.data.workflowId;
+};
+
+/** `{ bytes, folders }`: what a workflow's run cache takes up (see workflowCache.ts). */
+export const getWorkflowCache = async (req: Request, res: Response): Promise<void> => {
+  const workflowId = parseWorkflowId(req, res);
+  if (workflowId) res.json(await measureWorkflowCache(workflowId));
+};
+
+/** Delete a workflow's run cache; 409 while one of its runs is going. */
+export const deleteWorkflowCache = async (req: Request, res: Response): Promise<void> => {
+  const workflowId = parseWorkflowId(req, res);
+  if (!workflowId) return;
+  try {
+    await clearWorkflowCache(workflowId, isRunLive);
+    res.json(await measureWorkflowCache(workflowId));
+  } catch (error: unknown) {
+    res
+      .status(error instanceof WorkflowCacheInUseError ? 409 : 500)
+      .json({ message: getErrorMessage(error) });
+  }
 };

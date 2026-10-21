@@ -12,6 +12,7 @@ import {
   Minimize2,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
 } from "lucide-react";
 import { useState } from "react";
 import RunResultsList from "./RunResultsList";
@@ -87,16 +88,24 @@ interface ExecutionStatusPanelProps {
 export interface RunStep {
   id: string;
   label: string;
-  status: "running" | "succeeded" | "failed";
+  /** "cached": reused from an earlier run's cache (a resumed run). */
+  status: "running" | "succeeded" | "failed" | "cached";
   done: number;
   total: number;
+  /** Tasks reused from the cache. */
+  cached?: number;
 }
 
 const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
   running: <Hourglass className="h-4 w-4 animate-pulse text-blue-500" />,
   succeeded: <CheckCircle className="h-4 w-4 text-green-500" />,
   failed: <XCircle className="h-4 w-4 text-red-500" />,
+  cached: <RotateCcw className="h-4 w-4 text-sky-600" />,
 };
+
+/** Steps that are done, reused from the cache or run this time. */
+const isStepDone = (step: RunStep): boolean =>
+  step.status === "succeeded" || step.status === "cached";
 
 export type RunPanelTab = "steps" | "log" | "history";
 
@@ -164,7 +173,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
       <X className="w-4 h-4" />
     </button>
   );
-  const stepsDone = steps.filter((step) => step.status === "succeeded").length;
+  const stepsDone = steps.filter(isStepDone).length;
+  const stepsCached = steps.filter((step) => step.status === "cached").length;
   const failureCard = isFailed && failure && (
     <FailureExplanationCard
       explanation={failure}
@@ -354,7 +364,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               <div className="text-center">
                 <div className="text-2xl font-bold text-nextflow-green">
                   {steps.length > 0
-                    ? steps.filter((step) => step.status === "succeeded").length
+                    ? stepsDone
                     : status.completedNodes}
                 </div>
                 <div className="text-xs text-gray-700">Completed</div>
@@ -413,6 +423,13 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
           </div>
 
           {/* Steps by canvas node, when the run's tasks are known */}
+          {stepsCached > 0 && (
+            <p className="flex items-center gap-2 border-b border-gray-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+              <RotateCcw className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              {stepsCached === 1 ? "1 step was" : `${stepsCached} steps were`} reused
+              from the cache of the last run: their code and inputs hadn't changed.
+            </p>
+          )}
           {steps.length > 0 && (
             <ul aria-label="Steps of this run">
               {steps.map((step) => (
@@ -425,7 +442,11 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                     {step.label}
                   </span>
                   <span className="text-xs text-gray-700">
-                    {step.done} of {step.total}
+                    {step.status === "cached"
+                      ? "reused from cache"
+                      : step.cached
+                        ? `${step.done} of ${step.total}, ${step.cached} reused`
+                        : `${step.done} of ${step.total}`}
                   </span>
                 </li>
               ))}

@@ -35,4 +35,17 @@ test.describe("run panel", () => {
     await panel.getByRole("tab", { name: "History" }).click();
     await expect(panel).toContainText("hasn't been run on this server");
   });
+
+  test("doesn't offer Resume in the demo, which keeps no cache", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    await page.getByRole("button", { name: "Run Workflow" }).click();
+    const panel = page.getByRole("region", { name: "Run panel" });
+    await expect(panel.getByRole("heading")).toHaveText("Workflow Failed");
+    await expect(page.getByRole("button", { name: "Resume" })).toHaveCount(0);
+    await page.getByRole("button", { name: "Execution Settings" }).click();
+    await expect(page.getByText("Execution Settings", { exact: true })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Run cache" })).toHaveCount(0);
+  });
 });

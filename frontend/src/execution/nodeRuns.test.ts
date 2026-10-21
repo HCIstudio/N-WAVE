@@ -36,7 +36,20 @@ describe("summarizeNodeRuns", () => {
     expect(runs["demo-output"]).toMatchObject({ status: "failed", failed: 1 });
   });
 
-  it("gives every task to the pipeline node when a whole pipeline runs", () => {
+  it("marks a node whose tasks were all reused from the cache", () => {
+    const runs = summarizeNodeRuns(
+      [
+        task("filter_demo_filter_barry", "cached", "aa/000001"),
+        task("merge_demo_merge", "cached", "aa/000002"),
+        task("merge_demo_merge", "succeeded", "aa/000003"),
+      ],
+      nodes,
+    );
+    expect(runs["demo-filter-barry"]).toMatchObject({ status: "cached", done: 1, cached: 1 });
+    expect(runs["demo-merge"]).toMatchObject({ status: "succeeded", done: 2, cached: 1 });
+  });
+
+    it("gives every task to the pipeline node when a whole pipeline runs", () => {
     const runs = summarizeNodeRuns(
       [task("NFCORE_RNASEQ:RNASEQ:FASTQC", "running")],
       nodes,

@@ -57,6 +57,10 @@ interface LaunchOptions {
   nextflowVersion: string;
   /** Whether a pipeline needs a newer Nextflow than the one selected. */
   raisedNextflowVersion: boolean;
+  /** Reuse the unchanged tasks of the folder's last run (-resume). */
+  resume?: boolean;
+  /** Nextflow's log, relative to the run directory. */
+  nextflowLog?: string;
 }
 
 export interface NextflowLaunch {
@@ -89,6 +93,8 @@ const usedLocally = async (options: LaunchOptions): Promise<NextflowLaunch> => {
       withModuleConfig: true,
       maxCpus: options.maxCpus,
       maxMemory: options.maxMemory,
+      resume: options.resume,
+      logFile: options.nextflowLog,
     }),
   };
 };
@@ -152,6 +158,8 @@ const usedInContainer = async (
     withModuleConfig: true,
     maxCpus: options.maxCpus,
     maxMemory: options.maxMemory,
+    resume: options.resume,
+    logFile: options.nextflowLog,
     // linux/amd64 by default (emulated on ARM hosts): many nextflow/nextflow
     // tags are amd64-only; see resolveNextflowPlatform for "native".
     platform: resolveNextflowPlatform(process.env.NEXTFLOW_PLATFORM),

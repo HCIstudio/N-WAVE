@@ -63,6 +63,8 @@ interface RunRequestOptions {
   /** An imported .nf workflow's own source, run as is while it has no nodes. */
   rawSource: string | null;
   sourceFormat: "visual" | "nextflow";
+  /** Resume the workflow's last run (reuse its unchanged steps). */
+  resume?: boolean;
 }
 
 /** The body of POST /execute/execute. Throws when there is nothing to run. */
@@ -75,6 +77,7 @@ export const buildRunRequest = ({
   launch,
   rawSource,
   sourceFormat,
+  resume = false,
 }: RunRequestOptions) => {
   // An empty field means the default; "" would name every run's folder the same.
   const namingPattern =
@@ -131,6 +134,7 @@ export const buildRunRequest = ({
     ...(Object.keys(fileEncoding).length > 0 ? { fileEncoding } : {}),
     // Keeps the run in this workflow's history.
     ...(workflowId ? { workflowId } : {}),
+    ...(workflowId && resume ? { resume: true } : {}),
   };
 };
 

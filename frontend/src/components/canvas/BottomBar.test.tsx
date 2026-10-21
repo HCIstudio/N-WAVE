@@ -74,7 +74,31 @@ describe("BottomBar", () => {
       expect(button("Loading...")).toBeTruthy();
     });
 
-    it("links home", () => {
+    it("offers Resume next to Run when there is a cache", async () => {
+      const onChange = vi.fn();
+      const { rerender, all } = show({
+        onRun: vi.fn(),
+        resume: { available: true, on: true, onChange },
+      });
+      const toggle = button("Resume");
+      expect(toggle.getAttribute("aria-pressed")).toBe("true");
+      await userEvent.click(toggle);
+      expect(onChange).toHaveBeenCalledWith(false);
+      rerender(
+        <MemoryRouter>
+          <BottomBar {...all} resume={{ available: false, on: false, onChange }} />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+      rerender(
+        <MemoryRouter>
+          <BottomBar {...all} isRunning />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+    });
+
+        it("links home", () => {
       show();
       expect(screen.getByRole("link", { name: "Home" }).getAttribute("href")).toBe(
         "/",

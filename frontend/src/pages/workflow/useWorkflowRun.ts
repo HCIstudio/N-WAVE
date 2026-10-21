@@ -168,7 +168,7 @@ export const useWorkflowRun = ({
     });
   };
 
-  const run = async (settings: ExecutionSettings) => {
+  const run = async (settings: ExecutionSettings, options: { resume?: boolean } = {}) => {
     setIsRunning(true);
     setExecutionSettings(settings);
     executionStatus.startExecution();
@@ -187,6 +187,7 @@ export const useWorkflowRun = ({
         launch,
         rawSource,
         sourceFormat,
+        resume: options.resume,
       });
 
       setLastRunId(null);

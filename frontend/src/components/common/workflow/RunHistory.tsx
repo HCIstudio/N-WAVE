@@ -238,6 +238,12 @@ const RunHistory: React.FC<{
               {duration(run) && (
                 <span className="text-gray-600"> · {duration(run)}</span>
               )}
+              {run.resumedFrom && (
+                <span className="text-sky-800" title={`Resumed run ${run.resumedFrom}`}>
+                  {" "}
+                  · resumed
+                </span>
+              )}
             </button>
           </li>
         ))}

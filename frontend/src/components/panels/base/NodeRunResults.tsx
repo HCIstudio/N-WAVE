@@ -16,7 +16,7 @@ const PREVIEW_LIMIT = 200_000;
 const STATUS_STYLE: Record<RunTask["status"], string> = {
   running: "bg-yellow-100 text-yellow-900",
   succeeded: "bg-green-100 text-green-900",
-  cached: "bg-green-100 text-green-900",
+  cached: "bg-sky-100 text-sky-900",
   failed: "bg-red-100 text-red-900",
 };
 

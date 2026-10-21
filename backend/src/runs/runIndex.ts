@@ -21,6 +21,11 @@ interface RunRecord {
   finishedAt?: string;
   /** Why a run failed, in one line. */
   message?: string;
+  /** The run's own log files, relative to `dir`, when not the defaults (a resumed run shares its folder). */
+  log?: string;
+  nextflowLog?: string;
+  /** The run it resumed, in the same folder. */
+  resumedFrom?: string;
 }
 
 export interface RunSummary {
@@ -31,6 +36,8 @@ export interface RunSummary {
   startedAt: string;
   finishedAt?: string;
   message?: string;
+  /** Set on a run that resumed an earlier one. */
+  resumedFrom?: string;
 }
 
 /** The run's full output (what the run panel showed), in its directory. */
@@ -49,16 +56,16 @@ const writeIndex = (entries: Array<[string, RunRecord]>): void => {
 export const recordRun = (
   id: string,
   dir: string,
-  meta: { workflowId?: string; workflowName?: string } = {}
+  meta: Pick<RunRecord, "workflowId" | "workflowName" | "log" | "nextflowLog" | "resumedFrom"> = {}
 ): void => {
   const entries = Object.entries(readIndex()).filter(([runId]) => runId !== id);
+  const defined = Object.fromEntries(Object.entries(meta).filter(([, value]) => value));
   entries.push([
     id,
     {
       dir,
       startedAt: new Date().toISOString(),
-      ...(meta.workflowId ? { workflowId: meta.workflowId } : {}),
-      ...(meta.workflowName ? { workflowName: meta.workflowName } : {}),
+      ...defined,
       status: "running",
     },
   ]);
@@ -111,15 +118,49 @@ export const listRuns = (
         : run.message
           ? { message: run.message }
           : {}),
+      ...(run.resumedFrom ? { resumedFrom: run.resumedFrom } : {}),
     }));
+
+/**
+ * The run a new run of the workflow resumes: its newest run whose folder
+ * still has Nextflow's cache, or null.
+ */
+export const findResumableRun = (workflowId: string): { id: string; dir: string } | null => {
+  const entries = Object.entries(readIndex()).reverse();
+  for (const [id, run] of entries) {
+    if (run.workflowId !== workflowId) continue;
+    const hasCache = [".nextflow", "nextflow/.nextflow"].some((cache) =>
+      fs.existsSync(path.join(run.dir, cache, "history"))
+    );
+    if (hasCache) return { id, dir: run.dir };
+  }
+  return null;
+};
+
+/** The folders of a workflow's recorded runs that still exist. */
+export const listWorkflowRunDirs = (workflowId: string): string[] => [
+  ...new Set(
+    Object.values(readIndex())
+      .filter((run) => run.workflowId === workflowId && fs.existsSync(run.dir))
+      .map((run) => run.dir)
+  ),
+];
+
+/** Whether a run that is still going uses `dir`. */
+export const isRunDirInUse = (dir: string, isLive: (id: string) => boolean): boolean =>
+  Object.entries(readIndex()).some(([id, run]) => run.dir === dir && isLive(id));
 
 /** A recorded run's log file, or null. */
 export const findRunLog = (id: string): string | null => {
   const run = readIndex()[id];
   if (!run) return null;
-  const file = path.join(run.dir, RUN_LOG_FILE);
+  const file = path.join(run.dir, run.log ?? RUN_LOG_FILE);
   return fs.existsSync(file) ? file : null;
 };
+
+/** A recorded run's Nextflow log, relative to its folder, when it has its own. */
+export const findRunNextflowLog = (id: string): string | undefined =>
+  readIndex()[id]?.nextflowLog;
 
 /** A recorded run's directory, or null. */
 export const findRunDir = (id: string): string | null => {

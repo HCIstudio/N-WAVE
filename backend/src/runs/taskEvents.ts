@@ -81,8 +81,9 @@ export const parseTaskEvents = (log: string): RunTask[] => {
 };
 
 /** The run's tasks, or [] when Nextflow hasn't written its log yet. */
-export const readRunTasks = (runDir: string): RunTask[] => {
-  for (const relative of NEXTFLOW_LOG_PATHS) {
+export const readRunTasks = (runDir: string, nextflowLog?: string): RunTask[] => {
+  // A resumed run has its own log in the shared folder.
+  for (const relative of nextflowLog ? [nextflowLog] : NEXTFLOW_LOG_PATHS) {
     const file = path.join(runDir, relative);
     if (fs.existsSync(file)) return parseTaskEvents(fs.readFileSync(file, "utf8"));
   }

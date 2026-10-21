@@ -211,6 +211,28 @@ and node settings and notes can't be edited (an amber frame and a notice say so)
 run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
 **Running** button brings it back.
 
+### Resuming a run
+
+After a run fails or is cancelled, fix what went wrong and click **Run** again: the **Resume**
+choice next to the Run button is on, so the run reuses every step whose code and inputs haven't
+changed and only runs the steps you changed and the ones after them. Resume shows once a saved
+workflow has a run with a cache; it is off after a successful run, and a click turns it on or
+off. The Steps tab and the canvas mark reused steps **Reused from cache**.
+
+A resumed run continues in the folder of the workflow's last run, with Nextflow's `-resume`,
+and keeps its own logs there (`nwave-run.<run id>.log` and `nextflow/.nextflow.<run id>.log`),
+so the run history still shows each run on its own, marked **resumed**. Input files that haven't changed are left
+untouched (Nextflow compares their modification times too). A run without Resume starts in a
+new folder. Output steps whose file names include `{timestamp}` (the default naming pattern)
+always run again, since their file names change; they only copy files.
+
+The cache is each step's work folder (`nextflow/work`) and Nextflow's record of them
+(`.nextflow`). **Execution Settings → Run cache** shows how much space a workflow's cache takes
+and clears it; results, inputs and logs stay. The backend serves it at
+`GET /api/execute/cache?workflowId=` and clears it with `DELETE /api/execute/cache?workflowId=`
+(not while one of the workflow's runs is going). The in-browser demo has no cache, so it
+doesn't offer Resume.
+
 ### Node kinds
 
 The previews on the workflow cards and the nodes on the canvas share one coding of what each

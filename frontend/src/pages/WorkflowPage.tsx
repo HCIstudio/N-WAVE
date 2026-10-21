@@ -49,6 +49,8 @@ import {
 } from "./workflow/useWorkflowDocument";
 import { useWorkflowCheck } from "./workflow/useWorkflowCheck";
 import { useWorkflowRun } from "./workflow/useWorkflowRun";
+import { useRunResume } from "./workflow/useRunResume";
+import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
 import {
   downloadScript,
@@ -226,6 +228,7 @@ const WorkflowPageContent: React.FC = () => {
     showError,
   });
   const runTasks = useRunTasks(isDemoMode ? null : run.lastRunId, isRunning, nodes);
+  const resume = useRunResume({ workflowId, enabled: !isDemoMode, isRunning });
   const [isExporting, setIsExporting] = useState(false);
 
   // Why the last run failed, and the step it failed in, if the log says.
@@ -448,7 +451,7 @@ const WorkflowPageContent: React.FC = () => {
           onDownload={handleDownloadScript}
           onExportProject={handleExportProject}
           isExporting={isExporting}
-          onRun={run.run}
+          onRun={(settings) => run.run(settings, { resume: resume.resume })}
           isSaved={workflow.isSaved}
           isSaving={workflow.isSaving}
           isRunning={isRunning}
@@ -466,6 +469,22 @@ const WorkflowPageContent: React.FC = () => {
           executionSettings={executionSettings}
           onExecutionSettingsChange={handleExecutionSettingsChange}
           onShowRuns={run.openPanel}
+          resume={
+            isDemoMode
+              ? undefined
+              : { available: resume.available, on: resume.resume, onChange: resume.setResume }
+          }
+          settingsExtra={
+            isDemoMode ? undefined : (
+              <RunCacheSettings
+                cache={resume.cache}
+                onClear={() => void resume.clear()}
+                isClearing={resume.isClearing}
+                isRunning={isRunning}
+                error={resume.error}
+              />
+            )
+          }
         />
         <CopyPromptDialog
           isOpen={workflow.isCopyPromptOpen}
@@ -549,6 +568,7 @@ const WorkflowPageContent: React.FC = () => {
             status: nodeRun.status,
             done: nodeRun.done,
             total: nodeRun.total,
+            cached: nodeRun.cached,
           }))}
         />
       </div>

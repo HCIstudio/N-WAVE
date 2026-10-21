@@ -140,6 +140,8 @@ export const executeRequestSchema = z
     workflowName: z.string().max(MAX_NAME_LENGTH).optional(),
     /** The saved workflow's id, to list its runs. */
     workflowId: z.string().max(255).optional(),
+    /** Resume the workflow's last run (Nextflow -resume); needs workflowId. */
+    resume: z.boolean().optional(),
     fileContent: z
       .record(inputFileName, z.string())
       .refine((files) => Object.keys(files).length <= MAX_INPUT_FILES, {
@@ -154,6 +156,10 @@ export const executeRequestSchema = z
     message: "Script, nextflowScript or pipeline is required",
   });
 export type ExecuteRequestBody = z.infer<typeof executeRequestSchema>;
+
+export const workflowCacheQuerySchema = z.object({
+  workflowId: z.string().min(1).max(255),
+});
 
 export const cancelExecutionSchema = z.object({
   executionId: z

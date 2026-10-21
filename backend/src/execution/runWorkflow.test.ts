@@ -4,6 +4,7 @@ import path from "node:path";
 import type { Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listRuns, RUN_LOG_FILE } from "../runs/runIndex";
+import { buildNextflowLaunch } from "./nextflowLauncher";
 import { prepareScriptRun } from "./prepareRun";
 import { getLiveRun, isRunLive } from "./runRegistry";
 import { startRun } from "./runner";
@@ -57,12 +58,17 @@ describe("runNextflowWorkflow setup", () => {
     fs.rmSync(root, { recursive: true, force: true });
   });
 
-  const run = (workflowName: string, res = fakeResponse()) =>
+  const run = (
+    workflowName: string,
+    res = fakeResponse(),
+    extra: { workflowId?: string; resume?: boolean } = {}
+  ) =>
     runNextflowWorkflow(
       {
         nextflowScript: "workflow {}",
         workflowName,
         settings: { outputDirectory: root, outputNaming: "same" } as never,
+        ...extra,
       },
       res as unknown as Response
     ).then(() => res);
@@ -138,5 +144,44 @@ describe("runNextflowWorkflow setup", () => {
     createWriteStream.mockRestore();
     // What afterEach waits for (this run's log never opened).
     fs.writeFileSync(path.join(root, "same", RUN_LOG_FILE), "");
+  });
+
+  it("resumes in the folder of the workflow's last run, with logs of its own", async () => {
+    vi.mocked(prepareScriptRun).mockResolvedValue({ hasNfCoreModules: false, useProcessDocker: false });
+    vi.mocked(startRun).mockImplementation(({ onExit }) => {
+      setTimeout(() => onExit({ code: 0, signal: null, stopReason: null, outputTail: "" }), 5);
+      return { stop: () => {} };
+    });
+    const ended = async (res: ReturnType<typeof fakeResponse>) => {
+      await vi.waitFor(() => expect(res.end).toHaveBeenCalled());
+      return res;
+    };
+
+    // Nothing to resume yet: an ordinary run.
+    const first = await ended(await run("e", fakeResponse(), { workflowId: "wf-e", resume: true }));
+    expect(first.output).toContain("nothing to resume");
+    // Nextflow leaves its cache, which a successful run moves into nextflow/.
+    fs.mkdirSync(path.join(root, "same", "nextflow", ".nextflow"), { recursive: true });
+    fs.writeFileSync(path.join(root, "same", "nextflow", ".nextflow", "history"), "");
+
+    const second = await ended(await run("e", fakeResponse(), { workflowId: "wf-e", resume: true }));
+    const [latest, earlier] = listRuns({ workflowId: "wf-e" });
+    expect(second.output).toContain(`resuming run ${earlier?.id}`);
+    expect(latest?.resumedFrom).toBe(earlier?.id);
+    expect(fs.existsSync(path.join(root, "same_2"))).toBe(false);
+    expect(vi.mocked(buildNextflowLaunch).mock.calls.at(-1)?.[0]).toEqual(
+      expect.objectContaining({
+        runDir: path.join(root, "same"),
+        resume: true,
+        nextflowLog: `nextflow/.nextflow.${latest?.id}.log`,
+      })
+    );
+    await vi.waitFor(() =>
+      expect(fs.readFileSync(path.join(root, "same", `nwave-run.${latest?.id}.log`), "utf8")).toContain(
+        "resuming run"
+      )
+    );
+    expect(fs.readFileSync(path.join(root, "same", RUN_LOG_FILE), "utf8")).not.toContain("resuming run");
+    vi.mocked(startRun).mockReset();
   });
 });
