@@ -233,6 +233,33 @@ and clears it; results, inputs and logs stay. The backend serves it at
 (not while one of the workflow's runs is going). The in-browser demo has no cache, so it
 doesn't offer Resume.
 
+### Run profiles: clusters and the cloud
+
+**Execution Settings → Profiles** holds the workflow's run profiles. Each one says where the
+steps run: **this computer**, a **SLURM cluster** or **AWS Batch**. It also sets the
+containers (Docker, Singularity, Apptainer or none) and default CPUs, memory and time for
+steps that don't set their own. SLURM profiles add a partition, extra `sbatch` options and
+how many jobs may be queued at once. AWS Batch profiles add a job queue, a region and an S3
+work directory.
+
+- **Exported projects** get every profile in their `nextflow.config`, next to the built-in
+  `docker` profile, and the README lists them: `nextflow run main.nf -profile slurm`. A
+  Pipeline node's project writes them to `profiles.config`, used with
+  `-profile test,slurm -c profiles.config` in place of `docker`.
+- **Runs from N-WAVE** go through the profile chosen under *Runs from N-WAVE use*; the
+  default is this computer with the other settings. A SLURM run needs the N-WAVE backend to
+  run Nextflow where jobs can be submitted: `NEXTFLOW_EXECUTION_MODE=local` with `sbatch` on
+  its `PATH`, and its results folder on storage the compute nodes share. The Docker setup
+  runs Nextflow in a container that can't reach a scheduler, so there a SLURM run stops with
+  that explanation; export the project instead. The run log names the profile, the steps
+  show in the run panel as usual, and **Cancel** also cancels the run's SLURM jobs. The
+  server's resource limits still cap each step.
+- **AWS Batch** profiles are for exported projects only. N-WAVE doesn't run them itself yet.
+
+A profile's time per step has to fit within the partition's time limit, or SLURM keeps the
+jobs waiting (`PartitionTimeLimit`) and the run never starts. The profile's config is built
+by the backend from checked fields, so no config text from the browser reaches Nextflow.
+
 ### Node kinds
 
 The previews on the workflow cards and the nodes on the canvas share one coding of what each
@@ -480,7 +507,7 @@ runs on any machine with Nextflow and Docker, without N-WAVE:
 ```
 <workflow>/
 ├─ main.nf            # the generated workflow
-├─ nextflow.config    # module settings and a `docker` profile
+├─ nextflow.config    # module settings, a `docker` profile and the workflow's run profiles
 ├─ modules/nf-core/   # the nf-core modules it uses, at the catalog's pinned commit
 ├─ subworkflows/nf-core/  # the nf-core subworkflows it uses, if any
 ├─ inputs/            # the File Input files

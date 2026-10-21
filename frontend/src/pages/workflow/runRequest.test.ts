@@ -87,6 +87,31 @@ describe("buildRunRequest", () => {
     );
   });
 
+    it("sends the run profile chosen in the settings", () => {
+    const script = { ...base, nodes: [], rawSource: "workflow {}", sourceFormat: "nextflow" as const };
+    const hpc = { name: "hpc", executor: "slurm" as const, queue: "short", containerEngine: "none" as const };
+    const settings = { ...DEFAULT_EXECUTION_SETTINGS, runProfiles: [hpc], runProfile: "hpc" };
+    expect(buildRunRequest({ ...script, settings })).toMatchObject({ runProfile: hpc });
+    expect(buildRunRequest({ ...script })).not.toHaveProperty("runProfile");
+    expect(() => buildRunRequest({ ...script, settings: { ...settings, runProfile: "gone" } })).toThrow(
+      'The run profile "gone" no longer exists',
+    );
+    expect(() =>
+      buildRunRequest({ ...script, settings: { ...settings, runProfiles: [{ ...hpc, queue: "a b" }] } }),
+    ).toThrow("can't be used");
+    const aws = {
+      name: "aws",
+      executor: "awsbatch" as const,
+      queue: "q",
+      containerEngine: "docker" as const,
+      awsRegion: "eu-west-1",
+      workDir: "s3://bucket/work",
+    };
+    expect(() =>
+      buildRunRequest({ ...script, settings: { ...settings, runProfiles: [aws], runProfile: "aws" } }),
+    ).toThrow("for exported projects only");
+  });
+
     it("sends binary input files as base64 and names them", () => {
     const body = buildRunRequest({
       ...base,

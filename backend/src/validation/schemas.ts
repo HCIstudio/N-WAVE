@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { runProfileSchema } from "../execution/runProfile";
 
 // Request-body schemas for the public API. They bound sizes and shapes and
 // reject values that would otherwise reach the shell or the file system
@@ -142,6 +143,8 @@ export const executeRequestSchema = z
     workflowId: z.string().max(255).optional(),
     /** Resume the workflow's last run (Nextflow -resume); needs workflowId. */
     resume: z.boolean().optional(),
+    /** Run the steps through this run profile (SLURM, or this computer). */
+    runProfile: runProfileSchema.optional(),
     fileContent: z
       .record(inputFileName, z.string())
       .refine((files) => Object.keys(files).length <= MAX_INPUT_FILES, {

@@ -78,6 +78,7 @@ export const downloadScript = (source: WorkflowSource) => {
 export const exportProject = async (source: WorkflowSource): Promise<string> => {
   const name = source.workflowName || "workflow";
   const nextflowVersion = source.settings?.nextflow?.version;
+  const profiles = source.settings?.runProfiles ?? [];
   const launch = buildPipelineLaunch(source.nodes, source.edges);
   if (launch) {
     const { buildPipelineProjectFiles, toProjectName, zipProject } =
@@ -86,7 +87,7 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
     downloadBlob(
       await zipProject(
         name,
-        buildPipelineProjectFiles({ workflowName: name, launch, nextflowVersion }),
+        buildPipelineProjectFiles({ workflowName: name, launch, nextflowVersion, profiles }),
       ),
       fileName,
     );
@@ -107,6 +108,7 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
     script,
     nodes: source.nodes,
     nextflowVersion,
+    profiles,
   });
   downloadBlob(blob, fileName);
   return fileName;

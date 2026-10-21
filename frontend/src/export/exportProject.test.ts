@@ -150,7 +150,30 @@ describe("buildProjectFiles", () => {
     expect(config).toContain("docker.runOptions = '-u $(id -u):$(id -g)'");
   });
 
-  it("explains how to run it and which inputs are missing", () => {
+  it("adds the workflow's run profiles to the config and README", () => {
+    const withProfiles = buildProjectFiles({
+      workflowName: "QC run",
+      script,
+      inputFiles: [],
+      moduleFiles,
+      profiles: [
+        { name: "slurm", executor: "slurm", queue: "short", containerEngine: "singularity" },
+        { name: "docker", executor: "slurm", containerEngine: "docker" },
+      ],
+    });
+    const config = withProfiles["nextflow.config"];
+    expect(config).toContain("  slurm {\n    process.executor = 'slurm'\n    process.queue = 'short'");
+    // A profile may not replace the built-in one.
+    expect(config.match(/ {2}docker \{/g)).toHaveLength(1);
+    const readme = withProfiles["README.md"];
+    expect(readme).toContain("## Run profiles");
+    expect(readme).toContain("- `slurm`: SLURM cluster, queue short, Singularity");
+    expect(readme).toContain("nextflow run main.nf -profile slurm");
+    expect(readme).toContain("share: each step runs as its own job");
+    expect(files["README.md"]).not.toContain("## Run profiles");
+  });
+
+    it("explains how to run it and which inputs are missing", () => {
     const readme = files["README.md"];
     expect(readme).toContain("cd QC_run\nnextflow run main.nf -profile docker");
     expect(readme).toContain("`inputs/sample.txt` (included)");

@@ -131,9 +131,13 @@ const BottomBar: React.FC<BottomBarProps> = ({
   // Handle click outside to close modal
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // A dialog opened from the settings (e.g. "make an editable copy")
+      // is on top of them; clicks there aren't clicks outside.
+      const inOtherDialog = (event.target as Element | null)?.closest?.("dialog");
       if (
         modalRef.current &&
-        !modalRef.current.contains(event.target as Node)
+        !modalRef.current.contains(event.target as Node) &&
+        !inOtherDialog
       ) {
         if (settingsChanged && !settingsSaved) {
           // Show confirmation dialog for unsaved changes
@@ -300,10 +304,9 @@ const BottomBar: React.FC<BottomBarProps> = ({
                 <div className="text-sm text-text-light">
                   <div>
                     <span className="font-medium text-text">
-                      {executionSettings.container?.enabled
-                        ? "Docker"
-                        : "Local"}{" "}
-                      execution
+                      {executionSettings.runProfile
+                        ? `Profile ${executionSettings.runProfile}`
+                        : `${executionSettings.container?.enabled ? "Docker" : "Local"} execution`}
                     </span>
                     {executionSettings.container?.enabled && (
                       <span className="ml-2">
@@ -456,6 +459,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
               title={
                 runBlockedReason
                   ? runBlockedReason
+                  : executionSettings.runProfile
+                  ? `Run through the profile "${executionSettings.runProfile}"`
                   : executionSettings.container?.enabled
                   ? "Run with Docker"
                   : "Run locally"

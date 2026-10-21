@@ -42,6 +42,7 @@ import { describeRunExit } from "./runExit";
 import { startRun } from "./runner";
 import { isRunLive, registerRun, unregisterRun } from "./runRegistry";
 import type { ExecutionSettings } from "./types";
+import type { RunProfile } from "./runProfile";
 import { removeRunTaskContainers } from "./taskContainers";
 import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
 
@@ -58,6 +59,8 @@ export interface WorkflowRunRequest {
   workflowId?: string;
   /** Resume the workflow's last run: reuse its unchanged steps (Nextflow -resume). */
   resume?: boolean;
+  /** Run the steps through this run profile (e.g. on SLURM). */
+  runProfile?: RunProfile;
 }
 
 /** Headers for the streamed run output. */
@@ -95,6 +98,16 @@ const findRunToResume = (workflowId: string | undefined): { id: string; dir: str
   const run = findResumableRun(workflowId);
   return run && !isRunDirInUse(run.dir, isRunLive) ? run : null;
 };
+
+/** Where a profile runs the steps, for the run's log. */
+const describeProfileTarget = (profile: RunProfile): string =>
+  [
+    profile.executor === "slurm" ? "SLURM" : "this computer",
+    profile.queue ? `partition ${profile.queue}` : null,
+    profile.containerEngine === "none" ? "no containers" : profile.containerEngine,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
 /** Log files of a resumed run, in the folder it shares with earlier runs. */
 export const resumedRunLogs = (id: string): { log: string; nextflowLog: string } => ({
@@ -193,10 +206,11 @@ export const runNextflowWorkflow = async (
       );
     }
     const prepared = pipeline
-      ? preparePipelineRun(dirs, pipeline, resourceConfig)
+      ? preparePipelineRun(dirs, pipeline, resourceConfig, request.runProfile)
       : await prepareScriptRun(dirs, scriptPath, request.nextflowScript, {
           useDocker: settings.useDocker,
           resourceConfig,
+          profile: request.runProfile,
         });
     writeInputFiles(dirs.inputs, request.fileContent, request.fileEncoding);
     if (resumed) restoreNextflowMetadata(dirs);
@@ -235,6 +249,7 @@ export const runNextflowWorkflow = async (
       raisedNextflowVersion,
       resume: Boolean(resumed),
       nextflowLog: logs?.nextflowLog,
+      executor: request.runProfile?.executor,
     });
     console.log(`Executing: ${launch.command}`);
     console.log(`Working directory: ${dirs.main}`);
@@ -250,6 +265,11 @@ export const runNextflowWorkflow = async (
       return;
     }
     send(`${describeRunLimits(limits, timeoutMs)}\n`);
+    if (request.runProfile) {
+      send(
+        `N-WAVE: running through the profile "${request.runProfile.name}" (${describeProfileTarget(request.runProfile)}).\n`
+      );
+    }
     if (resumed) {
       send(
         `N-WAVE: resuming run ${resumed.id}; steps whose code and inputs haven't changed are reused from its cache.\n`

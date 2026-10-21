@@ -54,7 +54,17 @@ describe("parseTaskEvents", () => {
     ]);
   });
 
-  it("returns nothing for a log without tasks", () => {
+  it("reads tasks that ran as SLURM jobs", () => {
+    const log = [
+      "Oct-21 14:53:31.816 [Task submitter] INFO  nextflow.Session - [de/1e049a] Submitted process > STEP_A (1)",
+      "Oct-21 14:53:36.350 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[jobId: 9; id: 1; name: STEP_A (1); status: COMPLETED; exit: 0; error: -; workDir: /data/run/nextflow/work/de/1e049a0663d939ebf4fbf545d6d9dc started: 1792594416337; exited: 2026-10-21T14:53:32.151274394Z; ]",
+    ].join("\n");
+    expect(parseTaskEvents(log)).toEqual([
+      { hash: "de/1e049a", name: "STEP_A (1)", process: "STEP_A", status: "succeeded", exitCode: 0 },
+    ]);
+  });
+
+    it("returns nothing for a log without tasks", () => {
     expect(parseTaskEvents("N E X T F L O W\n")).toEqual([]);
   });
 });

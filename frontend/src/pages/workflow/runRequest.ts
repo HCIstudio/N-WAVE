@@ -9,6 +9,36 @@ import type { ExecutionSettings } from "../../types/execution";
 import { getWorkflowInputFiles } from "../../utils/inputFiles";
 import { findResourceProblem } from "../../utils/streamLines";
 import { flattenExecutionSettings } from "./executionSettings";
+import {
+  canRunFromNwave,
+  findProfileProblems,
+  type RunProfile,
+} from "../../execution/runProfiles";
+
+/**
+ * The profile a run goes through, or null for this computer. Throws when the
+ * chosen one can't be used, so the run doesn't quietly happen elsewhere.
+ */
+export const findRunProfile = (settings: ExecutionSettings): RunProfile | null => {
+  if (!settings.runProfile) return null;
+  const profiles = settings.runProfiles ?? [];
+  const profile = profiles.find((candidate) => candidate.name === settings.runProfile);
+  if (!profile) {
+    throw new Error(
+      `The run profile "${settings.runProfile}" no longer exists. Choose another in Execution Settings → Profiles.`,
+    );
+  }
+  const problems = findProfileProblems(profile, profiles);
+  if (problems.length > 0) {
+    throw new Error(`The run profile "${profile.name}" can't be used: ${problems.join(" ")}`);
+  }
+  if (!canRunFromNwave(profile)) {
+    throw new Error(
+      `The run profile "${profile.name}" is for exported projects only; N-WAVE can't run AWS Batch itself yet.`,
+    );
+  }
+  return profile;
+};
 
 /** Uploaded files whose content is gone (after a reload). */
 export const findMissingFileContents = (nodes: Node<NodeData>[]): string[] =>
@@ -105,6 +135,7 @@ export const buildRunRequest = ({
           settings.output.directory || "results",
           namingPattern,
         );
+  const runProfile = findRunProfile(settings);
   if (!launch && nextflowScript.trim() === "") {
     throw new Error(
       "Generated Nextflow script is empty. Please add nodes to your workflow.",
@@ -135,6 +166,7 @@ export const buildRunRequest = ({
     // Keeps the run in this workflow's history.
     ...(workflowId ? { workflowId } : {}),
     ...(workflowId && resume ? { resume: true } : {}),
+    ...(runProfile ? { runProfile } : {}),
   };
 };
 

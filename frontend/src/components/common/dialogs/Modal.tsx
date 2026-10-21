@@ -46,7 +46,8 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
     // Clicking the backdrop (but not the dialog) or pressing Escape closes.
     // biome-ignore lint/a11y/noStaticElementInteractions: the backdrop click is a pointer shortcut for the dialog's own close button.
     <div
-      className="fixed inset-0 bg-overlay z-40 flex justify-center items-center"
+      // Above the settings dialog (z-[60]) and run panel, which may open one.
+      className="fixed inset-0 bg-overlay z-[70] flex justify-center items-center"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}

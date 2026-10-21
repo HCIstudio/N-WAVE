@@ -182,7 +182,24 @@ describe("exporting a pipeline launch", () => {
     );
   });
 
-  it("writes a standalone launch script", () => {
+  it("writes the workflow's run profiles to profiles.config", () => {
+    const files = buildPipelineProjectFiles({
+      workflowName: "RNA run",
+      launch,
+      profiles: [{ name: "hpc", executor: "slurm", containerEngine: "singularity" }],
+    });
+    expect(files["profiles.config"]).toContain("profiles {\n  hpc {\n    process.executor = 'slurm'");
+    // nf-core pipelines have their own docker profile.
+    expect(files["profiles.config"]).not.toContain("docker {");
+    expect(files["README.md"]).toContain(
+      `${launch.command.replace("-profile docker", "-profile hpc")} -c profiles.config`,
+    );
+    expect(buildPipelineProjectFiles({ workflowName: "RNA run", launch })).not.toHaveProperty(
+      "profiles.config",
+    );
+  });
+
+    it("writes a standalone launch script", () => {
     expect(pipelineLaunchScript(launch)).toBe(
       [
         "#!/usr/bin/env bash",
