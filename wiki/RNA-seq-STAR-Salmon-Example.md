@@ -82,4 +82,7 @@ nf-core/rnaseq also:
 - builds gene-level count matrices with tximport.
 
 To run all of that, use **Demo 2 - nf-core/rnaseq pipeline**, which runs the whole pipeline as one
-node.
+node ([Running the nf-core/rnaseq example](https://github.com/HCIstudio/N-WAVE/wiki/Running-the-nf-core-rnaseq-Example)).
+
+The nodes it uses are described in the [Node reference](https://github.com/HCIstudio/N-WAVE/wiki/Nodes)
+and the [nf-core library](https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library).

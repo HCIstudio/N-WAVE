@@ -23,7 +23,7 @@ nextflow run nf-core/rnaseq -r 3.27.0 -profile test,docker -params-file params.j
 with `params.json` pointing `input` at the samplesheet and `fasta`/`gtf` at the reference URLs.
 
 ### Requirements
-- The **Docker installation** of N-WAVE (see [Dockerized Installation](https://github.com/HCIstudio/N-WAVE/wiki/Dockerized-Installation)).
+- The **Docker installation** of N-WAVE (see [Installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation)).
   The browser demo on GitHub Pages can open, inspect and export the example, but not run it.
 - Internet access: Nextflow downloads the pipeline from GitHub, its containers (several GB on
   the first run) and the test data.
@@ -74,3 +74,7 @@ that folder; results go to `results/`.
   execution settings or `NWAVE_EXECUTION_TIMEOUT` on the server.
 - **Downloads fail**: the pipeline needs access to github.com, raw.githubusercontent.com and the
   container registries (quay.io, community.wave.seqera.io).
+
+More in [Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting). For the same
+analysis rebuilt step by step from nf-core modules, see
+[RNA-seq rebuilt from nodes](https://github.com/HCIstudio/N-WAVE/wiki/RNA-seq-STAR-Salmon-Example).

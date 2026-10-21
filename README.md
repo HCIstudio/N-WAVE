@@ -9,728 +9,180 @@
 [![Backend pulls](https://img.shields.io/docker/pulls/hcistudio/nwave-backend?logo=docker&label=backend%20pulls)](https://hub.docker.com/r/hcistudio/nwave-backend)
 [![License](https://img.shields.io/github/license/HCIstudio/N-WAVE)](LICENSE)
 
-N-WAVE is a visual editor for [Nextflow](https://www.nextflow.io/) pipelines. You build a
-workflow by dragging nodes onto a canvas — file inputs, operators, processes, and output
-displays — connect them, and N-WAVE generates a runnable Nextflow script from the graph. You
-can then execute the workflow and inspect its results from the browser.
-
-![The N-WAVE canvas with the bundled demo workflow: a file input feeding two filters, a map and a merge into an output display](.github/assets/screenshot-canvas.png)
-
-- **Live demo:** https://hcistudio.github.io/N-WAVE/ — runs in the browser with no install. Workflows can be built, edited and exported, including nf-core modules from the library and custom nodes (stored in your browser), but not executed (that needs the backend).
-- **Documentation:** the [Wiki](https://github.com/HCIstudio/N-WAVE/wiki) covers authoring workflows, the node reference, and running via Docker.
-
-## Components
-
-| Piece | Tech | Responsibility |
-|-------|------|----------------|
-| Frontend | React, Vite, TypeScript, [React Flow](https://reactflow.dev/), Tailwind | The visual canvas and the client-side Nextflow script generator. |
-| Backend | Node, Express, TypeScript, Mongoose | Workflow persistence and execution. |
-| Database | MongoDB | Stores saved workflows. |
-| Runner | `nextflow/nextflow` Docker image | Pulled on demand by the backend to run pipelines. |
-
-## Architecture
-
-```
-                     ┌──────────────────────────────────────────────┐
-   browser  ───────► │  frontend (nginx)  :5173                      │
-                     │   • React Flow canvas + Nextflow generator    │
-                     │   • proxies /api ─────────────┐               │
-                     └───────────────────────────────┼───────────────┘
-                                                     │
-                     ┌───────────────────────────────▼───────────────┐
-                     │  backend (Express)  :5001                      │
-                     │   • /api/workflows  → persistence (MongoDB)    │
-                     │   • /api/execute    → runs Nextflow  ──────┐   │
-                     └────────────┬───────────────────────────────┼───┘
-                                  │                                │
-                     ┌────────────▼─────────┐        ┌─────────────▼────────────┐
-                     │   MongoDB  :27017     │        │  nextflow/nextflow (run   │
-                     │   saved workflows     │        │  on the host's Docker)    │
-                     └───────────────────────┘        └───────────────────────────┘
-```
-
-- The frontend owns the canvas and turns the node graph into a Nextflow script
-  (`frontend/src/generators/`). The script is generated in the browser.
-- The backend persists workflows to MongoDB and executes them. It exposes a small REST API
-  under `/api` (`workflows`, `execute`, `nfcore`, `custom-nodes`).
-- The frontend talks to the backend only through `frontend/src/api.ts`. In the online demo
-  that client is swapped for an in-browser store (`frontend/src/demo/`), which is why the
-  demo needs no backend.
-
-### How workflow execution works
-
-The backend does not bundle Nextflow. When you run a workflow it launches the official
-`nextflow/nextflow` image on the host's Docker daemon and shares files with it via
-`--volumes-from`:
-
-```
-docker run --rm --platform linux/amd64 --volumes-from nwave-backend \
-  nextflow/nextflow:<version> nextflow run <your-workflow>.nf ...
-```
-
-This is controlled by the `NEXTFLOW_EXECUTION_MODE` environment variable:
-
-| Value | Behavior |
-|-------|----------|
-| `docker` | Always run Nextflow in a container. The only host requirement is Docker — no local Nextflow or Java. This is what the Docker deployment uses, so it runs on any machine. |
-| `local` | Always use a host `nextflow` binary. |
-| `auto` (default) | Prefer a local binary, fall back to the container. Convenient for development. |
-
-The N-WAVE images themselves are published for `linux/amd64` and `linux/arm64`, so the
-frontend and backend run natively on Intel/AMD and ARM (for example Apple Silicon). Many
-`nextflow/nextflow` tags are published for `linux/amd64` only, so the runner defaults to that
-platform (`NEXTFLOW_PLATFORM`, default `linux/amd64`) — native on Intel/AMD, emulated on ARM.
-If the Nextflow version you use publishes an arm64 image, set `NEXTFLOW_PLATFORM=native` to
-run it natively on ARM hosts.
-
-For the backend to launch containers, the host Docker socket is mounted into it
-(`/var/run/docker.sock`) and it has a fixed `container_name` so the runner can attach to its
-volumes. Both are set up in the compose files.
-
-The `nextflow/nextflow` images ship an old docker CLI (17.09, API 1.32), which Nextflow
-uses to start each step's container. Docker Engine 29 and later (current Docker Desktop)
-reject clients that old ("client version 1.32 is too old"), so the backend asks the engine
-for its minimum API version and passes it to the runner as `DOCKER_API_VERSION`. Set
-`DOCKER_API_VERSION` on the backend to choose the version yourself.
-
-### Checking a workflow before it runs
-
-N-WAVE checks the workflow while you build it. The check next to the **Run** button shows
-how many problems it found, and clicking it lists them in plain language; **Show** moves the
-canvas to the node a problem is about, and that node carries a red (problem) or yellow
-(warning) mark with the message on hover. Problems stop the run, and Run says why while it's
-disabled: a required input that isn't connected, a connected File Input without a file (or
-whose file has to be uploaded again after a reload), samplesheet or parameter errors, nf-core
-components that aren't installed, a pipeline that can't launch, and a server without Nextflow,
-or without Docker when the workflow needs it. Warnings let it run: nodes that aren't connected
-to anything, empty parameters, samplesheet warnings and a run that asks for more CPUs or
-memory than the server allows (it gets the server's limit). **Check again** asks the server
-again whether Docker and Nextflow are there, for example after starting Docker Desktop.
-
-### Connecting ports that fit
-
-Hovering a port shows what it carries: the file types an nf-core module declares for it (for
-example `*.{bam}`), a folder such as an index, or tool versions. While you drag a connection
-from an output, the inputs it fits are ringed green and those it doesn't amber, with what they
-expect on hover. A connection whose ports don't fit is still made, but drawn dashed amber with
-a warning mark: clicking the mark says what the input expects, what the output gives and how to
-fix it (connect reads, a reference from a Parameters node or a File Input, the index a step
-builds, or a data output instead of versions). The workflow check lists these as warnings, so
-they never stop a run: a module's patterns aren't always complete. Ports whose contents N-WAVE
-doesn't know, such as those of custom processes, are never flagged.
-
-Most inputs take **one connection**: a second one is refused, with a message pointing to a
-Merge node or a channel operator to combine several sources first. Inputs that gather files
-from many steps take **any number of connections**, mixed into one channel: Merge's input and
-the nf-core inputs staged with `collect` (such as MultiQC's `multiqc_files`). Their handle is
-taller than the usual dot, and hovering a node says which kind each input is. A workflow saved
-before this rule with several connections into a one-connection input still opens; the
-workflow check asks to merge them before it runs.
-
-### Troubleshooting failed runs
-
-When a run fails for a common reason, the failure notice, the run panel and the run's entry
-under **History** say what happened in plain language, name the step it happened in
-(**Show** moves the canvas to it) and suggest a fix. The reasons are recognised in Nextflow's
-log by `frontend/src/execution/failureExplanations.ts`, tested against real logs in
-`frontend/src/test/fixtures/nextflow-failures/`.
-
-#### Out of memory
-
-The step used more memory than it was given and was killed (exit status 137). Raise
-**Maximum Memory** in the execution settings, or the step's memory in its panel; on Docker
-Desktop, also give Docker more memory (Settings → Resources).
-
-#### Docker isn't reachable
-
-The step runs in a container, but Docker isn't running or N-WAVE can't reach its socket. Start
-Docker (Docker Desktop on Windows and macOS) and wait until it's running. **Check again** in
-the workflow check shows when N-WAVE can reach it.
-
-#### Container image can't be pulled
-
-Docker couldn't download the step's image: the name or tag is wrong, the image doesn't exist,
-or the registry can't be reached through this computer's network or proxy. Check the image of
-a custom process, or that the computer can reach `quay.io` and `docker.io`.
-
-#### Command not found
-
-The step runs a program that isn't installed where it ran (exit status 127). Without Docker,
-the program isn't installed on the computer itself: turn on Docker in the execution settings.
-In a container, the image doesn't have it: give a custom process an image that does. Either
-way, check the command for typos.
-
-#### No space left on device
-
-The disk the run writes to is full. Remove old runs and unused Docker images
-(`docker system prune`); on Docker Desktop, raise the disk image size.
-
-#### URL can't be reached
-
-An input given as an address (`https://…`) couldn't be downloaded: the address is wrong, or
-the server can't be reached from this computer. Open it in a browser, check the network or
-proxy, or upload the file instead.
-
-#### Input file not found
-
-A file the workflow reads isn't where it looks: upload it to a File Input node, and check that
-the names in samplesheets and parameters match the uploaded files.
-
-#### Missing output files
-
-The step finished but didn't write a file it declares as output. For a custom process, check
-that its script writes exactly the file names of its `output:` block.
-
-### Resource limits and long runs
-
-Each run asks for CPUs, memory and a time limit in the **Execution Settings** (Resources
-tab). The CPU and memory limits are clamped to what the server allows (`NWAVE_MAX_CPUS`,
-`NWAVE_MAX_MEMORY`; by default all CPUs and 80% of the host's memory) and written into the
-run's Nextflow config as `process.resourceLimits`, so a step that asks for more (STAR wants
-tens of GB) is capped to the limit instead of failing. The first lines of a run's output say
-which limits it got, and whether they were lowered.
-
-Runs without their own time limit stop after `NWAVE_EXECUTION_TIMEOUT` minutes (24 hours by
-default). Output is streamed while the run goes, and **Cancel** stops Nextflow, its tasks
-and, in Docker mode, the Nextflow container. When a run fails because a step needed more
-memory or CPUs than allowed, was killed for lack of memory, or hit the time limit, the error
-says so and names the setting to raise.
-
-### Run panel and run history
-
-The run panel stays open until you close it, and the **Show runs** button in the bottom bar
-opens it again. **Steps** shows the progress of each node and, after a run, its results.
-**Log** shows the run's full output as it streams in, with error lines in red. **History**
-lists the workflow's earlier runs on this server, newest first: each one shows whether it
-succeeded and, if it failed, why, along with its saved log and its results. The backend keeps
-each run's log as `nwave-run.log` in the run's directory, and serves the history at
-`GET /api/execute/runs?workflowId=` and each log at `GET /api/execute/runs/:id/log`.
-
-While a workflow runs, it is locked: nodes can't be moved, connected, added or deleted,
-and node settings and notes can't be edited (an amber frame and a notice say so) until the
-run finishes or is cancelled. The run panel can then only be minimized; the bottom bar's
-**Running** button brings it back.
-
-### Resuming a run
-
-After a run fails or is cancelled, fix what went wrong and click **Run** again: the **Resume**
-choice next to the Run button is on, so the run reuses every step whose code and inputs haven't
-changed and only runs the steps you changed and the ones after them. Resume shows once a saved
-workflow has a run with a cache; it is off after a successful run, and a click turns it on or
-off. The Steps tab and the canvas mark reused steps **Reused from cache**.
-
-A resumed run continues in the folder of the workflow's last run, with Nextflow's `-resume`,
-and keeps its own logs there (`nwave-run.<run id>.log` and `nextflow/.nextflow.<run id>.log`),
-so the run history still shows each run on its own, marked **resumed**. Input files that haven't changed are left
-untouched (Nextflow compares their modification times too). A run without Resume starts in a
-new folder. Output steps whose file names include `{timestamp}` (the default naming pattern)
-always run again, since their file names change; they only copy files.
-
-The cache is each step's work folder (`nextflow/work`) and Nextflow's record of them
-(`.nextflow`). **Execution Settings → Run cache** shows how much space a workflow's cache takes
-and clears it; results, inputs and logs stay. The backend serves it at
-`GET /api/execute/cache?workflowId=` and clears it with `DELETE /api/execute/cache?workflowId=`
-(not while one of the workflow's runs is going). The in-browser demo has no cache, so it
-doesn't offer Resume.
-
-### Run profiles: clusters and the cloud
-
-**Execution Settings → Profiles** holds the workflow's run profiles. Each one says where the
-steps run: **this computer**, a **SLURM cluster** or **AWS Batch**. It also sets the
-containers (Docker, Singularity, Apptainer or none) and default CPUs, memory and time for
-steps that don't set their own. SLURM profiles add a partition, extra `sbatch` options and
-how many jobs may be queued at once. AWS Batch profiles add a job queue, a region and an S3
-work directory.
-
-- **Exported projects** get every profile in their `nextflow.config`, next to the built-in
-  `docker` profile, and the README lists them: `nextflow run main.nf -profile slurm`. A
-  Pipeline node's project writes them to `profiles.config`, used with
-  `-profile test,slurm -c profiles.config` in place of `docker`.
-- **Runs from N-WAVE** go through the profile chosen under *Runs from N-WAVE use*; the
-  default is this computer with the other settings. A SLURM run needs the N-WAVE backend to
-  run Nextflow where jobs can be submitted: `NEXTFLOW_EXECUTION_MODE=local` with `sbatch` on
-  its `PATH`, and its results folder on storage the compute nodes share. The Docker setup
-  runs Nextflow in a container that can't reach a scheduler, so there a SLURM run stops with
-  that explanation; export the project instead. The run log names the profile, the steps
-  show in the run panel as usual, and **Cancel** also cancels the run's SLURM jobs. The
-  server's resource limits still cap each step.
-- **AWS Batch** profiles are for exported projects only. N-WAVE doesn't run them itself yet.
-
-A profile's time per step has to fit within the partition's time limit, or SLURM keeps the
-jobs waiting (`PartitionTimeLimit`) and the run never starts. The profile's config is built
-by the backend from checked fields, so no config text from the browser reaches Nextflow.
-
-### Node kinds
-
-The previews on the workflow cards and the nodes on the canvas share one coding of what each
-node is: **inputs** (File Input, Samplesheet, Parameters) are light blue, **nf-core steps**
-(modules, subworkflows, pipelines) green and **other steps** (operators, custom processes,
-Display Output) grey. In the previews the kinds also differ in shape (rounded inputs, filled
-nf-core steps, outlined other steps); on the canvas each node carries the color as a band
-along its top, next to its icon and subtitle. A legend under the Workflows heading and in the
-canvas's corner names them. The colors live in `frontend/src/workflows/nodeKinds.ts`.
-
-### Starting a workflow and the glossary
-
-**New Workflow** on the home page asks what to start from: an **empty workflow**, the **QC of
-FASTQ files** template (a Samplesheet with two samples of the nf-core test data, FastQC on each
-sample and one MultiQC report), or an editable copy of one of the built-in demos. A template's
-nf-core nodes are installed from the prompt the canvas shows for missing components. Templates
-live in `frontend/src/templates/`; the QC template is built from the pinned nf-core catalog by
-`frontend/src/test/examples/qcFastq.ts` (regenerate it with
-`UPDATE_EXAMPLES=1 npx vitest run src/test/examples`) and its Nextflow is linted in CI with
-the examples.
-
-Terms novices meet, such as process, channel, tuple, `meta`, samplesheet and container, have
-an ⓘ button where they appear: in the node menu's sections, the nf-core Library, the panels and
-the execution settings. Hovering, focusing or clicking it explains the term in a sentence or two,
-with a link to the **Glossary** page (`/glossary`, also linked from the home page), which lists
-every term with a search. The explanations live in `frontend/src/glossary/glossary.ts`.
-
-### Editing the examples
-
-The built-in examples are read-only. The first time you change one (move or delete a node,
-connect nodes, add one, edit a setting or the name), N-Wave asks whether to **Make a copy**.
-The copy is a workflow of your own that opens in place of the example, with your change
-already in it, and a notice names it; the example stays as it is. **Just look** keeps the
-example open unchanged, and nothing is copied.
-
-### Undo, copy and paste, and shortcuts
-
-Adding, deleting and moving nodes, connecting and disconnecting them, and changing node
-settings can be undone with **Ctrl+Z** (**⌘Z** on macOS) and redone with **Ctrl+Shift+Z**
-or **Ctrl+Y**, or with the undo and redo buttons next to the zoom controls. Typing in a
-field is one step once you pause. The history covers the open workflow until you leave it.
-
-**Ctrl+C**, **Ctrl+X** and **Ctrl+V** copy, cut and paste the selected nodes with their
-settings and the connections between them, also into another workflow in the same
-browser; **Ctrl+D** duplicates them. Pasted nodes land beside the originals, or where
-they were if that spot is free. Other shortcuts: **Ctrl+A** selects all nodes,
-**Delete** or **Backspace** deletes the selection, **Ctrl+S** saves, **Ctrl+Enter** runs,
-**F** fits the workflow into view, and **?** (or the keyboard button next to the zoom
-controls) lists them all. Shortcuts don't fire while you type in a field, where they keep
-their usual meaning. While a run locks the workflow, and on the read-only examples, nodes
-can be copied but the canvas doesn't change.
-
-### Which step is running, and what each node produced
-
-While a workflow runs, each node on the canvas shows its state under it: **Running** (with
-the number of tasks done, for a step that runs once per sample), **Results ready** or
-**Failed**. The Steps tab of the run panel lists the steps by their names on the canvas.
-Double-click a node and open its **Results** tab to see the files its tasks produced, with a
-preview of text files; the Display Output panel shows the real output of the last run above
-its browser preview.
-
-This comes from Nextflow's own log (`nextflow/.nextflow.log` in the run directory): it names
-every task in full when it is submitted and when it finishes, with its exit status and work
-directory. The console output can't be used for this, because Nextflow shortens long process
-names there. The backend serves the tasks at `GET /api/execute/runs/:id/tasks` and the files
-in a task's work directory at `GET /api/execute/runs/:id/tasks/:hash/files` and `/file?path=`
-(Nextflow's `.command.*` files and staged inputs are left out).
-
-### Node code and custom nodes
-
-Every node on the canvas has a **Code** tab in its panel. It shows, read-only, the Nextflow
-code that node adds to the generated script: its process (or, for nf-core nodes, the
-module's or subworkflow's `main.nf` and the `include` line), any `process { withName: ... }` configuration,
-and its lines in the `workflow` block.
-
-To change that code, use **Convert to custom node** on the Code tab. The node is replaced in
-place by a custom node holding a copy of its process (including settings such as nf-core
-`ext.args`), and connections to ports that still exist are kept. Custom nodes are edited with
-the custom node editor ("Edit custom node", or **Add node → Custom process** for a new one)
-and are stored by the backend, or in the browser in the online demo, so new steps don't need
-a code change to N-WAVE.
-
-### Node packs
-
-Custom nodes can be shared as **node packs**: versioned JSON files (`*.nwave-pack.json`)
-holding one or more nodes with their source, ports, settings, metadata and the nf-core
-modules and subworkflows they include. **Add node → Node packs** has three tabs:
-
-- **Export**: pick custom nodes, name and version the pack, and download it.
-- **Import**: load a pack from a file, a URL, or the community index. Every node is checked
-  against its source on import (process or workflow name, declared inputs and outputs,
-  settings), and errors are shown per node; nodes with errors are skipped. When a node id is
-  already installed you choose to replace it, keep both (the new one is renamed) or skip it.
-  nf-core components the nodes include are installed first.
-- **Installed**: the installed packs, with their nodes; removing a pack deletes its nodes.
-
-Imported nodes are stored like other custom nodes (backend, or browser storage in the demo),
-listed in the node menu under "Pack: &lt;name&gt;", and generate the same code as in the
-install they came from. The community index is a JSON file in a separate data repository
-(`VITE_NODE_PACK_INDEX_URL`), so contributing a node is a pull request there, not to N-WAVE.
-The format is described in [wiki/Node-Packs.md](wiki/Node-Packs.md).
-
-### Uploaded files
-
-Files uploaded to a File Input node reach the run's `inputs/` folder and exported projects
-byte for byte. Text files are kept as text, so filter, map and output previews can read them;
-anything else, such as gzipped FASTQ or BAM, is kept as base64 (`encoding: "base64"` on the
-file) and sent with the run request in `fileEncoding`, and the backend writes its bytes.
-Previews show such files as binary rather than as text. A run request may be up to 50 MB, so
-the uploads of one run can total about 37 MB (base64 adds a third); for larger data, use
-absolute paths or URLs in a samplesheet or Parameters node. Files up to 256 KB are saved
-with the workflow; larger ones are uploaded again after a reload.
-
-### Samplesheets
-
-Most nf-core modules take `[ meta, [ reads ] ]` tuples. The **Samplesheet** input node builds
-them from an nf-core-style CSV (`sample,fastq_1,fastq_2,…`; the rnaseq header is one click
-away, and the id and read columns can be mapped): each row becomes one sample with
-`meta.id`, `meta.single_end` and the other columns. Read paths are names of files uploaded
-to a File Input node, or absolute paths and URLs for local runs. The panel previews the
-parsed samples and flags problems (missing columns, files that aren't uploaded, sample ids
-with spaces, …). The CSV goes into `inputs/` for runs and exported projects.
-
-### Parameters and reference files
-
-The **Parameters** input node declares named parameters (text, number, true/false) and
-reference files such as a genome FASTA, GTF or a prebuilt index. Each becomes
-`params.<name>`, both in the script and in the exported `nextflow.config`, so it can be
-changed on the command line (`--fasta …`). Every reference file is an output that can be
-connected to any node input; it can be an uploaded file name, an absolute path or a URL
-(for example the nf-core test genome). nf-core inputs that take `[ meta, path ]` get a
-correctly shaped value channel. Node settings can use parameters as `${params.name}`, for
-example in a module's extra arguments; they are filled in when the task runs.
-
-### Channel operators
-
-Steps are often connected by channel logic rather than a plain edge: joining a BAM with
-its index by sample, mixing QC outputs for MultiQC, merging technical replicates. The
-**Channel Operator** node holds that Nextflow code. It starts from a template (join by
-sample, mix, map `[ meta, files ]`, branch, combine, group by sample id, collect) and can
-be edited freely: the code refers to the connected channels as `input.<port>`, assigns
-every `output.<port>`, and names helper variables `local.<name>`. Ports are configurable,
-the panel flags references to ports that don't exist, and the Code tab shows the
-generated statements.
-
-Generated scripts follow Nextflow's strict syntax: input channels are defined inside the
-`workflow` block and shared helpers are top-level functions, so `nextflow lint` accepts
-them. CI checks this on every pull request: the built-in examples and representative node
-combinations are exported and linted, as exported and as the backend runs them
-(`scripts/lint-generated-nextflow.sh`).
-
-### nf-core subworkflows
-
-The **nf-core Library** also lists the subworkflows from nf-core/modules (Subworkflows
-tab), such as `quantify_pseudo_alignment` or `bam_sort_stats_samtools`. A subworkflow node
-has an input port per channel it takes and a setting per value (an aligner name, a skip
-flag); its outputs are the channels it emits. Installing one brings in the modules and
-subworkflows it includes, at the catalog's pinned commit. Inputs left unconnected get an
-empty placeholder that nf-core reads as "no file", editable in the panel, and a **Process
-config** setting adds `withName` selectors for the processes inside. Details are in
-[scripts/README.md](scripts/README.md#subworkflows).
-
-### nf-core node outputs and settings
-
-nf-core modules don't save anything themselves (pipelines do that in their config), so each
-nf-core module or subworkflow node copies its outputs to `results/<node name>/`, the way
-nf-core pipelines lay out their results (`versions.yml` is left out). **Save outputs** in the
-node's panel turns this off. **Output prefix** sets `task.ext.prefix`; `${meta.id}` stands
-for the sample, as in `${meta.id}.filtered`. When a workflow uses nf-core components that
-aren't installed (an example, or a workflow from another install), a banner lists them with
-an **Install them** button. After a run, the run panel links the MultiQC report and the
-run's other result files.
-
-### RNA-seq (STAR + Salmon) example
-
-The built-in **Demo 3 - nf-core/rnaseq rebuilt from nodes** example rebuilds the default nf-core/rnaseq route
-from library nodes only (nf-core modules, the `bam_sort_stats_samtools` subworkflow, a
-channel operator, a samplesheet and a parameters node), so every step can be inspected and
-edited:
-
-- genome preparation: unzip and filter the GTF, transcript FASTA (gffread), STAR and Salmon
-  indexes;
-- FastQC and Trim Galore;
-- STAR alignment with the options nf-core/rnaseq 3.27.0 uses, Salmon quantification of the
-  transcriptome alignments;
-- SAMtools sort, index and statistics;
-- MultiQC over all reports, mixed by a channel operator.
-
-It uses four samples of the pipeline's test data, with notes on the canvas that explain each
-part and what the full pipeline adds. Opening it offers to install its 11 nf-core components.
-In the demo it opens, shows every node's code and exports; on the Docker install it runs
-(a few minutes) and writes Salmon quantifications to `results/salmon_quantification/` and the
-report to `results/multiqc/multiqc_report.html`. See
-[wiki/RNA-seq-STAR-Salmon-Example.md](wiki/RNA-seq-STAR-Salmon-Example.md).
-
-### Running a whole nf-core pipeline
-
-The **nf-core Pipeline** node runs a complete, unmodified nf-core pipeline (nf-core/rnaseq
-3.27.0 is offered; any other pipeline and version can be typed in). Its settings are built
-from the pipeline's `nextflow_schema.json`: grouped parameters with their types, defaults,
-choices, help text and required fields, filterable by name. A Samplesheet node connects to
-`--input` (its CSV is rewritten so read paths point into `inputs/`), and any file parameter
-can become an input port for a Parameters or File Input node. **Use the pipeline's test
-profile** runs it on the pipeline's own small test data.
-
-Pipelines declare the oldest Nextflow they accept (`manifest.nextflowVersion` in their
-`nextflow.config`; nf-core/rnaseq 3.27.0 needs 25.10.4 for its nf-schema plugin). When the
-selected Nextflow is older, the run uses the pipeline's minimum instead and says so in its
-first lines: the `nextflow/nextflow` image of that version in Docker mode, or `NXF_VER` for a
-local Nextflow.
-
-In Docker mode, Nextflow keeps downloaded pipelines in `results/.nextflow-assets`
-(`NXF_ASSETS`) rather than inside its own container: steps that call a pipeline's `bin/`
-scripts (nf-core/rnaseq's DESeq2 QC, for example) run in sibling containers that only see
-paths on the host.
-
-A workflow with a Pipeline node runs that pipeline instead of a generated script, so it
-holds the Pipeline node and the input nodes feeding it. Running it executes
-
-```bash
-nextflow run nf-core/<pipeline> -r <version> -profile [test,]docker -params-file params.json --outdir results
-```
-
-in the run directory, with the run's CPU and memory limits applied as
-`process.resourceLimits` (see [Resource limits and long runs](#resource-limits-and-long-runs)). After a run, the node's panel links the MultiQC
-report and Nextflow's execution report (served from the run's `results/`). Export Project
-writes `params.json`, the inputs, a `run.sh` and a README; the script download is a single
-launch script. The pipeline and its containers are downloaded by Nextflow on the first run.
-
-The built-in **Demo 2 - nf-core/rnaseq pipeline** is a ready-made Pipeline workflow: nf-core/rnaseq
-3.27.0 (STAR + Salmon) on the pipeline's small test data, with a Samplesheet node, the
-reference genome in a Parameters node, and **Note** nodes on the canvas that explain each
-input, how to swap in your own data and what resources it needs (4 CPUs, 6–8 GB of memory).
-It opens and exports in the browser demo and runs on the Docker install; after the run, the
-Pipeline node's panel links the MultiQC report. The wiki page
-[Running the nf-core/rnaseq example](wiki/Running-the-nf-core-rnaseq-Example.md) walks
-through it. Note nodes can be added to any workflow (Add node → Notes); they have no ports
-and add nothing to the generated code.
-
-### Exporting a runnable project
-
-**Export Project** (in the bottom bar, next to the script download) downloads a zip that
-runs on any machine with Nextflow and Docker, without N-WAVE:
-
-```
-<workflow>/
-├─ main.nf            # the generated workflow
-├─ nextflow.config    # module settings, a `docker` profile and the workflow's run profiles
-├─ modules/nf-core/   # the nf-core modules it uses, at the catalog's pinned commit
-├─ subworkflows/nf-core/  # the nf-core subworkflows it uses, if any
-├─ inputs/            # the File Input files
-└─ README.md          # how to run it and which inputs it expects
-```
-
-```bash
-unzip <workflow>.zip && cd <workflow>
-nextflow run main.nf -profile docker
-```
-
-This works in the online demo too: module and subworkflow files are fetched from GitHub in
-the browser, so a workflow can be built in the demo and run locally.
-
-nf-core modules are installed from the **nf-core Library**. How their inputs become ports
-and settings, and how to fix a module the automatic mapping gets wrong, is described in
-[scripts/README.md](scripts/README.md).
-
-To add one, open **Add node → nf-core Library**, search for it (e.g. `fastqc` or
-`star/align`) and install it; it then appears in the node list like any other node. Every
-nf-core node is built automatically from its module, FastQC and Trimmomatic included, and the
-library's labels say how well that worked ("What do the labels mean?" explains them). Its inputs and outputs are
-the module's own channels, so a module like STAR alignment comes with many ports. An nf-core
-node's Settings tab explains them: it shows the module's description, a link to its page on
-nf-co.re and what each input and output holds, read from the module's `meta.yml`. A node
-whose module isn't installed yet still shows this, and its Code tab shows the module's code.
+N-WAVE is a visual editor for [Nextflow](https://www.nextflow.io/) workflows. You connect
+nodes on a canvas (file inputs and samplesheets, [nf-core](https://nf-co.re/) tools, operators,
+your own processes, outputs), and N-WAVE writes the Nextflow script, runs it and shows what
+each step produced.
+
+![The N-WAVE canvas with Demo 1: a File Input feeding two Filters, a Map and a Merge into a Display Output](.github/assets/screenshot-canvas.png)
+
+- **Try it:** the [browser demo](https://hcistudio.github.io/N-WAVE/) needs no installation.
+  It builds, edits and exports workflows; running them needs an installation.
+- **Learn it:** the [wiki](https://github.com/HCIstudio/N-WAVE/wiki) starts with
+  [your first workflow in 10 minutes](https://github.com/HCIstudio/N-WAVE/wiki/First-Workflow).
+  The **Glossary** in N-WAVE explains the terms.
+
+## What it does
+
+- **Build** workflows from nodes, with checks while you build, undo, copy and paste, and
+  templates ([Building workflows](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows),
+  [Node reference](https://github.com/HCIstudio/N-WAVE/wiki/Nodes)).
+- **Use nf-core**: over 2,000 modules, the subworkflows, and whole pipelines such as
+  nf-core/rnaseq ([nf-core library](https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library)).
+- **Add your own steps** as custom nodes, and share them as node packs
+  ([Custom nodes](https://github.com/HCIstudio/N-WAVE/wiki/Custom-Nodes),
+  [Node packs](https://github.com/HCIstudio/N-WAVE/wiki/Node-Packs)).
+- **Run** them with Docker, follow each step, resume failed runs, and run on a SLURM cluster
+  ([Running workflows](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows),
+  [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)).
+- **Export** a runnable Nextflow project that works without N-WAVE
+  ([Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects)).
+- **Understand failures**: common errors are explained in plain language
+  ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting)).
 
 ## Running N-WAVE
 
-### With published images (Docker)
+### With Docker
 
-Grab `latest.yml` from the [latest release](https://github.com/HCIstudio/N-WAVE/releases) and
-start the stack:
+You need Docker running. Download `latest.yml` from the
+[latest release](https://github.com/HCIstudio/N-WAVE/releases/latest), then:
 
 ```bash
 docker compose -f latest.yml up -d
 ```
 
-Then open http://localhost:5173. Stop with `docker compose -f latest.yml down`.
-
-- Frontend (UI): http://localhost:5173
-- Backend (API): http://localhost:5001
-
-Workflow outputs are written to `./results` on the host. Requires Docker with the daemon
-running. The first execution pulls the `nextflow/nextflow` image, so it may take a moment.
+Open <http://localhost:5173> (the API is on <http://localhost:5001>). Run results go to
+`./results`. Stop with `docker compose -f latest.yml down`. Updating, data and memory are
+covered in [Installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation).
 
 ### Who can reach N-WAVE
 
-By default only the computer N-WAVE runs on: the Docker setups publish their ports on
-`127.0.0.1`, and the backend listens on `127.0.0.1` when run from source.
+Only this computer: the ports are bound to `127.0.0.1`, and the backend listens on
+`127.0.0.1` when run from source. N-WAVE has no login, and it starts containers through the
+host's Docker, so anyone who can reach it can run code on this computer. To open it to a
+trusted network anyway, set `NWAVE_BIND_ADDRESS=0.0.0.0` and add the address people open to
+`CORS_ORIGIN` (see [Security](#security)).
 
-Keep it that way unless you trust everyone on your network. N-WAVE has no login yet, and the
-backend starts containers through the host's Docker socket, so anyone who can reach it can
-run code on that machine with root rights. To open it up anyway (for example on a lab
-network behind a firewall), set the address to bind to and allow the address people will
-open in their browser:
-
-```bash
-NWAVE_BIND_ADDRESS=0.0.0.0 docker compose -f latest.yml up -d
-```
-
-and add that address (e.g. `http://192.168.1.20:5173`) to `CORS_ORIGIN` in the compose file.
-A login and sandboxed runs for shared installs are planned
-([#27](https://github.com/HCIstudio/N-WAVE/issues/27)).
-
-### From source (Docker Compose)
-
-Clone the repo and build the images locally:
+### From source
 
 ```bash
-docker compose up -d --build
+docker compose up -d --build   # build and run the full stack, plus MongoDB on 127.0.0.1:27017
 ```
 
-Same endpoints as above, plus MongoDB on `mongodb://localhost:27017`. Stop and remove volumes
-with `docker compose down -v`.
+For development with hot reload, run MongoDB, the backend (`cd backend && pnpm install &&
+pnpm dev`, port 5001) and the frontend (`cd frontend && pnpm install && pnpm dev`, port
+5173). [CONTRIBUTING.md](CONTRIBUTING.md) has the details. `VITE_DEMO_MODE=true pnpm build`
+in `frontend/` builds the browser demo.
 
-### Local development
+## Architecture
 
-Run the dev servers directly for fast iteration. You need MongoDB (and Docker, if you want to
-execute workflows).
-
-MongoDB (easiest via Docker):
-
-```bash
-docker run -d --name nwave-mongo -p 127.0.0.1:27017:27017 mongo:7
+```
+ browser ──► frontend (React, nginx) :5173 ──/api──► backend (Express) :5001 ──► MongoDB
+             canvas, script generator                 │  saved workflows
+                                                      └──► Nextflow (nextflow/nextflow image,
+                                                           or a local binary) ──► steps in Docker
 ```
 
-Backend (`http://localhost:5001`, hot-reloads via `tsx watch`):
+- The **frontend** (`frontend/`) holds the canvas and turns the graph into a Nextflow script in
+  the browser. It talks to the backend only through `frontend/src/api.ts`; the browser demo
+  swaps that client for in-browser storage (`frontend/src/demo/`).
+- The **backend** (`backend/`) stores workflows in MongoDB, installs nf-core components, runs
+  Nextflow and serves run logs and results under `/api` ([backend/README.md](backend/README.md)).
 
-```bash
-cd backend
-pnpm install
-# MONGODB_URI defaults to mongodb://localhost:27017/nwave
-pnpm dev
-```
+### How workflow execution works
 
-Frontend (`http://localhost:5173`, Vite dev server, proxies `/api` to `localhost:5001`):
+The backend doesn't bundle Nextflow. `NEXTFLOW_EXECUTION_MODE` decides how it runs:
 
-```bash
-cd frontend
-pnpm install
-pnpm dev
-```
+| Value | Behavior |
+| --- | --- |
+| `docker` | Run Nextflow in the official `nextflow/nextflow` image on the host's Docker, sharing files with `--volumes-from`. Needs only Docker; the Docker setups use this. |
+| `local` | Use a `nextflow` binary on the host (needed for SLURM runs). |
+| `auto` (default) | A local binary if there is one, else the container. |
 
-To build the browser-only demo locally:
-
-```bash
-cd frontend
-VITE_DEMO_MODE=true pnpm build && pnpm preview
-```
+For this, the Docker setups mount the host's Docker socket into the backend and give it a fixed
+`container_name`. The N-WAVE images are built for `linux/amd64` and `linux/arm64`. Many
+`nextflow/nextflow` tags exist only for `linux/amd64`, so the runner uses that platform by
+default (emulated on ARM; `NEXTFLOW_PLATFORM=native` uses the host's). The images' old docker
+CLI is told the engine's minimum API version, since Docker Engine 29 refuses it otherwise
+(`DOCKER_API_VERSION` overrides it).
 
 ## Configuration
 
 ### Backend environment variables
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
+| --- | --- | --- |
 | `PORT` | `5001` | API port. |
-| `HOST` | `127.0.0.1` | Address the API listens on; the Docker image sets `0.0.0.0` (see [Who can reach N-WAVE](#who-can-reach-n-wave)). |
+| `HOST` | `127.0.0.1` | Address the API listens on; the Docker image sets `0.0.0.0`. |
 | `MONGODB_URI` | `mongodb://localhost:27017/nwave` | MongoDB connection string. |
-| `CORS_ORIGIN` | `http://localhost:5173,http://localhost:8080` | Comma-separated allowed origins. |
-| `NEXTFLOW_EXECUTION_MODE` | `auto` | `docker` \| `local` \| `auto` (see [execution](#how-workflow-execution-works)). |
-| `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform for the Nextflow runner container; `native` uses the host architecture. |
-| `BACKEND_CONTAINER_NAME` | `nwave-backend` | Container name the runner attaches volumes from. |
-| `NWAVE_MAX_CPUS` | all host CPUs | Most CPU cores a run may use; higher requests are lowered to this. |
-| `NWAVE_MAX_MEMORY` | 80% of host memory | Most memory a run may use, e.g. `24 GB`; higher requests are lowered to this. |
-| `NWAVE_EXECUTION_TIMEOUT` | `1440` | Time limit in minutes for runs that set none; `0` means no limit. |
+| `CORS_ORIGIN` | `http://localhost:5173,http://localhost:8080` | Comma-separated origins allowed to call the API. |
+| `NEXTFLOW_EXECUTION_MODE` | `auto` | `docker`, `local` or `auto` (see [execution](#how-workflow-execution-works)). |
+| `NEXTFLOW_PLATFORM` | `linux/amd64` | Platform of the Nextflow runner container; `native` uses the host's. |
+| `BACKEND_CONTAINER_NAME` | `nwave-backend` | Container the runner shares volumes with. |
+| `DOCKER_API_VERSION` | the engine's minimum | Docker API version the runner's docker CLI uses. |
+| `NWAVE_MAX_CPUS` | all CPUs | Most CPU cores a run may use. |
+| `NWAVE_MAX_MEMORY` | 80% of memory | Most memory a run may use, e.g. `24 GB`. |
+| `NWAVE_EXECUTION_TIMEOUT` | `1440` | Time limit in minutes for runs that set none; `0` for none. |
+| `NWAVE_DATA_DIR` | `results/.nwave` | Installed nf-core components and the run history. |
+| `NWAVE_CUSTOM_NODE_DIR` | `results/.nwave/custom-nodes` in `latest.yml` | Where custom nodes and node packs are stored. |
+
+The Docker setups also read `NWAVE_BIND_ADDRESS` (default `127.0.0.1`), the address their
+ports are published on.
 
 ### Frontend build variables
 
 | Variable | Default | Purpose |
-|----------|---------|---------|
-| `VITE_DEMO_MODE` | `false` | `true` builds the backend-less demo (in-browser storage). |
-| `VITE_BASE_PATH` | `/` | Base path for sub-path hosting (for example `/N-WAVE/` on GitHub Pages). |
+| --- | --- | --- |
+| `VITE_DEMO_MODE` | `false` | `true` builds the browser demo (in-browser storage, no runs). |
+| `VITE_BASE_PATH` | `/` | Base path for sub-path hosting, e.g. `/N-WAVE/` on GitHub Pages. |
 | `VITE_API_BASE_URL` | `/api` | Where the frontend sends API requests. |
-| `VITE_NODE_PACK_INDEX_URL` | `https://raw.githubusercontent.com/HCIstudio/N-WAVE-node-packs/main/index.json` | The community node pack index listed under **Node packs → Import**. |
+| `VITE_NODE_PACK_INDEX_URL` | the [N-WAVE-node-packs](https://github.com/HCIstudio/N-WAVE-node-packs) index | Community index under **Node packs → Import**. |
 
-Copy [`.env.example`](.env.example) as a starting point for the from-source Docker build.
+[`.env.example`](.env.example) is a starting point for the from-source Docker build.
+
+## Security
+
+N-WAVE is built for **local, single-user use**: your own computer or a trusted lab workstation.
+
+- **No login.** Anyone who can reach the backend can read, change and delete all workflows
+  and start runs.
+- **Runs are code execution by design.** A workflow runs arbitrary Nextflow (and so shell)
+  code, and the backend has the host's Docker socket, which equals root on the host.
+- **Guards, not a sandbox.** Request bodies are validated with size limits, input file
+  names can't leave the run folder, and values on the Nextflow command line are checked and
+  quoted. These stop mistakes, not attacks.
+
+So keep the ports on `localhost` or a trusted network, never on the public internet, and only
+run workflows you trust. What a shared installation would need (logins, per-user data,
+sandboxed runs) is [#27](https://github.com/HCIstudio/N-WAVE/issues/27). Please report
+vulnerabilities privately to the maintainers, not in a public issue.
 
 ## Repository layout
 
 ```
 N-WAVE/
-├─ backend/                 # Express API + Nextflow execution
-│  └─ src/
-│     ├─ config/            # database and server configuration
-│     ├─ controllers/       # workflow CRUD, execution
-│     ├─ execution/         # Nextflow script normalization + command building
-│     ├─ validation/        # zod request-body schemas
-│     ├─ routes/            # /api/workflows, /api/execute, /api/nfcore, /api/custom-nodes
-│     ├─ models/            # Mongoose models
-│     └─ workflows/         # built-in demo and rnaseq example, import & materialize logic
-├─ scripts/                 # nf-core catalog generator, input parser and module docs
-├─ frontend/                # React + Vite SPA
-│  └─ src/
-│     ├─ components/        # canvas, nodes, panels, dialogs
-│     ├─ generators/        # graph → Nextflow script
-│     ├─ demo/              # in-browser store for the demo build
-│     └─ pages/             # HomePage (library), WorkflowPage (editor)
-├─ docker-compose.yml       # from-source full stack
-├─ latest.yml               # published-image full stack (shipped in releases)
-└─ .github/workflows/       # CI, image publish, release, Pages deploy
+├─ frontend/        # React app: canvas, nodes, panels, script generator, browser demo (frontend/README.md)
+├─ backend/         # Express API: workflows, nf-core installs, runs (backend/README.md)
+├─ scripts/         # nf-core catalog generator and parsers, Nextflow lint (scripts/README.md)
+├─ wiki/            # source of the wiki pages (wiki/README.md)
+├─ docker-compose.yml  # full stack built from source
+├─ latest.yml       # full stack from the published images (shipped with each release)
+└─ .github/workflows/  # CI, releases, demo deploy
 ```
-
-See [`backend/README.md`](backend/README.md) and [`frontend/README.md`](frontend/README.md)
-for package-level notes.
 
 ## CI and releases
 
-| Workflow | Trigger | What it does |
-|----------|---------|--------------|
-| `test.yml` | pull request / push to `main` | The merge gate: lint, unit tests, typecheck, and build for both packages (all blocking), plus Playwright E2E tests of the canvas flow (non-blocking for now). |
-| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, builds and pushes multi-arch (`linux/amd64`, `linux/arm64`) images to Docker Hub (`hcistudio/nwave-*:<version>` + `:latest`), writes the new version into `package.json` (committed back to `main`), and creates a GitHub Release (tag `v<version>`) with `latest.yml`. |
-
-`main` is protected: changes land only via pull request, and a PR can be merged only once the
-Test workflow passes.
-
-Versioning is automatic for patch releases. On every merge to `main`, `release.yml` steps the
-patch version (from the latest `v*` tag) and applies that number everywhere in the same run:
-the Pages demo footer, the Docker images, and both `package.json` files.
-
-To release a new minor or major version (for example when closing a milestone), set it by hand
-in the pull request: change `"version"` in both `frontend/package.json` and
-`backend/package.json` to the new number (e.g. `1.2.0`). When that version is newer than the
-latest tag, the merge releases exactly that version; later merges continue with patch steps
-from it (`1.2.1`, ...). The two files must match, or the release fails.
-
-One-time setup — `RELEASE_TOKEN`: the version-bump commit is pushed back to `main`, which is
-pull-request-only, so CI needs to push as an actor that bypasses the ruleset (repo/org admins
-do). Create a fine-grained Personal Access Token owned by a repo admin, scoped to this
-repository with Contents: Read and write, and add it as the repository Actions secret
-`RELEASE_TOKEN`. A PAT push re-triggers the workflow, so the `release.yml` `version` job
-ignores its own `chore(release):` commits to avoid a release loop. (The GitHub Actions app
-itself cannot be added to a repository ruleset's bypass list, which is why a PAT is used.)
-
-## Security
-
-N-WAVE is built for **local, single-user use** (your own machine or a trusted lab
-workstation). Keep that in mind before exposing it on a network:
-
-- **No authentication.** Every API endpoint is public; anyone who can reach the backend can
-  read, change and delete all workflows.
-- **Execution is code execution by design.** Running a workflow executes arbitrary Nextflow
-  (and therefore shell) code. The backend also has the host Docker socket mounted, which is
-  equivalent to root access on the host.
-- **The backend writes where it is told.** Execution settings choose the output directory on
-  the host.
-
-What N-WAVE does today: request bodies are schema-validated with size limits, input file
-names cannot escape the run directory, and values placed into the Nextflow command line are
-validated and shell-quoted. Those checks keep honest mistakes from doing damage; they are not
-a sandbox.
-
-Therefore: bind the ports to `localhost` (or a trusted network), don't put N-WAVE on the
-public internet, and only run workflows you trust. Authentication, per-user isolation and
-execution sandboxing for shared deployments are tracked in
-[#27](https://github.com/HCIstudio/N-WAVE/issues/27). Please report vulnerabilities
-privately to the maintainers rather than in a public issue.
+Every pull request runs the `Test` workflow (lint, unit tests with coverage floors,
+typecheck, build, Nextflow lint of the generated scripts, end-to-end tests), and `main` only
+accepts green pull requests. Every merge to `main` is released automatically: version bump,
+Docker images, the demo site and a GitHub Release with `latest.yml`. Details, and how to set a
+new minor or major version, are in [CONTRIBUTING.md](CONTRIBUTING.md#releases).
 
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the checks every pull
-request must pass, and how releases work.
+request must pass, and how releases work. Bugs and ideas go to the
+[issues](https://github.com/HCIstudio/N-WAVE/issues).
 
 ## License
 
