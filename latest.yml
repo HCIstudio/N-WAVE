@@ -47,6 +47,9 @@ services:
       # this container's volumes (--volumes-from nwave-backend).
       BACKEND_CONTAINER_NAME: nwave-backend
       CORS_ORIGIN: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080,http://localhost
+      # Custom nodes and node packs, kept in ./results/.nwave on the host with
+      # the installed nf-core modules, so they survive image updates.
+      NWAVE_CUSTOM_NODE_DIR: /app/results/.nwave/custom-nodes
     ports:
       - "${NWAVE_BIND_ADDRESS:-127.0.0.1}:5001:5001"
     volumes:

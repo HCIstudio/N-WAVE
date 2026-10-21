@@ -4,7 +4,7 @@ change to N-WAVE itself is needed.
 
 ### Sharing your nodes
 1. Make the nodes: **Add node → Custom process**, or **Convert to custom node** on any
-   node's Code tab.
+   node's Code tab ([Custom nodes](https://github.com/HCIstudio/N-WAVE/wiki/Custom-Nodes)).
 2. Open **Add node → Node packs → Export**.
 3. Tick the nodes, give the pack a name and a version (and optionally a description and an
    author), and click **Download pack**. You get `<pack-id>-<version>.nwave-pack.json`.
@@ -31,8 +31,8 @@ The preview lists every node with its checks:
 
 Click **Import**. nf-core modules and subworkflows that the nodes include are installed
 first, then the nodes are saved:
-- In the Docker install, they go to the backend (`NWAVE_CUSTOM_NODE_DIR`), so every user of
-  the install sees them.
+- In an installation, they go to the server (`NWAVE_CUSTOM_NODE_DIR`; with the Docker setup,
+  `results/.nwave/custom-nodes`), so everyone using it sees them.
 - In the demo, they go to this browser.
 
 They appear in the node menu under **Pack: &lt;pack name&gt;**. They generate the same

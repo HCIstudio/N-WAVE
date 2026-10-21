@@ -23,7 +23,7 @@ describe("explainFailure", () => {
     expect(result?.process).toBe(process);
     expect(result?.explanation).toMatch(explanation);
     expect(result?.fix).toBeTruthy();
-    expect(result?.docs).toMatch(/^https:\/\/github\.com\/HCIstudio\/N-WAVE#[a-z-]+$/);
+    expect(result?.docs).toMatch(/^https:\/\/github\.com\/HCIstudio\/N-WAVE\/wiki\/Troubleshooting#[a-z-]+$/);
   });
 
   it("says when the program was missing from the step's container", () => {
@@ -49,7 +49,7 @@ describe("explainFailure", () => {
 
 describe("the troubleshooting docs", () => {
   // GitHub's anchor for a heading: lower case, punctuation dropped, spaces as dashes.
-  const anchors = readFileSync(join(__dirname, "../../../README.md"), "utf8")
+  const anchors = readFileSync(join(__dirname, "../../../wiki/Troubleshooting.md"), "utf8")
     .split("\n")
     .filter((line) => /^#{2,4} /.test(line))
     .map((line) =>

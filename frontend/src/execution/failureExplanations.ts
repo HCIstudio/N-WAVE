@@ -3,6 +3,7 @@
 // are matched against what Nextflow prints (and the backend's own notes),
 // first match wins, so more specific ones come first.
 
+import { wikiUrl } from "../docs/links";
 export type FailureKind =
   | "resource-limits"
   | "out-of-memory"
@@ -27,7 +28,8 @@ export interface FailureExplanation {
   evidence?: string;
 }
 
-const DOCS = "https://github.com/HCIstudio/N-WAVE#";
+/** The wiki's troubleshooting page, where each kind of failure has a section. */
+const DOCS = `${wikiUrl({ page: "Troubleshooting" })}#`;
 
 interface Pattern {
   kind: FailureKind;
@@ -44,7 +46,7 @@ const PATTERNS: Pattern[] = [
   {
     kind: "resource-limits",
     title: "The run hit its resource limits",
-    docs: "resource-limits-and-long-runs",
+    docs: "the-run-hit-its-resource-limits",
     // The backend's diagnosis, with the limits the run had.
     find: (log) => log.match(/^N-WAVE resource problem: (.+)$/m)?.[1]?.trim() ?? null,
     explain: (evidence) => ({

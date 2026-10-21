@@ -23,9 +23,11 @@ pnpm install
 pnpm dev
 ```
 
-To work on the frontend without a backend, build the in-browser demo:
+To work on the frontend without a backend, run it as the browser demo:
 `VITE_DEMO_MODE=true pnpm dev`. The [root README](README.md#running-n-wave) covers the
-Docker setups and all configuration variables.
+Docker setups and all [configuration variables](README.md#configuration); the
+[wiki](https://github.com/HCIstudio/N-WAVE/wiki) describes the app for users. Package notes:
+[backend](backend/README.md), [frontend](frontend/README.md), [scripts](scripts/README.md).
 
 ## Checks (the merge gate)
 
@@ -42,10 +44,11 @@ CI runs `pnpm test:coverage`. In `frontend/` it fails when line coverage drops b
 thresholds in `vitest.config.ts`: a floor for all code, and 80% for script generation
 (`src/generators/`) and the `.nf` importer. New code needs tests to keep the floor.
 
-The nf-core catalog parser has its own tests (run from the repository root):
+The scripts have their own tests, including one that checks the links in the README and the
+wiki pages (run from the repository root):
 
 ```bash
-node --test scripts/nfcoreModuleParser.test.mjs
+node --test scripts/*.test.mjs
 ```
 
 The Nextflow N-WAVE generates is checked with `nextflow lint`. The built-in examples and a set
@@ -84,6 +87,10 @@ Guidelines:
   `console.error` for messages that should stay.
 - **Validate API input.** New or changed request bodies get a zod schema in
   `backend/src/validation/schemas.ts`.
+- **Update the docs with the change.** User-facing behaviour is described in the wiki: edit its
+  page in [`wiki/`](wiki/README.md) in the same pull request (the Wiki workflow publishes it
+  after the merge). Configuration belongs in the [README](README.md#configuration), development notes in
+  the package READMEs. Keep pages brief, and link instead of repeating.
 
 ## Branches, pull requests and releases
 
@@ -91,10 +98,29 @@ Guidelines:
 - Branch from `main` with a short descriptive name (`fix/canvas-crash`, `feat/arm-images`).
 - Keep pull requests focused, describe what changed and why, and link the issue
   (`Closes #123`). The pull request template has a short checklist.
-- **Don't bump patch versions.** Every merge to `main` is released automatically by
-  `release.yml` (version, Docker images, demo site and GitHub Release). Only a new minor or
-  major version is set by hand, in both `package.json` files. See
-  [CI and releases](README.md#ci-and-releases).
+- **Don't bump patch versions.** Every merge to `main` is released automatically (see
+  [Releases](#releases)).
+
+## Releases
+
+| Workflow | Trigger | What it does |
+| --- | --- | --- |
+| `test.yml` | pull request, push to `main` | The merge gate: lint, unit tests with coverage, typecheck and build for both packages, the script tests, Nextflow lint of the generated scripts, and Playwright end-to-end tests (not blocking yet). |
+| `wiki.yml` | push to `main` that changes `wiki/` | Publishes the `wiki/` pages to the GitHub wiki (`scripts/publish-wiki.sh`). |
+| `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, pushes multi-arch images (`linux/amd64`, `linux/arm64`) to Docker Hub as `hcistudio/nwave-*:<version>` and `:latest`, commits the version to both `package.json` files, and creates a GitHub Release (`v<version>`) with `latest.yml`. |
+
+Patch versions are automatic: each merge steps the patch version from the latest `v*` tag. To
+release a new minor or major version (for example when closing a milestone), set `"version"`
+in both `frontend/package.json` and `backend/package.json` to it (e.g. `1.4.0`) in the pull
+request. When it is newer than the latest tag, the merge releases exactly that version, and
+later merges continue from it. The two files must match, or the release fails.
+
+**One-time setup, `RELEASE_TOKEN`:** the version commit is pushed back to the protected `main`,
+so CI pushes as an actor that bypasses the ruleset. Create a fine-grained personal access token
+owned by a repository admin, for this repository with *Contents: Read and write*, and add it
+as the Actions secret `RELEASE_TOKEN`. (The GitHub Actions app can't be added to a ruleset's
+bypass list.) `release.yml` ignores its own `chore(release):` commits, so the push doesn't
+start a release loop.
 
 ## Reporting bugs and requesting features
 

@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import PageLayout from "../components/layout/PageLayout";
 import SearchInput from "../components/common/forms/SearchInput";
 import { GLOSSARY, glossaryEntry } from "../glossary/glossary";
+import { README_URL, WIKI_PAGES, WIKI_URL, wikiUrl } from "../docs/links";
 
 /** Every term N-WAVE explains, on one page. */
 const GlossaryPage: React.FC = () => {
@@ -35,6 +36,35 @@ const GlossaryPage: React.FC = () => {
           The terms N-WAVE uses, from Nextflow, nf-core and sequencing, in a sentence or two. The{" "}
           <span className="whitespace-nowrap">ⓘ buttons</span> next to them in the app show the same explanations.
         </p>
+        <nav aria-label="More help" className="mt-3 text-sm text-text-light">
+          More help:{" "}
+          <a href={WIKI_URL} target="_blank" rel="noreferrer" className="text-nextflow-green hover:underline">
+            the wiki's guides
+          </a>
+          {", starting with "}
+          <a
+            href={wikiUrl({ page: "First-Workflow" })}
+            target="_blank"
+            rel="noreferrer"
+            className="text-nextflow-green hover:underline"
+          >
+            {WIKI_PAGES["First-Workflow"].toLowerCase()}
+          </a>
+          {"; "}
+          <a
+            href={wikiUrl({ page: "Troubleshooting" })}
+            target="_blank"
+            rel="noreferrer"
+            className="text-nextflow-green hover:underline"
+          >
+            troubleshooting
+          </a>
+          {" for failed runs; and the "}
+          <a href={README_URL} target="_blank" rel="noreferrer" className="text-nextflow-green hover:underline">
+            README
+          </a>{" "}
+          for installation and settings.
+        </nav>
         <div className="mt-6">
           <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search terms..." />
         </div>
@@ -50,6 +80,19 @@ const GlossaryPage: React.FC = () => {
               >
                 <dt className="font-semibold text-nextflow-green">{entry.term}</dt>
                 <dd className="mt-1 text-sm leading-relaxed text-text">{entry.definition}</dd>
+                {entry.docs && (
+                  <dd className="mt-2 text-xs text-text-light">
+                    Guide:{" "}
+                    <a
+                      href={wikiUrl(entry.docs)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-nextflow-green hover:underline"
+                    >
+                      {WIKI_PAGES[entry.docs.page]}
+                    </a>
+                  </dd>
+                )}
                 {entry.related && entry.related.length > 0 && (
                   <dd className="mt-2 text-xs text-text-light">
                     See also:{" "}

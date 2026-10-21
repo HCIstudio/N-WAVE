@@ -2,6 +2,7 @@ import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
+import { WIKI_PAGES, wikiUrl } from "../../../docs/links";
 import { Info } from "lucide-react";
 import { glossaryEntry, type GlossaryId } from "../../../glossary/glossary";
 
@@ -117,15 +118,29 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
           >
             <p className="font-semibold text-nextflow-green">{entry.term}</p>
             <p className="mt-1 leading-relaxed">{entry.definition}</p>
-            <Link
-              to={`/glossary#${entry.id}`}
-              target="_blank"
-              rel="noreferrer"
-              onBlur={hideSoon}
-              className="mt-2 inline-block text-nextflow-green underline-offset-2 hover:underline"
-            >
-              All terms in the glossary
-            </Link>
+            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
+              <Link
+                to={`/glossary#${entry.id}`}
+                target="_blank"
+                rel="noreferrer"
+                // The card closes when focus leaves its last link.
+                onBlur={entry.docs ? undefined : hideSoon}
+                className="text-nextflow-green underline-offset-2 hover:underline"
+              >
+                All terms in the glossary
+              </Link>
+              {entry.docs && (
+                <a
+                  href={wikiUrl(entry.docs)}
+                  target="_blank"
+                  rel="noreferrer"
+                  onBlur={hideSoon}
+                  className="text-nextflow-green underline-offset-2 hover:underline"
+                >
+                  Guide: {WIKI_PAGES[entry.docs.page]}
+                </a>
+              )}
+            </p>
           </div>,
           document.body,
         )}

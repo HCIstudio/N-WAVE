@@ -27,6 +27,9 @@ describe("Term", () => {
     expect(screen.getByRole("link", { name: "All terms in the glossary" }).getAttribute("href")).toBe(
       "/glossary#tuple",
     );
+    expect(screen.getByRole("link", { name: "Guide: nf-core library" }).getAttribute("href")).toBe(
+      "https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library#using-a-module",
+    );
     expect(button.getAttribute("aria-expanded")).toBe("true");
     expect(button.getAttribute("aria-controls")).toBe(card.id);
   });

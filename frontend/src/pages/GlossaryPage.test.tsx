@@ -26,7 +26,22 @@ describe("GlossaryPage", () => {
     expect(within(meta).getByRole("link", { name: "Tuple" }).getAttribute("href")).toBe("#tuple");
   });
 
-  it("filters the terms by a search", async () => {
+  it("links each term to its guide in the wiki, and the page to the other docs", () => {
+    setup();
+    const meta = document.getElementById("meta") as HTMLElement;
+    expect(within(meta).getByRole("link", { name: "nf-core library" }).getAttribute("href")).toBe(
+      "https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library#using-a-module",
+    );
+    const help = screen.getByRole("navigation", { name: "More help" });
+    expect(within(help).getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "https://github.com/HCIstudio/N-WAVE/wiki",
+      "https://github.com/HCIstudio/N-WAVE/wiki/First-Workflow",
+      "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting",
+      "https://github.com/HCIstudio/N-WAVE#readme",
+    ]);
+  });
+
+    it("filters the terms by a search", async () => {
     const { user } = setup();
     await user.type(screen.getByPlaceholderText("Search terms..."), "container");
     expect(terms()).toEqual(expect.arrayContaining(["Container", "Docker", "Module"]));

@@ -81,7 +81,7 @@ describe("ExecutionStatusPanel", () => {
   title: "A program the step needs isn't installed",
   explanation: "The step runs “fastqc”, which isn't installed where it ran (exit status 127).",
   fix: "Turn on Docker in the execution settings.",
-  docs: "https://github.com/HCIstudio/N-WAVE#command-not-found",
+  docs: "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#command-not-found",
   process: "NFCORE_FASTQC_QC",
 };
     for (const tab of ["steps", "log"] as const) {

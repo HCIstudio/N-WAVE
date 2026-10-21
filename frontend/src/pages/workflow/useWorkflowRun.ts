@@ -122,7 +122,7 @@ export const useWorkflowRun = ({
     executionStatus.completeExecution(!failed, failed ? text : undefined);
     if (!failed) {
       showToast(
-        "Workflow executed successfully! Results have been written to ~/results. \nCheck the execution panel for details.",
+        "Workflow executed successfully. Its results are listed in the run panel.",
         "success",
       );
       setError(null);
