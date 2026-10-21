@@ -3,7 +3,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { Edge, Node } from "reactflow";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../src/components/nodes/BaseNode";
 import { demoWorkflowSeed } from "../../src/demo/demoWorkflow";
 import rnaseqStarSalmon from "../../src/demo/rnaseqStarSalmonExample.json";

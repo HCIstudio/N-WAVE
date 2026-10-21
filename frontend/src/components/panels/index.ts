@@ -15,16 +15,3 @@ export * from "./operator";
 
 // Note: Individual exports are available through the wildcard exports above
 // This approach avoids circular references while maintaining full export capability
-
-// Panel categories for dynamic loading
-export const PANEL_CATEGORIES = {
-  BASE: "base",
-  PROCESS: "process",
-  INPUT: "input",
-  OUTPUT: "output",
-  OPERATOR: "operator",
-  SHARED: "shared",
-} as const;
-
-export type PanelCategory =
-  (typeof PANEL_CATEGORIES)[keyof typeof PANEL_CATEGORIES];

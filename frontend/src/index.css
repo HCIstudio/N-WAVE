@@ -2,24 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom scrollbar for the process dropdown */
-.custom-scrollbar::-webkit-scrollbar {
-  width: 8px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  background: #2d2d2d;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #555;
-  border-radius: 4px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #00a878;
-}
-
 /* Completely hidden scrollbar for file names - maintains scroll functionality */
 .scrollbar-hidden {
   /* Hide scrollbar for IE, Edge and Firefox */

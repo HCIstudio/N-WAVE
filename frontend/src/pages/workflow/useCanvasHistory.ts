@@ -276,5 +276,3 @@ export const useCanvasHistory = ({
     redo,
   };
 };
-
-export type CanvasHistory = ReturnType<typeof useCanvasHistory>;

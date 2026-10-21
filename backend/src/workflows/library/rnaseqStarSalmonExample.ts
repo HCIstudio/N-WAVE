@@ -8,5 +8,4 @@ const example = loadJsonExample(
   "examples/rnaseq-star-salmon"
 );
 
-export const rnaseqStarSalmonExampleId = example.id;
 export const getRnaseqStarSalmonExampleDescriptor = example.getDescriptor;

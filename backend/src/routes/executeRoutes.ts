@@ -30,7 +30,6 @@ router.get("/cache", getWorkflowCache);
 router.delete("/cache", deleteWorkflowCache);
 router.get("/runs/:id/log", getRunLog);
 router.get("/runs/:id/files", listRunResultFiles);
-router.get("/runs/:id/file", getRunResultFile);
 // Path-style, so a served report's relative links (report_files/x.png) work.
 router.get("/runs/:id/results/*", getRunResultFile);
 router.get("/runs/:id/tasks", listRunTasks);

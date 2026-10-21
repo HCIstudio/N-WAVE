@@ -58,9 +58,6 @@ export interface PipelineLaunch {
   command: string;
 }
 
-export const isPipelineWorkflow = (nodes: Node[]): boolean =>
-  nodes.some((node) => node.type === "pipeline");
-
 const inInputDir = (path: string): string =>
   isRemoteOrAbsolutePath(path) ? path : `${PIPELINE_INPUT_DIR}/${path}`;
 
