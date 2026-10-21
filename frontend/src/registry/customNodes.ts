@@ -13,6 +13,7 @@ import {
 } from "./nfcore/subworkflowSource";
 import type { NodeGenerator } from "./nodeGeneration";
 import { groovyStringWithParams } from "./params";
+import { buildMixedChannelExpression } from "../generators/core/mixChannels";
 
 export type CustomNodeInputKind = "path" | "val";
 export type CustomNodeSettingType =
@@ -552,9 +553,11 @@ const resolvePathInput = (
   ) => string | null,
   channelNameMap: Map<string, string>
 ): string | null => {
-  const edge = incomingEdges.find((candidate) => candidate.targetHandle === handle);
-  if (!edge) return null;
-  return resolveChannelNameForEdge(edge, channelNameMap);
+  const upstream = incomingEdges
+    .filter((candidate) => candidate.targetHandle === handle)
+    .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
+    .filter((name): name is string => Boolean(name));
+  return upstream.length > 0 ? buildMixedChannelExpression(upstream) : null;
 };
 
 const buildTupleDefinition = ({

@@ -1053,7 +1053,8 @@
             "name": "multiqc_files",
             "label": "Multiqc Files",
             "isConnectable": true,
-            "kind": "file"
+            "kind": "file",
+            "multiple": true
           },
           {
             "name": "multiqc_config",

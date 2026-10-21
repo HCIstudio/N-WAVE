@@ -14,6 +14,7 @@ import { AlertTriangle, XCircle } from "lucide-react";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
+import { acceptsManyConnections } from "../../registry/portArity";
 import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
 import type { FileEncoding } from "../../utils/fileContent";
@@ -26,6 +27,8 @@ export interface PortData {
   filePattern?: string;
   /** What the port carries, when its module says (nf-core meta.yml). */
   kind?: PortKind;
+  /** Inputs: takes any number of connections, mixed (otherwise one). */
+  multiple?: boolean;
 }
 
 /** Files, a folder (e.g. an index), a value, or a tool's versions. */
@@ -225,6 +228,11 @@ const BaseNode = ({
         const detail = port.fileType || port.filePattern
           ? [port.fileType, port.filePattern].filter(Boolean).join(" ")
           : portSummary({ type, data }, port.name, "inputs");
+        // A taller handle takes any number of connections; a dot takes one.
+        const many = acceptsManyConnections(
+          { id, type, data, position: { x: 0, y: 0 } },
+          port.name,
+        );
         return (
         <div
           key={port.name}
@@ -236,20 +244,25 @@ const BaseNode = ({
             position={Position.Left}
             id={port.name}
             className={clsx(
-              "!w-3 !h-3 !-left-1.5",
+              "!-left-1.5",
+              many ? "!w-3 !h-6 !rounded-full" : "!w-3 !h-3",
               fit?.fits === true && "!bg-nextflow-green ring-4 ring-nextflow-green/40",
               fit?.fits === false && "!bg-yellow-400 ring-4 ring-yellow-300/70",
               !fit && "!bg-gray-400",
             )}
             data-fit={fit ? (fit.fits ? "fits" : "mismatch") : undefined}
+            data-connections={many ? "many" : "one"}
             title={fit?.message}
             isConnectable={isConnectable}
             onMouseDown={onMouseDown}
           />
-          {port.label && (
+          {(port.label || many) && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
-              <div className="text-xs text-gray-600">{port.label}</div>
+              <div className="text-xs text-gray-600">{port.label || port.name}</div>
               {detail && <div className="text-[10px] text-gray-400">{detail}</div>}
+              <div className="text-[10px] text-gray-400">
+                {many ? "any number of connections, mixed" : "one connection"}
+              </div>
             </div>
           )}
         </div>

@@ -119,6 +119,14 @@ builds, or a data output instead of versions). The workflow check lists these as
 they never stop a run: a module's patterns aren't always complete. Ports whose contents N-WAVE
 doesn't know, such as those of custom processes, are never flagged.
 
+Most inputs take **one connection**: a second one is refused, with a message pointing to a
+Merge node or a channel operator to combine several sources first. Inputs that gather files
+from many steps take **any number of connections**, mixed into one channel: Merge's input and
+the nf-core inputs staged with `collect` (such as MultiQC's `multiqc_files`). Their handle is
+taller than the usual dot, and hovering a node says which kind each input is. A workflow saved
+before this rule with several connections into a one-connection input still opens; the
+workflow check asks to merge them before it runs.
+
 ### Troubleshooting failed runs
 
 When a run fails for a common reason, the failure notice, the run panel and the run's entry

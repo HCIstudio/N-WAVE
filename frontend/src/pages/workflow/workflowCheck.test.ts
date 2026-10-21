@@ -41,6 +41,22 @@ describe("checkWorkflow", () => {
     expect(messages([input(), filter, output], chain)).toEqual([]);
   });
 
+  it("stops a one-connection input with several connections, saved before the rule", () => {
+    const second = node("input2", "fileInput", { files: [{ ...file, name: "b.txt" }] });
+    expect(
+      messages([input(), second, filter, output], [...chain, edge("input2", "filter")]).filter(
+        (problem) => problem.level === "error",
+      ),
+    ).toEqual([
+      {
+        level: "error",
+        nodeId: "filter",
+        message:
+          "“filter” takes one connection on “in” but has 2. Connect them to a Merge node (or mix them in a channel operator) and connect that instead.",
+      },
+    ]);
+  });
+
   it("stops an empty workflow", () => {
     expect(messages([node("n", "note")], [])).toEqual([
       expect.objectContaining({ level: "error", message: expect.stringContaining("The workflow is empty") }),

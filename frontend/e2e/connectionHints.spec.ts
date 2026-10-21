@@ -38,31 +38,47 @@ test.describe("connection hints", () => {
     );
     await page.mouse.up();
 
-    // Connect reads where STAR index expects the genome (in an editable copy).
-    const connectReadsToGenome = async () => {
+    const dragConnect = async (from: Locator, to: Locator) => {
       await canvasSettled(page);
-      const reads = await center(handle(page, "samples", "source", "samples"));
-      const genome = await center(handle(page, "star_index", "target", "fasta"));
-      await page.mouse.move(reads.x, reads.y);
+      const start = await center(from);
+      const end = await center(to);
+      await page.mouse.move(start.x, start.y);
       await page.mouse.down();
-      await page.mouse.move(genome.x, genome.y, { steps: 15 });
+      await page.mouse.move(end.x, end.y, { steps: 15 });
       await page.mouse.up();
     };
-    await connectReadsToGenome();
+    const reads = handle(page, "samples", "source", "samples");
+    const multiqcConfig = handle(page, "multiqc", "target", "multiqc_config");
+
+    // Connect reads where MultiQC expects its config (in an editable copy).
+    await dragConnect(reads, multiqcConfig);
     await page.getByRole("dialog", { name: "Make your own copy to edit" }).getByRole("button", { name: "Make a copy" }).click();
     await expect(page).not.toHaveURL(/builtin:rnaseq-star-salmon/);
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
-    await connectReadsToGenome();
+    await dragConnect(reads, multiqcConfig);
 
     // The connection is made, with a warning that says what fits instead.
-    const warning = page.getByRole("button", { name: /^Connection warning: “STAR index” expects FASTA sequences/ });
+    const warning = page.getByRole("button", { name: /^Connection warning: “MultiQC” expects files like \*\.\{yml,yaml\}/ });
     await expect(warning).toHaveCount(1);
     await warning.click();
-    await expect(page.getByRole("note")).toContainText("reference from a Parameters node");
+    await expect(page.getByRole("note")).toContainText("Connect a matching file");
     // The workflow check lists it as a warning; the run isn't blocked by it.
     await page.getByRole("button", { name: /^Workflow check:/ }).click();
     await expect(page.getByRole("region", { name: "Workflow check" })).toContainText(
       "“Samplesheet” gives FASTQ reads",
     );
+
+    await page.getByRole("button", { name: /^Workflow check:/ }).click();
+    await warning.click();
+
+    // STAR index's genome input already has its connection: a second is refused.
+    const edges = page.locator(".react-flow__edge");
+    const before = await edges.count();
+    await dragConnect(reads, handle(page, "star_index", "target", "fasta"));
+    await expect(page.getByText("“STAR index” takes one connection on “Fasta”.", { exact: false })).toBeVisible();
+    await expect(edges).toHaveCount(before);
+    // MultiQC's reports input takes any number: its handle says so.
+    await expect(handle(page, "multiqc", "target", "multiqc_files")).toHaveAttribute("data-connections", "many");
+    await expect(handle(page, "star_index", "target", "fasta")).toHaveAttribute("data-connections", "one");
   });
 });

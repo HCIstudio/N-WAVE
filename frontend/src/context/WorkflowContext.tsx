@@ -3,6 +3,8 @@ import {
   useContext,
   useState,
   useCallback,
+  useEffect,
+  useRef,
   type FC,
   type PropsWithChildren,
 } from "react";
@@ -25,6 +27,7 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import { isNodeDataPatchNoop } from "../utils/nodeData";
 import type { ToastType } from "../components/common";
 import { validateConnectionWithNodeDefinitions } from "../registry";
+import { connectionLimitMessage } from "../registry/portArity";
 
 interface ToastState {
   message: string;
@@ -74,7 +77,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
-  const [isToastVisible, setIsToastVisible] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const { getNodes, getEdges } = useReactFlow();
 
   const onNodesChange: OnNodesChange = useCallback(
@@ -85,20 +88,20 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
     []
   );
 
-  const showToast = useCallback(
-    (message: string, type: ToastType) => {
-      if (isToastVisible) return;
-      setToast({ message, type, key: Date.now() });
-      setIsToastVisible(true);
+  // The newest message replaces the one showing (a refused connection right
+  // after another notice still says why); the same message again is ignored,
+  // since React Flow checks a connection repeatedly while it is dragged.
+  const showToast = useCallback((message: string, type: ToastType) => {
+    setToast((current) =>
+      current?.message === message && current.type === type
+        ? current
+        : { message, type, key: Date.now() }
+    );
+    clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 10000);
+  }, []);
 
-      // Auto-dismiss the toast after 5 seconds
-      setTimeout(() => {
-        setToast(null);
-        setIsToastVisible(false);
-      }, 10000);
-    },
-    [isToastVisible]
-  );
+  useEffect(() => () => clearTimeout(toastTimer.current), []);
 
   const isValidConnection: IsValidConnection = useCallback(
     (edgeOrConnection: Edge | Connection) => {
@@ -128,6 +131,13 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
 
       if (!validation.valid) {
         showToast(validation.message || "Invalid connection.", "error");
+        return false;
+      }
+
+      // Most inputs take one connection; a second would be left out of the run.
+      const limit = connectionLimitMessage(connection, targetNode, currentEdges);
+      if (limit) {
+        showToast(limit, "error");
         return false;
       }
 
@@ -308,8 +318,8 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
   };
 
   const closeToast = () => {
+    clearTimeout(toastTimer.current);
     setToast(null);
-    setIsToastVisible(false);
   };
 
   const value: IWorkflowContext = {

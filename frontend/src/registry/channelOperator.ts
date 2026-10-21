@@ -4,6 +4,7 @@
 // `local.<name>`; the generator rewrites these to the connected channels.
 
 import type { NodeGenerator } from "./nodeGeneration";
+import { buildMixedChannelExpression } from "../generators/core/mixChannels";
 
 export interface ChannelOperatorTemplate {
   id: string;
@@ -207,13 +208,13 @@ export const generateChannelOperatorNode: NodeGenerator = ({
 
   const upstream = new Map<string, string>();
   for (const input of inputs) {
-    const edge = incomingEdges.find(
-      (candidate) => candidate.targetHandle === input,
-    );
-    const channel = edge
-      ? resolveChannelNameForEdge(edge, channelNameMap)
-      : null;
-    if (channel) upstream.set(input, channel);
+    const channels = incomingEdges
+      .filter((candidate) => candidate.targetHandle === input)
+      .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
+      .filter((name): name is string => Boolean(name));
+    if (channels.length > 0) {
+      upstream.set(input, buildMixedChannelExpression(channels));
+    }
   }
   if (upstream.size === 0) return null;
 
