@@ -88,8 +88,8 @@ Guidelines:
 - **Validate API input.** New or changed request bodies get a zod schema in
   `backend/src/validation/schemas.ts`.
 - **Update the docs with the change.** User-facing behaviour is described in the wiki: edit its
-  page in [`wiki/`](wiki/README.md) in the same pull request (it is copied to the wiki after the
-  merge). Configuration belongs in the [README](README.md#configuration), development notes in
+  page in [`wiki/`](wiki/README.md) in the same pull request (the Wiki workflow publishes it
+  after the merge). Configuration belongs in the [README](README.md#configuration), development notes in
   the package READMEs. Keep pages brief, and link instead of repeating.
 
 ## Branches, pull requests and releases
@@ -106,6 +106,7 @@ Guidelines:
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
 | `test.yml` | pull request, push to `main` | The merge gate: lint, unit tests with coverage, typecheck and build for both packages, the script tests, Nextflow lint of the generated scripts, and Playwright end-to-end tests (not blocking yet). |
+| `wiki.yml` | push to `main` that changes `wiki/` | Publishes the `wiki/` pages to the GitHub wiki (`scripts/publish-wiki.sh`). |
 | `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, pushes multi-arch images (`linux/amd64`, `linux/arm64`) to Docker Hub as `hcistudio/nwave-*:<version>` and `:latest`, commits the version to both `package.json` files, and creates a GitHub Release (`v<version>`) with `latest.yml`. |
 
 Patch versions are automatic: each merge steps the patch version from the latest `v*` tag. To

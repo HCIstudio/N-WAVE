@@ -16,6 +16,7 @@ The scripts in this folder:
 | `nfcorePortTypes.mjs` | Port file types and patterns from `meta.yml`, for the connection hints. |
 | `lint-generated-nextflow.sh` | `nextflow lint` on the scripts the examples and node combinations generate (CI). |
 | `docsLinks.test.mjs` | Checks the links in the READMEs and the `wiki/` pages. |
+| `publish-wiki.sh` | Copies `wiki/` into a checkout of the GitHub wiki (the Wiki workflow runs it). |
 
 All `*.test.mjs` run with `node --test scripts/*.test.mjs` from the repository root.
 
