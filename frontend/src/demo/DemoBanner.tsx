@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { FlaskConical, X } from "lucide-react";
+import { wikiUrl } from "../docs/links";
 
 /** Gap in px between the banner and the footer (or the viewport bottom). */
 const GAP = 12;
@@ -87,7 +88,7 @@ const DemoBanner = () => {
 
   const docsLink = (
     <a
-      href="https://github.com/HCIstudio/N-WAVE#readme"
+      href={wikiUrl({ page: "Installation" })}
       target="_blank"
       rel="noreferrer"
       className="font-medium text-nextflow-green underline"
