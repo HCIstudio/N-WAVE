@@ -37,6 +37,7 @@ test.describe("nf-core subworkflow nodes", () => {
     await stubGitHub(page);
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     await page.getByRole("button", { name: "Add node" }).click();

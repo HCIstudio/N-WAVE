@@ -13,6 +13,19 @@ import DynamicIcon from "../ui/DynamicIcon";
 import NfCoreLibraryModal from "./NfCoreLibraryModal";
 import NodePacksModal from "./NodePacksModal";
 import SearchInput from "./SearchInput";
+import Term from "../ui/Term";
+import type { GlossaryId } from "../../../glossary/glossary";
+
+/** The glossary entry that explains the nodes of a menu section. */
+const CATEGORY_TERMS: Record<string, GlossaryId> = {
+  Operators: "channel-operator",
+  Core: "process",
+  "nf-core Pipelines": "pipeline",
+  "Installed nf-core": "module",
+  "Installed nf-core (Review)": "module",
+  "Installed nf-core subworkflows": "subworkflow",
+  Custom: "custom-process",
+};
 
 interface ProcessDropdownProps {
   onSelectProcess: (process: NextflowProcess) => void;
@@ -116,7 +129,13 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
           filteredProcesses.map((category) => (
             <div key={category.category}>
               <p className="px-3 py-2 text-xs font-semibold text-text-light tracking-wider uppercase">
-                {category.category}
+                {CATEGORY_TERMS[category.category] ? (
+                  <Term id={CATEGORY_TERMS[category.category]}>
+                    {category.category}
+                  </Term>
+                ) : (
+                  category.category
+                )}
               </p>
               {category.processes.map((process: NextflowProcess) => (
                 <div

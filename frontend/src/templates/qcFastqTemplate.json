@@ -1,0 +1,251 @@
+{
+  "name": "QC of FASTQ files",
+  "description": "FastQC on each sample's reads and one MultiQC report, starting from two samples of the nf-core test data.",
+  "components": [
+    "nf-core/fastqc",
+    "nf-core/multiqc"
+  ],
+  "nodes": [
+    {
+      "id": "samples",
+      "type": "samplesheet",
+      "position": {
+        "x": 0,
+        "y": 120
+      },
+      "data": {
+        "label": "Samplesheet",
+        "icon": "Sheet",
+        "subtitle": "2 samples, paired-end",
+        "samplesheet": "sample,fastq_1,fastq_2\nWT_REP1,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_1.fastq.gz,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_2.fastq.gz\nWT_REP2,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357072_1.fastq.gz,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357072_2.fastq.gz\n",
+        "samplesheetFileName": "samplesheet.csv",
+        "samplesheetMapping": {
+          "idColumn": "sample",
+          "read1Column": "fastq_1",
+          "read2Column": "fastq_2"
+        },
+        "outputs": [
+          {
+            "name": "samples",
+            "label": "Samples",
+            "isConnectable": true
+          }
+        ]
+      }
+    },
+    {
+      "id": "fastqc",
+      "type": "process",
+      "position": {
+        "x": 380,
+        "y": 80
+      },
+      "data": {
+        "label": "FastQC",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/fastqc",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/"
+          },
+          {
+            "type": "documentation",
+            "url": "https://www.bioinformatics.babraham.ac.uk/projects/fastqc/Help/"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_fastqc",
+        "inputs": [
+          {
+            "name": "reads",
+            "label": "Reads",
+            "isConnectable": true,
+            "kind": "file"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "html",
+            "label": "Html",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_{fastqc.html}"
+          },
+          {
+            "name": "zip",
+            "label": "Zip",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_{fastqc.zip}"
+          },
+          {
+            "name": "versions_fastqc",
+            "label": "Versions Fastqc",
+            "isConnectable": true,
+            "kind": "version"
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "multiqc",
+      "type": "process",
+      "position": {
+        "x": 760,
+        "y": 80
+      },
+      "data": {
+        "label": "MultiQC",
+        "icon": "Package",
+        "subtitle": "nf-core module",
+        "note": "Imported from nf-core catalog",
+        "nwaveExecutionBackend": "nf-core",
+        "nwaveNfCoreModuleId": "nf-core/multiqc",
+        "nwaveNfCoreSupportsExtArgs": true,
+        "nwaveNfCoreExtArgNames": [
+          "args"
+        ],
+        "nwaveNfCoreArgumentReferences": [
+          {
+            "type": "homepage",
+            "url": "https://multiqc.info/"
+          },
+          {
+            "type": "documentation",
+            "url": "https://multiqc.info/docs/"
+          }
+        ],
+        "nwaveNfCoreSupportsResources": true,
+        "nfcoreValueInputs": [],
+        "nfcoreValues": {},
+        "processType": "nfcore_multiqc",
+        "inputs": [
+          {
+            "name": "multiqc_files",
+            "label": "Multiqc Files",
+            "isConnectable": true,
+            "kind": "file"
+          },
+          {
+            "name": "multiqc_config",
+            "label": "Multiqc Config",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{yml,yaml}"
+          },
+          {
+            "name": "multiqc_logo",
+            "label": "Multiqc Logo",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{png}"
+          },
+          {
+            "name": "replace_names",
+            "label": "Replace Names",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{tsv}"
+          },
+          {
+            "name": "sample_names",
+            "label": "Sample Names",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*.{tsv}"
+          }
+        ],
+        "outputs": [
+          {
+            "name": "report",
+            "label": "Report",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": ".html"
+          },
+          {
+            "name": "data",
+            "label": "Data",
+            "isConnectable": true,
+            "kind": "directory"
+          },
+          {
+            "name": "plots",
+            "label": "Plots",
+            "isConnectable": true,
+            "kind": "file",
+            "filePattern": "*_plots"
+          },
+          {
+            "name": "versions",
+            "label": "Versions",
+            "isConnectable": true,
+            "kind": "version"
+          }
+        ],
+        "nwaveNfCoreNeedsReview": false,
+        "nwaveNfCoreOutdated": false
+      }
+    },
+    {
+      "id": "note_start",
+      "type": "note",
+      "position": {
+        "x": 0,
+        "y": -220
+      },
+      "data": {
+        "label": "QC of FASTQ files",
+        "icon": "StickyNote",
+        "noteText": "FastQC checks the quality of each sample's reads; MultiQC collects the reports into one page.\n\nThe samplesheet lists two samples of the nf-core test data, downloaded on the fly. Replace them with your own: upload a samplesheet in its panel, with one row per sample and the paths or URLs of its FASTQ files.",
+        "inputs": [],
+        "outputs": []
+      }
+    },
+    {
+      "id": "note_results",
+      "type": "note",
+      "position": {
+        "x": 760,
+        "y": -220
+      },
+      "data": {
+        "label": "Results",
+        "icon": "StickyNote",
+        "noteText": "Each node saves its outputs to results/<node name>: the FastQC reports in results/fastqc, the summary in results/multiqc/multiqc_report.html.",
+        "inputs": [],
+        "outputs": []
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "edge-samples-samples-fastqc-reads",
+      "source": "samples",
+      "sourceHandle": "samples",
+      "target": "fastqc",
+      "targetHandle": "reads",
+      "type": "default"
+    },
+    {
+      "id": "edge-fastqc-zip-multiqc-multiqc_files",
+      "source": "fastqc",
+      "sourceHandle": "zip",
+      "target": "multiqc",
+      "targetHandle": "multiqc_files",
+      "type": "default"
+    }
+  ]
+}

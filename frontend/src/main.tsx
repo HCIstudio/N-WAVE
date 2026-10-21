@@ -31,6 +31,12 @@ const router = createBrowserRouter(
               }),
             },
             {
+              path: "glossary",
+              lazy: async () => ({
+                Component: (await import("./pages/GlossaryPage")).default,
+              }),
+            },
+            {
               path: "workflow/:id",
               lazy: async () => ({
                 Component: (await import("./pages/WorkflowPage")).default,

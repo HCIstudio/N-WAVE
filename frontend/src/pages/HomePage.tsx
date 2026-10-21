@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   AlertTriangle,
+  BookA,
   BookOpen,
   Copy,
   Pencil,
@@ -29,6 +30,9 @@ import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings"
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
+import NewWorkflowDialog, {
+  type NewWorkflowChoice,
+} from "../components/common/workflow/NewWorkflowDialog";
 import WorkflowPreview, {
   countNodes,
 } from "../components/common/workflow/WorkflowPreview";
@@ -93,6 +97,7 @@ const HomePage: React.FC = () => {
     useState(false);
   const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isNewWorkflowOpen, setIsNewWorkflowOpen] = useState(false);
   const [importName, setImportName] = useState("");
   const [importDescription, setImportDescription] = useState("");
   const [importSource, setImportSource] = useState("");
@@ -276,17 +281,31 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleNewWorkflow = async () => {
+  const handleNewWorkflow = async (choice: NewWorkflowChoice) => {
     if (pendingAction) return;
-    setPendingAction("create");
+    setPendingAction(
+      choice.kind === "template"
+        ? `create:template:${choice.template.id}`
+        : `create:copy:${choice.workflow._id}`
+    );
     try {
-      const response = await api.post("/workflows", {
-        name: "Untitled Workflow",
-        nodes: [],
-        edges: [],
-        description: "",
-        executionSettings: defaultExecutionSettings,
-      });
+      // A demo is copied as it is; a template becomes a workflow of its own.
+      const response =
+        choice.kind === "copy"
+          ? await api.post(`/workflows/${choice.workflow._id}/duplicate`)
+          : await api.post("/workflows", {
+              name:
+                choice.template.id === "empty"
+                  ? "Untitled Workflow"
+                  : choice.template.name,
+              nodes: choice.template.nodes,
+              edges: choice.template.edges,
+              description:
+                choice.template.id === "empty"
+                  ? ""
+                  : choice.template.description,
+              executionSettings: defaultExecutionSettings,
+            });
       navigate(`/workflow/${response.data._id}`);
     } catch (err) {
       reportActionError("Failed to create new workflow.", err);
@@ -667,6 +686,13 @@ const HomePage: React.FC = () => {
                 <BookOpen size={16} />
                 <span>Wiki</span>
               </a>
+              <Link
+                to="/glossary"
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <BookA size={16} aria-hidden />
+                <span>Glossary</span>
+              </Link>
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
@@ -736,18 +762,12 @@ const HomePage: React.FC = () => {
               {userWorkflows.map((wf) => renderWorkflowCard(wf))}
               <button
                 type="button"
-                onClick={handleNewWorkflow}
+                onClick={() => setIsNewWorkflowOpen(true)}
                 disabled={pendingAction !== null}
                 className="flex min-h-[12rem] items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent transition-colors disabled:cursor-wait disabled:opacity-70"
               >
-                {pendingAction === "create" ? (
-                  <Loader size={24} className="animate-spin" aria-hidden />
-                ) : (
-                  <Plus size={24} aria-hidden />
-                )}
-                <span className="ml-2">
-                  {pendingAction === "create" ? "Creating..." : "New Workflow"}
-                </span>
+                <Plus size={24} aria-hidden />
+                <span className="ml-2">New Workflow</span>
               </button>
             </div>
           </section>
@@ -759,6 +779,19 @@ const HomePage: React.FC = () => {
             onClose={() => setActionError(null)}
           />
         )}
+        <NewWorkflowDialog
+          isOpen={isNewWorkflowOpen}
+          onClose={() => {
+            if (!pendingAction) setIsNewWorkflowOpen(false);
+          }}
+          demos={builtinWorkflows}
+          onChoose={handleNewWorkflow}
+          pendingKey={
+            pendingAction?.startsWith("create:")
+              ? pendingAction.slice("create:".length)
+              : null
+          }
+        />
         <ConfirmDialog
           isOpen={isDeleteModalOpen}
           onClose={() => setIsDeleteModalOpen(false)}

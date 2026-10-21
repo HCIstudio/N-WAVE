@@ -7,6 +7,7 @@ import {
   validateChannelOperator,
 } from "../../../registry/channelOperator";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
+import Term from "../../common/ui/Term";
 
 interface ChannelOperatorPanelProps {
   node: Node<NodeData>;
@@ -90,7 +91,9 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
   return (
     <div className="space-y-4">
       <p className="text-sm text-text-light">
-        Nextflow channel code between nodes. Refer to the connected channels as{" "}
+        Nextflow <Term id="channel">channel</Term> code between nodes (a{" "}
+        <Term id="channel-operator">channel operator</Term>). Refer to the
+        connected channels as{" "}
         <code>input.&lt;port&gt;</code>, assign every{" "}
         <code>output.&lt;port&gt;</code>, and name helper variables{" "}
         <code>local.&lt;name&gt;</code>. The Code tab shows the generated

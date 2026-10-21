@@ -12,6 +12,7 @@ import {
 import { getNodeInputFiles } from "../../../utils/inputFiles";
 import type { NodeData } from "../../nodes/BaseNode";
 import DynamicIcon from "../../common/ui/DynamicIcon";
+import Term from "../../common/ui/Term";
 
 interface ParametersPanelProps {
   node: Node<NodeData>;
@@ -119,9 +120,11 @@ const ParametersPanel: React.FC<ParametersPanelProps> = ({ node, onSave }) => {
   return (
     <div className="space-y-4">
       <p className="text-sm text-text-light">
-        Parameters become <code>params.&lt;name&gt;</code> in the script and in
+        <Term id="parameters">Parameters</Term> become{" "}
+        <code>params.&lt;name&gt;</code> in the script and in
         the exported <code>nextflow.config</code>. Use them in node settings as{" "}
-        <code>{"${params.name}"}</code>. Reference files (genome FASTA, GTF,
+        <code>{"${params.name}"}</code>.{" "}
+        <Term id="reference-genome">Reference files</Term> (genome FASTA, GTF,
         indexes) get an output to connect: an uploaded file name, an absolute
         path, or a URL.
       </p>

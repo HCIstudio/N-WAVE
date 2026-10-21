@@ -14,6 +14,8 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   footer?: React.ReactNode;
+  /** A wider dialog, for content laid out in columns. */
+  wide?: boolean;
 }
 
 const Modal: FC<PropsWithChildren<ModalProps>> = ({
@@ -22,6 +24,7 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
   title,
   children,
   footer,
+  wide = false,
 }) => {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
@@ -57,7 +60,7 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
         open
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative bg-panel-background text-text rounded-lg shadow-xl w-full max-w-lg mx-4 flex flex-col"
+        className={`relative bg-panel-background text-text rounded-lg shadow-xl w-full mx-4 flex flex-col ${wide ? "max-h-[90vh] max-w-4xl" : "max-w-lg"}`}
       >
         <header className="flex items-center justify-between p-4 border-b border-panel-border">
           <h2 id={titleId} className="text-lg font-semibold">

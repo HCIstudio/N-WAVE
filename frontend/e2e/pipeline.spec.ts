@@ -21,6 +21,7 @@ test.describe("nf-core pipeline node", () => {
 
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     const sheet = await addNode(page, "Samplesheet");

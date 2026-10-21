@@ -78,6 +78,7 @@ test.describe("nf-core/rnaseq example", () => {
   test("notes can be added to any workflow", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     const note = await addNode(page, "Note");

@@ -24,6 +24,7 @@ test.describe("demo nf-core library and custom nodes", () => {
     await stubGitHub(page);
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     await openNodeMenu(page);
@@ -65,6 +66,7 @@ test.describe("demo nf-core library and custom nodes", () => {
   test("creates, edits and deletes a custom node", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     await openNodeMenu(page);

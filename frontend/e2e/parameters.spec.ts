@@ -6,6 +6,7 @@ test.describe("parameters node", () => {
   test("declares params and connects a reference file", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     const params = await addNode(page, "Parameters");

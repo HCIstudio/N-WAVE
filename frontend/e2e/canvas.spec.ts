@@ -7,6 +7,7 @@ test.describe("canvas flow", () => {
   }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     // Build: File Input -> Filter -> Display Output
@@ -44,6 +45,7 @@ test.describe("canvas flow", () => {
   test("saved workflows survive a reload", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
     await addNode(page, "Filter");
@@ -83,6 +85,7 @@ test.describe("canvas flow", () => {
   test("dragging a node onto the trash deletes it", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const filter = await addNode(page, "Filter");
 
@@ -161,6 +164,7 @@ test.describe("canvas flow", () => {
   test("a connection's × button removes it", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const filter = await addNode(page, "Filter");
     const output = await addNode(page, "Display Output");
@@ -206,6 +210,7 @@ test.describe("canvas flow", () => {
   test("a node can't be connected to itself", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const filter = await addNode(page, "Filter");
 
