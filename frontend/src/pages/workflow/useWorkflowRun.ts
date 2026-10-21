@@ -138,7 +138,34 @@ export const useWorkflowRun = ({
     });
   };
 
-  const fail = (caught: unknown) => {
+  const fail = (caught: unknown, startedRunId: string | null) => {
+    // The connection dropped (network, sleep, proxy) after the run started:
+    // the server goes on with it, so it hasn't failed. Its end shows in the
+    // run history, where it can also be stopped.
+    const lostConnection =
+      (caught as { isAxiosError?: boolean } | null)?.isAxiosError === true &&
+      !getResponseStatus(caught);
+    if (startedRunId && lostConnection) {
+      pendingOutput.current = null;
+      setOutput((previous) =>
+        [
+          previous.trimEnd(),
+          `N-WAVE: the connection was lost, but run ${startedRunId} goes on on the server. Its result will be in the run history (Runs).`,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      );
+      executionStatus.completeExecution(
+        false,
+        "The connection was lost; the run goes on on the server.",
+      );
+      setError({
+        message:
+          "The connection to N-WAVE was lost, but the run goes on on the server. Open Runs to follow it or stop it; don't start it again.",
+        output: "",
+      });
+      return;
+    }
     console.error("Workflow execution failed:", caught);
     const data = getResponseData(caught);
     // The execute endpoint reports the specific problem in `error`.
@@ -169,6 +196,8 @@ export const useWorkflowRun = ({
   };
 
   const run = async (settings: ExecutionSettings, options: { resume?: boolean } = {}) => {
+    // The run's id once the server started it (the stream's first line).
+    let startedRunId: string | null = null;
     setIsRunning(true);
     setExecutionSettings(settings);
     executionStatus.startExecution();
@@ -192,11 +221,13 @@ export const useWorkflowRun = ({
 
       setLastRunId(null);
       setOutput("");
+      startedRunId = null;
       // The output is read while the run goes: progress updates live, and
       // the run id (first line) makes Cancel work for long runs.
       const lineReader = createLineReader((line) => {
         const runId = parseRunId(line);
         if (runId) {
+          startedRunId = runId;
           setCurrentExecutionId(runId);
           setLastRunId(runId);
         }
@@ -221,7 +252,7 @@ export const useWorkflowRun = ({
       lineReader.flush(text);
       finish(text, launch?.nodeId);
     } catch (caught: unknown) {
-      fail(caught);
+      fail(caught, startedRunId);
     } finally {
       setIsRunning(false);
       setCurrentExecutionId(null);

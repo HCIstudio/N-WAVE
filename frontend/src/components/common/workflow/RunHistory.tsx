@@ -1,7 +1,7 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
-import { getRunLog, listRuns, type RunSummary } from "../../../api/runs";
+import { cancelRun, getRunLog, listRuns, type RunSummary } from "../../../api/runs";
 import { getErrorMessage } from "../../../utils/errors";
 import { explainFailure } from "../../../execution/failureExplanations";
 import FailureExplanationCard from "./FailureExplanationCard";
@@ -94,6 +94,9 @@ const STATUS_STYLES: Record<RunSummary["status"], string> = {
   unknown: "bg-gray-200 text-gray-800",
 };
 
+/** How often the list is reloaded while a run in it goes on. */
+const RUNNING_REFRESH_MS = 5000;
+
 const formatTime = (iso: string) => new Date(iso).toLocaleString();
 
 const duration = (run: RunSummary): string => {
@@ -111,9 +114,27 @@ const duration = (run: RunSummary): string => {
 };
 
 /** One earlier run: what happened, its log and its results. */
-const RunDetails: React.FC<{ run: RunSummary }> = ({ run }) => {
+const RunDetails: React.FC<{ run: RunSummary; onChange: () => void }> = ({
+  run,
+  onChange,
+}) => {
   const [log, setLog] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [stopping, setStopping] = useState(false);
+  // A run that goes on without this page (it was reloaded, or the
+  // connection dropped) can still be stopped here.
+  const stop = async () => {
+    setStopping(true);
+    try {
+      await cancelRun(run.id);
+      onChange();
+    } catch (stopError: unknown) {
+      setError(getErrorMessage(stopError, "Could not stop the run."));
+    } finally {
+      setStopping(false);
+    }
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reload the log when the run's status changes.
   useEffect(() => {
     let cancelled = false;
     setLog(null);
@@ -127,11 +148,24 @@ const RunDetails: React.FC<{ run: RunSummary }> = ({ run }) => {
     return () => {
       cancelled = true;
     };
-  }, [run.id]);
+  }, [run.id, run.status]);
   const failure = log ? explainFailure(log) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {run.status === "running" && (
+        <div className="flex items-center justify-between gap-2 rounded bg-blue-50 p-2 text-xs text-blue-900">
+          <span>This run is still going on the server.</span>
+          <button
+            type="button"
+            onClick={() => void stop()}
+            disabled={stopping}
+            className="rounded border border-blue-300 bg-white px-2 py-1 font-medium hover:bg-blue-100 disabled:opacity-60"
+          >
+            {stopping ? "Stopping…" : "Stop run"}
+          </button>
+        </div>
+      )}
       {run.message && (
         <p className="rounded bg-red-50 p-2 text-xs text-red-800">
           {run.message}
@@ -167,8 +201,20 @@ const RunHistory: React.FC<{
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const anyRunning = runs?.some((run) => run.status === "running") ?? false;
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey reloads the list.
+  // While a run goes on, check now and then whether it ended.
+  useEffect(() => {
+    if (!anyRunning) return;
+    const timer = window.setInterval(
+      () => setReload((count) => count + 1),
+      RUNNING_REFRESH_MS,
+    );
+    return () => window.clearInterval(timer);
+  }, [anyRunning]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey and reload reload the list.
   useEffect(() => {
     if (!workflowId) return;
     let cancelled = false;
@@ -185,7 +231,7 @@ const RunHistory: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [workflowId, refreshKey]);
+  }, [workflowId, refreshKey, reload]);
 
   if (!workflowId) {
     return (
@@ -250,7 +296,10 @@ const RunHistory: React.FC<{
       </ul>
       <div className="flex min-w-0 flex-1 flex-col">
         {current ? (
-          <RunDetails run={current} />
+          <RunDetails
+            run={current}
+            onChange={() => setReload((count) => count + 1)}
+          />
         ) : (
           <p className="text-sm text-gray-700">
             Pick a run to see its log and results.

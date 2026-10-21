@@ -2,7 +2,16 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { loadInstalledIndex, readModuleFiles, resolveInstalledPath, writeInstalledIndex } from "./library";
+import axios from "axios";
+import { findNfCoreModuleDir } from "../execution/nfcoreModules";
+import {
+  findCatalogEntry,
+  installModule,
+  loadInstalledIndex,
+  readModuleFiles,
+  resolveInstalledPath,
+  writeInstalledIndex,
+} from "./library";
 
 describe("installed nf-core components", () => {
   let root: string;
@@ -55,5 +64,38 @@ describe("installed nf-core components", () => {
     const files = await readModuleFiles("nf-core/fastqc");
     expect(Object.keys(files).sort()).toEqual(["main.nf", "templates/old_helper.py"]);
     expect(Object.keys(await readModuleFiles("nf-core/fastqc", ["main.nf"]))).toEqual(["main.nf"]);
+  });
+});
+
+describe("installing an nf-core module", () => {
+  let root: string;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-install-"));
+    vi.stubEnv("NWAVE_DATA_DIR", root);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllEnvs();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  const serve = (data: string, headers: Record<string, string>) =>
+    vi.spyOn(axios, "get").mockResolvedValue({ data: Buffer.from(data), headers, status: 200 });
+
+  it("refuses a web page served instead of a file", async () => {
+    // A captive portal or proxy answering with its own page.
+    serve("<html>Sign in to the network</html>", { "content-type": "text/html" });
+    const entry = findCatalogEntry("nf-core/fastqc");
+    if (!entry) throw new Error("fastqc missing from the catalog");
+    await expect(installModule(entry)).rejects.toThrow(/web page/);
+    expect(findNfCoreModuleDir("fastqc")).toBeNull();
+  });
+
+  it("refuses a main.nf cut off before its process", async () => {
+    serve("// nf-core module\n", { "content-type": "text/plain" });
+    const entry = findCatalogEntry("nf-core/fastqc");
+    if (!entry) throw new Error("fastqc missing from the catalog");
+    await expect(installModule(entry)).rejects.toThrow(/no process or workflow/);
+    expect(findNfCoreModuleDir("fastqc")).toBeNull();
   });
 });

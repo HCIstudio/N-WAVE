@@ -482,7 +482,17 @@ const downloadFile = async (url: string): Promise<Buffer | null> => {
 			// Fail a stalled download instead of hanging the install.
 			timeout: 60_000,
 		});
-		return Buffer.from(response.data);
+		const content = Buffer.from(response.data);
+		// A proxy's or captive portal's page, or a body cut short when the
+		// server sent no length, must not be installed as the file.
+		if (/text\/html/i.test(String(response.headers["content-type"] ?? ""))) {
+			throw new Error(`${url} returned a web page instead of the file`);
+		}
+		const length = Number(response.headers["content-length"]);
+		if (Number.isFinite(length) && length > 0 && content.length !== length) {
+			throw new Error(`${url} was cut off (${content.length} of ${length} bytes)`);
+		}
+		return content;
 	} catch (error: unknown) {
 		if (axios.isAxiosError(error) && error.response?.status === 404)
 			return null;
@@ -519,6 +529,9 @@ const downloadEntryFiles = async (
 				throw new Error(`${entry.id} has no main.nf at ${entry.source.commit}`);
 			}
 			continue;
+		}
+		if (filePath === "main.nf" && !/\b(?:process|workflow)\b/.test(content.toString("utf8"))) {
+			throw new Error(`${entry.id}: the downloaded main.nf holds no process or workflow`);
 		}
 		const target = path.join(targetRoot, ...filePath.split("/"));
 		ensureInside(targetRoot, target);

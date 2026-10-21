@@ -36,6 +36,8 @@ export const getPipelineSchema = async (
       responseType: "text",
       transformResponse: [(data) => data],
       headers: { "User-Agent": "N-WAVE-pipelines" },
+      // Fail a stalled download instead of leaving the Pipeline panel loading.
+      timeout: 30_000,
     });
     text = response.data;
   } catch (error: unknown) {

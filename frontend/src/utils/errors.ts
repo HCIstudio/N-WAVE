@@ -41,14 +41,18 @@ export const getResponseData = (error: unknown): UnknownRecord | undefined => {
 };
 
 /**
- * Best message for an API failure: the backend's `message` or `error` field,
- * then the error's own message, then `fallback`.
+ * Best message for an API failure: the backend's `message` (with its `error`,
+ * the underlying cause, and `reasons` when it sends them), then the error's
+ * own message, then `fallback`.
  */
 export const getApiErrorMessage = (error: unknown, fallback: string): string => {
   const data = getResponseData(error);
-  return (
-    nonEmptyString(data?.message) ??
-    nonEmptyString(data?.error) ??
-    getErrorMessage(error, fallback)
-  );
+  const message = nonEmptyString(data?.message);
+  const cause = nonEmptyString(data?.error);
+  const reasons = Array.isArray(data?.reasons)
+    ? data.reasons.filter((reason): reason is string => typeof reason === "string" && reason !== "")
+    : [];
+  const parts = [message && cause && cause !== message ? `${message}: ${cause}` : (message ?? cause), ...reasons];
+  const text = parts.filter(Boolean).join(". ");
+  return text || getErrorMessage(error, fallback);
 };

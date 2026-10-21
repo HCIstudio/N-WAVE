@@ -2,7 +2,7 @@
 // settings dialog and the mounts a run's containers need.
 
 import { exec } from "node:child_process";
-import { DEFAULT_NEXTFLOW_VERSION, shellQuote } from "./command";
+import { DEFAULT_NEXTFLOW_VERSION, resolveNextflowPlatform, shellQuote } from "./command";
 import { execOutput, isCommandAvailable } from "./shell";
 
 /** Throws, naming the reason Docker is needed, when Docker isn't running. */
@@ -35,10 +35,14 @@ export const resolveContainerMount = async (
   return { source: mount.Source, destination: mount.Destination };
 };
 
-const run = (command: string) =>
+const run = (command: string, timeout = 0) =>
   new Promise<{ ok: boolean; stdout: string; stderr: string }>((resolve) =>
-    exec(command, (error, stdout, stderr) =>
-      resolve({ ok: !error, stdout: String(stdout), stderr: String(stderr) })
+    exec(command, { timeout }, (error, stdout, stderr) =>
+      resolve({
+        ok: !error,
+        stdout: String(stdout),
+        stderr: String(stderr) || (error?.killed ? "timed out" : ""),
+      })
     )
   );
 
@@ -87,15 +91,28 @@ export const getNextflowStatus = async () => {
       version: local.stdout.trim(),
     };
   }
+  // The image runs use (on the same platform); the first check downloads it.
+  const platform = resolveNextflowPlatform(process.env.NEXTFLOW_PLATFORM);
   const docker = await run(
-    `docker run --rm nextflow/nextflow:${DEFAULT_NEXTFLOW_VERSION} nextflow -version`
+    `docker run --rm${platform ? ` --platform ${shellQuote(platform)}` : ""} nextflow/nextflow:${DEFAULT_NEXTFLOW_VERSION} nextflow -version`,
+    5 * 60_000
   );
   if (!docker.ok) {
+    // Docker runs but couldn't start the image (no network, a registry limit):
+    // runs can still download it, and their log then shows why they can't.
+    if ((await run("docker info", 30_000)).ok) {
+      return {
+        nextflowAvailable: false,
+        dockerNextflowAvailable: true,
+        note: "Nextflow runs in Docker, but its image couldn't be started yet",
+        details: docker.stderr.trim(),
+      };
+    }
     return {
       nextflowAvailable: false,
       dockerNextflowAvailable: false,
       error: "Nextflow not found locally or via Docker",
-      details: local.stderr,
+      details: docker.stderr.trim() || local.stderr,
     };
   }
   return {

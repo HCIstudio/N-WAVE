@@ -27,7 +27,9 @@ const getRunLog = vi.fn(
     `log of ${id}\nERROR ~ boom\nCommand error:\n  .command.sh: line 2: fastqc: command not found`,
 );
 const listRunResults = vi.fn(async (_id: string) => []);
+const cancelRun = vi.fn(async (_id: string) => undefined);
 vi.mock("../../../api/runs", () => ({
+  cancelRun: (id: string) => cancelRun(id),
   listRuns: (id: string) => listRuns(id),
   getRunLog: (id: string) => getRunLog(id),
   listRunResults: (id: string) => listRunResults(id),
@@ -84,6 +86,31 @@ describe("RunHistory", () => {
     expect(
       container.querySelector('[aria-label="Why the run failed"]')?.textContent,
     ).toContain("runs “fastqc”, which isn't installed");
+  });
+
+  it("stops a run that goes on without this page", async () => {
+    const running: RunSummary = {
+      id: "bee_3",
+      workflowId: "wf1",
+      status: "running",
+      startedAt: "2026-10-15T11:00:00.000Z",
+    };
+    listRuns.mockResolvedValueOnce([running, ...runs]);
+    act(() => root.render(<RunHistory workflowId="wf1" />));
+    await flush();
+    const first = container.querySelector(
+      '[aria-label="Earlier runs"] button',
+    ) as HTMLButtonElement;
+    act(() => first.click());
+    await flush();
+    expect(container.textContent).toContain("still going on the server");
+    const stop = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent === "Stop run",
+    ) as HTMLButtonElement;
+    await act(async () => stop.click());
+    expect(cancelRun).toHaveBeenCalledWith("bee_3");
+    // The list is loaded again to show how the run ended.
+    expect(listRuns).toHaveBeenCalledTimes(2);
   });
 
   it("asks to save a workflow that has no id", async () => {

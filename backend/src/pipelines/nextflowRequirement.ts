@@ -65,7 +65,11 @@ export const getPipelineNextflowRequirement = async (
       headers: { "User-Agent": "N-WAVE-pipelines" },
       timeout: 15_000,
     });
-    if (/^\d+(\.\d+)*$/.test(version)) {
+    // Only a pipeline config is cached: not a proxy's page or a cut-off file.
+    const isConfig =
+      /\bmanifest\b/.test(response.data) &&
+      !/text\/html/i.test(String(response.headers["content-type"] ?? ""));
+    if (isConfig && /^\d+(\.\d+)*$/.test(version)) {
       fs.mkdirSync(path.dirname(cached), { recursive: true });
       fs.writeFileSync(cached, response.data);
     }
