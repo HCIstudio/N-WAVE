@@ -140,7 +140,12 @@ describe("BottomBar", () => {
       expect(screen.queryByRole("button", { name: "Export Project" })).toBeNull();
     });
 
-    it("runs with the current settings", async () => {
+    it("names the run profile a run goes through", () => {
+      show({ onRun: vi.fn(), executionSettings: { ...defaultExecutionSettings, runProfile: "hpc" } });
+      expect(button("Run Workflow").title).toBe('Run through the profile "hpc"');
+    });
+
+        it("runs with the current settings", async () => {
       const onRun = vi.fn();
       show({ onRun });
       expect(button("Run Workflow").title).toBe("Run with Docker");

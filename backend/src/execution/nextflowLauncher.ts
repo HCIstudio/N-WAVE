@@ -11,6 +11,7 @@ import {
 } from "./command";
 import { ensureDockerAvailable, resolveContainerMount } from "./docker";
 import { runnerContainerName } from "./runRegistry";
+import type { RunProfile } from "./runProfile";
 import { isCommandAvailable, readCommandOutput } from "./shell";
 
 /**
@@ -61,6 +62,8 @@ interface LaunchOptions {
   resume?: boolean;
   /** Nextflow's log, relative to the run directory. */
   nextflowLog?: string;
+  /** Where the steps run (a run profile's executor); local when unset. */
+  executor?: RunProfile["executor"];
 }
 
 export interface NextflowLaunch {
@@ -176,11 +179,34 @@ const usedInContainer = async (
   return { command, containerName };
 };
 
+/**
+ * A SLURM run's Nextflow submits each step with sbatch, so it has to run on
+ * this server (not in the runner container, which can't reach a scheduler)
+ * and sbatch has to be there.
+ */
+export const assertCanSubmitToSlurm = async (
+  usesLocalNextflow: boolean,
+  hasSbatch: () => Promise<boolean> = () => isCommandAvailable("sbatch --version")
+): Promise<void> => {
+  if (!usesLocalNextflow) {
+    throw new Error(
+      "Running through a SLURM profile needs Nextflow installed on the N-WAVE server (NEXTFLOW_EXECUTION_MODE=local), on a machine that can submit jobs. The Docker setup runs Nextflow in a container, which can't reach a scheduler; export the project and run it on the cluster instead."
+    );
+  }
+  if (!(await hasSbatch())) {
+    throw new Error(
+      "Running through a SLURM profile needs sbatch on the N-WAVE server, and this server has none. Run N-WAVE where jobs can be submitted (a login node), or export the project and run it on the cluster."
+    );
+  }
+};
+
 /** The command that starts Nextflow for this run. */
 export const buildNextflowLaunch = async (
   options: LaunchOptions
 ): Promise<NextflowLaunch> => {
   const mode = resolveExecutionMode(process.env.NEXTFLOW_EXECUTION_MODE);
-  if (await shouldUseLocalNextflow(mode)) return usedLocally(options);
+  const local = await shouldUseLocalNextflow(mode);
+  if (options.executor === "slurm") await assertCanSubmitToSlurm(local);
+  if (local) return usedLocally(options);
   return usedInContainer(options, mode === "docker" ? "docker" : "auto");
 };

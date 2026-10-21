@@ -48,7 +48,33 @@ test.describe("export project", () => {
     expect(files["Demo_1_-_Text_basics/inputs/sample.txt"]).toContain("Barry");
   });
 
-  test("keeps an uploaded .fastq.gz byte for byte, also after a reload", async ({ page }) => {
+  test("exports the workflow's run profiles for -profile", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    await addNode(page, "File Input");
+
+    await page.getByRole("button", { name: "Execution Settings" }).click();
+    await page.getByRole("button", { name: "Profiles" }).click();
+    await page.getByRole("button", { name: "SLURM cluster profile" }).click();
+    const card = page.getByRole("listitem", { name: "Profile slurm" });
+    await card.getByLabel("Partition (queue)").fill("short");
+    await card.getByLabel("Name").fill("hpc");
+    await page.getByRole("button", { name: "Close", exact: true }).click();
+    // Closing with unsaved settings asks first.
+    await page.getByRole("button", { name: "Save & Close" }).click();
+
+    const files = await unzip(await exportProject(page));
+    const [config] = Object.entries(files).find(([name]) => name.endsWith("/nextflow.config")) ?? [];
+    const text = files[config ?? ""] ?? "";
+    expect(text).toContain("  hpc {\n    process.executor = 'slurm'\n    process.queue = 'short'");
+    expect(text).toContain("singularity.enabled = true");
+    const readme = Object.entries(files).find(([name]) => name.endsWith("/README.md"))?.[1] ?? "";
+    expect(readme).toContain("nextflow run main.nf -profile hpc");
+  });
+
+    test("keeps an uploaded .fastq.gz byte for byte, also after a reload", async ({ page }) => {
     const gzip = gzipSync("@read1\nACGTACGT\n+\nIIIIIIII\n");
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();

@@ -48,6 +48,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
     executionSettings,
     workflowId,
     resume,
+    runProfile,
   } = body;
 
   console.log("Execute request received:", {
@@ -77,6 +78,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
         pipeline: body.pipeline,
         workflowId,
         resume,
+        runProfile,
       },
       res
     );
@@ -108,6 +110,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
         fileEncoding,
         workflowId,
         resume,
+        runProfile,
       },
       res
     );

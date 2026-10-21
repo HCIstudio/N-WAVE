@@ -8,6 +8,7 @@ import {
   ensureSubworkflowsInstalled,
 } from "../nfcore/library";
 import type { PipelineRunRequest } from "../validation/schemas";
+import { buildRunProfileConfig, profileUsesDocker, type RunProfile } from "./runProfile";
 import { materializeNfCoreModules } from "./materializeNfCore";
 import {
   buildExecutionConfig,
@@ -30,9 +31,11 @@ export interface PreparedRun {
 export const preparePipelineRun = (
   dirs: RunDirectories,
   pipeline: PipelineRunRequest,
-  resourceConfig: string
+  resourceConfig: string,
+  profile?: RunProfile
 ): PreparedRun => {
-  fs.writeFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), `${resourceConfig}\n`);
+  const config = [resourceConfig, ...(profile ? [buildRunProfileConfig(profile)] : [])].join("\n\n");
+  fs.writeFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), `${config}\n`);
   const paramsFile = path.join(dirs.main, "params.json");
   if (Object.keys(pipeline.params).length > 0) {
     fs.writeFileSync(paramsFile, `${JSON.stringify(pipeline.params, null, 2)}\n`);
@@ -40,7 +43,7 @@ export const preparePipelineRun = (
     // A resumed run's folder may still have the last run's params.
     fs.rmSync(paramsFile, { force: true });
   }
-  return { hasNfCoreModules: true, useProcessDocker: true };
+  return { hasNfCoreModules: true, useProcessDocker: profile ? profileUsesDocker(profile) : true };
 };
 
 /**
@@ -49,16 +52,20 @@ export const preparePipelineRun = (
  */
 export const buildScriptRunFiles = (
   nextflowScript: string,
-  options: { useDocker: boolean; resourceConfig: string }
+  options: { useDocker: boolean; resourceConfig: string; profile?: RunProfile }
 ) => {
   const assets = extractNwaveNextflowAssets(nextflowScript);
   const modules = getReferencedNfCoreModules(assets.script);
   const subworkflows = getReferencedNfCoreSubworkflows(assets.script);
   const hasNfCoreModules = modules.length > 0 || subworkflows.length > 0;
-  const useProcessDocker = options.useDocker || hasNfCoreModules;
+  // A run profile chooses the containers; it goes last, so it wins.
+  const useProcessDocker = options.profile
+    ? profileUsesDocker(options.profile)
+    : options.useDocker || hasNfCoreModules;
   const config = `${[
     buildExecutionConfig(assets.config, useProcessDocker),
     options.resourceConfig,
+    options.profile ? buildRunProfileConfig(options.profile) : "",
   ]
     .filter((block) => block.trim() !== "")
     .join("\n\n")}\n`;
@@ -80,7 +87,7 @@ export const prepareScriptRun = async (
   dirs: RunDirectories,
   scriptPath: string,
   nextflowScript: string,
-  options: { useDocker: boolean; resourceConfig: string }
+  options: { useDocker: boolean; resourceConfig: string; profile?: RunProfile }
 ): Promise<PreparedRun> => {
   const run = buildScriptRunFiles(nextflowScript, options);
   fs.writeFileSync(scriptPath, run.script);

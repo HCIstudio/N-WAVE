@@ -29,8 +29,9 @@ export const NEXTFLOW_LOG_PATHS = ["nextflow/.nextflow.log", ".nextflow.log"];
 
 const SUBMITTED =
   /\[([0-9a-f]{2}\/[0-9a-f]{6})\] (Submitted|Re-submitted|Cached) process > (.+)$/;
+// Grid executors (SLURM) add "started: …; exited: …" after the work directory.
 const COMPLETED =
-  /Task completed > TaskHandler\[.*?name: (.+?); status: \w+; exit: (\S+); error: (.*?); workDir: (\S+?)\]/;
+  /Task completed > TaskHandler\[.*?name: (.+?); status: \w+; exit: (\S+); error: (.*?); workDir: (\S+?)(?:\]|\s)/;
 
 const processOf = (name: string): string => name.replace(/\s+\(.*\)$/, "");
 

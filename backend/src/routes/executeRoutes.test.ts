@@ -29,7 +29,23 @@ describe("POST /api/execute/execute validation", () => {
     }
   );
 
-  it("accepts only base64 as a file encoding", async () => {
+  it("refuses a run profile that could inject config", async () => {
+    const response = await request(app)
+      .post("/api/execute/execute")
+      .send({
+        nextflowScript: "workflow {}",
+        runProfile: {
+          name: "slurm",
+          executor: "slurm",
+          containerEngine: "none",
+          clusterOptions: "x'\nprocess.executor = 'local",
+        },
+      })
+      .expect(400);
+    expect(response.body.details.join(" ")).toContain("runProfile.clusterOptions");
+  });
+
+    it("accepts only base64 as a file encoding", async () => {
     const response = await request(app)
       .post("/api/execute/execute")
       .send({

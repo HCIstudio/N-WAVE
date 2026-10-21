@@ -1,6 +1,7 @@
 import type { Node } from "@xyflow/react";
 import { getNfCoreModuleFiles } from "../api/nfcore";
 import type { NodeData } from "../components/nodes/BaseNode";
+import type { RunProfile } from "../execution/runProfiles";
 import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
   buildProjectFiles,
@@ -42,11 +43,13 @@ export const exportWorkflowProject = async ({
   script,
   nodes,
   nextflowVersion,
+  profiles,
 }: {
   workflowName: string;
   script: string;
   nodes: Node<NodeData>[];
   nextflowVersion?: string;
+  profiles?: RunProfile[];
 }): Promise<{ fileName: string; blob: Blob }> => {
   const workflowScript = extractNextflowConfig(script).script;
 
@@ -91,6 +94,7 @@ export const exportWorkflowProject = async ({
     moduleFiles,
     subworkflowFiles,
     nextflowVersion,
+    profiles,
   });
   return {
     fileName: `${toProjectName(workflowName)}.zip`,

@@ -1,3 +1,5 @@
+import type { RunProfile } from "../execution/runProfiles";
+
 // Execution capability and environment types
 export interface SystemCapabilities {
   docker: {
@@ -61,6 +63,11 @@ export interface ContainerRegistry {
 export interface ExecutionSettings {
   // Settings format version; settings saved before versions have none.
   version?: number;
+
+  /** Run profiles for clusters and the cloud (see execution/runProfiles.ts). */
+  runProfiles?: RunProfile[];
+  /** The profile runs from N-WAVE use; none: this computer with the settings below. */
+  runProfile?: string;
 
   // Core execution mode
   mode: ExecutionMode;

@@ -12,6 +12,7 @@ import {
   ChevronDown,
   ChevronRight,
   HelpCircle,
+  Server,
 } from "lucide-react";
 import { MemoryInput } from "../forms";
 import api from "../../../api";
@@ -22,6 +23,7 @@ import {
 } from "../../../utils/duration";
 import { getErrorMessage, getErrorName } from "../../../utils/errors";
 import Term from "../ui/Term";
+import RunProfilesSettings from "./RunProfilesSettings";
 
 /** GET /execute/limits: the most a run may use on this server. */
 interface ServerLimits {
@@ -156,6 +158,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     { id: "execution", label: "Execution", icon: Settings },
     { id: "output", label: "Output", icon: FolderOpen },
     { id: "resources", label: "Resources", icon: Cpu },
+    { id: "profiles", label: "Profiles", icon: Server },
     { id: "advanced", label: "Advanced", icon: AlertTriangle },
   ];
 
@@ -719,6 +722,15 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
               </p>
             </div>
           </div>
+        );
+
+      case "profiles":
+        return (
+          <RunProfilesSettings
+            profiles={settings.runProfiles ?? []}
+            runProfile={settings.runProfile}
+            onChange={onSettingsChange}
+          />
         );
 
       case "advanced":
