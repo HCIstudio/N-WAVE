@@ -134,7 +134,7 @@ const checkNodes = (
         .filter((file) => !file.content || file.content.trim() === "")
         .map((file) => file.name || file.originalName || "a file");
       if (lost.length > 0) {
-        add(node, "lostfile", "error", `Upload ${lost.map((name) => `“${name}”`).join(", ")} again: file contents aren't kept after a reload.`);
+        add(node, "lostfile", "error", `Upload ${lost.map((name) => `“${name}”`).join(", ")} again: files over 256 KB aren't kept after a reload.`);
       }
       continue;
     }

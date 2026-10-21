@@ -1,6 +1,8 @@
 // Short explanations of the terms N-WAVE's screens use, for people new to
 // Nextflow and bioinformatics. Shown next to the terms (<Term>) and collected
-// on the glossary page.
+// on the glossary page, each with the wiki guide that says more.
+
+import type { WikiLink } from "../docs/links";
 
 export interface GlossaryEntry {
   id: string;
@@ -9,6 +11,8 @@ export interface GlossaryEntry {
   definition: string;
   /** Other entries that help understand this one. */
   related?: GlossaryId[];
+  /** The wiki guide that explains it in use. */
+  docs?: WikiLink;
 }
 
 const entries = [
@@ -191,10 +195,39 @@ const entries = [
 
 export type GlossaryId = (typeof entries)[number]["id"];
 
+/** The wiki guide for each term. */
+const docs: Record<GlossaryId, WikiLink> = {
+  node: { page: "Nodes" },
+  port: { page: "Building-Workflows", anchor: "connecting" },
+  process: { page: "Custom-Nodes" },
+  task: { page: "Running-Workflows", anchor: "the-run-panel" },
+  channel: { page: "Building-Workflows", anchor: "connecting" },
+  "channel-operator": { page: "Nodes", anchor: "channel-operator" },
+  tuple: { page: "nf-core-Library", anchor: "using-a-module" },
+  meta: { page: "nf-core-Library", anchor: "using-a-module" },
+  samplesheet: { page: "Nodes", anchor: "samplesheet" },
+  fastq: { page: "Nodes", anchor: "samplesheet" },
+  "paired-end": { page: "Nodes", anchor: "samplesheet" },
+  parameters: { page: "Nodes", anchor: "parameters" },
+  "reference-genome": { page: "Nodes", anchor: "parameters" },
+  index: { page: "Nodes", anchor: "parameters" },
+  container: { page: "Running-Workflows", anchor: "execution-settings" },
+  docker: { page: "Installation" },
+  nextflow: { page: "Exporting-Projects" },
+  "nf-core": { page: "nf-core-Library" },
+  module: { page: "nf-core-Library" },
+  subworkflow: { page: "Nodes", anchor: "nf-core-subworkflow" },
+  pipeline: { page: "Nodes", anchor: "nf-core-pipeline" },
+  "ext-args": { page: "Nodes", anchor: "nf-core-module" },
+  versions: { page: "nf-core-Library", anchor: "using-a-module" },
+  "custom-process": { page: "Custom-Nodes" },
+  "work-directory": { page: "Running-Workflows", anchor: "where-the-results-are" },
+};
+
 /** Every entry, alphabetically. */
-export const GLOSSARY: GlossaryEntry[] = [...(entries as unknown as GlossaryEntry[])].sort((a, b) =>
-  a.term.localeCompare(b.term, "en", { sensitivity: "base" }),
-);
+export const GLOSSARY: GlossaryEntry[] = (entries as unknown as GlossaryEntry[])
+  .map((entry) => ({ ...entry, docs: docs[entry.id as GlossaryId] }))
+  .sort((a, b) => a.term.localeCompare(b.term, "en", { sensitivity: "base" }));
 
 export const glossaryEntry = (id: GlossaryId): GlossaryEntry =>
   GLOSSARY.find((entry) => entry.id === id) as GlossaryEntry;
