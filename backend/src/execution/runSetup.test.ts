@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import zlib from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveExecutionMode, shouldUseLocalNextflow } from "./nextflowLauncher";
 import { MODULE_CONFIG_FILE, preparePipelineRun, prepareScriptRun } from "./prepareRun";
@@ -85,6 +86,20 @@ describe("run directories", () => {
     }
     writeInputFiles(dirs.inputs, { "a.txt": "hello" });
     expect(fs.readFileSync(path.join(dirs.inputs, "a.txt"), "utf8")).toBe("hello");
+  });
+
+  it("writes binary inputs byte for byte", () => {
+    const dirs = createRunDirectories(root, "flow_bin");
+    const gzip = zlib.gzipSync("@read1\nACGT\n+\nIIII\n");
+    writeInputFiles(
+      dirs.inputs,
+      { "reads.fastq.gz": gzip.toString("base64"), "notes.txt": "text" },
+      { "reads.fastq.gz": "base64" }
+    );
+    const written = fs.readFileSync(path.join(dirs.inputs, "reads.fastq.gz"));
+    expect(written.equals(gzip)).toBe(true);
+    expect(zlib.gunzipSync(written).toString()).toBe("@read1\nACGT\n+\nIIII\n");
+    expect(fs.readFileSync(path.join(dirs.inputs, "notes.txt"), "utf8")).toBe("text");
   });
 
   it("moves Nextflow's metadata into nextflow/", () => {

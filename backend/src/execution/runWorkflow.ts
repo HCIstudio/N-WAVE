@@ -41,6 +41,8 @@ export interface WorkflowRunRequest {
   workflowName: string;
   settings: ExecutionSettings;
   fileContent?: Record<string, string>;
+  /** Files of fileContent that are base64 (binary files). */
+  fileEncoding?: Record<string, "base64">;
   pipeline?: PipelineRunRequest;
   /** Keeps the run in this workflow's history. */
   workflowId?: string;
@@ -142,7 +144,7 @@ export const runNextflowWorkflow = async (
           useDocker: settings.useDocker,
           resourceConfig,
         });
-    writeInputFiles(dirs.inputs, request.fileContent);
+    writeInputFiles(dirs.inputs, request.fileContent, request.fileEncoding);
 
     const selectedNextflowVersion =
       settings.nextflowVersion || DEFAULT_NEXTFLOW_VERSION;

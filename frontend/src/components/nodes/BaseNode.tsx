@@ -16,6 +16,7 @@ import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
 import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
+import type { FileEncoding } from "../../utils/fileContent";
 
 export interface PortData {
   name: string;
@@ -32,7 +33,9 @@ export type PortKind = "file" | "directory" | "value" | "version";
 
 export interface FileObject {
   name: string;
+  /** Text, or base64 when `encoding` says so (binary files such as .fastq.gz). */
   content: string;
+  encoding?: FileEncoding;
   size: number;
   fileType?: string; // Detected file type
   order?: number; // Stable display/merge ordering metadata

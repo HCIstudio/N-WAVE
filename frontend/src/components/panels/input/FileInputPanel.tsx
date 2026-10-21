@@ -3,16 +3,11 @@ import { useState, useCallback, useMemo, useEffect } from "react";
 import type { Node } from "@xyflow/react";
 import { File, X, UploadCloud, Trash2, Plus } from "lucide-react";
 import { useDropzone } from "react-dropzone";
-import type { NodeData } from "../../nodes/BaseNode";
+import type { FileObject, NodeData } from "../../nodes/BaseNode";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import { SearchInput, detectFileType } from "../../common";
+import { readUploadedFile } from "../../../utils/fileContent";
 
-interface FileObject {
-  name: string;
-  content: string;
-  size: number;
-  fileType?: string; // Detected file type
-}
 
 // One shared empty list, so a node without files doesn't get a new array on
 // every render (the selection effect below depends on it).
@@ -74,21 +69,14 @@ const FileInputPanel: React.FC<{
       try {
         // Process files locally (browser storage)
         const filePromises = acceptedFiles.map((file) => {
-          return new Promise<FileObject>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const content = e.target?.result as string;
-              const fileType = detectFileType(file.name);
-              resolve({
-                name: file.name,
-                content: content,
-                size: file.size,
-                fileType: fileType,
-              });
-            };
-            reader.onerror = reject;
-            reader.readAsText(file);
-          });
+          return readUploadedFile(file).then(
+            (read): FileObject => ({
+              name: file.name,
+              ...read,
+              size: file.size,
+              fileType: detectFileType(file.name),
+            }),
+          );
         });
 
         const newFiles = await Promise.all(filePromises);

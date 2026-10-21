@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { gzipSync } from "node:zlib";
 import type { Download, Page } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
 import { addNode, connect, expect, installNfCoreModule, moveNode, test } from "./fixtures";
@@ -45,6 +46,37 @@ test.describe("export project", () => {
       "nextflow run main.nf -profile docker"
     );
     expect(files["Demo_1_-_Text_basics/inputs/sample.txt"]).toContain("Barry");
+  });
+
+  test("keeps an uploaded .fastq.gz byte for byte, also after a reload", async ({ page }) => {
+    const gzip = gzipSync("@read1\nACGTACGT\n+\nIIIIIIII\n");
+    await page.goto("./");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    await page.getByRole("button", { name: "Empty workflow" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const input = await addNode(page, "File Input");
+    await input.dblclick();
+    const chooserPromise = page.waitForEvent("filechooser");
+    await page.getByRole("button", { name: "Add Files" }).click();
+    await (await chooserPromise).setFiles({
+      name: "reads.fastq.gz",
+      mimeType: "application/gzip",
+      buffer: gzip,
+    });
+    await expect(input).toContainText("1 file selected");
+
+    const inputsOf = async () => {
+      const entries = unzipSync(new Uint8Array(await readFile(await (await exportProject(page)).path())));
+      const name = Object.keys(entries).find((entry) => entry.endsWith("/inputs/reads.fastq.gz"));
+      return name ? Buffer.from(entries[name]) : undefined;
+    };
+    expect((await inputsOf())?.equals(gzip)).toBe(true);
+
+    // Small files are saved with the workflow, as their bytes.
+    await page.getByRole("button", { name: "Save Workflow" }).click();
+    await page.reload();
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    expect((await inputsOf())?.equals(gzip)).toBe(true);
   });
 
   test("includes the nf-core modules the workflow uses", async ({ page }) => {

@@ -1,12 +1,15 @@
 import type { Node } from "@xyflow/react";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { getSamplesheetFileName } from "../registry/samplesheet";
+import type { FileEncoding } from "./fileContent";
 
 /** A file a workflow reads from its input directory. */
 export interface WorkflowInputFile {
   name: string;
   /** File content; undefined when only the file name is known. */
   content?: string;
+  /** "base64" for binary files; text otherwise. */
+  encoding?: FileEncoding;
 }
 
 /**
@@ -35,6 +38,7 @@ export const getNodeInputFiles = (
       {
         name,
         content: typeof file.content === "string" ? file.content : undefined,
+        ...(file.encoding ? { encoding: file.encoding } : {}),
       },
     ];
   });

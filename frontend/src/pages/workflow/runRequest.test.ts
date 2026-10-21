@@ -78,6 +78,22 @@ describe("buildRunRequest", () => {
     });
   });
 
+  it("sends binary input files as base64 and names them", () => {
+    const body = buildRunRequest({
+      ...base,
+      nodes: [
+        fileInput("in", [
+          { name: "reads.fastq.gz", size: 3, content: "H4sI", encoding: "base64" },
+          { name: "notes.txt", size: 2, content: "hi" },
+        ]),
+      ],
+    });
+    expect(body).toMatchObject({
+      fileContent: { "reads.fastq.gz": "H4sI", "notes.txt": "hi" },
+      fileEncoding: { "reads.fastq.gz": "base64" },
+    });
+  });
+
   it("generates the script from the canvas, into the chosen directory", () => {
     const body = buildRunRequest({
       ...base,

@@ -146,6 +146,8 @@ export const executeRequestSchema = z
         message: `at most ${MAX_INPUT_FILES} input files are allowed`,
       })
       .optional(),
+    /** Files of fileContent sent as base64: binary files such as .fastq.gz. */
+    fileEncoding: z.record(inputFileName, z.literal("base64")).optional(),
     executionSettings: executionSettingsSchema.optional(),
   })
   .refine((body) => Boolean(body.script || body.nextflowScript || body.pipeline), {

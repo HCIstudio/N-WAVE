@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
 import { useProcessOperatorLogic } from "./useProcessOperatorLogic";
+import { isBinaryFile } from "../../utils/fileContent";
 
 export const useMapOperator = (
   incomingFiles: FileObject[],
@@ -24,6 +25,9 @@ export const useMapOperator = (
           size: 0,
         };
       }
+
+      // A binary file (.fastq.gz, .bam) has no lines to preview.
+      if (isBinaryFile(file)) return file;
 
       const lines = file.content.split("\n");
       const processedContent = lines

@@ -39,13 +39,19 @@ export const createRunDirectories = (
 /**
  * Write uploaded files into inputs/. File names are validated by the request
  * schema to be plain names (no path separators), so they cannot escape it.
+ * Files named in fileEncoding as "base64" (binary files such as .fastq.gz)
+ * are decoded to their bytes; the others are text.
  */
 export const writeInputFiles = (
   inputsDir: string,
-  fileContent: Record<string, string> | undefined
+  fileContent: Record<string, string> | undefined,
+  fileEncoding: Record<string, "base64"> = {}
 ): void => {
   for (const [fileName, content] of Object.entries(fileContent ?? {})) {
-    fs.writeFileSync(path.join(inputsDir, fileName), content);
+    fs.writeFileSync(
+      path.join(inputsDir, fileName),
+      fileEncoding[fileName] === "base64" ? Buffer.from(content, "base64") : content
+    );
   }
 };
 

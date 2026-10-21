@@ -162,20 +162,16 @@ describe("FileInputPanel", () => {
 
   it("shows an error when a file can't be read", async () => {
     const error = vi.spyOn(console, "error").mockImplementation(() => {});
-    const readAsText = vi
-      .spyOn(FileReader.prototype, "readAsText")
-      .mockImplementation(function (this: FileReader) {
-        this.onerror?.(new ProgressEvent("error") as ProgressEvent<FileReader>);
-      });
+    const bad = new File(["a"], "bad.txt");
+    bad.arrayBuffer = () => Promise.reject(new Error("unreadable"));
     const { updateNodeData, view, user } = setup([]);
-    await user.upload(fileInput(view.container), new File(["a"], "bad.txt"));
+    await user.upload(fileInput(view.container), bad);
     await screen.findByText("An error occurred during file processing.");
     expect(updateNodeData).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Add Files" })).toHaveProperty(
       "disabled",
       false,
     );
-    readAsText.mockRestore();
     error.mockRestore();
   });
 

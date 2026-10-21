@@ -44,6 +44,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
     nextflowScript,
     workflowName = "workflow",
     fileContent,
+    fileEncoding,
     executionSettings,
     workflowId,
   } = body;
@@ -71,6 +72,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
             outputNaming: "{workflow_name}_{timestamp}",
           }),
         fileContent,
+        fileEncoding,
         pipeline: body.pipeline,
         workflowId,
       },
@@ -101,6 +103,7 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
             outputNaming: "{workflow_name}",
           }),
         fileContent,
+        fileEncoding,
         workflowId,
       },
       res

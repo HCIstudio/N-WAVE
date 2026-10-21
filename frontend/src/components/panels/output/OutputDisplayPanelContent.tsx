@@ -4,6 +4,7 @@ import type { Node } from "@xyflow/react";
 import { Download, Info } from "lucide-react";
 import type { NodeData } from "../../nodes/BaseNode";
 import { FileViewer, detectFileType } from "../../common";
+import { fileByteLength, fileBytes, formatBytes, isBinaryFile } from "../../../utils/fileContent";
 
 interface OutputDisplayPanelContentProps {
   node: Node<NodeData> | null;
@@ -65,10 +66,21 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
     }
   }, [selectedFileName, downloadFormat, node, onNodeDataChange]);
 
+  // Binary files (.fastq.gz, .bam) aren't shown as text; they download as they are.
+  const selectedBinaryFile = useMemo(() => {
+    const selectedFile = orderedFiles.find((file) => file.name === selectedFileName);
+    return selectedFile && isBinaryFile(selectedFile) ? selectedFile : undefined;
+  }, [orderedFiles, selectedFileName]);
+
   const displayedContent = useMemo(() => {
     if (selectedFileName === "all") {
       return orderedFiles
-        .map((file) => `--- FILE: ${file.name} ---\n\n${file.content}`)
+        .map(
+          (file) =>
+            `--- FILE: ${file.name} ---\n\n${
+              isBinaryFile(file) ? `(binary file, ${formatBytes(fileByteLength(file))}: no preview)` : file.content
+            }`,
+        )
         .join("\n\n");
     }
     const selectedFile = orderedFiles.find((file) => file.name === selectedFileName);
@@ -94,9 +106,13 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
     if (selectedFileName !== "all") {
       fileName += `_${selectedFileName}`;
     }
-    fileName += `.${fileExtension}`;
 
-    if (downloadFormat === "json") {
+    if (!selectedBinaryFile) fileName += `.${fileExtension}`;
+
+    if (selectedBinaryFile) {
+      // Its own bytes, under its own name.
+      blob = new Blob([fileBytes(selectedBinaryFile) as BlobPart], { type: "application/octet-stream" });
+    } else if (downloadFormat === "json") {
       try {
         const jsonContent = JSON.stringify(
           JSON.parse(contentToDownload),
@@ -139,6 +155,16 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
               <p className="mt-1">{previewUnavailableReason}</p>
             </div>
           </div>
+        </div>
+      );
+    }
+
+    if (selectedBinaryFile) {
+      return (
+        <div className="p-4 text-center text-text-light">
+          “{selectedBinaryFile.name}” is a binary file (
+          {formatBytes(fileByteLength(selectedBinaryFile))}): there&apos;s no preview, but it
+          downloads as it is.
         </div>
       );
     }
