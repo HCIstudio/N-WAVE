@@ -1,4 +1,8 @@
 import { describe, it, expect } from "vitest";
+import type { Edge, Node } from "@xyflow/react";
+import type { NodeData } from "../components/nodes/BaseNode";
+import { generateNextflowScript } from "../generators/core/generateNextflowScript";
+import { makeNode } from "../test/nodes";
 import { importNextflowWorkflow } from "./importNextflowWorkflow";
 
 const SAMPLE_SCRIPT = `
@@ -212,3 +216,42 @@ workflow {
     ]);
   });
 });
+
+describe("importing a script with several File Inputs", () => {
+  it("keeps each File Input's files", () => {
+    const input = (id: string, names: string[]) =>
+      ({
+        ...makeNode("fileInput", { files: names.map((name) => ({ name, content: "x", size: 1 })) }),
+        id,
+      }) as Node<NodeData>;
+    const merge = { ...makeNode("merge"), id: "merge" } as Node<NodeData>;
+    const edges: Edge[] = ["reads", "notes"].map((id) => ({
+      id: `${id}-merge`,
+      source: id,
+      sourceHandle: "ch_files_out",
+      target: "merge",
+      targetHandle: "in",
+    }));
+    const script = generateNextflowScript(
+      [input("reads", ["a.txt", "b.txt"]), input("notes", ["c.txt"]), merge],
+      edges,
+      "wf",
+      "results",
+      "{workflow_name}",
+    );
+    expect(script).toContain("params.selected_files_reads = ['a.txt', 'b.txt']");
+
+    const imported = importNextflowWorkflow({ rawSource: script });
+    const fileInputs = imported.nodes.filter((node) => node.type === "fileInput");
+    expect(fileInputs.map((node) => (node.data.files ?? []).map((file: { name: string }) => file.name))).toEqual([
+      ["a.txt", "b.txt"],
+      ["c.txt"],
+    ]);
+    // Both feed the merge.
+    const mergeNode = imported.nodes.find((node) => node.type === "operator");
+    expect(
+      imported.edges.filter((edge) => edge.target === mergeNode?.id).map((edge) => edge.source).sort(),
+    ).toEqual(fileInputs.map((node) => node.id).sort());
+  });
+});
+

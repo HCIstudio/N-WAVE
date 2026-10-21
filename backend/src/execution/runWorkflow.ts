@@ -34,6 +34,8 @@ import { describeRunExit } from "./runExit";
 import { startRun } from "./runner";
 import { registerRun, unregisterRun } from "./runRegistry";
 import type { ExecutionSettings } from "./types";
+import { removeRunTaskContainers } from "./taskContainers";
+import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
 
 export interface WorkflowRunRequest {
   /** The Nextflow script ("" for a pipeline). */
@@ -79,6 +81,15 @@ export const uniqueOutputName = (outputDirectory: string, outputName: string): s
  * the run ("N-WAVE run: <id>"), which the browser uses to cancel it and
  * find its results. Setup failures before the stream starts answer 500.
  */
+/** Record how a run ended; a history that can't be written doesn't stop the run's ending. */
+const recordEnd = (...args: Parameters<typeof finishRun>): void => {
+  try {
+    finishRun(...args);
+  } catch (error: unknown) {
+    console.warn(`Could not record how run ${args[0]} ended:`, error);
+  }
+};
+
 export const runNextflowWorkflow = async (
   request: WorkflowRunRequest,
   res: Response
@@ -88,6 +99,8 @@ export const runNextflowWorkflow = async (
   let runId: string | null = null;
   let runLog: fs.WriteStream | null = null;
   let cancelledInSetup = false;
+  // Opens the pipeline's launch gate (see launchGate.ts) for the next run.
+  let openGate = () => {};
   try {
     const name = sanitizeWorkflowName(request.workflowName);
     const outputDirectory = settings.outputDirectory || "results";
@@ -120,10 +133,16 @@ export const runNextflowWorkflow = async (
     const log = fs.createWriteStream(path.join(dirs.main, RUN_LOG_FILE), {
       flags: "a",
     });
+    // A full disk ends the log, not the server; the browser still gets it all.
+    let logFailed = false;
+    log.on("error", (error) => {
+      if (!logFailed) console.warn(`Run log of ${id} can't be written:`, error);
+      logFailed = true;
+    });
     runLog = log;
     const send = (text: string) => {
       res.write(text);
-      log.write(text);
+      if (!logFailed) log.write(text);
     };
 
     // The run's limits, clamped to what this server allows (see
@@ -187,7 +206,7 @@ export const runNextflowWorkflow = async (
     if (cancelledInSetup) {
       unregisterRun(id);
       send("\nExecution cancelled\n");
-      finishRun(id, "cancelled");
+      recordEnd(id, "cancelled");
       log.end();
       res.end();
       return;
@@ -199,16 +218,43 @@ export const runNextflowWorkflow = async (
       );
     }
 
+    // Runs of one pipeline get past its download one at a time.
+    if (pipeline) {
+      const gate = `nf-core/${pipeline.name}`;
+      if (isLaunchGateBusy(gate)) {
+        send(`N-WAVE: waiting for another run of ${gate} to finish downloading it.\n`);
+      }
+      openGate = await passLaunchGate(gate);
+      if (cancelledInSetup) {
+        openGate();
+        unregisterRun(id);
+        send("\nExecution cancelled\n");
+        recordEnd(id, "cancelled");
+        log.end();
+        res.end();
+        return;
+      }
+    }
     const run = startRun({
       command: launch.command,
       cwd: dirs.main,
       timeoutMs,
       containerName: launch.containerName,
+      // Task containers still stopping (or orphaned when Nextflow had to be
+      // killed) are removed before the run is reported as stopped.
+      cleanUpAfterStop: async () => {
+        const removed = await removeRunTaskContainers(path.basename(dirs.main));
+        if (removed > 0) {
+          send(`\nN-WAVE: removed ${removed} task container${removed === 1 ? "" : "s"} of the stopped run.\n`);
+        }
+      },
       onOutput: (output) => {
         console.log(`OUTPUT: ${output}`);
+        if (isLaunchLine(output)) openGate();
         send(output);
       },
       onExit: (exit) => {
+        openGate();
         unregisterRun(id);
         const ending = describeRunExit(exit, {
           limits,
@@ -218,7 +264,7 @@ export const runNextflowWorkflow = async (
         console.log(`Execution ${id} ${ending.status}`);
         send(ending.output);
         if (ending.status === "succeeded") moveNextflowMetadata(dirs);
-        finishRun(id, ending.status, ending.summary);
+        recordEnd(id, ending.status, ending.summary);
         log.end();
         res.end();
       },
@@ -226,11 +272,12 @@ export const runNextflowWorkflow = async (
     registerRun(id, run);
   } catch (error: unknown) {
     console.error("Setup error:", error);
+    openGate();
     const message = `Failed to setup workflow execution: ${getErrorMessage(error)}`;
     if (runId) {
       unregisterRun(runId);
       runLog?.write(`\n${message}\n`);
-      finishRun(runId, "failed", getErrorMessage(error));
+      recordEnd(runId, "failed", getErrorMessage(error));
     }
     runLog?.end();
     if (res.headersSent) {

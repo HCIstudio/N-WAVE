@@ -93,6 +93,23 @@ const usedLocally = async (options: LaunchOptions): Promise<NextflowLaunch> => {
   };
 };
 
+/** The results folder inside the backend container (a volume in docker-compose). */
+const CONTAINER_RESULTS = "/app/results";
+
+/**
+ * In the Docker setup the Nextflow runner only sees the results volume, so a
+ * run's folder has to be inside it; elsewhere it would run in a folder that
+ * doesn't exist for it.
+ */
+export const assertRunDirInContainerResults = (runDir: string): void => {
+  const relative = path.posix.relative(CONTAINER_RESULTS, runDir.replace(/\\/g, "/"));
+  if (relative.startsWith("..") || path.posix.isAbsolute(relative)) {
+    throw new Error(
+      `In the Docker setup, runs are written inside ${CONTAINER_RESULTS}, but this run's folder is ${runDir}. Set Output Directory in the execution settings to "results" or a folder inside it.`
+    );
+  }
+};
+
 const usedInContainer = async (
   options: LaunchOptions,
   mode: "docker" | "auto"
@@ -106,17 +123,18 @@ const usedInContainer = async (
         : "Cannot execute workflow: no local Nextflow found and Docker is not running. Start Docker and try again."
     );
   }
+  assertRunDirInContainerResults(options.runDir);
   console.log(`Using Nextflow container: nextflow/nextflow:${options.nextflowVersion}`);
 
   // The runner shares the backend container's results volume.
   const backendContainerName = process.env.BACKEND_CONTAINER_NAME || "nwave-backend";
-  const resultsMount = await resolveContainerMount(backendContainerName, "/app/results");
+  const resultsMount = await resolveContainerMount(backendContainerName, CONTAINER_RESULTS);
   // When tasks run in Docker, run Nextflow from a path the host's Docker
   // daemon also sees. Otherwise sibling task containers get empty
   // /app/results mounts and cannot see .command.sh.
   const resultsRoot = options.useProcessDocker
     ? toDockerHostVisiblePath(resultsMount.source)
-    : "/app/results";
+    : CONTAINER_RESULTS;
   const containerName = runnerContainerName(options.runId);
   const command = buildContainerNextflowCommand({
     dockerApiVersion: resolveRunnerDockerApiVersion(
@@ -140,7 +158,7 @@ const usedInContainer = async (
     nextflowVersion: options.nextflowVersion,
     workDir: path.posix.join(
       resultsRoot,
-      path.relative("/app/results", options.runDir).replace(/\\/g, "/")
+      path.relative(CONTAINER_RESULTS, options.runDir).replace(/\\/g, "/")
     ),
     containerName,
     mount: options.useProcessDocker

@@ -493,7 +493,9 @@ const buildArgumentChannels = ({
 
   for (const argument of argumentList) {
     if (argument.kind === "val") {
-      const value = valueInputs[argument.name] ?? "";
+      // Copies placed before the setting existed have no value: its default.
+      const value =
+        valueInputs[argument.name] ?? settingsByName.get(argument.name)?.defaultValue ?? "";
       channels.push({
         name: groovyLiteralForSetting(String(value), settingsByName.get(argument.name)),
       });
@@ -587,7 +589,7 @@ const buildTupleDefinition = ({
       return `nwaveLastOf(${argName})`;
     }
     return groovyLiteralForSetting(
-      String(values[field.name] ?? ""),
+      String(values[field.name] ?? settingsByName.get(field.name)?.defaultValue ?? ""),
       settingsByName.get(field.name)
     );
   });

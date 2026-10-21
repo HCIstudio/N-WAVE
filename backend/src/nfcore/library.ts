@@ -6,6 +6,7 @@ import {
 	findNfCoreSubworkflowDir,
 	getNwaveDataRoot,
 } from "../execution/nfcoreModules";
+import { readJsonFile, writeJsonFile } from "../utils/jsonFile";
 
 // The nf-core module library: the catalog, installed modules and
 // subworkflows (files under the N-WAVE data dir plus an index), and
@@ -244,6 +245,9 @@ export const resolveSubworkflowComponents = (
 	};
 };
 
+/** N-WAVE's own file in an installed component, not part of the module. */
+const ADAPTER_FILE = "nwave.adapter.json";
+
 const getInstalledIndexPath = (): string =>
 	path.join(getNwaveDataRoot(), "nf-core", "installed.json");
 
@@ -261,24 +265,60 @@ export const getInstalledSubworkflowRoot = (
 ): string =>
 	path.join(getNwaveDataRoot(), "nf-core", "subworkflows", "nf-core", entry.name);
 
+/**
+ * An installed component's path under the current data root. The index
+ * stores paths relative to the root; entries written before that hold
+ * absolute paths, which are rebased from their nf-core/ part, so a moved
+ * data directory (another volume mount) keeps its installs.
+ */
+export const resolveInstalledPath = (stored: string, root = getNwaveDataRoot()): string => {
+	if (!path.isAbsolute(stored)) return path.join(root, stored);
+	const normalized = stored.replace(/\\/g, "/");
+	const match = normalized.match(/\/(nf-core\/(?:modules|subworkflows)\/.*)$/);
+	return match?.[1] ? path.join(root, ...match[1].split("/")) : stored;
+};
+
+const relativeToRoot = (absolute: string, root = getNwaveDataRoot()): string =>
+	path.relative(root, absolute).split(path.sep).join("/");
+
 export const loadInstalledIndex = (): Record<
 	string,
 	InstalledModuleIndexEntry
 > => {
-	const indexPath = getInstalledIndexPath();
-	if (!fs.existsSync(indexPath)) return {};
-	return JSON.parse(fs.readFileSync(indexPath, "utf8")) as Record<
-		string,
-		InstalledModuleIndexEntry
-	>;
+	// An unreadable index is set aside (see jsonFile.ts): the library keeps
+	// working, with nothing installed, instead of failing every request.
+	const stored = readJsonFile<Record<string, InstalledModuleIndexEntry>>(
+		getInstalledIndexPath(),
+		{},
+	);
+	return Object.fromEntries(
+		Object.entries(stored).map(([id, entry]) => [
+			id,
+			{
+				...entry,
+				moduleDir: resolveInstalledPath(entry.moduleDir),
+				manifestPath: resolveInstalledPath(entry.manifestPath),
+			},
+		]),
+	);
 };
 
 export const writeInstalledIndex = (
 	index: Record<string, InstalledModuleIndexEntry>,
 ): void => {
-	const indexPath = getInstalledIndexPath();
-	fs.mkdirSync(path.dirname(indexPath), { recursive: true });
-	fs.writeFileSync(indexPath, `${JSON.stringify(index, null, 2)}\n`);
+	writeJsonFile(
+		getInstalledIndexPath(),
+		Object.fromEntries(
+			Object.entries(index).map(([id, entry]) => [
+				id,
+				{
+					...entry,
+					moduleDir: relativeToRoot(resolveInstalledPath(entry.moduleDir)),
+					manifestPath: relativeToRoot(resolveInstalledPath(entry.manifestPath)),
+				},
+			]),
+		),
+	);
 };
 
 export const ensureInside = (root: string, target: string): void => {
@@ -525,7 +565,7 @@ const writeModule = async (entry: NfCoreCatalogEntry) => {
 
 		const manifest = buildAdapterManifest(entry);
 		fs.writeFileSync(
-			path.join(tempRoot, "nwave.adapter.json"),
+			path.join(tempRoot, ADAPTER_FILE),
 			`${JSON.stringify(manifest, null, 2)}\n`,
 		);
 
@@ -538,7 +578,7 @@ const writeModule = async (entry: NfCoreCatalogEntry) => {
 			kind: "module",
 			installedAt: new Date().toISOString(),
 			moduleDir: installRoot,
-			manifestPath: path.join(installRoot, "nwave.adapter.json"),
+			manifestPath: path.join(installRoot, ADAPTER_FILE),
 			sourceCommit: entry.source.commit,
 			support: entry.support,
 		};
@@ -621,7 +661,7 @@ const writeSubworkflowFiles = async (entry: NfCoreSubworkflowEntry) => {
 		);
 		const manifest = buildSubworkflowManifest(entry);
 		fs.writeFileSync(
-			path.join(tempRoot, "nwave.adapter.json"),
+			path.join(tempRoot, ADAPTER_FILE),
 			`${JSON.stringify(manifest, null, 2)}\n`,
 		);
 
@@ -634,7 +674,7 @@ const writeSubworkflowFiles = async (entry: NfCoreSubworkflowEntry) => {
 			kind: "subworkflow",
 			installedAt: new Date().toISOString(),
 			moduleDir: installRoot,
-			manifestPath: path.join(installRoot, "nwave.adapter.json"),
+			manifestPath: path.join(installRoot, ADAPTER_FILE),
 			sourceCommit: entry.source.commit,
 			support: entry.support,
 		};
@@ -686,6 +726,17 @@ export const ensureSubworkflowsInstalled = async (
 	return installed;
 };
 
+/** Every file an install wrote, as relative paths (dot-folders included). */
+const listInstalledFiles = (root: string, prefix = ""): string[] =>
+	fs
+		.readdirSync(path.join(root, prefix), { withFileTypes: true })
+		.flatMap((entry) => {
+			const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+			if (entry.isDirectory()) return listInstalledFiles(root, relative);
+			return entry.isFile() && relative !== ADAPTER_FILE ? [relative] : [];
+		})
+		.sort();
+
 /**
  * A module's files keyed by relative path: from its installed copy, or, when
  * it isn't installed, from GitHub at the catalog commit.
@@ -709,12 +760,15 @@ export const readModuleFiles = async (
 	const files: Record<string, string> = {};
 
 	if (moduleDir) {
-		for (const filePath of paths) {
+		// The installed copy's own files: an install from an older commit
+		// may have files the current catalog doesn't list.
+		const installed = listInstalledFiles(moduleDir).filter(
+			(filePath) => !only || only.includes(filePath),
+		);
+		for (const filePath of installed) {
 			const fullPath = path.join(moduleDir, ...filePath.split("/"));
 			ensureInside(moduleDir, fullPath);
-			if (fs.existsSync(fullPath)) {
-				files[filePath] = fs.readFileSync(fullPath, "utf8");
-			}
+			files[filePath] = fs.readFileSync(fullPath, "utf8");
 		}
 		return files;
 	}

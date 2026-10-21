@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getNwaveDataRoot } from "../execution/nfcoreModules";
+import { readJsonFile, writeJsonFile } from "../utils/jsonFile";
 
 // Runs started by this backend, by execution id, so their results can be
 // listed and served later (e.g. a pipeline's MultiQC report). Only run
@@ -37,23 +38,11 @@ export const RUN_LOG_FILE = "nwave-run.log";
 
 const indexPath = (): string => path.join(getNwaveDataRoot(), "runs.json");
 
-const readIndex = (): Record<string, RunRecord> => {
-  try {
-    return JSON.parse(fs.readFileSync(indexPath(), "utf8")) as Record<
-      string,
-      RunRecord
-    >;
-  } catch {
-    return {};
-  }
-};
+const readIndex = (): Record<string, RunRecord> =>
+  readJsonFile<Record<string, RunRecord>>(indexPath(), {});
 
 const writeIndex = (entries: Array<[string, RunRecord]>): void => {
-  fs.mkdirSync(path.dirname(indexPath()), { recursive: true });
-  fs.writeFileSync(
-    indexPath(),
-    `${JSON.stringify(Object.fromEntries(entries.slice(-MAX_RUNS)), null, 2)}\n`
-  );
+  writeJsonFile(indexPath(), Object.fromEntries(entries.slice(-MAX_RUNS)));
 };
 
 /** Remember a run's directory as running (keeps the newest MAX_RUNS). */

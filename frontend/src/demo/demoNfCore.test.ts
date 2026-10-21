@@ -145,6 +145,38 @@ describe("demo nf-core library", () => {
     expect(entry.manifest?.outdated).toBe(true);
   });
 
+  it("refreshes an install from the catalog's commit with the current catalog", async () => {
+    await demoApi.post("/nfcore/install", { id: "nf-core/multiqc" });
+    // Stored by an older N-WAVE, before ports said what they carry.
+    const stored = JSON.parse(
+      localStorage.getItem("nwave.demo.nfcore.installed") ?? "[]",
+    );
+    for (const input of stored[0].manifest.inputs) {
+      delete input.kind;
+      delete input.filePattern;
+    }
+    localStorage.setItem("nwave.demo.nfcore.installed", JSON.stringify(stored));
+
+    const [entry] = await installed();
+    const config = entry.manifest?.inputs.find((input) => input.handle === "multiqc_config");
+    expect(config).toMatchObject({ kind: "file", filePattern: "*.{yml,yaml}" });
+    expect(entry.manifest?.outdated).toBeFalsy();
+  });
+
+  it("exports an outdated install's files from its own commit", async () => {
+    await demoApi.post("/nfcore/install", { id: "nf-core/salmon/quant" });
+    const stored = JSON.parse(
+      localStorage.getItem("nwave.demo.nfcore.installed") ?? "[]",
+    );
+    stored[0].sourceCommit = "0000000";
+    localStorage.setItem("nwave.demo.nfcore.installed", JSON.stringify(stored));
+    githubRequests.length = 0;
+
+    await demoApi.get(`/nfcore/modules/files?id=${encodeURIComponent("nf-core/salmon/quant")}`);
+    expect(githubRequests.length).toBeGreaterThan(0);
+    expect(githubRequests.every((url) => url.includes("/nf-core/modules/0000000/"))).toBe(true);
+  });
+
   it("installs a subworkflow with the modules and subworkflows it includes", async () => {
     const { data } = await demoApi.post<{
       manifest: NfCoreAdapterManifest;

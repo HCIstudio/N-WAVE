@@ -53,6 +53,18 @@ describe("run files behind symlinks", () => {
     expect(file.text).toBe("output");
   });
 
+  it("serves results and task files at path-style URLs too", async () => {
+    const file = await request(app).get("/api/execute/runs/flow_1/results/out.txt").expect(200);
+    expect(file.text).toBe("output");
+    await request(app).get("/api/execute/runs/flow_1/results/leak.txt").expect(404);
+    await request(app).get("/api/execute/runs/flow_1/results/%2e%2e/%2e%2e/etc/passwd").expect(404);
+    const task = await request(app)
+      .get("/api/execute/runs/flow_1/tasks/1f/9a15a4/output/out.txt")
+      .expect(200);
+    expect(task.text).toBe("output");
+    await request(app).get("/api/execute/runs/flow_1/tasks/1f/9a15a4/output/staged/secret.txt").expect(404);
+  });
+
   it("serves nothing a symlink points to outside the run", async () => {
     for (const filePath of ["leak.txt", "linked/secret.txt", "missing.txt"]) {
       await request(app)

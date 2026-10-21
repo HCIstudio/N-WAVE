@@ -160,14 +160,14 @@ describe("useExecutionStatus", () => {
     );
   });
 
-  it("finishes the run on Nextflow's summary and marks running processes done", () => {
+  it("finishes the run when the backend says it completed, and marks running processes done", () => {
     const { result } = setup();
     act(() => result.current.startExecution());
     act(() =>
       result.current.parseNextflowOutput("[ab/cd1234] map_node_1 | 0 of 1"),
     );
     act(() =>
-      result.current.parseNextflowOutput("Completed at: 18-Oct-2026 14:00:00"),
+      result.current.parseNextflowOutput("Nextflow execution completed successfully"),
     );
     expect(result.current.status).toMatchObject({
       isRunning: false,
@@ -177,6 +177,20 @@ describe("useExecutionStatus", () => {
       status: "success",
       progress: 100,
     });
+  });
+
+  it("keeps running when a task prints what looks like Nextflow's summary", () => {
+    const { result } = setup();
+    act(() => result.current.startExecution());
+    act(() =>
+      result.current.parseNextflowOutput("[ab/cd1234] map_node_1 | 0 of 1"),
+    );
+    // A process with `debug true` printing its own timing.
+    for (const line of ["Duration: 3.2s", "Succeeded: 12", "Completed at: noon", "CPU hours: 0.1"]) {
+      act(() => result.current.parseNextflowOutput(line));
+    }
+    expect(result.current.status.isRunning).toBe(true);
+    expect(result.current.status.nodeStatuses[0]?.status).not.toBe("success");
   });
 
   it("stops on a failure line", () => {

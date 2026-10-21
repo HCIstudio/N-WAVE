@@ -3,7 +3,11 @@ import os from "node:os";
 import path from "node:path";
 import zlib from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { resolveExecutionMode, shouldUseLocalNextflow } from "./nextflowLauncher";
+import {
+  assertRunDirInContainerResults,
+  resolveExecutionMode,
+  shouldUseLocalNextflow,
+} from "./nextflowLauncher";
 import { MODULE_CONFIG_FILE, preparePipelineRun, prepareScriptRun } from "./prepareRun";
 import {
   createRunDirectories,
@@ -172,5 +176,16 @@ describe("single process placeholders", () => {
       "echo 'O'\\''Brien' '3' $other"
     );
     expect(fillPlaceholders("echo $name", "unknown")).toBe("echo $name");
+  });
+});
+
+describe("run folders in the Docker setup", () => {
+  it("must be inside the results volume", () => {
+    expect(() => assertRunDirInContainerResults("/app/results/demo_2")).not.toThrow();
+    expect(() => assertRunDirInContainerResults("/app/results/project/demo")).not.toThrow();
+    expect(() => assertRunDirInContainerResults("/data/out/demo")).toThrow(
+      'In the Docker setup, runs are written inside /app/results, but this run\'s folder is /data/out/demo. Set Output Directory in the execution settings to "results" or a folder inside it.',
+    );
+    expect(() => assertRunDirInContainerResults("/app/results-old/demo")).toThrow();
   });
 });
