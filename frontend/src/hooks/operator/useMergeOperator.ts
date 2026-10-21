@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
 import { useProcessOperatorLogic } from "./useProcessOperatorLogic";
+import { isBinaryFile } from "../../utils/fileContent";
 
 export const useMergeOperator = (
   incomingFiles: FileObject[],
@@ -14,7 +15,7 @@ export const useMergeOperator = (
 
     // Filter out files without content and safely combine
     const combinedContent = incomingFiles
-      .filter((f) => f.content && typeof f.content === "string")
+      .filter((f) => f.content && typeof f.content === "string" && !isBinaryFile(f))
       .map((f) => f.content)
       .join("\n");
 

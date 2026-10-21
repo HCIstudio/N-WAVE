@@ -126,6 +126,13 @@ describe("OutputDisplayPanelContent", () => {
     );
   });
 
+  it("tells a binary file instead of showing it as text", () => {
+    const gz: FileObject = { name: "reads.fastq.gz", content: "H4sIAA==", encoding: "base64", size: 4 };
+    show({ files: [gz], selectedFileName: "reads.fastq.gz" });
+    expect(screen.getByText(/is a binary file \(4 B\)/)).toBeTruthy();
+    expect(screen.queryByText("H4sIAA==")).toBeNull();
+  });
+
   it("says when there is nothing to show", () => {
     show({ files: [] });
     expect(screen.getByText("No content to display.")).toBeTruthy();

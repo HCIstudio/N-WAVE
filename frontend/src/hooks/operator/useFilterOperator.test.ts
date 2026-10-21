@@ -71,6 +71,12 @@ describe("useFilterOperator", () => {
     expect(contentOf(onSave)).toEqual([""]);
   });
 
+  it("passes binary files through unfiltered", () => {
+    const gz = { name: "reads.fastq.gz", content: "H4sIAA==", encoding: "base64" as const, size: 4 };
+    const { onSave } = run([gz], { filterText: "A" });
+    expect(lastSaved(onSave, "files")).toEqual([gz]);
+  });
+
   it("passes files without content through as empty files", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const empty = { name: "old.txt", content: "", size: 10 };

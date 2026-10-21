@@ -81,9 +81,14 @@ export const buildRunRequest = ({
     settings.output?.namingPattern?.trim() || "{workflow_name}_{timestamp}";
 
   // Files for the input directory: File Input uploads and samplesheets.
+  // Binary files (gzipped FASTQ, BAM) travel as base64 and are named in
+  // fileEncoding, so the backend writes their bytes.
   const fileContent: Record<string, string> = {};
+  const fileEncoding: Record<string, "base64"> = {};
   for (const file of launch?.inputFiles ?? getWorkflowInputFiles(nodes)) {
-    if (file.content) fileContent[file.name] = file.content;
+    if (!file.content) continue;
+    fileContent[file.name] = file.content;
+    if (file.encoding === "base64") fileEncoding[file.name] = "base64";
   }
 
   const nextflowScript = launch
@@ -123,6 +128,7 @@ export const buildRunRequest = ({
       outputNaming: namingPattern,
     },
     fileContent,
+    ...(Object.keys(fileEncoding).length > 0 ? { fileEncoding } : {}),
     // Keeps the run in this workflow's history.
     ...(workflowId ? { workflowId } : {}),
   };

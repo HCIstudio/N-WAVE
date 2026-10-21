@@ -29,6 +29,18 @@ describe("POST /api/execute/execute validation", () => {
     }
   );
 
+  it("accepts only base64 as a file encoding", async () => {
+    const response = await request(app)
+      .post("/api/execute/execute")
+      .send({
+        nextflowScript: "workflow {}",
+        fileContent: { "reads.fastq.gz": "H4sI" },
+        fileEncoding: { "reads.fastq.gz": "hex" },
+      })
+      .expect(400);
+    expect(response.body.details.join(" ")).toContain("fileEncoding");
+  });
+
   it.each([
     ["nextflowVersion", "25.04.4; rm -rf /"],
     ["maxMemory", '4GB" && touch /tmp/x'],

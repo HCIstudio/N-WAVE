@@ -113,6 +113,16 @@ describe("buildProjectFiles", () => {
     expect(files["inputs/sample.txt"]).toBe("hello");
   });
 
+  it("writes binary input files as their bytes", () => {
+    const binary = buildProjectFiles({
+      workflowName: "QC run",
+      script,
+      inputFiles: [{ name: "reads.fastq.gz", content: "H4sIAA==", encoding: "base64" }],
+      moduleFiles,
+    });
+    expect(binary["inputs/reads.fastq.gz"]).toEqual(new Uint8Array([0x1f, 0x8b, 0x08, 0x00]));
+  });
+
   it("writes the module config and a docker profile", () => {
     const config = files["nextflow.config"];
     expect(config).toContain("withName: 'FASTQC_N1'");

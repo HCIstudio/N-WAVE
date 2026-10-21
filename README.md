@@ -305,6 +305,17 @@ install they came from. The community index is a JSON file in a separate data re
 (`VITE_NODE_PACK_INDEX_URL`), so contributing a node is a pull request there, not to N-WAVE.
 The format is described in [wiki/Node-Packs.md](wiki/Node-Packs.md).
 
+### Uploaded files
+
+Files uploaded to a File Input node reach the run's `inputs/` folder and exported projects
+byte for byte. Text files are kept as text, so filter, map and output previews can read them;
+anything else, such as gzipped FASTQ or BAM, is kept as base64 (`encoding: "base64"` on the
+file) and sent with the run request in `fileEncoding`, and the backend writes its bytes.
+Previews show such files as binary rather than as text. A run request may be up to 50 MB, so
+the uploads of one run can total about 37 MB (base64 adds a third); for larger data, use
+absolute paths or URLs in a samplesheet or Parameters node. Files up to 256 KB are saved
+with the workflow; larger ones are uploaded again after a reload.
+
 ### Samplesheets
 
 Most nf-core modules take `[ meta, [ reads ] ]` tuples. The **Samplesheet** input node builds

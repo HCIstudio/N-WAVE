@@ -215,6 +215,14 @@ describe("sanitizeNodesForSave", () => {
     ]);
     expect(saved.data.files).toEqual([{ ...file, content: "" }]);
   });
+
+  it("measures binary files by their bytes, not their base64", () => {
+    // 256 KB of bytes is about 341 KB of base64: still small enough to keep.
+    const content = "A".repeat((SAVED_FILE_CONTENT_LIMIT / 3) * 4);
+    const file = { name: "reads.fastq.gz", size: SAVED_FILE_CONTENT_LIMIT, content, encoding: "base64" as const };
+    const [saved] = sanitizeNodesForSave([node("in", "fileInput", { files: [file] })]);
+    expect(saved.data.files).toEqual([file]);
+  });
 });
 
 describe("loadErrorFor", () => {

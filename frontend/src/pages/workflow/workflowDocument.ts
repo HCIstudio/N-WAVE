@@ -5,6 +5,7 @@ import { isDemoMode } from "../../api";
 import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
 import { migrateLegacyNfCoreNode } from "../../registry/nfcore/legacyNodes";
 import { getApiErrorMessage, getResponseStatus } from "../../utils/errors";
+import { fileByteLength } from "../../utils/fileContent";
 
 /** The handle an edge end attaches to, given the ports on its side of the node. */
 const handleFor = (
@@ -130,7 +131,8 @@ export const hydrateNodes = (nodes: Node<NodeData>[]): Node<NodeData>[] =>
 export const SAVED_FILE_CONTENT_LIMIT = 256 * 1024;
 
 const savedFile = (file: FileObject): FileObject =>
-  new TextEncoder().encode(file.content ?? "").length <= SAVED_FILE_CONTENT_LIMIT
+  fileByteLength({ content: file.content ?? "", encoding: file.encoding }) <=
+  SAVED_FILE_CONTENT_LIMIT
     ? file
     : withoutContent(file);
 

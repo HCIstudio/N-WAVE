@@ -2,16 +2,11 @@ import type React from "react";
 import { useRef, useEffect, type ChangeEvent } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
-import BaseNode, { type NodeData } from "../BaseNode";
+import BaseNode, { type FileObject, type NodeData } from "../BaseNode";
 import { detectFileType } from "../../common";
 import clsx from "clsx";
+import { readUploadedFile } from "../../../utils/fileContent";
 
-interface FileObject {
-  name: string;
-  content: string;
-  size: number;
-  fileType?: string; // Detected file type
-}
 
 const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
   const { id, data } = props;
@@ -40,21 +35,14 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
     const selectedFiles = event.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
       const filePromises = Array.from(selectedFiles).map((file) => {
-        return new Promise<FileObject>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const content = e.target?.result as string;
-            const fileType = detectFileType(file.name);
-            resolve({
+        return readUploadedFile(file).then(
+            (read): FileObject => ({
               name: file.name,
-              content: content,
+              ...read,
               size: file.size,
-              fileType: fileType,
-            });
-          };
-          reader.onerror = reject;
-          reader.readAsText(file);
-        });
+              fileType: detectFileType(file.name),
+            }),
+          );
       });
 
       Promise.all(filePromises)
