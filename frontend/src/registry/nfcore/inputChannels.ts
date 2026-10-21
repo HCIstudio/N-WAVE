@@ -1,6 +1,7 @@
 import type { Edge } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { groovyStringWithParams } from "../params";
+import { buildMixedChannelExpression } from "../../generators/core/mixChannels";
 
 // Turns the input layout of an nf-core module (one group per process
 // argument, see scripts/nfcoreModuleParser.mjs) into the channel expressions
@@ -176,13 +177,18 @@ export const buildNfCoreGroupChannels = (
     .flatMap((group) => getGroupItems(group))
     .find((item) => item.kind === "path")?.name;
 
+  // Every connection into the port, mixed (several only on inputs that
+  // take many, such as MultiQC's reports).
   const upstreamFor = (port: string): string | null => {
-    const edge =
-      incomingEdges.find((candidate) => candidate.targetHandle === port) ??
-      (port === firstPort
-        ? incomingEdges.find((candidate) => !candidate.targetHandle)
-        : undefined);
-    return edge ? resolveUpstream(edge) : null;
+    const upstream = incomingEdges
+      .filter(
+        (candidate) =>
+          candidate.targetHandle === port ||
+          (port === firstPort && !candidate.targetHandle),
+      )
+      .map(resolveUpstream)
+      .filter((name): name is string => Boolean(name));
+    return upstream.length > 0 ? buildMixedChannelExpression(upstream) : null;
   };
 
   const channels: NfCoreInputChannel[] = [];

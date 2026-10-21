@@ -6,6 +6,7 @@ import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { getNodeParameters, validateParameters } from "../../registry/params";
 import { getPipelineLaunchIssues } from "../../registry/pipelines/launch";
+import { findExtraConnections, inputLabel } from "../../registry/portArity";
 import { connectionHints } from "../../registry/portTypes";
 import { getSamplesheetMapping, parseSamplesheet } from "../../registry/samplesheet";
 import type { ExecutionSettings } from "../../types/execution";
@@ -186,6 +187,17 @@ const checkWorkflowWide = (
   const pipeline = nodes.find((node) => node.type === "pipeline");
   for (const [index, message] of getPipelineLaunchIssues(nodes, edges).entries()) {
     problems.push({ id: `pipeline${index}`, level: "error", message, nodeId: pipeline?.id });
+  }
+  // Several connections into a one-connection input (saved before the rule):
+  // the run would use them all, which the step doesn't expect.
+  for (const { node, handle, count } of findExtraConnections(nodes, edges)) {
+    const label = String(node.data.label || node.type);
+    problems.push({
+      id: `extra:${node.id}:${handle}`,
+      level: "error",
+      message: `“${label}” takes one connection on “${inputLabel(node, handle)}” but has ${count}. Connect them to a Merge node (or mix them in a channel operator) and connect that instead.`,
+      nodeId: node.id,
+    });
   }
   // Ports that don't fit: a warning on the step the connection feeds.
   for (const [edgeId, hint] of Object.entries(connectionHints(nodes, edges))) {

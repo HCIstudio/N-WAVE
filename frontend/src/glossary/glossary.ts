@@ -23,7 +23,7 @@ const entries = [
     id: "port",
     term: "Port",
     definition:
-      "The dots on a node's sides: inputs on the left, outputs on the right. A connection runs from an output to an input; hover a port to see what it carries.",
+      "The dots on a node's sides: inputs on the left, outputs on the right. A connection runs from an output to an input. Most inputs take one connection; a taller one takes any number.",
     related: ["node", "channel"],
   },
   {

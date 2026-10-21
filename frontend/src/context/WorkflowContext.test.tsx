@@ -224,19 +224,29 @@ describe("WorkflowContext", () => {
     ).toBe(true);
   });
 
-  it("shows one toast at a time until it is closed or times out", () => {
+  it("shows the newest toast until it is closed or times out", () => {
     vi.useFakeTimers();
     const { result } = setup();
     act(() => result.current.showToast("Saved", "success"));
-    act(() => result.current.showToast("Ignored", "error"));
-    expect(result.current.toast?.message).toBe("Saved");
+    const saved = result.current.toast;
+    // The same message again (a connection checked while dragged) keeps it.
+    act(() => result.current.showToast("Saved", "success"));
+    expect(result.current.toast).toBe(saved);
+    // A new message replaces it, so a refusal right after a notice still shows.
+    act(() => result.current.showToast("Refused", "error"));
+    expect(result.current.toast?.message).toBe("Refused");
 
     act(() => result.current.closeToast());
     expect(result.current.toast).toBeNull();
 
     act(() => result.current.showToast("Again", "info"));
     expect(result.current.toast?.message).toBe("Again");
-    act(() => vi.advanceTimersByTime(10000));
+    act(() => vi.advanceTimersByTime(9000));
+    act(() => result.current.showToast("Later", "info"));
+    // Each new message gets its full time.
+    act(() => vi.advanceTimersByTime(9000));
+    expect(result.current.toast?.message).toBe("Later");
+    act(() => vi.advanceTimersByTime(1000));
     expect(result.current.toast).toBeNull();
   });
 

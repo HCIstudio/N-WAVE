@@ -14,6 +14,8 @@ import {
   getSamplesheetFileName,
   getSamplesheetMapping,
 } from "../../registry/samplesheet";
+import { edgesIntoPort } from "../../registry/portArity";
+import { buildMixedChannelExpression } from "./mixChannels";
 
 /**
  * Generates a Nextflow script from the current workflow nodes.
@@ -216,11 +218,21 @@ export const generateNextflowScript = (
       );
       if (incomingEdges.length === 0) continue;
 
-      const upstreamChannelName = resolveChannelNameForEdge(
-        incomingEdges[0],
-        channelNameMap
-      );
-      if (!upstreamChannelName) continue;
+      // Every connection into the (first) input, mixed: a one-connection
+      // input has a single one, unless the workflow check flags it.
+      const firstInput =
+        getNodeDefinitionForNode(node)?.inputs?.[0]?.name ??
+        node.data.inputs?.[0]?.name;
+      const firstInputEdges = firstInput
+        ? edgesIntoPort(node, incomingEdges, firstInput)
+        : [];
+      const upstreamNames = (
+        firstInputEdges.length > 0 ? firstInputEdges : incomingEdges.slice(0, 1)
+      )
+        .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
+        .filter((name): name is string => Boolean(name));
+      if (upstreamNames.length === 0) continue;
+      const upstreamChannelName = buildMixedChannelExpression(upstreamNames);
 
       // Output display nodes don't have outputs, so skip this check for them
       let outputChannelName = null;
@@ -619,15 +631,7 @@ export function getProcessNameForNode(node: Node): string {
   return `${type}_${node.id.replace(/[\s-]+/g, "_")}`;
 }
 
-export function buildMixedChannelExpression(channelNames: string[]): string {
-  if (channelNames.length === 1) {
-    return channelNames[0];
-  }
-
-  return channelNames
-    .slice(1)
-    .reduce((expression, channelName) => `${expression}.concat(${channelName})`, channelNames[0]);
-}
+export { buildMixedChannelExpression };
 
 function getInvocationArguments(invocation: string): string[] {
   const trimmed = invocation.trim();

@@ -208,7 +208,8 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     type: "operator",
     icon: "Minimize",
     operatorType: "merge",
-    inputs: [{ name: "in" }],
+    // Merges every file connected to it.
+    inputs: [{ name: "in", multiple: true }],
     outputs: [{ name: "out", isConnectable: true }],
     defaults: withPorts(
       {
@@ -216,7 +217,7 @@ const builtinNodeDefinitions: NodeDefinition[] = [
         mergeOperation: "join",
         mergeJoinSeparator: "\\n",
       },
-      [{ name: "in" }],
+      [{ name: "in", multiple: true }],
       [{ name: "out", isConnectable: true }]
     ),
     panel: MergePanel,
@@ -336,21 +337,6 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     },
     generateNextflow: generateOutputDisplayNode,
     executionLabel: "Display Output",
-    validateConnection: ({ targetNode, edges }) => {
-      if (targetNode?.type === "outputDisplay") {
-        const existingEdges = edges.filter(
-          (edge) => edge.target === targetNode.id
-        );
-        if (existingEdges.length > 0) {
-          return {
-            valid: false,
-            message: "Display Output can only take one input.",
-          };
-        }
-      }
-
-      return { valid: true };
-    },
   },
 ];
 

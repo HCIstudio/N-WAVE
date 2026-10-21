@@ -117,15 +117,35 @@ const portKind = ({ kind, filePattern }: NfCorePortKind): NfCorePortKind => ({
   ...(filePattern ? { filePattern } : {}),
 });
 
-export const createNodeDefinitionFromNfCoreAdapter = (
-  adapter: NfCoreModuleAdapter
-): NodeDefinition => {
-  const inputs: PortData[] = adapter.inputs.map((input) => ({
+/**
+ * Inputs that gather files from many steps into one run (staged with
+ * `collect`, such as MultiQC's reports) take any number of connections.
+ */
+const collectingInputs = (groups: NfCoreModuleInputGroup[] | undefined): Set<string> =>
+  new Set(
+    (groups ?? []).flatMap((group) =>
+      (group.items ?? []).flatMap((item) => (item.kind === "path" && item.mode === "collect" ? [item.name] : [])),
+    ),
+  );
+
+const nfCoreInputPorts = (
+  inputs: NfCoreModuleAdapter["inputs"],
+  groups: NfCoreModuleInputGroup[] | undefined,
+): PortData[] => {
+  const many = collectingInputs(groups);
+  return inputs.map((input) => ({
     name: input.handle,
     label: input.label,
     isConnectable: true,
     ...portKind(input),
+    ...(many.has(input.handle) ? { multiple: true } : {}),
   }));
+};
+
+export const createNodeDefinitionFromNfCoreAdapter = (
+  adapter: NfCoreModuleAdapter
+): NodeDefinition => {
+  const inputs = nfCoreInputPorts(adapter.inputs, adapter.inputGroups);
   const outputs: PortData[] = adapter.outputs.map((output) => ({
     name: output.handle,
     label: output.label,
@@ -188,12 +208,7 @@ export const createNodeDefinitionFromNfCoreManifest = (
       processType: manifest.processType,
       label: manifest.label,
       subtitle: "nf-core module",
-      inputs: manifest.inputs.map((input) => ({
-        name: input.handle,
-        label: input.label,
-        isConnectable: true,
-        ...portKind(input),
-      })),
+      inputs: nfCoreInputPorts(manifest.inputs, manifest.inputGroups),
       outputs: manifest.outputs.map((output) => ({
         name: output.handle,
         label: output.label,
