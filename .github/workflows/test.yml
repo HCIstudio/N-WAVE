@@ -50,7 +50,7 @@ jobs:
         run: pnpm test:coverage
 
       - name: nf-core catalog parser tests
-        run: node --test ../scripts/nfcoreModuleParser.test.mjs ../scripts/nfcoreSubworkflowParser.test.mjs ../scripts/nfcorePortTypes.test.mjs
+        run: node --test ../scripts/*.test.mjs
 
       - name: Typecheck & build
         run: pnpm build

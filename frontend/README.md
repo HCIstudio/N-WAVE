@@ -1,35 +1,41 @@
 # N-WAVE Frontend
 
-React + Vite + TypeScript single-page app: the node-based workflow editor and the
-client-side Nextflow script generator. It talks to the backend through a small REST API; in
-the browser-only demo build that client is swapped for in-browser storage.
+React + Vite + TypeScript app: the workflow canvas and the Nextflow script generator. It talks
+to the [backend](../backend/README.md) through `src/api.ts`; the browser demo build
+(`VITE_DEMO_MODE=true`) swaps that client for in-browser storage (`src/demo/`). How the app is
+used is in the [wiki](https://github.com/HCIstudio/N-WAVE/wiki).
 
 ## Development
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:5173, proxies /api to the backend on :5001
-pnpm build    # typecheck + production build
-pnpm test     # unit tests (pnpm test:coverage for coverage)
-pnpm lint     # Biome
-pnpm test:e2e # Playwright E2E against the demo build (run `pnpm exec playwright install chromium` once)
+pnpm dev           # http://localhost:5173, proxies /api to the backend on :5001
+pnpm build         # typecheck + production build
+pnpm test          # unit tests (pnpm test:coverage for coverage)
+pnpm lint          # Biome
+pnpm test:e2e      # Playwright against the demo build (once: pnpm exec playwright install chromium)
+pnpm nfcore:catalog  # regenerate the nf-core catalog (see ../scripts/README.md)
 ```
 
-For the full stack (frontend + backend + MongoDB) and the architecture, see the
-[root README](../README.md). For usage guides, see the
-[Wiki](https://github.com/HCIstudio/N-WAVE/wiki).
+[CONTRIBUTING.md](../CONTRIBUTING.md) lists the checks a pull request must pass.
 
 ## Structure
 
-- `src/components/` — canvas, nodes, panels, dialogs
-- `src/generators/` — graph → Nextflow script
-- `src/hooks/` — workflow logic and UI state
-- `src/registry/`, `src/data/` — node and process definitions
-- `src/demo/` — in-browser store for the demo build
-- `src/pages/` — HomePage (library) and WorkflowPage (editor)
-- `src/api.ts`, `src/api/` — backend client
-- `e2e/` — Playwright end-to-end tests (canvas flow)
+| Folder | What's in it |
+| --- | --- |
+| `src/pages/` | The home page, the glossary page and the workflow editor (`WorkflowPage.tsx`, with its hooks in `pages/workflow/`) |
+| `src/components/` | Canvas, nodes, node panels ([panels](src/components/panels/README.md)), shared UI ([common](src/components/common/README.md)), tutorial |
+| `src/registry/` | Node definitions: ports, settings and the code each node generates; nf-core, custom nodes, node packs, pipelines |
+| `src/generators/` | Graph → Nextflow script ([generators](src/generators/README.md)) |
+| `src/execution/` | What runs show: task mapping, failure explanations, run profiles |
+| `src/export/` | Download and Export Project |
+| `src/glossary/`, `src/templates/`, `src/workflows/` | Glossary terms, New Workflow templates, workflow helpers (node kinds, import, default settings) |
+| `src/hooks/` | Shared hooks ([hooks](src/hooks/README.md)) |
+| `src/demo/` | The browser demo's in-browser backend |
+| `src/api.ts`, `src/api/` | The backend client |
+| `src/test/` | Test helpers, stored examples and real Nextflow logs |
+| `e2e/`, `scripts/lint/` | Playwright tests; the projects `nextflow lint` checks in CI |
 
 ## License
 
-Apache License 2.0. See [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE) at the repository root.
+Apache License 2.0. See [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE).

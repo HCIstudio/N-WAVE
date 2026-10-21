@@ -173,7 +173,7 @@ N-WAVE/
 ## CI and releases
 
 Every pull request runs the `Test` workflow (lint, unit tests with coverage floors,
-typecheck, build, Nextflow lint of the generated scripts, end-to-end tests), and `main` only
+typecheck, build, Nextflow lint of the generated scripts, and end-to-end tests), and `main` only
 accepts green pull requests. Every merge to `main` is released automatically: version bump,
 Docker images, the demo site and a GitHub Release with `latest.yml`. Details, and how to set a
 new minor or major version, are in [CONTRIBUTING.md](CONTRIBUTING.md#releases).

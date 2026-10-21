@@ -1,55 +1,58 @@
 # N-WAVE Backend
 
-Express + TypeScript API for N-WAVE. It persists workflows to MongoDB and executes them by
-launching the official `nextflow/nextflow` Docker image. Input file contents live on the
-workflow's nodes in the browser and are sent along with each execution request.
+Express + TypeScript API for N-WAVE. It stores workflows in MongoDB, installs nf-core
+components, runs Nextflow (a host binary or the `nextflow/nextflow` image, see the
+[execution model](../README.md#how-workflow-execution-works)) and serves run logs and results.
+Input files live on the workflow's nodes in the browser and travel with each run request.
 
 ## Development
 
-Requires Node 20, pnpm, and a running MongoDB (v7).
+Needs Node 20.19+, pnpm and MongoDB 7 ([CONTRIBUTING.md](../CONTRIBUTING.md) has the setup).
 
 ```bash
 pnpm install
-pnpm dev      # http://localhost:5001, hot-reload via tsx watch
+pnpm dev      # http://localhost:5001, hot reload (tsx watch)
 pnpm build    # compile TypeScript
 pnpm start    # run the compiled server
 pnpm lint     # Biome
-pnpm test     # Vitest (pnpm test:coverage for a coverage report)
+pnpm test     # Vitest (pnpm test:coverage for coverage)
 ```
 
-Tests live next to the code as `*.test.ts`. Route tests use `supertest` against
-`createApp()` (`src/app.ts`) with the Mongoose model mocked, so they need no database,
-Docker, or Nextflow.
-
-`MONGODB_URI` defaults to `mongodb://localhost:27017/nwave`. See the
-[root README](../README.md#configuration) for all environment variables and the
-[execution model](../README.md#how-workflow-execution-works). To run the full stack in
-Docker, use `docker compose up -d --build` from the repository root.
+Tests live next to the code as `*.test.ts`. Route tests use `supertest` against `createApp()`
+(`src/app.ts`) with the Mongoose model mocked, so they need no database, Docker or Nextflow.
+Environment variables are listed in the [root README](../README.md#configuration).
 
 ## API
 
-All routes are under `/api`:
+All routes are under `/api`. Request bodies are validated with [zod](https://zod.dev) schemas
+in `src/validation/schemas.ts`; invalid requests get `400` with `{ message, error, details }`.
 
-- `workflows` — `GET`/`POST` `/workflows`, `GET`/`PUT`/`DELETE` `/workflows/:id`
-- `execute` — `POST` `/execute/execute`, `POST` `/execute/cancel`, `GET` `/execute/docker-status`, `GET` `/execute/nextflow-status`
-- `nfcore`, `custom-nodes` — node catalog and custom node definitions; `POST /nfcore/install` and `POST /nfcore/uninstall` (`{ id }`) add and remove modules; `GET /nfcore/modules/source?id=nf-core/<module>` returns a module's `main.nf`, and `GET /nfcore/modules/files?id=…` all its files (`main.nf`, `meta.yml`, `environment.yml`, `templates/…`; used by Export Project), from the installed copy or, if it isn't installed, from GitHub at the catalog commit. Runs install the modules they use when they're missing
-
-Request bodies are validated with [zod](https://zod.dev) schemas in
-`src/validation/schemas.ts`. Invalid requests get a `400` with
-`{ message, error, details }`, where `details` lists every problem as `path: message`.
+| Route | Purpose |
+| --- | --- |
+| `GET/POST /workflows`, `GET/PUT/DELETE /workflows/:id`, `POST /workflows/:id/duplicate` | Saved and built-in workflows. |
+| `POST /execute/execute` | Start a run; streams its output (first line `N-WAVE run: <id>`). Takes `resume` and a `runProfile`. |
+| `POST /execute/cancel` | Cancel a run (`{ executionId }`). |
+| `GET /execute/docker-status`, `/execute/nextflow-status`, `/execute/limits` | What this server can run, and its resource limits. |
+| `GET /execute/runs?workflowId=` | Run history, newest first. |
+| `GET /execute/runs/:id/log`, `/files`, `/results/<path>` | A run's log, result file list and result files. |
+| `GET /execute/runs/:id/tasks`, `/tasks/:hash/files`, `/tasks/:hash/output/<path>` | A run's tasks (from Nextflow's log) and the files each produced. |
+| `GET/DELETE /execute/cache?workflowId=` | Size of a workflow's run cache, and clearing it. |
+| `GET /nfcore/catalog`, `/nfcore/installed`; `POST /nfcore/install`, `/nfcore/uninstall` | The nf-core catalog and installed components. |
+| `GET /nfcore/modules/source?id=`, `/nfcore/modules/files?id=` | A component's `main.nf`, or all its files (installed copy, else GitHub at the catalog commit). |
+| `GET/POST /custom-nodes`, `DELETE /custom-nodes/:id` | Custom nodes and node packs. |
+| `GET /pipelines/schema` | An nf-core pipeline's parameter schema. |
 
 ## Structure
 
-- `src/config/` — database and server configuration
-- `src/controllers/` — request handlers
-- `src/execution/` — pure Nextflow script normalization and command building (unit tested)
-- `src/validation/` — request body schemas
-- `src/models/` — Mongoose schemas
-- `src/routes/` — API route definitions
-- `src/workflows/` — built-in demo, import, and materialize logic
-- `src/app.ts` — Express app factory (used by the server and the tests)
-- `src/server.ts` — entry point
+- `src/controllers/`: request handlers
+- `src/execution/`: setting up and starting runs (run folder, Nextflow command, resources,
+  run profiles, the runner)
+- `src/runs/`: run history, task events and run caches
+- `src/nfcore/`, `src/pipelines/`: installing nf-core components; pipeline schemas and versions
+- `src/workflows/`: built-in demos, import and materializing
+- `src/validation/`, `src/models/`, `src/routes/`, `src/config/`, `src/utils/`
+- `src/app.ts`: the Express app (used by the server and the tests); `src/server.ts`: entry point
 
 ## License
 
-Apache License 2.0. See [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE) at the repository root.
+Apache License 2.0. See [`LICENSE`](../LICENSE) and [`NOTICE`](../NOTICE).

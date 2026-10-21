@@ -1,10 +1,23 @@
 # nf-core modules in N-WAVE
 
 N-WAVE can use any module or subworkflow from
-[nf-core/modules](https://github.com/nf-core/modules) as a node. This page explains how
-modules are turned into nodes, what the generated code does with their inputs, how
+[nf-core/modules](https://github.com/nf-core/modules) as a node. This page is for developers:
+how modules are turned into nodes, what the generated code does with their inputs, how
 subworkflows work, and how to add a manual adapter for a module the automatic path gets
-wrong.
+wrong. Using the library is described in the wiki's
+[nf-core library](https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library) page.
+
+The scripts in this folder:
+
+| Script | Purpose |
+| --- | --- |
+| `generate-nfcore-catalog.mjs` | Builds the catalog (below). |
+| `nfcoreModuleParser.mjs`, `nfcoreSubworkflowParser.mjs` | Read module inputs and subworkflow takes. |
+| `nfcorePortTypes.mjs` | Port file types and patterns from `meta.yml`, for the connection hints. |
+| `lint-generated-nextflow.sh` | `nextflow lint` on the scripts the examples and node combinations generate (CI). |
+| `docsLinks.test.mjs` | Checks the links in the READMEs and the `wiki/` pages. |
+
+All `*.test.mjs` run with `node --test scripts/*.test.mjs` from the repository root.
 
 ## The catalog
 
