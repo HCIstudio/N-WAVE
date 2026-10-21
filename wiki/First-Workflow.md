@@ -20,12 +20,19 @@ the bottom bar below it. Double-click the name *Untitled Workflow* to rename it.
 
 The node now shows the file's name and size.
 
+![The Add node menu opened with the search "Filter": buttons for the nf-core Library, Custom process and Node packs, and the Filter node under Operators. A File Input node with one file is on the canvas.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/add-node-menu.png)
+
 ## 3. Add a step (2 minutes)
 
 1. Click **+** again and choose **Filter**.
 2. Double-click the Filter node to open its panel. In **Filter Text**, type a word that
    appears in your file. Leave **Filter Mode** at *Contains*.
 3. Close the panel (✕).
+
+![The Filter node's panel with the tabs Settings, Code and Results. Filter Text is "bee" and Filter Mode is Contains.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/filter-panel.png)
+
+**File Selection** can limit the filter to some of the incoming files; with none ticked, it
+filters all of them.
 
 ## 4. Show the result (1 minute)
 
@@ -39,14 +46,16 @@ from **Filter** to **Display Output**. While you drag, the inputs that fit are r
 The check next to the Run button now says *No problems found*. If it lists a problem, click it:
 **Show** moves the canvas to the node it's about.
 
+![File Input, Filter and Display Output connected in a row. The workflow check above the bottom bar says: Nothing to fix, the workflow is ready to run.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/first-workflow.png)
+
 ## 6. Run it (2 minutes, installation only)
 
 Click **Run Workflow** (the green ▶ in the bottom bar). The run panel opens and shows each
 step; the first run takes longer because N-WAVE downloads Nextflow. When it says
 *Workflow Complete*, double-click **Display Output**: it shows the lines that contain your word.
 
-In the browser demo, Run isn't available. Click **Export Project** instead to download the
-workflow as a project you can run anywhere with Nextflow.
+The browser demo can't run workflows (a run there stops with a notice). Click **Export
+Project** instead to download the workflow as a project you can run anywhere with Nextflow.
 
 ## 7. Look behind the scenes (1 minute)
 

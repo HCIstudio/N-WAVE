@@ -35,7 +35,7 @@ file is an output to connect; its value is an uploaded file name, a path or a UR
 
 Keeps the lines of text files that match **Filter Text**: **Contains**, **Starts With**,
 **Ends With** or **Matches (Regex)**; upper and lower case count as different. **Negate**
-keeps the other lines.
+keeps the other lines. **File Selection** limits it to some of the incoming files (none ticked: all).
 
 ### Map
 
