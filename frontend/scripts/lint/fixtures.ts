@@ -285,6 +285,108 @@ const migratedNodes = (): LintFixture => {
   };
 };
 
+/** A node of an nf-core module or subworkflow, registered from the catalog. */
+const nfcore = (id: string, data: Partial<NodeData> = {}): Node<NodeData> => {
+  const { modules, subworkflows } = catalog as unknown as {
+    modules: NfCoreCatalogEntryForManifest[];
+    subworkflows: NfCoreSubworkflowCatalogEntry[];
+  };
+  const subworkflow = subworkflows.find((candidate) => candidate.id === id);
+  const module = modules.find((candidate) => candidate.id === id);
+  if (!subworkflow && !module) throw new Error(`${id} is not in the nf-core catalog`);
+  const definition = subworkflow
+    ? createNodeDefinitionFromNfCoreSubworkflowManifest(buildNfCoreSubworkflowManifest(subworkflow))
+    : createNodeDefinitionFromNfCoreManifest(buildNfCoreManifest(module as NfCoreCatalogEntryForManifest));
+  registerDynamicNodeDefinitions([definition]);
+  return node(definition.id, data);
+};
+
+/**
+ * nf-core modules with other input shapes than the examples (see #165):
+ * value inputs, optional inputs left open, several tuple inputs, files
+ * gathered into one input, a folder output feeding a step, a compressed
+ * input and stats collected into MultiQC.
+ */
+const nfCoreModuleShapes = (): LintFixture => {
+  const sheet = samplesheet();
+  const genome = node("fileInput", {
+    files: [{ name: "genome.fa", size: 12, content: ">chr1\nACGTACGT\n" }],
+  });
+  const archive = node("fileInput", {
+    files: [{ name: "genes.gtf.gz", size: 0, content: "" }],
+  });
+  // samtools/faidx: tuple with an optional fai, and a value (get_sizes).
+  const faidx = nfcore("nf-core/samtools/faidx", { get_sizes: true });
+  // bwa/index makes a folder that bwa/mem takes with reads and the genome.
+  const bwaIndex = nfcore("nf-core/bwa/index");
+  const bwaMem = nfcore("nf-core/bwa/mem", { sort_bam: true });
+  const bamIndex = nfcore("nf-core/samtools/index");
+  // cat/fastq gathers each sample's reads; seqkit/stats runs per sample.
+  const catFastq = nfcore("nf-core/cat/fastq");
+  const stats = nfcore("nf-core/seqkit/stats");
+  const gunzip = nfcore("nf-core/gunzip");
+  // MultiQC collects every sample's stats into one report.
+  const multiqc = nfcore("nf-core/multiqc");
+  const portOf = (target: Node<NodeData>, index: number) =>
+    String(target.data.inputs?.[index]?.name);
+  const outputOf = (source: Node<NodeData>, index = 0) =>
+    String(source.data.outputs?.[index]?.name);
+  return {
+    name: "nfcore-module-shapes",
+    description: "nf-core modules with value, optional, several and collected inputs",
+    nodes: [sheet, genome, archive, faidx, bwaIndex, bwaMem, bamIndex, catFastq, stats, gunzip, multiqc],
+    edges: [
+      edge(genome, outputOf(genome), faidx, portOf(faidx, 0)),
+      edge(genome, outputOf(genome), bwaIndex, portOf(bwaIndex, 0)),
+      edge(sheet, "samples", bwaMem, "reads"),
+      edge(bwaIndex, "index", bwaMem, "index"),
+      edge(genome, outputOf(genome), bwaMem, "fasta"),
+      edge(bwaMem, "bam", bamIndex, portOf(bamIndex, 0)),
+      edge(sheet, "samples", catFastq, portOf(catFastq, 0)),
+      edge(catFastq, "reads", stats, portOf(stats, 0)),
+      edge(archive, outputOf(archive), gunzip, portOf(gunzip, 0)),
+      edge(stats, "stats", multiqc, portOf(multiqc, 0)),
+    ],
+  };
+};
+
+/**
+ * nf-core subworkflows with value settings, chained: fastp and FastQC
+ * trimming feeding BWA alignment against an index a module makes.
+ */
+const nfCoreSubworkflowChain = (): LintFixture => {
+  const sheet = samplesheet();
+  const genome = node("fileInput", {
+    files: [{ name: "genome.fa", size: 12, content: ">chr1\nACGTACGT\n" }],
+  });
+  const trim = nfcore("nf-core/subworkflows/fastq_trim_fastp_fastqc", {
+    val_skip_fastqc: true,
+  });
+  const bwaIndex = nfcore("nf-core/bwa/index");
+  const align = nfcore("nf-core/subworkflows/fastq_align_bwa", { val_sort_bam: false });
+  const portOf = (target: Node<NodeData>, name: string) => {
+    const port = target.data.inputs?.find((input) => input.name === name || input.name?.endsWith(name));
+    if (!port) throw new Error(`${target.data.label} has no input ${name}`);
+    return String(port.name);
+  };
+  const outputOf = (source: Node<NodeData>, name: string) => {
+    const port = source.data.outputs?.find((output) => output.name === name);
+    if (!port) throw new Error(`${source.data.label} has no output ${name}`);
+    return String(port.name);
+  };
+  return {
+    name: "nfcore-subworkflow-chain",
+    description: "Trimming subworkflow into an alignment subworkflow, with an index from a module",
+    nodes: [sheet, genome, trim, bwaIndex, align],
+    edges: [
+      edge(sheet, "samples", trim, portOf(trim, "ch_reads")),
+      edge(trim, outputOf(trim, "reads"), align, portOf(align, "ch_reads")),
+      edge(genome, String(genome.data.outputs?.[0]?.name), bwaIndex, String(bwaIndex.data.inputs?.[0]?.name)),
+      edge(bwaIndex, "index", align, portOf(align, "ch_index")),
+    ],
+  };
+};
+
 export const buildLintFixtures = (): LintFixture[] => {
   const starSalmon = rnaseqStarSalmon as unknown as {
     nodes: Node<NodeData>[];
@@ -319,5 +421,7 @@ export const buildLintFixtures = (): LintFixture[] => {
     channelOperators(),
     customNodes(),
     migratedNodes(),
+    nfCoreModuleShapes(),
+    nfCoreSubworkflowChain(),
   ];
 };

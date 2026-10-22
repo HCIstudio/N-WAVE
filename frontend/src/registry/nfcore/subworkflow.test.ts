@@ -11,6 +11,8 @@ import {
 import {
   buildNfCoreSubworkflowManifest,
   createNodeDefinitionFromNfCoreSubworkflowManifest,
+  isReferenceTake,
+  metaTupleSize,
   type NfCoreSubworkflowCatalogEntry,
 } from "./subworkflow";
 
@@ -286,5 +288,61 @@ describe("subworkflow nodes in a workflow", () => {
     const consumer = workflow.search(/outputDisplay_show\(\w*flagstat/);
     expect(call).toBeGreaterThan(-1);
     expect(consumer).toBeGreaterThan(call);
+  });
+});
+
+describe("subworkflow takes", () => {
+  it("know the size of their meta tuples from the placeholder", () => {
+    expect(metaTupleSize("Channel.value([[:], [], []])")).toBe(3);
+    expect(metaTupleSize("Channel.value([[:], []])")).toBe(2);
+    // Not led by a meta map: left alone.
+    expect(metaTupleSize("Channel.value([[], [:], []])")).toBeNull();
+    expect(metaTupleSize("Channel.empty()")).toBeNull();
+  });
+
+  it("treat later reference takes as references, not the samples", () => {
+    const takes = entry("quantify_pseudo_alignment").takes;
+    const named = (name: string) => takes.find((take) => take.name === name);
+    const reference = (name: string) => {
+      const take = named(name);
+      if (!take) throw new Error(`no take ${name}`);
+      return isReferenceTake(take, takes);
+    };
+    expect(reference("samplesheet")).toBe(false);
+    expect(reference("reads")).toBe(false);
+    expect(["index", "transcript_fasta", "gtf"].map(reference)).toEqual([true, true, true]);
+  });
+
+  it("are fed so every sample reaches the subworkflow", () => {
+    // fastp's reads take is [meta, reads, adapter_fasta]; a Samplesheet
+    // gives [meta, reads]. The index from bwa/index is one item for all.
+    const trim = createNodeDefinitionFromNfCoreSubworkflowManifest(
+      buildNfCoreSubworkflowManifest(entry("fastq_trim_fastp_fastqc")),
+    );
+    const align = createNodeDefinitionFromNfCoreSubworkflowManifest(
+      buildNfCoreSubworkflowManifest(entry("fastq_align_bwa")),
+    );
+    const context = (handles: string[]) => ({
+      processName: "sub",
+      incomingEdges: handles.map((handle) => ({ id: handle, source: handle, target: "x", targetHandle: handle })),
+      channelNameMap: new Map<string, string>(),
+      resolveChannelNameForEdge: (edge: Edge) => `up_${edge.targetHandle}`,
+      buildMixedChannelExpression: (names: string[]) => names.join(".mix(") + ")".repeat(names.length - 1),
+      sanitizeVarName: (name: string) => name,
+    });
+    const trimmed = trim.generateNextflow?.({
+      node: { id: "t", position: { x: 0, y: 0 }, data: { ...trim.defaults } },
+      ...context(["ch_reads"]),
+    } as never);
+    expect(trimmed?.processInvocations?.join("")).toContain(
+      "up_ch_reads.map { item -> item instanceof List && item.size() < 3 ? item.collect { element -> element } + ([[]] * (3 - item.size())) : item }",
+    );
+    const aligned = align.generateNextflow?.({
+      node: { id: "a", position: { x: 0, y: 0 }, data: { ...align.defaults } },
+      ...context(["ch_reads", "ch_index"]),
+    } as never);
+    const call = aligned?.processInvocations?.join("") ?? "";
+    expect(call).toContain("up_ch_index.first()");
+    expect(call).not.toContain("up_ch_reads.first()");
   });
 });
