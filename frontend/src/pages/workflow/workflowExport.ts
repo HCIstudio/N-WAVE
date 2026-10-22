@@ -9,6 +9,7 @@ import {
   pipelineLaunchScript,
 } from "../../registry/pipelines/launch";
 import type { ExecutionSettings } from "../../types/execution";
+import { usesImportedSource } from "./runRequest";
 
 /** Save a blob as a file download. */
 export const downloadBlob = (blob: Blob, fileName: string) => {
@@ -27,13 +28,13 @@ export interface WorkflowSource {
   edges: Edge[];
   workflowName: string;
   settings: ExecutionSettings;
-  /** An imported .nf workflow's own source, used as is while it has no nodes. */
+  /**
+   * An imported .nf workflow's own source, used as is while it has no nodes
+   * or still has processes N-WAVE only shows (see usesImportedSource).
+   */
   rawSource: string | null;
   sourceFormat: "visual" | "nextflow";
 }
-
-const usesRawSource = ({ sourceFormat, rawSource, nodes }: WorkflowSource) =>
-  sourceFormat === "nextflow" && Boolean(rawSource) && nodes.length === 0;
 
 const fileBaseName = (workflowName: string) =>
   workflowName.replace(/\s+/g, "_") || "workflow";
@@ -54,7 +55,7 @@ export const scriptDownload = (
   if (launch) {
     return { fileName: `${base}.sh`, content: pipelineLaunchScript(launch) };
   }
-  if (usesRawSource(source)) {
+  if (usesImportedSource(source)) {
     return { fileName: `${base}.nf`, content: source.rawSource ?? "" };
   }
   return {
@@ -93,7 +94,7 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
     );
     return fileName;
   }
-  const script = usesRawSource(source)
+  const script = usesImportedSource(source)
     ? (source.rawSource ?? "")
     : generateNextflowScript(
         source.nodes,

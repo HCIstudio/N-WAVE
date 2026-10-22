@@ -16,6 +16,24 @@ import {
 } from "../../execution/runProfiles";
 
 /**
+ * Whether runs and exports use the imported .nf source instead of generating
+ * one: the canvas has no nodes, or it shows processes whose code only the
+ * imported source has (they'd be generated as empty stubs).
+ */
+export const usesImportedSource = ({
+  sourceFormat,
+  rawSource,
+  nodes,
+}: {
+  sourceFormat: "visual" | "nextflow";
+  rawSource: string | null;
+  nodes: Node<NodeData>[];
+}): boolean =>
+  sourceFormat === "nextflow" &&
+  Boolean(rawSource) &&
+  (nodes.length === 0 || nodes.some((node) => node.data.importedProcess === true));
+
+/**
  * The profile a run goes through, or null for this computer. Throws when the
  * chosen one can't be used, so the run doesn't quietly happen elsewhere.
  */
@@ -126,7 +144,7 @@ export const buildRunRequest = ({
 
   const nextflowScript = launch
     ? ""
-    : sourceFormat === "nextflow" && rawSource && nodes.length === 0
+    : rawSource && usesImportedSource({ sourceFormat, rawSource, nodes })
       ? rawSource
       : generateNextflowScript(
           nodes,

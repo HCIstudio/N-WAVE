@@ -255,4 +255,35 @@ describe("channel operators in a workflow", () => {
     expect(operator).toBeGreaterThan(producer);
     expect(consumer).toBeGreaterThan(operator);
   });
+  it("comes after every step connected to an input that has several connections", () => {
+    // Saved before inputs took one connection: the input reads both.
+    const nodes = [
+      node("all", "channelOperator", {
+        inputs: [{ name: "in" }],
+        outputs: [{ name: "out" }],
+        channelOperatorCode: "output.out = input.in.collect()",
+      }),
+      node("reads", "fileInput", { files: [{ name: "a.txt", content: "a" }] }),
+      node("first", "map"),
+      node("second", "map"),
+    ];
+    const edge = (id: string, source: string, target: string): Edge => ({
+      id,
+      source,
+      sourceHandle: "out",
+      target,
+      targetHandle: "in",
+    });
+    const script = generateNextflowScript(
+      nodes,
+      [edge("e1", "reads", "first"), edge("e2", "reads", "second"), edge("e3", "first", "all"), edge("e4", "second", "all")],
+      "wf",
+      "results",
+      "{workflow_name}",
+    );
+    const workflow = script.slice(script.indexOf("workflow {"));
+    const operator = workflow.indexOf("all_out = ");
+    expect(operator).toBeGreaterThan(workflow.indexOf("first_out = "));
+    expect(operator).toBeGreaterThan(workflow.indexOf("second_out = "));
+  });
 });

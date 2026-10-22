@@ -40,14 +40,20 @@ const outputHandleFor = (
  * Edges as the canvas uses them, upgrading the handles of older workflows
  * (File Input's "out", Merge's numbered "inN" inputs, a handle name that
  * doesn't match a node's only port). An edge from a node to itself, which
- * older versions allowed, is dropped: it can't be run, or seen to remove.
+ * older versions allowed, is dropped: it can't be run, or seen to remove. So
+ * is an edge to or from a node the workflow no longer has.
  */
 export const hydrateEdges = (
   edges: Edge[],
   nodes: Node<NodeData>[],
 ): Edge[] =>
   edges
-    .filter((edge) => edge.source !== edge.target)
+    .filter(
+      (edge) =>
+        edge.source !== edge.target &&
+        nodes.some((node) => node.id === edge.source) &&
+        nodes.some((node) => node.id === edge.target),
+    )
     .map((edge) => {
       const sourceNode = nodes.find((node) => node.id === edge.source);
       const targetNode = nodes.find((node) => node.id === edge.target);

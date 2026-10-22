@@ -207,12 +207,16 @@ export const generateChannelOperatorNode: NodeGenerator = ({
   }
 
   const upstream = new Map<string, string>();
+  // Each channel the code reads, so it comes after the steps that make them
+  // (with several connections, the input is a `.concat()` of them).
+  const used = new Set<string>();
   for (const input of inputs) {
     const channels = incomingEdges
       .filter((candidate) => candidate.targetHandle === input)
       .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
       .filter((name): name is string => Boolean(name));
     if (channels.length > 0) {
+      for (const channel of channels) used.add(channel);
       upstream.set(input, buildMixedChannelExpression(channels));
     }
   }
@@ -248,7 +252,7 @@ export const generateChannelOperatorNode: NodeGenerator = ({
     includeInExecutionOrder: false,
     dependencies: {
       defines: Array.from(defines),
-      uses: Array.from(new Set(upstream.values())),
+      uses: Array.from(used),
     },
   };
 };

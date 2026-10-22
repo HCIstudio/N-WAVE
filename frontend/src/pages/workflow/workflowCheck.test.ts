@@ -57,6 +57,15 @@ describe("checkWorkflow", () => {
     ]);
   });
 
+  it("says an imported .nf process keeps canvas changes from running", () => {
+    const imported = node("p1", "process", { label: "COUNT_LINES", importedProcess: true });
+    expect(messages([imported], [])).toContainEqual({
+      level: "warning",
+      nodeId: "p1",
+      message: expect.stringContaining("“COUNT_LINES” comes from the imported .nf file"),
+    });
+  });
+
   it("stops an empty workflow", () => {
     expect(messages([node("n", "note")], [])).toEqual([
       expect.objectContaining({ level: "error", message: expect.stringContaining("The workflow is empty") }),

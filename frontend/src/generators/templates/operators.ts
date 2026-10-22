@@ -10,6 +10,15 @@ const shellQuote = (value: string): string =>
 const scriptText = (value: string): string =>
   value.replace(/[\\$"]/g, "\\$&");
 
+/**
+ * Groovy, before a step's `"""` script: `out`, the output file's name. It
+ * keeps the input's extension (so sample.txt and sample.csv don't both
+ * become sample_<suffix>.txt) and only safe characters, as the shell sees
+ * it unquoted and a file name can hold anything.
+ */
+const outputName = (suffix: string): string =>
+  `def out = "\${nwaveSafeName(input_file.baseName)}_${suffix}.\${input_file.extension ? nwaveSafeName(input_file.extension) : 'txt'}"`;
+
 export function generateFilterProcess(
   config: ProcessConfig & {
     filterText?: string;
@@ -28,8 +37,10 @@ export function generateFilterProcess(
   let filterScript = "";
   if (filterText && filterMode) {
     const negateFlag = filterNegate ? "-v" : "";
+    // No matching line leaves the output empty (grep exits 1) and says so in
+    // the log, not in the data; other grep errors fail the step.
     const grepFilter = (flags: string, pattern: string, message: string) =>
-      `grep ${flags} ${scriptText(shellQuote(pattern))} \${input_file} > "\${input_file.baseName}_filtered.txt" || echo ${scriptText(shellQuote(`# Filter: No lines ${message} '${filterText}'`))} > "\${input_file.baseName}_filtered.txt"`;
+      `grep ${flags} ${scriptText(shellQuote(pattern))} \${input_file} > \${out} || { status=\\$?; [ \\$status -eq 1 ] || exit \\$status; echo ${scriptText(shellQuote(`Filter: no lines ${message} '${filterText}'`))} >&2; }`;
     if (filterMode === "contains") {
       filterScript = grepFilter(negateFlag, filterText, "contained");
     } else if (filterMode === "startsWith") {
@@ -40,7 +51,7 @@ export function generateFilterProcess(
       filterScript = grepFilter(`${negateFlag} -E`, filterText, "matched regex");
     }
   } else {
-    filterScript = `cp \${input_file} "\${input_file.baseName}_filtered.txt"`;
+    filterScript = `cp \${input_file} \${out}`;
   }
 
   return `process ${processName} {
@@ -52,9 +63,10 @@ export function generateFilterProcess(
     path input_file
 
     output:
-    path "*_filtered.txt"
+    path "*_filtered.*"
 
     script:
+    ${outputName("filtered")}
     """
     ${filterScript}
     """
@@ -82,18 +94,19 @@ export function generateMapProcess(
   if (mapOperation === "changeCase") {
     const changeCase = mapChangeCase || "toUpperCase";
     if (changeCase === "toUpperCase") {
-      transformScript = `cat \${input_file} | tr '[:lower:]' '[:upper:]' > "\${input_file.baseName}_mapped.txt"`;
+      transformScript = `tr '[:lower:]' '[:upper:]' < \${input_file} > \${out}`;
     } else {
-      transformScript = `cat \${input_file} | tr '[:upper:]' '[:lower:]' > "\${input_file.baseName}_mapped.txt"`;
+      transformScript = `tr '[:upper:]' '[:lower:]' < \${input_file} > \${out}`;
     }
-  } else if (mapOperation === "replaceText") {
+  } else if (mapOperation === "replaceText" && mapReplaceFind) {
     const findText = mapReplaceFind || "";
     const replaceText = mapReplaceWith || "";
     // `/` is the sed delimiter; `&` in the replacement means the match.
     const sedExpression = `s/${findText.replace(/[\\/]/g, "\\$&")}/${replaceText.replace(/[\\/&]/g, "\\$&")}/g`;
-    transformScript = `sed ${scriptText(shellQuote(sedExpression))} \${input_file} > "\${input_file.baseName}_mapped.txt"`;
+    transformScript = `sed ${scriptText(shellQuote(sedExpression))} \${input_file} > \${out}`;
   } else {
-    transformScript = `cp \${input_file} "\${input_file.baseName}_mapped.txt"`;
+    // Nothing to replace (no search text) or no operation: the file as is.
+    transformScript = `cp \${input_file} \${out}`;
   }
 
   return `process ${processName} {
@@ -105,9 +118,10 @@ export function generateMapProcess(
     path input_file
 
     output:
-    path "*_mapped.txt"
+    path "*_mapped.*"
 
     script:
+    ${outputName("mapped")}
     """
     ${transformScript}
     """

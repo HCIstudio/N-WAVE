@@ -220,6 +220,16 @@ const checkWorkflowWide = (
       nodeId: edges.find((edge) => edge.id === edgeId)?.target,
     });
   }
+  // Imported .nf processes: runs use the imported script, not the canvas.
+  const imported = nodes.filter((node) => node.data.importedProcess === true);
+  if (imported.length > 0) {
+    problems.push({
+      id: "imported",
+      level: "warning",
+      message: `${imported.map(labelOf).map((label) => `“${label}”`).join(", ")} ${imported.length === 1 ? "comes" : "come"} from the imported .nf file. Runs and exports use that file as it is, so changes on the canvas don't apply until these steps are removed.`,
+      nodeId: imported[0].id,
+    });
+  }
   try {
     getWorkflowInputFiles(nodes);
   } catch (error) {

@@ -9,7 +9,7 @@ describe("getNodeCode", () => {
     expect(code?.processSource).toMatch(/^process filter_node_filter \{/);
     expect(code?.processSource).toContain("grep  'hello'");
     expect(code?.nfCoreModule).toBeUndefined();
-    expect(code?.workflowSnippet).toContain("filter_node_filter(in_ch)");
+    expect(code?.workflowSnippet).toContain("filter_node_filter(in_ch.flatMap");
   });
 
   it.each(["map", "merge", "outputDisplay"])(
