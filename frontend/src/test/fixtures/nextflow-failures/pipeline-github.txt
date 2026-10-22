@@ -1,0 +1,11 @@
+N-WAVE run: pipe-fetchngs_1792621509324
+N-WAVE limits: 4 CPUs, 4 GB memory, time limit 1440 min
+N-WAVE: nf-core/fetchngs 1.13.0 needs Nextflow 25.10.4 or newer; this run uses 25.10.4.
+
+ N E X T F L O W   ~  version 25.10.4
+
+Pulling nf-core/fetchngs ...
+WARN: Cannot read project manifest -- Cause: Forbidden -- Provide your GitHub user name and password to access this repository
+Forbidden -- Provide your GitHub user name and password to access this repository
+
+Nextflow execution failed with exit code: 1

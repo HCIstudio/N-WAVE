@@ -485,10 +485,10 @@ const downloadFile = async (url: string): Promise<Buffer | null> => {
 		const content = Buffer.from(response.data);
 		// A proxy's or captive portal's page, or a body cut short when the
 		// server sent no length, must not be installed as the file.
-		if (/text\/html/i.test(String(response.headers["content-type"] ?? ""))) {
+		if (/text\/html/i.test(String(response.headers?.["content-type"] ?? ""))) {
 			throw new Error(`${url} returned a web page instead of the file`);
 		}
-		const length = Number(response.headers["content-length"]);
+		const length = Number(response.headers?.["content-length"]);
 		if (Number.isFinite(length) && length > 0 && content.length !== length) {
 			throw new Error(`${url} was cut off (${content.length} of ${length} bytes)`);
 		}

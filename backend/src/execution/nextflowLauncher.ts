@@ -5,6 +5,7 @@ import path from "node:path";
 import {
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
+  localeForNextflow,
   resolveNextflowPlatform,
   resolveRunnerDockerApiVersion,
   toDockerHostVisiblePath,
@@ -87,6 +88,7 @@ const usedLocally = async (options: LaunchOptions): Promise<NextflowLaunch> => {
   }
   return {
     command: buildLocalNextflowCommand({
+      locale: localeForNextflow(process.env),
       // The Nextflow launcher switches versions through NXF_VER.
       nextflowVersion: options.raisedNextflowVersion
         ? options.nextflowVersion
@@ -152,6 +154,7 @@ const usedInContainer = async (
     ),
     // A pipeline's bin/ scripts must be on a path the host's Docker sees
     // (task containers mount it); keep pipelines under results/.
+    passGithubToken: Boolean(process.env.GITHUB_TOKEN),
     assetsDir:
       options.pipeline && options.useProcessDocker
         ? path.posix.join(resultsRoot, ".nextflow-assets")

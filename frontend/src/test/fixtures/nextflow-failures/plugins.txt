@@ -1,0 +1,10 @@
+N-WAVE run: pipe-chipseq_1792621655421
+N-WAVE limits: 4 CPUs, 4 GB memory, time limit 1440 min
+
+ N E X T F L O W   ~  version 25.10.4
+
+ERROR ~ Conversion = '4'
+
+ -- Check 'nextflow/.nextflow.log' file for details
+
+Nextflow execution failed with exit code: 1

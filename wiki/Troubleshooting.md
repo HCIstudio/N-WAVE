@@ -34,7 +34,8 @@ the workflow check (next to the Run button) shows when N-WAVE can reach it.
 
 Docker couldn't download the step's image: the name or tag is wrong, the image doesn't exist,
 or the registry can't be reached from this computer's network or proxy. Check a custom
-process's image, and that this computer can reach `quay.io` and `docker.io`.
+process's image, and that this computer can reach `quay.io`, `community.wave.seqera.io` and
+`docker.io` (nf-core steps use the first two).
 
 ### Command not found
 
@@ -54,6 +55,21 @@ run caches (*Execution Settings → Run cache*) and remove unused Docker images
 An input given as an address (`https://…`) couldn't be downloaded: the address is wrong, or
 it can't be reached from this computer. Open it in a browser, check the network or proxy, or
 upload the file instead.
+
+### The pipeline can't be downloaded
+
+On a pipeline's first run, Nextflow downloads it from GitHub. "Forbidden -- Provide your
+GitHub user name and password" usually means GitHub's limit for downloads without an account
+(60 an hour) is used up, or a firewall blocks `github.com` and `api.github.com`. Wait an hour,
+or give the N-WAVE server a GitHub access token in the `GITHUB_TOKEN` environment variable
+(any token works, it needs no permissions); Nextflow then uses your account's limit.
+
+### Nextflow can't download its plugins
+
+nf-core pipelines need Nextflow plugins (such as nf-schema), which Nextflow downloads from
+`registry.nextflow.io` on their first use. When it can't reach it, Nextflow 25.10 stops with
+the puzzling `ERROR ~ Conversion = '4'` (older versions say a plugin can't be found). Allow
+that address in the firewall or proxy of the computer running Nextflow, then run again.
 
 ### Input file not found
 
@@ -115,8 +131,8 @@ with WSL 2). There, Nextflow only sees the `results` folder:
 ### Uploaded files are gone after a reload
 
 Files up to 256 KB are saved with the workflow. Larger files stay in the browser tab only, so
-after a reload the workflow check asks you to upload them again. One run's uploads may total
-about 37 MB; for larger data, use URLs (or absolute paths where Nextflow runs on the computer
+after a reload the workflow check asks you to upload them again. A file can be up to 36 MB,
+and one run's uploads may total about 37 MB; for larger data, use URLs (or absolute paths where Nextflow runs on the computer
 itself) in a Samplesheet or Parameters node.
 
 ## Clusters

@@ -11,6 +11,8 @@ export type FailureKind =
   | "container-pull"
   | "command-not-found"
   | "no-space"
+  | "pipeline-download"
+  | "plugin-download"
   | "unreachable-url"
   | "missing-input"
   | "missing-output";
@@ -122,6 +124,33 @@ const PATTERNS: Pattern[] = [
     explain: () => ({
       explanation: "A step couldn't write its files because there's no space left on the disk.",
       fix: "Free disk space (old run folders, unused Docker images with `docker system prune`); on Docker Desktop, raise its disk image size.",
+    }),
+  },
+  {
+    kind: "pipeline-download",
+    title: "The pipeline couldn't be downloaded",
+    docs: "the-pipeline-cant-be-downloaded",
+    find: (log) =>
+      firstMatch(log, /[^\n]*Forbidden -- Provide your GitHub user name[^\n]*/) ??
+      firstMatch(log, /[^\n]*(?:API rate limit exceeded|Cannot find `nf-core\/)[^\n]*/),
+    explain: () => ({
+      explanation:
+        "Nextflow downloads a pipeline from GitHub on its first run, and GitHub refused: its limit for downloads without an account (60 an hour) is used up, or the network blocks github.com.",
+      fix: "Wait an hour and run again, or give the N-WAVE server a GitHub access token (GITHUB_TOKEN). Behind a firewall, allow github.com and api.github.com.",
+    }),
+  },
+  {
+    kind: "plugin-download",
+    title: "Nextflow couldn't download its plugins",
+    docs: "nextflow-cant-download-its-plugins",
+    // Nextflow 25.10 reports a plugin registry it can't reach this way.
+    find: (log) =>
+      firstMatch(log, /ERROR ~ Conversion = '[^\n]*/) ??
+      firstMatch(log, /[^\n]*(?:Cannot find plugin|Unable to (?:download|access) plugin|Plugin with id \S+ not found)[^\n]*/i),
+    explain: () => ({
+      explanation:
+        "The pipeline needs Nextflow plugins (such as nf-schema), which Nextflow downloads from registry.nextflow.io on their first use, and it couldn't reach that address.",
+      fix: "Allow registry.nextflow.io in the firewall or proxy of the computer running Nextflow, then run again.",
     }),
   },
   {

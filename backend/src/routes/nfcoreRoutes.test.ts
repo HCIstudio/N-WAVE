@@ -32,7 +32,12 @@ vi.mock("axios", async (importOriginal) => {
         response: { status: 404 },
       });
     }
-    return { data: Buffer.from(`${path.basename(url)} of ${parts}`) };
+    // A main.nf holds a process or workflow (the installer checks).
+    const kind = path.basename(url) === "main.nf" ? "process " : "";
+    return {
+      data: Buffer.from(`${kind}${path.basename(url)} of ${parts}`),
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    };
   });
   return {
     ...actual,
@@ -72,7 +77,7 @@ describe("GET /api/nfcore/modules/source", () => {
       .expect(200);
     expect(response.body).toEqual({
       id: "nf-core/fastqc",
-      source: "main.nf of fastqc/main.nf",
+      source: "process main.nf of fastqc/main.nf",
       meta: "meta.yml of fastqc/meta.yml",
     });
     // Only main.nf and meta.yml are downloaded, at the catalog's pinned commit.
@@ -89,7 +94,7 @@ describe("GET /api/nfcore/modules/source", () => {
       .expect(200);
     expect(response.body).toEqual({
       id: "nf-core/salmon/quant",
-      source: "main.nf of salmon/quant/main.nf",
+      source: "process main.nf of salmon/quant/main.nf",
     });
   });
 
@@ -286,7 +291,7 @@ describe("ensureModulesInstalled", () => {
       "nf-core/fastqc",
     ]);
     expect(fs.readFileSync(path.join(moduleDir("fastqc"), "main.nf"), "utf8")).toBe(
-      "main.nf of fastqc/main.nf"
+      "process main.nf of fastqc/main.nf"
     );
     expect(
       githubRequests.some((url) => url.includes("/modules/nf-core/multiqc/"))
@@ -426,7 +431,7 @@ describe("nf-core subworkflows", () => {
         path.join(subworkflowDir("bam_sort_stats_samtools"), "main.nf"),
         "utf8"
       )
-    ).toBe("main.nf of bam_sort_stats_samtools/main.nf");
+    ).toBe("process main.nf of bam_sort_stats_samtools/main.nf");
     expect(fs.existsSync(path.join(moduleDir("samtools/stats"), "main.nf"))).toBe(
       true
     );
@@ -454,7 +459,7 @@ describe("nf-core subworkflows", () => {
       .get("/api/nfcore/modules/source")
       .query({ id: "nf-core/subworkflows/bam_stats_samtools" })
       .expect(200);
-    expect(source.body.source).toBe("main.nf of bam_stats_samtools/main.nf");
+    expect(source.body.source).toBe("process main.nf of bam_stats_samtools/main.nf");
     expect(githubRequests[0]).toMatch(
       /\/[0-9a-f]{40}\/subworkflows\/nf-core\/bam_stats_samtools\/main\.nf$/
     );

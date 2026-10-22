@@ -122,9 +122,17 @@ const buildNextflowRunArgs = ({
  * a newer one.
  */
 export const buildLocalNextflowCommand = (
-  options: NextflowRunOptions & { nextflowVersion?: string }
+  options: NextflowRunOptions & { nextflowVersion?: string; locale?: string | null }
 ): string =>
-  `${options.nextflowVersion ? `NXF_VER=${shellQuote(options.nextflowVersion)} ` : ""}NXF_LOG_FILE=${shellPath(options.logFile ?? DEFAULT_NEXTFLOW_LOG)} ${buildNextflowRunArgs(options)}`;
+  `${options.locale ? `LC_ALL=${shellQuote(options.locale)} ` : ""}${options.nextflowVersion ? `NXF_VER=${shellQuote(options.nextflowVersion)} ` : ""}NXF_LOG_FILE=${shellPath(options.logFile ?? DEFAULT_NEXTFLOW_LOG)} ${buildNextflowRunArgs(options)}`;
+
+/**
+ * The locale a local Nextflow needs, or null when the server's is fine:
+ * without a UTF-8 one, Java can't open input files with non-ASCII names
+ * ("Malformed input or input contains unmappable characters").
+ */
+export const localeForNextflow = (env: NodeJS.ProcessEnv): string | null =>
+  /utf-?8/i.test(env.LC_ALL || env.LC_CTYPE || env.LANG || "") ? null : "C.UTF-8";
 
 interface ContainerNextflowOptions extends NextflowRunOptions {
   /** Docker platform for the runner, e.g. linux/amd64; null for native. */
@@ -146,6 +154,8 @@ interface ContainerNextflowOptions extends NextflowRunOptions {
    * runner) reaches the host's daemon as an empty folder.
    */
   assetsDir?: string;
+  /** Pass the backend's GITHUB_TOKEN on, for downloading pipelines. */
+  passGithubToken?: boolean;
   /** Either a bind mount (`--mount type=bind`) or `--volumes-from <container>`. */
   mount: { type: "bind"; source: string; target: string } | {
     type: "volumes-from";
@@ -183,8 +193,10 @@ export const buildContainerNextflowCommand = (
   const assets = options.assetsDir
     ? ` -e NXF_ASSETS=${shellQuote(options.assetsDir)}`
     : "";
+  // `-e NAME` without a value passes the variable on without showing it.
+  const githubToken = options.passGithubToken ? " -e GITHUB_TOKEN" : "";
 
-  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion}${assets} -e NXF_LOG_FILE=${shellPath(options.logFile ?? DEFAULT_NEXTFLOW_LOG)} -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
+  return `docker run --rm${name}${platform} ${mount} -v /var/run/docker.sock:/var/run/docker.sock${apiVersion}${assets}${githubToken} -e NXF_LOG_FILE=${shellPath(options.logFile ?? DEFAULT_NEXTFLOW_LOG)} -w ${shellQuote(options.workDir)} ${shellQuote(`nextflow/nextflow:${options.nextflowVersion}`)} ${buildNextflowRunArgs(options)}`;
 };
 
 /** Docker API version of the CLI in the nextflow/nextflow images (17.09). */

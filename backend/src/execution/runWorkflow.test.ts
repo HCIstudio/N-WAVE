@@ -5,7 +5,8 @@ import type { Response } from "express";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { listRuns, RUN_LOG_FILE } from "../runs/runIndex";
 import { buildNextflowLaunch } from "./nextflowLauncher";
-import { prepareScriptRun } from "./prepareRun";
+import { passLaunchGate } from "./launchGate";
+import { preparePipelineRun, prepareScriptRun } from "./prepareRun";
 import { getLiveRun, isRunLive } from "./runRegistry";
 import { startRun } from "./runner";
 import { runNextflowWorkflow } from "./runWorkflow";
@@ -18,6 +19,10 @@ vi.mock("./nextflowLauncher", () => ({
   buildNextflowLaunch: vi.fn(async () => ({ command: "true" })),
 }));
 vi.mock("./runner", () => ({ startRun: vi.fn() }));
+vi.mock("../pipelines/nextflowRequirement", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../pipelines/nextflowRequirement")>()),
+  getPipelineNextflowRequirement: vi.fn(async () => null),
+}));
 
 const fakeResponse = () => {
   const res = {
@@ -110,6 +115,31 @@ describe("runNextflowWorkflow setup", () => {
     const [entry] = listRuns({ isLive: isRunLive });
     expect(entry?.status).toBe("cancelled");
     expect(isRunLive(entry?.id ?? "")).toBe(false);
+  });
+
+  it("can be cancelled while it waits for another run of its pipeline", async () => {
+    vi.mocked(preparePipelineRun).mockReturnValue({ hasNfCoreModules: false, useProcessDocker: false } as never);
+    // An earlier run of nf-core/rnaseq is still downloading it.
+    const openEarlier = await passLaunchGate("nf-core/rnaseq");
+    const res = fakeResponse();
+    const finished = runNextflowWorkflow(
+      {
+        pipeline: { name: "rnaseq", version: "3.27.0", profiles: ["test", "docker"], params: {} },
+        workflowName: "waits",
+        settings: { outputDirectory: root, outputNaming: "same" } as never,
+      },
+      res as unknown as Response
+    );
+    await vi.waitFor(() => expect(res.output).toContain("waiting for another run"));
+    getLiveRun(listRuns()[0]?.id ?? "")?.stop("cancelled");
+    await finished;
+    expect(res.output).toContain("Execution cancelled");
+    expect(startRun).not.toHaveBeenCalled();
+
+    // The gate still opens for later runs.
+    openEarlier();
+    const next = await passLaunchGate("nf-core/rnaseq");
+    next();
   });
 
   it("ends normally when neither its log nor its history can be written", async () => {
