@@ -48,6 +48,30 @@ single modules. See
 and, for the same analysis rebuilt from modules,
 [RNA-seq with STAR and Salmon](https://github.com/HCIstudio/N-WAVE/wiki/RNA-seq-STAR-Salmon-Example).
 
+## What has been tried
+
+How far each part of nf-core has been tested with N-WAVE (as of 1.4).
+
+**Pipelines (Pipeline node, `test` profile):**
+
+| Pipeline | Result |
+| --- | --- |
+| rnaseq 3.27.0 | Runs end to end (Demo 2). |
+| atacseq 2.1.2, chipseq 2.1.0, ampliseq 3.0.0, fetchngs 1.13.0, mag 5.5.0, sarek 3.10.0, scrnaseq 4.2.0 | Their settings form loads and the launch is built correctly. Not yet run to the end: the test machine couldn't reach GitHub's API, the plugin registry and the container registries. fetchngs also downloads from ENA. |
+
+**Modules and subworkflows on the canvas:** checked with `nextflow lint` on every change
+(CI), and run with Nextflow's stub mode, which runs each module's stub instead of its tool:
+
+- samtools/faidx, sort, index, stats, flagstat, idxstats; bwa/index into bwa/mem; cat/fastq;
+  seqkit/stats; gunzip; fastqc; MultiQC with collected inputs; STAR and Salmon (Demo 3, also
+  run for real).
+- Subworkflows bam_sort_stats_samtools, quantify_pseudo_alignment (Demo 3),
+  fastq_trim_fastp_fastqc into fastq_align_bwa.
+
+Known limits: a subworkflow's later inputs named like a reference (index, fasta, gtf, …) take
+one item for all samples; a module whose inputs N-WAVE can't map is marked *Not supported*
+(see [What the labels mean](https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library#what-the-labels-mean)).
+
 ## How it works
 
 N-WAVE ships a catalog of nf-core/modules pinned to one version; installing downloads a
