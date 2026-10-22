@@ -22,6 +22,9 @@ export const NODE_PACK_INDEX_URL: string =
   import.meta.env.VITE_NODE_PACK_INDEX_URL ||
   "https://raw.githubusercontent.com/HCIstudio/N-WAVE-node-packs/main/index.json";
 
+/** How long a node pack or index download may take. */
+const FETCH_TIMEOUT_MS = 20_000;
+
 /** A pack file (or index) from a URL. */
 export const fetchNodePackText = async (url: string): Promise<string> => {
   let parsed: URL;
@@ -33,7 +36,10 @@ export const fetchNodePackText = async (url: string): Promise<string> => {
   if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
     throw new Error("Only http and https URLs can be imported.");
   }
-  const response = await fetch(parsed.toString());
+  // A stalled server mustn't keep the import buttons waiting forever.
+  const response = await fetch(parsed.toString(), {
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
   if (!response.ok) {
     throw new Error(`The server answered ${response.status} for ${url}.`);
   }

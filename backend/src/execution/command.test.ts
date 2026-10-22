@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildContainerNextflowCommand,
   buildLocalNextflowCommand,
+  localeForNextflow,
   resolveNextflowPlatform,
   resolveRunnerDockerApiVersion,
   resolveOutputName,
@@ -73,6 +74,27 @@ describe("resolveNextflowPlatform", () => {
   });
 });
 
+describe("localeForNextflow", () => {
+  it("sets a UTF-8 locale only when the server has none", () => {
+    // Without it, Java can't open input files named Ünï.txt.
+    expect(localeForNextflow({})).toBe("C.UTF-8");
+    expect(localeForNextflow({ LANG: "C" })).toBe("C.UTF-8");
+    expect(localeForNextflow({ LANG: "de_DE.UTF-8" })).toBeNull();
+    expect(localeForNextflow({ LC_ALL: "en_US.utf8", LANG: "C" })).toBeNull();
+  });
+
+  it("goes first in the local command", () => {
+    const command = buildLocalNextflowCommand({
+      scriptPath: "workflow/demo.nf",
+      withModuleConfig: false,
+      maxCpus: 1,
+      maxMemory: "1 GB",
+      locale: "C.UTF-8",
+    });
+    expect(command).toMatch(/^LC_ALL='C.UTF-8' NXF_LOG_FILE=/);
+  });
+});
+
 describe("buildLocalNextflowCommand", () => {
   it("builds a host nextflow invocation", () => {
     expect(
@@ -131,6 +153,16 @@ describe("buildContainerNextflowCommand", () => {
     expect(command).toBe(
       "docker run --rm --platform 'linux/amd64' --volumes-from 'nwave-backend' -v /var/run/docker.sock:/var/run/docker.sock -e NXF_LOG_FILE=nextflow/.nextflow.log -w '/app/results/demo' 'nextflow/nextflow:25.04.4' nextflow -log nextflow/.nextflow.log run ./workflow/demo.nf --outdir results --inputdir inputs --max_cpus 4 --max_memory '4GB' -work-dir nextflow/work"
     );
+  });
+
+  it("passes the GitHub token on by name only", () => {
+    const command = buildContainerNextflowCommand({
+      ...base,
+      passGithubToken: true,
+      mount: { type: "volumes-from", container: "nwave-backend" },
+    });
+    // The value stays out of the command line (and the run's log).
+    expect(command).toContain(" -e GITHUB_TOKEN -e NXF_LOG_FILE=");
   });
 
   it("bind-mounts the host results path when process Docker is on", () => {

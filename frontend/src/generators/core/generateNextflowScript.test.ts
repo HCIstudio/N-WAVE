@@ -263,8 +263,8 @@ describe("generateNextflowScript edge cases", () => {
     expect(script).toContain(
       "ch_files_in2 = Channel.fromList(params.selected_files_in2)",
     );
-    expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files_in)`);
-    expect(script).toContain(`${getProcessNameForNode(filter2)}(ch_files_in2)`);
+    expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files_in.flatMap`);
+    expect(script).toContain(`${getProcessNameForNode(filter2)}(ch_files_in2.flatMap`);
   });
 
   it("quotes file names and the output directory as Groovy strings", () => {
@@ -354,7 +354,7 @@ describe("generateNextflowScript edge cases", () => {
         [fileInput([]), filter],
         [edge("no_such_handle")],
       );
-      expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files)`);
+      expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files.flatMap`);
       expect(
         warn.mock.calls.map((args) => String(args[0])).join("\n"),
       ).toContain("Using fallback channel mapping");
@@ -391,6 +391,11 @@ describe("generator helpers", () => {
     expect(
       getProcessNameForNode({ id: "n", position: { x: 0, y: 0 }, data: {} }),
     ).toBe("process_n");
+    // Node pack ids may hold dots or start with a digit.
+    const packNode = (processType: string) =>
+      getProcessNameForNode({ id: "n1", type: "process", position: { x: 0, y: 0 }, data: { processType } });
+    expect(packNode("bio.cat-file")).toBe("bio_cat_file_n1");
+    expect(packNode("1cat")).toBe("p_1cat_n1");
   });
 
   it("concatenates several channels", () => {

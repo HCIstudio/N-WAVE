@@ -62,6 +62,24 @@ describe("buildRunRequest", () => {
     sourceFormat: "visual" as const,
   };
 
+  it("runs an imported workflow's own source while it shows imported processes", () => {
+    // Their code is only in the source: generating would run empty stubs.
+    const imported = {
+      id: "p1",
+      type: "process",
+      position: { x: 0, y: 0 },
+      data: { label: "COUNT_LINES", importedProcess: true },
+    } as Node<NodeData>;
+    const body = buildRunRequest({
+      ...base,
+      nodes: [imported],
+      rawSource: "process COUNT_LINES { script: 'wc -l' }\nworkflow { COUNT_LINES() }",
+      sourceFormat: "nextflow",
+    });
+    expect(body.nextflowScript).toContain("wc -l");
+    expect(body.nextflowScript).not.toContain("Hello World");
+  });
+
   it("runs an imported workflow's own source while it has no nodes", () => {
     const body = buildRunRequest({
       ...base,

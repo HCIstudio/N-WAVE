@@ -255,3 +255,29 @@ describe("importing a script with several File Inputs", () => {
   });
 });
 
+
+describe("importing a downloaded script", () => {
+  it("keeps connections written over several lines, such as Display Output's", () => {
+    const input = {
+      ...makeNode("fileInput", { files: [{ name: "a.txt", content: "x", size: 1 }] }),
+      id: "in",
+    } as Node<NodeData>;
+    const filter = { ...makeNode("filter", { filterText: "x" }), id: "filter" } as Node<NodeData>;
+    const output = { ...makeNode("outputDisplay"), id: "out" } as Node<NodeData>;
+    const script = generateNextflowScript(
+      [input, filter, output],
+      [
+        { id: "e1", source: "in", sourceHandle: "ch_files_out", target: "filter", targetHandle: "in" },
+        { id: "e2", source: "filter", sourceHandle: "out", target: "out", targetHandle: "in" },
+      ],
+      "wf",
+      "results",
+      "{workflow_name}",
+    );
+    const imported = importNextflowWorkflow({ rawSource: script });
+    const byType = (type: string) => imported.nodes.find((node) => node.data.operatorType === type || node.type === type);
+    const pairs = imported.edges.map((edge) => [edge.source, edge.target]);
+    expect(pairs).toContainEqual([byType("fileInput")?.id, byType("filter")?.id]);
+    expect(pairs).toContainEqual([byType("filter")?.id, byType("outputDisplay")?.id]);
+  });
+});

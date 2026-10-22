@@ -53,6 +53,19 @@ const getResourceSettings = (node: Node<NodeData>) => ({
   memory: node.data.memory || "2.GB",
 });
 
+/**
+ * One file per emission: `[meta, files...]` items (Samplesheet rows, nf-core
+ * outputs such as paired-end FastQC reports) contribute all their files, for
+ * steps that take plain files.
+ */
+const filesOf = (channelExpr: string): string =>
+  `${channelExpr}.flatMap { item ->
+        def value = item instanceof List && item.size() > 1 ? (item[0] instanceof Map ? item[1..-1] : item[-1]) : item
+        (value instanceof List ? value.flatten() : [value]).collect { entry ->
+            file(entry instanceof String ? "\${params.inputdir}/\${entry}" : entry, glob: false)
+        }
+    }`;
+
 export const generateFilterNode: NodeGenerator = ({
   node,
   processName,
@@ -81,7 +94,7 @@ export const generateFilterNode: NodeGenerator = ({
     return {
       processScript,
       processInvocations: [
-        `    ${outputChannelName} = ${processName}(${upstreamChannelName})\n`,
+        `    ${outputChannelName} = ${processName}(${filesOf(upstreamChannelName)})\n`,
       ],
     };
   }
@@ -97,7 +110,7 @@ export const generateFilterNode: NodeGenerator = ({
       `    // Filter to only process selected files: ${selectedFileNames.join(
         ", "
       )}\n`,
-      `    ${outputChannelName}_selected = ${upstreamChannelName}.filter { file -> ${fileNameFilter} }\n`,
+      `    ${outputChannelName}_selected = ${filesOf(upstreamChannelName)}.filter { file -> ${fileNameFilter} }\n`,
     ],
     processInvocations: [
       `    ${outputChannelName} = ${processName}(${outputChannelName}_selected)\n`,
@@ -127,7 +140,7 @@ export const generateMapNode: NodeGenerator = ({
       mapReplaceWith: node.data.mapReplaceWith,
     }),
     processInvocations: [
-      `    ${outputChannelName} = ${processName}(${upstreamChannelName})\n`,
+      `    ${outputChannelName} = ${processName}(${filesOf(upstreamChannelName)})\n`,
     ],
   };
 };
@@ -168,7 +181,7 @@ export const generateMergeNode: NodeGenerator = ({
       `    ${mergeInputChannelName} = ${buildMixedChannelExpression(
         upstreamChannelNames
       )}\n`,
-      `    ${outputChannelName} = ${processName}(${mergeInputChannelName}.collect())\n`,
+      `    ${outputChannelName} = ${processName}(${filesOf(mergeInputChannelName)}.collect())\n`,
     ],
   };
 };
@@ -176,6 +189,13 @@ export const generateMergeNode: NodeGenerator = ({
 export const generateGenericProcessNode: NodeGenerator = (context) => {
   const { node, processName } = context;
   const { containerImage, cpus, memory } = getResourceSettings(node);
+  // A process shown from an imported .nf file: its code is only in that file
+  // (runs use it as it is), so it can't be written here as a stub.
+  if (node.data.importedProcess && !node.data.script) {
+    throw new Error(
+      `“${node.data.label || processName}” comes from the imported .nf file, which holds its code. Remove it to build the workflow from nodes, or run the imported workflow as it is.`,
+    );
+  }
 
   return {
     processScript: generateProcessCode("generic", {
@@ -207,20 +227,10 @@ export const generateOutputDisplayNode: NodeGenerator = ({
   const selectedFileName = node.data.selectedFileName || "all";
   const { containerImage, cpus, memory } = getResourceSettings(node);
 
-  // One file per emission: `[meta, files...]` items (nf-core outputs, e.g.
-  // paired-end FastQC reports) contribute all their files.
-  const normalizeToPathChannel = (channelExpr: string): string =>
-    `${channelExpr}.flatMap { item ->
-        def value = item instanceof List && item.size() > 1 ? (item[0] instanceof Map ? item[1..-1] : item[-1]) : item
-        (value instanceof List ? value.flatten() : [value]).collect { entry ->
-            file(entry instanceof String ? "\${params.inputdir}/\${entry}" : entry)
-        }
-    }`;
-
   const outputInvocationArg =
     selectedFileName === "all"
-      ? `${normalizeToPathChannel(upstreamChannelName)}.collect()`
-      : normalizeToPathChannel(upstreamChannelName);
+      ? `${filesOf(upstreamChannelName)}.collect()`
+      : filesOf(upstreamChannelName);
 
   return {
     processScript: generateOutputCode({

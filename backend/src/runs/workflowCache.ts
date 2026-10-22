@@ -47,6 +47,14 @@ export const measureWorkflowCache = async (workflowId: string): Promise<Workflow
   return { bytes, folders };
 };
 
+// Workflows whose cache is being deleted: a run starting meanwhile mustn't
+// resume in a folder whose cache is about to go.
+const clearing = new Set<string>();
+
+/** Whether the workflow's cache is being deleted right now. */
+export const isClearingWorkflowCache = (workflowId: string): boolean =>
+  clearing.has(workflowId);
+
 /**
  * Delete a workflow's run cache, so its next run starts from scratch.
  * Throws while one of its runs is still going.
@@ -59,10 +67,15 @@ export const clearWorkflowCache = async (
   if (dirs.some((dir) => isRunDirInUse(dir, isLive))) {
     throw new WorkflowCacheInUseError();
   }
-  for (const dir of dirs) {
-    for (const cache of CACHE_PATHS) {
-      await fs.promises.rm(path.join(dir, cache), { recursive: true, force: true });
+  clearing.add(workflowId);
+  try {
+    for (const dir of dirs) {
+      for (const cache of CACHE_PATHS) {
+        await fs.promises.rm(path.join(dir, cache), { recursive: true, force: true });
+      }
     }
+  } finally {
+    clearing.delete(workflowId);
   }
 };
 

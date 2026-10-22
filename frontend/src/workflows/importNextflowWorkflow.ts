@@ -241,6 +241,8 @@ const inferProcessNode = (
       label: process.name,
       icon: "Cog",
       subtitle: "Imported process",
+      // Its code stays in the imported script, which runs as it is.
+      importedProcess: true,
       inputs: [{ name: "in" }],
       outputs: [{ name: "out", isConnectable: true }],
     },
@@ -339,10 +341,23 @@ const buildVisualGraph = (
     });
   };
 
-  const workflowLines = workflowBody
-    .split(/\r?\n/)
-    .map((line) => line.replace(/\/\/.*$/, "").trim())
-    .filter(Boolean);
+  // Whole statements: a call or assignment can span lines (a `.flatMap { … }`
+  // or a call's arguments), so lines are joined until their brackets close.
+  const workflowLines: string[] = [];
+  let statement = "";
+  let depth = 0;
+  for (const rawLine of workflowBody.split(/\r?\n/)) {
+    const line = rawLine.replace(/\/\/.*$/, "").trim();
+    if (!line) continue;
+    statement = statement ? `${statement} ${line}` : line;
+    depth += (line.match(/[([{]/g) ?? []).length - (line.match(/[)\]}]/g) ?? []).length;
+    if (depth <= 0) {
+      workflowLines.push(statement);
+      statement = "";
+      depth = 0;
+    }
+  }
+  if (statement) workflowLines.push(statement);
   for (const line of workflowLines) {
     const assignmentMatch = line.match(
       /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/

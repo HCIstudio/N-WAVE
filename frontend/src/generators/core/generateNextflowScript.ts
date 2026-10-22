@@ -171,7 +171,7 @@ export const generateNextflowScript = (
 
         // Create channel from file list with proper file staging
         firstPassScript += `${channelName} = Channel.fromList(${selectedFilesParam})\n`;
-        firstPassScript += `    .map { filename -> file("\${params.inputdir}/\${filename}") }\n\n`;
+        firstPassScript += `    .map { filename -> file("\${params.inputdir}/\${filename}", glob: false) }\n\n`;
         firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
       } else {
         // Fallback if no files
@@ -342,7 +342,12 @@ export const generateNextflowScript = (
   }
   // Helper functions the generated code calls (top-level, strict syntax).
   const helperFunctions = helperFunctionsFor(
-    [firstPassScript, ...channelDefinitions, ...processInvocations].join("\n")
+    [
+      firstPassScript,
+      ...channelDefinitions,
+      ...processInvocations,
+      ...Object.values(processScripts),
+    ].join("\n")
   );
   if (helperFunctions.length > 0) {
     finalScript += `${helperFunctions.join("\n\n")}\n\n`;
@@ -482,13 +487,13 @@ export const generateNextflowScript = (
         continue;
       }
 
+      // A channel nothing defines: a step whose input comes from a step that
+      // wasn't generated (unconnected, or removed). The script would fail
+      // with "not defined", so it isn't written.
       if (usedVar.startsWith("ch_") || usedVar.startsWith("node_")) {
-        console.warn(
-          `Treating unresolved variable "${usedVar}" as workflow input. Used in: ${dependentInvocations.join(
-            " | "
-          )}`
+        throw new Error(
+          `A step uses the output of a step that isn't part of the workflow (${usedVar}); connect that step's inputs or remove the connection.`
         );
-        continue;
       }
 
       throw new Error(
@@ -638,7 +643,9 @@ export function getProcessNameForNode(node: Node): string {
   if (!type || typeof type !== "string" || type === "undefined") {
     type = "process";
   }
-  return `${type}_${node.id.replace(/[\s-]+/g, "_")}`;
+  // A Nextflow identifier: node pack ids may hold dots or start with a digit.
+  const name = `${type}_${node.id.replace(/[\s-]+/g, "_")}`.replace(/[^A-Za-z0-9_]/g, "_");
+  return /^[A-Za-z_]/.test(name) ? name : `p_${name}`;
 }
 
 export { buildMixedChannelExpression };

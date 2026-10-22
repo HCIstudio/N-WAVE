@@ -25,11 +25,17 @@ export const NWAVE_HELPER_FUNCTIONS: Record<string, string> = {
     "    item instanceof List && item.size() > 0 ? item[-1] : item",
     "}",
   ].join("\n"),
+  // A file name with only characters that are safe unquoted in the shell.
+  nwaveSafeName: [
+    "def nwaveSafeName(name) {",
+    "    name.toString().replaceAll(/[^A-Za-z0-9._-]/, '_')",
+    "}",
+  ].join("\n"),
   // An input file: absolute paths and URLs as they are, other paths in the
   // input directory.
   nwaveInputFile: [
     "def nwaveInputFile(path) {",
-    '    file(path ==~ /^(\\/|[A-Za-z][A-Za-z0-9+.-]*:\\/\\/).*/ ? path : "${params.inputdir}/${path}", checkIfExists: true)',
+    '    file(path ==~ /^(\\/|[A-Za-z][A-Za-z0-9+.-]*:\\/\\/).*/ ? path : "${params.inputdir}/${path}", checkIfExists: true, glob: false)',
     "}",
   ].join("\n"),
 };

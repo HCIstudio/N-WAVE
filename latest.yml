@@ -50,6 +50,9 @@ services:
       # Custom nodes and node packs, kept in ./results/.nwave on the host with
       # the installed nf-core modules, so they survive image updates.
       NWAVE_CUSTOM_NODE_DIR: /app/results/.nwave/custom-nodes
+      # A GitHub access token for downloading nf-core pipelines past GitHub's
+      # limit for anonymous downloads (set it in the shell or a .env file).
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     ports:
       - "${NWAVE_BIND_ADDRESS:-127.0.0.1}:5001:5001"
     volumes:

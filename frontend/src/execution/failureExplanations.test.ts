@@ -17,6 +17,9 @@ describe("explainFailure", () => {
     ["nospace", "no-space", "STAR_INDEX", /no space left on the disk/],
     ["url", "unreachable-url", "CAT_REF", /couldn't download https:\/\/data\.nonexistent-host-nwave\.invalid\/genome\.fa/],
     ["missingout", "missing-output", "TRIM_READS", /“trimmed\.fastq\.gz” wasn't there/],
+    // nf-core pipeline runs where GitHub's API and the plugin registry were blocked.
+    ["pipeline-github", "pipeline-download", undefined, /GitHub refused/],
+    ["plugins", "plugin-download", undefined, /registry\.nextflow\.io/],
   ])("explains %s as %s", (name, kind, process, explanation) => {
     const result = explainFailure(log(name));
     expect(result?.kind).toBe(kind);

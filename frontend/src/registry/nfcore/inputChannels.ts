@@ -273,7 +273,7 @@ export const buildNfCoreGroupChannels = (
     const builtMeta =
       first.item.mode === "collect"
         ? "[id: 'all_samples']"
-        : `[id: (${first.local} instanceof List ? ${first.local}[0] : ${first.local}).simpleName${
+        : `[id: (${first.local} instanceof List ? ${first.local}[0] : ${first.local}).simpleName.replaceAll(/[^A-Za-z0-9._-]/, '_')${
             group.metaName === "meta"
               ? `, single_end: !(${first.local} instanceof List && ${first.local}.size() > 1)`
               : ""

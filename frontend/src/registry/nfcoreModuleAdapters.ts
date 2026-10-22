@@ -347,7 +347,7 @@ function buildAdaptedInputChannel({
       "        def reads = item instanceof List && item.size() > 1 ? item[1] : item",
       "        def existingMeta = item instanceof List && item.size() > 0 && item[0] instanceof Map ? item[0] : [:]",
       "        def singleEnd = existingMeta.single_end == null ? true : existingMeta.single_end",
-      "        def meta = existingMeta + [id: existingMeta.id ?: reads.baseName, single_end: singleEnd]",
+      "        def meta = existingMeta + [id: existingMeta.id ?: reads.baseName.replaceAll(/[^A-Za-z0-9._-]/, '_'), single_end: singleEnd]",
       "        tuple(meta, reads)",
       "    }\n",
     ].join("\n"),

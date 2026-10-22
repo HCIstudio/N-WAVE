@@ -25,19 +25,25 @@ export const useRunTasks = (
   useEffect(() => {
     if (!runId) return;
     let cancelled = false;
-    const load = () =>
-      listRunTasks(runId).then(
-        (next) => !cancelled && setTasks(next),
-        () => undefined,
-      );
+    let timer: number | undefined;
+    // The next poll waits for the last answer, so a slow backend doesn't
+    // pile up requests (or get them back out of order).
+    const load = async () => {
+      try {
+        const next = await listRunTasks(runId);
+        if (!cancelled) setTasks(next);
+      } catch {
+        // The next poll tries again.
+      }
+      // Once more when the run ends (isRunning flips), regularly while it goes.
+      if (!cancelled && isRunning) {
+        timer = window.setTimeout(() => void load(), RUN_TASKS_POLL_MS);
+      }
+    };
     void load();
-    // Once more when the run ends (isRunning flips), regularly while it goes.
-    const timer = isRunning
-      ? window.setInterval(load, RUN_TASKS_POLL_MS)
-      : undefined;
     return () => {
       cancelled = true;
-      window.clearInterval(timer);
+      window.clearTimeout(timer);
     };
   }, [runId, isRunning]);
 

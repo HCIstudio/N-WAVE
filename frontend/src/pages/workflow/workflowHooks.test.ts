@@ -64,9 +64,12 @@ describe("useRunTasks", () => {
     rerender({ runId: "bee_1", isRunning: true });
     await flush();
     expect(listRunTasks).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      vi.advanceTimersByTime(RUN_TASKS_POLL_MS * 2);
-    });
+    // Each poll waits for the last answer, so step one interval at a time.
+    for (let poll = 0; poll < 2; poll += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(RUN_TASKS_POLL_MS);
+      });
+    }
     expect(listRunTasks).toHaveBeenCalledTimes(3);
     rerender({ runId: "bee_1", isRunning: false });
     await flush();

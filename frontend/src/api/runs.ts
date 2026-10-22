@@ -48,6 +48,11 @@ export const listRuns = async (workflowId: string, limit?: number): Promise<RunS
   return response.data.runs;
 };
 
+/** Stop a running run, e.g. one whose page was reloaded while it ran. */
+export const cancelRun = async (runId: string): Promise<void> => {
+  await api.post("/execute/cancel", { executionId: runId });
+};
+
 /**
  * What a workflow's runs keep so a later run can resume: each step's work
  * folder and Nextflow's record of them.

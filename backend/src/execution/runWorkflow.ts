@@ -45,6 +45,7 @@ import type { ExecutionSettings } from "./types";
 import type { RunProfile } from "./runProfile";
 import { removeRunTaskContainers } from "./taskContainers";
 import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
+import { isClearingWorkflowCache } from "../runs/workflowCache";
 
 export interface WorkflowRunRequest {
   /** The Nextflow script ("" for a pipeline). */
@@ -91,10 +92,11 @@ export const uniqueOutputName = (outputDirectory: string, outputName: string): s
 
 /**
  * The run a resumed run continues: the workflow's last run with a cache,
- * unless a run is still going in its folder (two runs can't share one).
+ * unless a run is still going in its folder (two runs can't share one) or the
+ * cache is being cleared.
  */
 const findRunToResume = (workflowId: string | undefined): { id: string; dir: string } | null => {
-  if (!workflowId) return null;
+  if (!workflowId || isClearingWorkflowCache(workflowId)) return null;
   const run = findResumableRun(workflowId);
   return run && !isRunDirInUse(run.dir, isRunLive) ? run : null;
 };
@@ -138,6 +140,11 @@ export const runNextflowWorkflow = async (
   let runId: string | null = null;
   let runLog: fs.WriteStream | null = null;
   let cancelledInSetup = false;
+  // Resolves on a cancel while the run is set up (e.g. waiting at the gate).
+  let onCancelled = () => {};
+  const cancelled = new Promise<void>((resolve) => {
+    onCancelled = resolve;
+  });
   // Opens the pipeline's launch gate (see launchGate.ts) for the next run.
   let openGate = () => {};
   try {
@@ -175,6 +182,7 @@ export const runNextflowWorkflow = async (
     registerRun(id, {
       stop: () => {
         cancelledInSetup = true;
+        onCancelled();
       },
     });
     // Everything sent to the browser is also kept in the run's log.
@@ -289,9 +297,12 @@ export const runNextflowWorkflow = async (
       if (isLaunchGateBusy(gate)) {
         send(`N-WAVE: waiting for another run of ${gate} to finish downloading it.\n`);
       }
-      openGate = await passLaunchGate(gate);
+      // A cancel doesn't wait for the gate; the run still opens it for the
+      // next one when its turn comes.
+      const passed = passLaunchGate(gate);
+      await Promise.race([passed, cancelled]);
       if (cancelledInSetup) {
-        openGate();
+        void passed.then((open) => open());
         unregisterRun(id);
         send("\nExecution cancelled\n");
         recordEnd(id, "cancelled");
@@ -299,6 +310,7 @@ export const runNextflowWorkflow = async (
         res.end();
         return;
       }
+      openGate = await passed;
     }
     const run = startRun({
       command: launch.command,

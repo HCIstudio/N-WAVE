@@ -238,6 +238,18 @@ export const useWorkflowDocument = ({
     void load();
   }, [takePendingCopy, load]);
 
+  // What is on the page now, and what the last failed save sent: a save
+  // only marks the workflow saved if nothing changed while it was sent, and
+  // a failed one isn't retried until something changes.
+  const current = useLatestRef({ nodes, edges, workflowName, executionSettings });
+  const failedSave = useRef<typeof current.current | null>(null);
+  const isUnchangedSince = (snapshot: typeof current.current | null) =>
+    snapshot !== null &&
+    snapshot.nodes === current.current.nodes &&
+    snapshot.edges === current.current.edges &&
+    snapshot.workflowName === current.current.workflowName &&
+    snapshot.executionSettings === current.current.executionSettings;
+
   const save = async () => {
     if (!workflowId) {
       showError("No workflow ID provided.");
@@ -247,6 +259,7 @@ export const useWorkflowDocument = ({
       await requestCopy();
       return;
     }
+    const sent = current.current;
     setIsSaving(true);
     try {
       await api.put(`/workflows/${workflowId}`, {
@@ -255,10 +268,13 @@ export const useWorkflowDocument = ({
         edges,
         executionSettings,
       });
-      setIsDirty(false);
+      failedSave.current = null;
+      // An edit made while this was sent is still to be saved.
+      if (isUnchangedSince(sent)) setIsDirty(false);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), SAVED_INDICATOR_MS);
     } catch (error) {
+      failedSave.current = sent;
       showError(
         `Failed to save workflow. ${getApiErrorMessage(error, "")}`.trim(),
       );
@@ -275,7 +291,13 @@ export const useWorkflowDocument = ({
   // biome-ignore lint/correctness/useExhaustiveDependencies: nodes and edges restart the debounce timer.
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (isDirty && !isSaving && workflowId && !readOnly) {
+      if (
+        isDirty &&
+        !isSaving &&
+        workflowId &&
+        !readOnly &&
+        !isUnchangedSince(failedSave.current)
+      ) {
         saveRef.current();
       }
     }, AUTOSAVE_DELAY_MS);

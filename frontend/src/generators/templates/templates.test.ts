@@ -21,7 +21,7 @@ describe("Filter template", () => {
       filterMode,
     });
     expect(code).toContain(grep);
-    expect(code).toContain('path "*_filtered.txt"');
+    expect(code).toContain('path "*_filtered.*"');
   });
 
   it("inverts the match", () => {
@@ -46,7 +46,7 @@ describe("Filter template", () => {
       String.raw`grep  -E 'it'\\''s \$HOME\\d \"x\"' `,
     );
     expect(code).toContain(
-      String.raw`echo '# Filter: No lines matched regex '\\''it'\\''s \$HOME\\d \"x\"'\\''' >`,
+      String.raw`echo 'Filter: no lines matched regex '\\''it'\\''s \$HOME\\d \"x\"'\\''' >&2`,
     );
   });
 
@@ -56,7 +56,7 @@ describe("Filter template", () => {
       filterMode: "contains",
     });
     expect(code).toContain(
-      'cp ${input_file} "${input_file.baseName}_filtered.txt"',
+      "cp ${input_file} ${out}",
     );
     expect(code).not.toContain("grep");
   });
@@ -72,6 +72,29 @@ describe("Filter template", () => {
     expect(code).toContain("container 'alpine:3'");
     expect(code).toContain("cpus 2");
     expect(code).toContain("memory '4.GB'");
+  });
+});
+
+describe("Filter and Map output names", () => {
+  it.each(["filter", "map"])(
+    "%s keeps the extension and only safe characters of the input's name",
+    (operator) => {
+      const suffix = operator === "filter" ? "filtered" : "mapped";
+      const code = generateOperatorCode(operator, { ...base, filterText: "x", filterMode: "contains" });
+      // A name like a`touch x`.txt must not reach the shell as it is.
+      expect(code).toContain(
+        `def out = "\${nwaveSafeName(input_file.baseName)}_${suffix}.\${input_file.extension ? nwaveSafeName(input_file.extension) : 'txt'}"`,
+      );
+      expect(code).toContain(`path "*_${suffix}.*"`);
+      expect(code).not.toContain('"${input_file.baseName}');
+    },
+  );
+
+  it("Filter leaves no data behind when nothing matches", () => {
+    const code = generateOperatorCode("filter", { ...base, filterText: "x", filterMode: "contains" });
+    // grep's exit 1 (no match) is fine, its errors (2) still fail the step.
+    expect(code).toContain("[ \\$status -eq 1 ] || exit \\$status");
+    expect(code).not.toContain("> ${out}\n");
   });
 });
 
@@ -111,10 +134,22 @@ describe("Map template", () => {
     ).toContain(String.raw`sed 's/a\\/b/c\\&d\\\\e'\\''s/g' `);
   });
 
+  it("passes the file through when there's no search text", () => {
+    const code = generateOperatorCode("map", {
+      ...base,
+      mapOperation: "replaceText",
+      mapReplaceFind: "",
+      mapReplaceWith: "z",
+    });
+    // `sed 's//z/g'` fails: "no previous regular expression".
+    expect(code).not.toContain("sed");
+    expect(code).toContain("cp ${input_file} ${out}");
+  });
+
   it("passes the file through for an unknown operation", () => {
     expect(
       generateOperatorCode("map", { ...base, mapOperation: "other" }),
-    ).toContain('cp ${input_file} "${input_file.baseName}_mapped.txt"');
+    ).toContain("cp ${input_file} ${out}");
   });
 });
 
@@ -165,6 +200,17 @@ describe("Display Output template", () => {
     expect(code).toContain(
       'MANIFEST="Flow_2026-10-18_save_out_03_Result_manifest.txt"',
     );
+  });
+
+  it("stages 'all' inputs in folders, so equal names don't clash", () => {
+    const code = generateOutputCode({ ...output, selectedFileName: "all" });
+    expect(code).toContain("path input_files, stageAs: 'nwave_in??/*'");
+  });
+
+  it("doesn't quote the single input, which Nextflow escapes itself", () => {
+    const code = generateOutputCode({ ...output, selectedFileName: "a.txt" });
+    expect(code).toContain("cat ${input_file} >>");
+    expect(code).not.toContain('cat "${input_file}"');
   });
 
   it("makes a file-name-safe prefix from the workflow name", () => {

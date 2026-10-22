@@ -46,14 +46,6 @@ describe("run files behind symlinks", () => {
   it("lists and serves results symlinked into the run", async () => {
     const list = await request(app).get("/api/execute/runs/flow_1/files").expect(200);
     expect(list.body.files).toEqual([{ path: "out.txt", size: 6 }]);
-    const file = await request(app)
-      .get("/api/execute/runs/flow_1/file")
-      .query({ path: "out.txt" })
-      .expect(200);
-    expect(file.text).toBe("output");
-  });
-
-  it("serves results and task files at path-style URLs too", async () => {
     const file = await request(app).get("/api/execute/runs/flow_1/results/out.txt").expect(200);
     expect(file.text).toBe("output");
     await request(app).get("/api/execute/runs/flow_1/results/leak.txt").expect(404);
@@ -68,8 +60,7 @@ describe("run files behind symlinks", () => {
   it("serves nothing a symlink points to outside the run", async () => {
     for (const filePath of ["leak.txt", "linked/secret.txt", "missing.txt"]) {
       await request(app)
-        .get("/api/execute/runs/flow_1/file")
-        .query({ path: filePath })
+        .get(`/api/execute/runs/flow_1/results/${encodeURIComponent(filePath)}`)
         .expect(404);
     }
     await request(app)

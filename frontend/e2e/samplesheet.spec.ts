@@ -65,6 +65,6 @@ test.describe("samplesheet node", () => {
     expect(files[`${project}/main.nf`]).toMatch(
       /params\.samplesheet_\w+ = "\$\{params\.inputdir\}\/samplesheet\.csv"/
     );
-    expect(files[`${project}/main.nf`]).toContain(".splitCsv(header: true, strip: true)");
+    expect(files[`${project}/main.nf`]).toContain(".splitCsv(header: true, strip: true, quote: '\"')");
   });
 });

@@ -10,7 +10,7 @@ import { findExtraConnections, inputLabel } from "../../registry/portArity";
 import { connectionHints } from "../../registry/portTypes";
 import { getSamplesheetMapping, parseSamplesheet } from "../../registry/samplesheet";
 import type { ExecutionSettings } from "../../types/execution";
-import { getNodeInputFiles, getWorkflowInputFiles } from "../../utils/inputFiles";
+import { getNodeInputFiles, getWorkflowInputFiles, isFileContentMissing } from "../../utils/inputFiles";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
 
 export type ProblemLevel = "error" | "warning";
@@ -131,7 +131,7 @@ const checkNodes = (
         add(node, "nofile", "error", `Add a file to “${label}”: it has nothing to pass on.`);
       }
       const lost = files
-        .filter((file) => !file.content || file.content.trim() === "")
+        .filter(isFileContentMissing)
         .map((file) => file.name || file.originalName || "a file");
       if (lost.length > 0) {
         add(node, "lostfile", "error", `Upload ${lost.map((name) => `“${name}”`).join(", ")} again: files over 256 KB aren't kept after a reload.`);
@@ -218,6 +218,16 @@ const checkWorkflowWide = (
       level: "warning",
       message: `${hint.message} ${hint.fix}`,
       nodeId: edges.find((edge) => edge.id === edgeId)?.target,
+    });
+  }
+  // Imported .nf processes: runs use the imported script, not the canvas.
+  const imported = nodes.filter((node) => node.data.importedProcess === true);
+  if (imported.length > 0) {
+    problems.push({
+      id: "imported",
+      level: "warning",
+      message: `${imported.map(labelOf).map((label) => `“${label}”`).join(", ")} ${imported.length === 1 ? "comes" : "come"} from the imported .nf file. Runs and exports use that file as it is, so changes on the canvas don't apply until these steps are removed.`,
+      nodeId: imported[0].id,
     });
   }
   try {

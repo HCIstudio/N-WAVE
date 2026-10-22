@@ -175,6 +175,15 @@ describe("FileInputPanel", () => {
     error.mockRestore();
   });
 
+  it("says why a file is too large to add", async () => {
+    const big = new File(["a"], "huge.bam");
+    Object.defineProperty(big, "size", { value: 40 * 1024 * 1024 });
+    const { updateNodeData, view, user } = setup([]);
+    await user.upload(fileInput(view.container), big);
+    await screen.findByText(/“huge\.bam” is 40\.0 MB: uploads can be up to 36\.0 MB/);
+    expect(updateNodeData).not.toHaveBeenCalled();
+  });
+
   it("removes a single file", async () => {
     const { updateNodeData, user } = setup([file("a.txt", "aa"), file("b.txt", "b")]);
     await user.click(screen.getByRole("button", { name: "Remove a.txt" }));

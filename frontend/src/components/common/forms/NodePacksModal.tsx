@@ -1,5 +1,5 @@
 import type React from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDemoMode } from "../../../api";
 import { refreshCustomNodes } from "../../../api/customNodes";
 import {
@@ -275,6 +275,9 @@ const ImportPack: React.FC<{
   const [parsed, setParsed] = useState<ParsedNodePack | null>(null);
   const [choices, setChoices] = useState<Record<string, ConflictChoice>>({});
   const [missing, setMissing] = useState<string[]>([]);
+  // False while the check runs; the answer for an earlier pack is ignored.
+  const [missingChecked, setMissingChecked] = useState(true);
+  const missingCheck = useRef(0);
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<NodePackImportResult | null>(null);
   const [index, setIndex] = useState<{
@@ -303,10 +306,18 @@ const ImportPack: React.FC<{
     setChoices({});
     setResult(null);
     setMissing([]);
+    setMissingChecked(false);
+    const check = ++missingCheck.current;
     const refs = next.nodes.flatMap((node) => (node.node ? [node.nfcore] : []));
     getMissingNfCoreComponents(refs)
-      .then(setMissing)
-      .catch(() => setMissing([]));
+      .then((found) => {
+        if (check === missingCheck.current) setMissing(found);
+      })
+      // Unknown: the import goes on, and runs install what they lack.
+      .catch(() => undefined)
+      .finally(() => {
+        if (check === missingCheck.current) setMissingChecked(true);
+      });
   };
 
   const load = async (source: () => Promise<string>) => {
@@ -554,7 +565,12 @@ const ImportPack: React.FC<{
           )}
           <button
             type="button"
-            disabled={importing || toSave.length === 0 || result !== null}
+            disabled={
+              importing ||
+              !missingChecked ||
+              toSave.length === 0 ||
+              result !== null
+            }
             onClick={() => void runImport()}
             className="rounded-md bg-nextflow-green px-4 py-2 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:opacity-50"
           >

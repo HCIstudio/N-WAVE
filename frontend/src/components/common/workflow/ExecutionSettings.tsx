@@ -389,6 +389,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                       ? "Available (Docker)"
                       : "Not Available"}
                     {nextflowStatus?.version && ` (${nextflowStatus.version})`}
+                    {!nextflowStatus?.version &&
+                      nextflowStatus?.note &&
+                      `: ${nextflowStatus.note}`}
                   </span>
                 </div>
               </div>

@@ -13,6 +13,15 @@ export interface WorkflowInputFile {
 }
 
 /**
+ * Whether an uploaded file's content is gone (larger files aren't kept after
+ * a reload): it had bytes, but none are here. An empty file is complete.
+ */
+export const isFileContentMissing = (file: {
+  content?: string;
+  size?: number;
+}): boolean => !file.content && (file.size ?? 1) > 0;
+
+/**
  * The files a node puts into the workflow's input directory: uploads of a
  * File Input node, or the CSV of a Samplesheet node.
  */
@@ -46,14 +55,28 @@ export const getNodeInputFiles = (
 
 /**
  * Input files of all nodes, deduplicated by name (content wins). Throws when
- * two files share a name but not their content: the input directory is flat.
+ * two files share a name but not their content (the input directory is
+ * flat), differ only in case, or a name starts with "-".
  */
 export const getWorkflowInputFiles = (
   nodes: Node<NodeData>[],
 ): WorkflowInputFile[] => {
+  // By lowercased name: on macOS and Windows, Sample.fq and sample.fq are
+  // the same file in the input folder.
   const files = new Map<string, WorkflowInputFile>();
   for (const file of nodes.flatMap(getNodeInputFiles)) {
-    const existing = files.get(file.name);
+    if (file.name.startsWith("-")) {
+      throw new Error(
+        `Rename "${file.name}": file names can't start with "-" (programs read them as options).`,
+      );
+    }
+    const key = file.name.toLowerCase();
+    const existing = files.get(key);
+    if (existing && existing.name !== file.name) {
+      throw new Error(
+        `"${existing.name}" and "${file.name}" differ only in upper and lower case. Rename one of them (on macOS and Windows they are the same file).`,
+      );
+    }
     if (
       existing?.content !== undefined &&
       file.content !== undefined &&
@@ -63,7 +86,7 @@ export const getWorkflowInputFiles = (
         `Two input files are named "${file.name}" but differ. Rename one of them (input files share one folder).`,
       );
     }
-    if (!existing || existing.content === undefined) files.set(file.name, file);
+    if (!existing || existing.content === undefined) files.set(key, file);
   }
   return Array.from(files.values());
 };

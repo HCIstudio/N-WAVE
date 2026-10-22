@@ -143,6 +143,67 @@ describe("useWorkflowDocument", () => {
     unmount();
   });
 
+  it("keeps an edit made while a save is sent unsaved", async () => {
+    get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [] } });
+    vi.useFakeTimers();
+    let answer: () => void = () => undefined;
+    put.mockImplementationOnce(
+      () => new Promise((resolve) => { answer = () => resolve({ data: {} }); }),
+    );
+    const props = options();
+    const { rerender, unmount } = renderHook(useWorkflowDocument, { initialProps: props });
+    await flush();
+    rerender({ ...props, nodes: [storedNode as Node], isDirty: true });
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(put).toHaveBeenCalledTimes(1);
+    props.setIsDirty.mockClear();
+    // Another edit while the save is on its way.
+    const moved = { ...storedNode, position: { x: 50, y: 0 } } as Node;
+    rerender({ ...props, nodes: [moved], isDirty: true });
+    await act(async () => answer());
+    expect(props.setIsDirty).not.toHaveBeenCalledWith(false);
+    // It goes out with the next save.
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(put).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
+  it("doesn't retry a failed save until something changes", async () => {
+    get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [] } });
+    vi.useFakeTimers();
+    let fail: () => void = () => undefined;
+    put.mockImplementationOnce(
+      () => new Promise((_, reject) => { fail = () => reject({ response: { status: 413 } }); }),
+    );
+    const props = options();
+    const { rerender, unmount } = renderHook(useWorkflowDocument, { initialProps: props });
+    await flush();
+    rerender({ ...props, nodes: [storedNode as Node], isDirty: true });
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    await act(async () => fail());
+    for (let tick = 0; tick < 5; tick += 1) {
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+      });
+    }
+    expect(put).toHaveBeenCalledTimes(1);
+    expect(props.showError).toHaveBeenCalledTimes(1);
+
+    // The next edit tries again.
+    rerender({ ...props, nodes: [{ ...storedNode, position: { x: 9, y: 9 } } as Node], isDirty: true });
+    await act(async () => {
+      vi.advanceTimersByTime(2000);
+    });
+    expect(put).toHaveBeenCalledTimes(2);
+    unmount();
+  });
+
   it("asks before copying a read-only workflow, then opens the copy", async () => {
     get.mockResolvedValueOnce({
       data: { name: "Demo", nodes: [], edges: [], origin: { readOnly: true } },

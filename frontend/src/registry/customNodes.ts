@@ -597,7 +597,7 @@ const buildTupleDefinition = ({
   return [
     `    ${channelName} = ${expression}.map { ${args.join(", ")} ->`,
     `        def firstPath = nwaveLastOf(${args[0]})`,
-    "        def meta = [id: (firstPath instanceof List ? firstPath[0] : firstPath).baseName]",
+    "        def meta = [id: (firstPath instanceof List ? firstPath[0] : firstPath).baseName.replaceAll(/[^A-Za-z0-9._-]/, '_')]",
     `        tuple(${lines.join(", ")})`,
     "    }\n",
   ].join("\n");

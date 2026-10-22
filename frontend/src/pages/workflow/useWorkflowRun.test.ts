@@ -129,6 +129,19 @@ describe("useWorkflowRun", () => {
     expect(hook.result.current.panelTab).toBe("log");
   });
 
+  it("says a run goes on when the connection drops after it started", async () => {
+    post.mockImplementationOnce(async (_url, _body, config) => {
+      config?.onDownloadProgress?.({ event: { target: { responseText: "N-WAVE run: bee_5\n" } } });
+      throw Object.assign(new Error("Network Error"), { isAxiosError: true });
+    });
+    await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
+    await flush();
+    const run = hook.result.current;
+    expect(run.error?.message).toContain("the run goes on on the server");
+    expect(run.output).toContain("run bee_5 goes on on the server");
+    expect(run.lastRunId).toBe("bee_5");
+  });
+
   it("doesn't start a run with an empty, connected File Input", async () => {
     hook.rerender({
       ...options,

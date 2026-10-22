@@ -126,14 +126,6 @@ export const findProfileProblems = (
   return problems;
 };
 
-/** The problems of each profile that has any. */
-export const findProfilesProblems = (profiles: RunProfile[]): Map<RunProfile, string[]> =>
-  new Map(
-    profiles
-      .map((profile) => [profile, findProfileProblems(profile, profiles)] as const)
-      .filter(([, problems]) => problems.length > 0),
-  );
-
 const quoted = (value: string): string => `'${value.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}'`;
 
 const containerLines = (engine: ContainerEngine): string[] => {

@@ -93,5 +93,3 @@ export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponen
     isChecking,
   };
 };
-
-export type WorkflowCheck = ReturnType<typeof useWorkflowCheck>;

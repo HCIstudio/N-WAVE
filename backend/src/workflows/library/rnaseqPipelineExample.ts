@@ -9,5 +9,4 @@ const example = loadJsonExample(
   "examples/rnaseq-pipeline"
 );
 
-export const rnaseqPipelineExampleId = example.id;
 export const getRnaseqPipelineExampleDescriptor = example.getDescriptor;

@@ -6,6 +6,7 @@ import {
   fileBytes,
   formatBytes,
   isBinaryFile,
+  MAX_UPLOAD_BYTES,
   readUploadedFile,
 } from "./fileContent";
 
@@ -44,6 +45,12 @@ describe("file contents", () => {
   it("reads uploads", async () => {
     expect(await readUploadedFile(new File([gzip], "reads.fastq.gz"))).toMatchObject({ encoding: "base64" });
     expect(await readUploadedFile(new File(["hello"], "a.txt"))).toEqual({ content: "hello" });
+  });
+
+  it("refuses an upload too large to run, saying what to do instead", async () => {
+    const big = new File(["x"], "huge.bam");
+    Object.defineProperty(big, "size", { value: MAX_UPLOAD_BYTES + 1 });
+    await expect(readUploadedFile(big)).rejects.toThrow(/huge\.bam.*Samplesheet or Parameters/);
   });
 
   it("formats sizes", () => {

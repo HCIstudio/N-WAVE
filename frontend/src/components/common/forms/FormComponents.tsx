@@ -1,6 +1,4 @@
 import type React from "react";
-import FileInput from "./FileInput";
-import InlineEdit from "./InlineEdit";
 import ProcessDropdown from "./ProcessDropdown";
 import SearchInput from "./SearchInput";
 import TimeInput from "./TimeInput";
@@ -133,8 +131,6 @@ export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ title }) => (
 );
 
 export {
-  FileInput,
-  InlineEdit,
   ProcessDropdown,
   SearchInput,
   TimeInput,

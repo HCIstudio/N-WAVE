@@ -91,6 +91,8 @@ export function generateOutputDisplayProcess(
                     ;;
                 *)
                     target="${outputPrefix}_\\$base"
+                    # Two inputs with the same name keep both copies.
+                    [ -e "\\$target" ] && target="${outputPrefix}_\\$(basename "\\$(dirname "\\$file")")_\\$base"
                     cp "\\$file" "\\$target"
                     echo "Copied artifact: \\$target" >> "\\$MANIFEST"
                     copied_count=\\$((copied_count + 1))
@@ -120,7 +122,7 @@ export function generateOutputDisplayProcess(
     outputPattern = `${outputPrefix}*`;
     processScript = `"""
     echo "Processing file: \${input_file}" >&2
-    base=\\$(basename "\${input_file}")
+    base=\\$(basename \${input_file})
     lower=\\$(printf '%s' "\\$base" | tr '[:upper:]' '[:lower:]')
 
     case "\\$lower" in
@@ -131,13 +133,13 @@ export function generateOutputDisplayProcess(
             echo "Source file: \${input_file}" >> "\\$output_file"
             echo "" >> "\\$output_file"
             echo "=== Content ===" >> "\\$output_file"
-            cat "\${input_file}" >> "\\$output_file"
+            cat \${input_file} >> "\\$output_file"
             echo "" >> "\\$output_file"
             echo "=== End of Output ===" >> "\\$output_file"
             ;;
         *)
             output_file="${outputPrefix}_\\$base"
-            cp "\${input_file}" "\\$output_file"
+            cp \${input_file} "\\$output_file"
             ;;
     esac
 
@@ -154,7 +156,11 @@ export function generateOutputDisplayProcess(
     publishDir params.outdir, mode: 'copy'
 
     input:
-    ${selectedFileName === "all" ? "path input_files" : "file input_file"}
+    ${
+      // In folders of their own: steps on different branches can make files
+      // with the same name, which Nextflow refuses to stage side by side.
+      selectedFileName === "all" ? "path input_files, stageAs: 'nwave_in??/*'" : "file input_file"
+    }
 
     output:
     path "${outputPattern}"

@@ -97,6 +97,14 @@ describe("parseSamplesheet", () => {
     });
   });
 
+  it("reads quoted values but refuses a quote inside one", () => {
+    // Spreadsheet programs quote every value; Nextflow reads that, not "".
+    const quoted = parseSamplesheet('"sample","fastq_1","fastq_2"\n"a","a_R1.fastq.gz",""\n', DEFAULT_SAMPLESHEET_MAPPING, uploaded);
+    expect(quoted.issues.filter((issue) => issue.level === "error")).toEqual([]);
+    const escaped = parseSamplesheet('sample,fastq_1\n"say ""a""",a_R1.fastq.gz\n', DEFAULT_SAMPLESHEET_MAPPING, uploaded);
+    expect(escaped.issues.map((issue) => issue.message)).toContainEqual(expect.stringContaining("double quote"));
+  });
+
   it("validates rows: field counts, ids, reads and uploads", () => {
     const parsed = parseSamplesheet(
       [
@@ -170,7 +178,7 @@ describe("generateSamplesheetChannel", () => {
     expect(channel).toContain(
       "sheet_samples = Channel.fromPath(params.samplesheet_sheet, checkIfExists: true)",
     );
-    expect(channel).toContain(".splitCsv(header: true, strip: true)");
+    expect(channel).toContain(".splitCsv(header: true, strip: true, quote: '\"')");
     expect(channel).toContain(
       "def reads = [row['fastq_1'], row['fastq_2']].findAll { it }.collect { nwaveInputFile(it) }",
     );

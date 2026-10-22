@@ -151,8 +151,7 @@ describe("run results", () => {
     ]);
 
     const file = await request(app)
-      .get("/api/execute/runs/rnaseq_1/file")
-      .query({ path: "multiqc/star_salmon/multiqc_report.html" })
+      .get("/api/execute/runs/rnaseq_1/results/multiqc/star_salmon/multiqc_report.html")
       .expect(200);
     expect(file.text).toBe("<html>report</html>");
     expect(file.headers["content-security-policy"]).toContain("sandbox");
@@ -163,8 +162,7 @@ describe("run results", () => {
     await request(app).get("/api/execute/runs/bad..id/files").expect(400);
     for (const filePath of ["../secret.txt", "/etc/passwd", "", "multiqc"]) {
       await request(app)
-        .get("/api/execute/runs/rnaseq_1/file")
-        .query({ path: filePath })
+        .get(`/api/execute/runs/rnaseq_1/results/${encodeURIComponent(filePath)}`)
         .expect(404);
     }
   });

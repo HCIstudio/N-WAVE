@@ -34,6 +34,13 @@ describe("error helpers", () => {
   it("prefers the backend's message for API errors", () => {
     expect(getApiErrorMessage(axiosLike(400, { message: "Bad" }), "f")).toBe("Bad");
     expect(getApiErrorMessage(axiosLike(500, { error: "Oops" }), "f")).toBe("Oops");
+    // The cause and reasons the backend adds aren't hidden behind its summary.
+    expect(
+      getApiErrorMessage(axiosLike(502, { message: "Failed to load the pipeline schema", error: "timeout of 30000ms exceeded" }), "f"),
+    ).toBe("Failed to load the pipeline schema: timeout of 30000ms exceeded");
+    expect(
+      getApiErrorMessage(axiosLike(400, { message: "x cannot be installed automatically", reasons: ["uses a local module"] }), "f"),
+    ).toBe("x cannot be installed automatically. uses a local module");
     expect(getApiErrorMessage(axiosLike(500, "html"), "f")).toBe(
       "Request failed with status code 500"
     );

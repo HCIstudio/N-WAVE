@@ -12,7 +12,7 @@ import {
 import { getNfCoreInputPorts } from "../../../registry/nfcore/manifest";
 import DynamicIcon from "../ui/DynamicIcon";
 import SearchInput from "./SearchInput";
-import { getErrorMessage } from "../../../utils/errors";
+import { getApiErrorMessage } from "../../../utils/errors";
 import Term from "../ui/Term";
 
 interface NfCoreLibraryModalProps {
@@ -65,7 +65,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
         setSubworkflows(response.subworkflows ?? []);
       })
       .catch((catalogError: unknown) => {
-        setError(getErrorMessage(catalogError, "Failed to load nf-core catalog"));
+        setError(getApiErrorMessage(catalogError, "Failed to load nf-core catalog"));
       })
       .finally(() => setIsLoading(false));
   }, [isOpen]);
@@ -157,7 +157,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
       );
       onInstalled();
     } catch (uninstallError: unknown) {
-      setError(getErrorMessage(uninstallError, `Failed to remove ${module.id}`));
+      setError(getApiErrorMessage(uninstallError, `Failed to remove ${module.id}`));
     } finally {
       setInstallingId(null);
     }
@@ -178,7 +178,7 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
       );
       onInstalled();
     } catch (installError: unknown) {
-      setError(getErrorMessage(installError, `Failed to install ${module.id}`));
+      setError(getApiErrorMessage(installError, `Failed to install ${module.id}`));
     } finally {
       setInstallingId(null);
     }

@@ -6,7 +6,7 @@ import type { NodeData } from "../../components/nodes/BaseNode";
 import { generateNextflowScript } from "../../generators";
 import type { PipelineLaunch } from "../../registry/pipelines/launch";
 import type { ExecutionSettings } from "../../types/execution";
-import { getWorkflowInputFiles } from "../../utils/inputFiles";
+import { getWorkflowInputFiles, isFileContentMissing } from "../../utils/inputFiles";
 import { findResourceProblem } from "../../utils/streamLines";
 import { flattenExecutionSettings } from "./executionSettings";
 import {
@@ -14,6 +14,24 @@ import {
   findProfileProblems,
   type RunProfile,
 } from "../../execution/runProfiles";
+
+/**
+ * Whether runs and exports use the imported .nf source instead of generating
+ * one: the canvas has no nodes, or it shows processes whose code only the
+ * imported source has (they'd be generated as empty stubs).
+ */
+export const usesImportedSource = ({
+  sourceFormat,
+  rawSource,
+  nodes,
+}: {
+  sourceFormat: "visual" | "nextflow";
+  rawSource: string | null;
+  nodes: Node<NodeData>[];
+}): boolean =>
+  sourceFormat === "nextflow" &&
+  Boolean(rawSource) &&
+  (nodes.length === 0 || nodes.some((node) => node.data.importedProcess === true));
 
 /**
  * The profile a run goes through, or null for this computer. Throws when the
@@ -46,7 +64,7 @@ export const findMissingFileContents = (nodes: Node<NodeData>[]): string[] =>
     .filter((node) => node.type === "fileInput" && Array.isArray(node.data.files))
     .flatMap((node) =>
       (node.data.files ?? [])
-        .filter((file) => !file.content || file.content.trim() === "")
+        .filter(isFileContentMissing)
         .map((file) => file.name || file.originalName || "unknown_file"),
     );
 
@@ -119,14 +137,15 @@ export const buildRunRequest = ({
   const fileContent: Record<string, string> = {};
   const fileEncoding: Record<string, "base64"> = {};
   for (const file of launch?.inputFiles ?? getWorkflowInputFiles(nodes)) {
-    if (!file.content) continue;
+    // Empty files are sent too: the workflow reads them like any other.
+    if (file.content === undefined) continue;
     fileContent[file.name] = file.content;
     if (file.encoding === "base64") fileEncoding[file.name] = "base64";
   }
 
   const nextflowScript = launch
     ? ""
-    : sourceFormat === "nextflow" && rawSource && nodes.length === 0
+    : rawSource && usesImportedSource({ sourceFormat, rawSource, nodes })
       ? rawSource
       : generateNextflowScript(
           nodes,
