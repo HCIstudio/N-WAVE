@@ -1,22 +1,22 @@
 import type React from "react";
-import { useRef, useEffect, type ChangeEvent } from "react";
+import { useRef, useEffect, useState, type ChangeEvent } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import BaseNode, { type FileObject, type NodeData } from "../BaseNode";
 import { detectFileType } from "../../common";
 import clsx from "clsx";
 import { readUploadedFile } from "../../../utils/fileContent";
+import { isFileContentMissing } from "../../../utils/inputFiles";
 
 
 const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
   const { id, data } = props;
   const { updateNodeData } = useWorkflowContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   // Check if files are missing content (reupload needed)
-  const filesWithoutContent = (data.files || []).filter(
-    (file) => !file.content || file.content.trim() === ""
-  );
+  const filesWithoutContent = (data.files || []).filter(isFileContentMissing);
   const hasFilesWithoutContent = filesWithoutContent.length > 0;
 
   // The output connects before a file is uploaded: building the workflow
@@ -33,6 +33,7 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = event.target.files;
+    setUploadError(null);
     if (selectedFiles && selectedFiles.length > 0) {
       const filePromises = Array.from(selectedFiles).map((file) => {
         return readUploadedFile(file).then(
@@ -78,6 +79,9 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
         })
         .catch((error) => {
           console.error("[FileInputNode] Error loading files:", error);
+          setUploadError(
+            error instanceof Error ? error.message : "The files couldn't be read.",
+          );
         });
     }
   };
@@ -126,6 +130,11 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
           className="hidden"
           multiple
         />
+        {uploadError && (
+          <p role="alert" className="mt-1 text-left text-xs text-red-700">
+            {uploadError}
+          </p>
+        )}
       </div>
     </BaseNode>
   );

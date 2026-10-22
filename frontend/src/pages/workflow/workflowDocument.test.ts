@@ -13,6 +13,7 @@ import {
   hydrateNodes,
   loadErrorFor,
   SAVED_FILE_CONTENT_LIMIT,
+  SAVED_CONTENT_BUDGET,
   sanitizeNodesForSave,
 } from "./workflowDocument";
 
@@ -214,6 +215,23 @@ describe("sanitizeNodesForSave", () => {
       node("in", "fileInput", { files: [file] }),
     ]);
     expect(saved.data.files).toEqual([{ ...file, content: "" }]);
+  });
+
+  it("drops the largest contents when many small files add up", () => {
+    // 40 files just under the per-file limit: 10 MB, over the 8 MB budget.
+    const files = Array.from({ length: 40 }, (_, index) => ({
+      name: `f${index}.txt`,
+      size: SAVED_FILE_CONTENT_LIMIT,
+      content: "x".repeat(SAVED_FILE_CONTENT_LIMIT - index),
+    }));
+    const [saved] = sanitizeNodesForSave([node("in", "fileInput", { files })]);
+    const kept = (saved.data.files ?? []).filter((file: { content?: string }) => file.content);
+    const total = kept.reduce((sum: number, file: { content: string }) => sum + file.content.length, 0);
+    expect(total).toBeLessThanOrEqual(SAVED_CONTENT_BUDGET);
+    expect(kept.length).toBeGreaterThan(0);
+    // The largest went first.
+    expect(saved.data.files?.[0].content).toBe("");
+    expect(saved.data.files?.[39].content).not.toBe("");
   });
 
   it("measures binary files by their bytes, not their base64", () => {

@@ -135,6 +135,8 @@ export const hydrateNodes = (nodes: Node<NodeData>[]): Node<NodeData>[] =>
 
 /** Input files up to this size are saved with their content. */
 export const SAVED_FILE_CONTENT_LIMIT = 256 * 1024;
+/** At most this much file content (as stored) is saved per workflow. */
+export const SAVED_CONTENT_BUDGET = 8 * 1024 * 1024;
 
 const savedFile = (file: FileObject): FileObject =>
   fileByteLength({ content: file.content ?? "", encoding: file.encoding }) <=
@@ -150,8 +152,8 @@ const savedFile = (file: FileObject): FileObject =>
  */
 export const sanitizeNodesForSave = (
   nodes: Node<NodeData>[],
-): Node<NodeData>[] =>
-  nodes.map((node) => {
+): Node<NodeData>[] => {
+  const saved = nodes.map((node) => {
     const data = { ...node.data };
     if (data.files) data.files = data.files.map(savedFile);
     data.fileContent = undefined;
@@ -162,6 +164,26 @@ export const sanitizeNodesForSave = (
     }
     return { ...node, data };
   });
+
+  // Many small files still add up: past the budget, the largest contents
+  // are dropped too (a saved workflow can't exceed the database's 16 MB).
+  const kept = saved.flatMap((node) =>
+    (node.data.files ?? []).map((file, index) => ({
+      node,
+      index,
+      size: (file.content ?? "").length,
+    })),
+  );
+  let total = kept.reduce((sum, file) => sum + file.size, 0);
+  for (const file of kept.sort((a, b) => b.size - a.size)) {
+    if (total <= SAVED_CONTENT_BUDGET) break;
+    const files = [...(file.node.data.files ?? [])];
+    files[file.index] = withoutContent(files[file.index]);
+    file.node.data.files = files;
+    total -= file.size;
+  }
+  return saved;
+};
 
 export interface LoadError {
   title: string;

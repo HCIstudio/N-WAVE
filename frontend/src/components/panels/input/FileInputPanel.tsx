@@ -132,7 +132,11 @@ const FileInputPanel: React.FC<{
           outputs: [{ name: "ch_files_out", isConnectable: true }],
         });
       } catch (err) {
-        setError("An error occurred during file processing.");
+        setError(
+          err instanceof Error && err.message
+            ? err.message
+            : "An error occurred during file processing.",
+        );
         console.error(err);
       } finally {
         setIsUploading(false);

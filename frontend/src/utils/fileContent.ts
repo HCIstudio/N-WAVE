@@ -43,9 +43,22 @@ export const encodeFileContent = (bytes: Uint8Array): FileContent => {
   return text === null ? { content: bytesToBase64(bytes), encoding: "base64" } : { content: text };
 };
 
-/** Read an uploaded file. */
-export const readUploadedFile = async (file: File): Promise<FileContent> =>
-  encodeFileContent(new Uint8Array(await file.arrayBuffer()));
+/**
+ * The largest file a run can take: input files travel in the run request,
+ * which the backend accepts up to 50 MB (binary files grow by a third as
+ * base64).
+ */
+export const MAX_UPLOAD_BYTES = 36 * 1024 * 1024;
+
+/** Read an uploaded file; throws, saying why, when it is too large to run. */
+export const readUploadedFile = async (file: File): Promise<FileContent> => {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(
+      `“${file.name}” is ${formatBytes(file.size)}: uploads can be up to ${formatBytes(MAX_UPLOAD_BYTES)}. For larger files, put their path or URL in a Samplesheet or Parameters node instead.`,
+    );
+  }
+  return encodeFileContent(new Uint8Array(await file.arrayBuffer()));
+};
 
 /** A file's bytes, from its content and encoding. */
 export const fileBytes = ({ content, encoding }: FileContent): Uint8Array =>

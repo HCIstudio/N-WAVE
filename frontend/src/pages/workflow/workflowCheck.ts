@@ -10,7 +10,7 @@ import { findExtraConnections, inputLabel } from "../../registry/portArity";
 import { connectionHints } from "../../registry/portTypes";
 import { getSamplesheetMapping, parseSamplesheet } from "../../registry/samplesheet";
 import type { ExecutionSettings } from "../../types/execution";
-import { getNodeInputFiles, getWorkflowInputFiles } from "../../utils/inputFiles";
+import { getNodeInputFiles, getWorkflowInputFiles, isFileContentMissing } from "../../utils/inputFiles";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
 
 export type ProblemLevel = "error" | "warning";
@@ -131,7 +131,7 @@ const checkNodes = (
         add(node, "nofile", "error", `Add a file to “${label}”: it has nothing to pass on.`);
       }
       const lost = files
-        .filter((file) => !file.content || file.content.trim() === "")
+        .filter(isFileContentMissing)
         .map((file) => file.name || file.originalName || "a file");
       if (lost.length > 0) {
         add(node, "lostfile", "error", `Upload ${lost.map((name) => `“${name}”`).join(", ")} again: files over 256 KB aren't kept after a reload.`);

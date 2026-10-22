@@ -125,6 +125,13 @@ export const parseSamplesheet = (
   }
 
   const [header, ...dataRecords] = records;
+  // Nextflow reads quoted values, but not a quote inside one ("").
+  if (records.some((record) => record.fields.some((field) => field.includes('"')))) {
+    issues.push({
+      level: "error",
+      message: 'A value contains a double quote ("); remove it, Nextflow can\'t read it.',
+    });
+  }
   const columns = header.fields.map((column) => column.trim());
   const columnIndex = new Map(columns.map((column, index) => [column, index]));
 
@@ -301,7 +308,8 @@ export const generateSamplesheetChannel = ({
     params: `params.${paramName} = "\${params.inputdir}/${fileName.replace(/["\\$]/g, "")}"\n`,
     channel: [
       `${channelName} = Channel.fromPath(params.${paramName}, checkIfExists: true)`,
-      "    .splitCsv(header: true, strip: true)",
+      // Quoted values ("A","a,b.fq"), as spreadsheet programs write them.
+      "    .splitCsv(header: true, strip: true, quote: '\"')",
       "    .map { row ->",
       `        def reads = [${readColumns.map((column) => `row[${groovyString(column)}]`).join(", ")}].findAll { it }.collect { nwaveInputFile(it) }`,
       `        def meta = row.findAll { key, value -> !(key in [${mappedColumns.map(groovyString).join(", ")}]) } + [id: row[${groovyString(mapping.idColumn)}], single_end: reads.size() == 1]`,
