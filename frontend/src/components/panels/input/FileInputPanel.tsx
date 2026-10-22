@@ -6,7 +6,7 @@ import { useDropzone } from "react-dropzone";
 import type { FileObject, NodeData } from "../../nodes/BaseNode";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import { SearchInput, detectFileType } from "../../common";
-import { readUploadedFile } from "../../../utils/fileContent";
+import { readUploadedFile, UploadRefusedError } from "../../../utils/fileContent";
 
 
 // One shared empty list, so a node without files doesn't get a new array on
@@ -133,7 +133,7 @@ const FileInputPanel: React.FC<{
         });
       } catch (err) {
         setError(
-          err instanceof Error && err.message
+          err instanceof UploadRefusedError
             ? err.message
             : "An error occurred during file processing.",
         );

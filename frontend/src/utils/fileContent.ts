@@ -50,10 +50,13 @@ export const encodeFileContent = (bytes: Uint8Array): FileContent => {
  */
 export const MAX_UPLOAD_BYTES = 36 * 1024 * 1024;
 
+/** An upload N-WAVE refuses, with a message for the user. */
+export class UploadRefusedError extends Error {}
+
 /** Read an uploaded file; throws, saying why, when it is too large to run. */
 export const readUploadedFile = async (file: File): Promise<FileContent> => {
   if (file.size > MAX_UPLOAD_BYTES) {
-    throw new Error(
+    throw new UploadRefusedError(
       `“${file.name}” is ${formatBytes(file.size)}: uploads can be up to ${formatBytes(MAX_UPLOAD_BYTES)}. For larger files, put their path or URL in a Samplesheet or Parameters node instead.`,
     );
   }

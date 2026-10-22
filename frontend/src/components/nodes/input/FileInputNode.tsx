@@ -5,7 +5,7 @@ import { useWorkflowContext } from "../../../context/WorkflowContext";
 import BaseNode, { type FileObject, type NodeData } from "../BaseNode";
 import { detectFileType } from "../../common";
 import clsx from "clsx";
-import { readUploadedFile } from "../../../utils/fileContent";
+import { readUploadedFile, UploadRefusedError } from "../../../utils/fileContent";
 import { isFileContentMissing } from "../../../utils/inputFiles";
 
 
@@ -80,7 +80,7 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
         .catch((error) => {
           console.error("[FileInputNode] Error loading files:", error);
           setUploadError(
-            error instanceof Error ? error.message : "The files couldn't be read.",
+            error instanceof UploadRefusedError ? error.message : "The files couldn't be read.",
           );
         });
     }
