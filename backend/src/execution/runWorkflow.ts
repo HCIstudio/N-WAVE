@@ -12,6 +12,7 @@ import {
 import {
   findResumableRun,
   finishRun,
+  recordRunProcess,
   isRunDirInUse,
   RUN_LOG_FILE,
   recordRun,
@@ -347,6 +348,15 @@ export const runNextflowWorkflow = async (
       },
     });
     registerRun(id, run);
+    // So a backend started after this one can stop what is left of the run.
+    try {
+      recordRunProcess(id, {
+        processGroup: run.processGroup,
+        runnerContainer: launch.containerName,
+      });
+    } catch (error: unknown) {
+      console.warn(`Could not record run ${id}'s process:`, error);
+    }
   } catch (error: unknown) {
     console.error("Setup error:", error);
     openGate();

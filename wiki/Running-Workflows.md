@@ -55,6 +55,14 @@ once a saved workflow has a run with a cache.
 The cache is each step's work folder. **Execution Settings → Run cache** shows its size and
 clears it; results and logs stay.
 
+## When N-WAVE stops during a run
+
+Stopping N-WAVE (`docker compose down`, or Ctrl+C on `pnpm dev`) stops its runs too, giving
+Nextflow up to 30 seconds to finish cleanly. The history records them as *Stopped because
+N-WAVE shut down*. If N-WAVE ends without that chance (a crash, a killed container or a
+restart of the computer), it stops what is left of those runs when it starts again and records
+them as *Interrupted*. Either way, resume the run to reuse the steps it finished.
+
 ## Where the results are
 
 Each run has a folder in the output directory, named by the naming pattern, for example

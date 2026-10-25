@@ -21,3 +21,18 @@ export const getLiveRun = (runId: string): RunHandle | undefined =>
   liveRuns.get(runId);
 
 export const isRunLive = (runId: string): boolean => liveRuns.has(runId);
+
+/**
+ * Stop every live run because the backend shuts down, and wait (at most
+ * `timeoutMs`) until they have ended and recorded how. Runs still going then
+ * are stopped by the next backend (see orphanedRuns.ts).
+ */
+export const stopAllRuns = async (timeoutMs: number): Promise<number> => {
+  const count = liveRuns.size;
+  for (const run of liveRuns.values()) run.stop("shutdown");
+  const deadline = Date.now() + timeoutMs;
+  while (liveRuns.size > 0 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  return count;
+};

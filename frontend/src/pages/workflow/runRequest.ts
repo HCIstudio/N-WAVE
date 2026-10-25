@@ -192,11 +192,18 @@ export const buildRunRequest = ({
 export type RunOutcome =
   | { kind: "cancelled" }
   | { kind: "succeeded" }
-  | { kind: "failed"; resourceProblem: string | null };
+  | { kind: "failed"; resourceProblem: string | null; reason?: string };
+
+/** What the backend prints when it stops a run because it shuts down. */
+const SHUTDOWN_STOP = /^N-WAVE: the run was stopped because N-WAVE shut down\..*$/m;
 
 /** How a finished run went, from its streamed output. */
 export const readRunOutcome = (output: string): RunOutcome => {
   if (/^Execution cancelled$/m.test(output)) return { kind: "cancelled" };
+  const shutdown = output.match(SHUTDOWN_STOP)?.[0];
+  if (shutdown) {
+    return { kind: "failed", resourceProblem: null, reason: shutdown.replace(/^N-WAVE: t/, "T") };
+  }
   const resourceProblem = findResourceProblem(output);
   const lower = output.toLowerCase();
   const failed =

@@ -38,6 +38,13 @@ describe("describeRunExit", () => {
     ).toEqual({ output: "\nExecution cancelled\n", status: "cancelled" });
   });
 
+  it("says when a run was stopped because N-WAVE shut down", () => {
+    const ending = describeRunExit({ code: null, stopReason: "shutdown", outputTail: "" }, context);
+    expect(ending.status).toBe("cancelled");
+    expect(ending.output).toContain("stopped because N-WAVE shut down");
+    expect(ending.summary).toBe("Stopped because N-WAVE shut down.");
+  });
+
   it("explains a run stopped at its time limit", () => {
     const ending = describeRunExit(
       { code: null, stopReason: "timeout", outputTail: "" },

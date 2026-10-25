@@ -6,7 +6,7 @@ import { shellQuote } from "./command";
 // Stopping signals the whole process group (Nextflow and its tasks) and,
 // when Nextflow runs in a container, stops that container too.
 
-export type StopReason = "cancelled" | "timeout";
+export type StopReason = "cancelled" | "timeout" | "shutdown";
 
 export interface RunExit {
   code: number | null;
@@ -20,6 +20,8 @@ export interface RunExit {
 export interface RunHandle {
   /** Stop the run (no-op once it has ended). */
   stop: (reason: StopReason) => void;
+  /** Its process group (the shell's pid), so a later backend can stop what is left of it. */
+  processGroup?: number;
 }
 
 /** How long a stopped run gets to clean up before it is killed. */
@@ -116,5 +118,5 @@ export const startRun = ({
     finish(1, null);
   });
 
-  return { stop };
+  return { stop, processGroup: isWindows ? undefined : child.pid };
 };
