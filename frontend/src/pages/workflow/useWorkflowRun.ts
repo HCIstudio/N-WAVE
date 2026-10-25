@@ -133,7 +133,7 @@ export const useWorkflowRun = ({
     setError({
       message: outcome.resourceProblem
         ? `The run hit its resource limits. ${outcome.resourceProblem}`
-        : "Workflow execution failed",
+        : (outcome.reason ?? "Workflow execution failed"),
       output: text,
     });
   };

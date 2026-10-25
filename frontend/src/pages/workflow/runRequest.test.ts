@@ -208,6 +208,19 @@ describe("readRunOutcome", () => {
     });
   });
 
+  it("says when N-WAVE stopped a run because it shut down", () => {
+    // Not a success, though Nextflow ended without an error of its own.
+    expect(
+      readRunOutcome(
+        "N-WAVE run: r2\nN-WAVE: the run was stopped because N-WAVE shut down. Resume it to reuse the steps it finished.\n",
+      ),
+    ).toEqual({
+      kind: "failed",
+      resourceProblem: null,
+      reason: "The run was stopped because N-WAVE shut down. Resume it to reuse the steps it finished.",
+    });
+  });
+
   it("finds the run id", () => {
     expect(runIdFromOutput("N-WAVE run: bee_7\nmore")).toBe("bee_7");
     expect(runIdFromOutput("nothing")).toBeUndefined();

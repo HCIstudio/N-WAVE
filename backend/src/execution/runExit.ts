@@ -18,6 +18,13 @@ export const describeRunExit = (
   context: { limits: RunResourceLimits; timeoutMs: number; runDir: string }
 ): RunEnding => {
   const { code, stopReason, outputTail } = exit;
+  if (stopReason === "shutdown") {
+    return {
+      output: "\nN-WAVE: the run was stopped because N-WAVE shut down. Resume it to reuse the steps it finished.\n",
+      status: "cancelled",
+      summary: "Stopped because N-WAVE shut down.",
+    };
+  }
   if (stopReason === "cancelled") {
     return { output: "\nExecution cancelled\n", status: "cancelled" };
   }

@@ -32,6 +32,9 @@ services:
   backend:
     image: hcistudio/nwave-backend:latest
     container_name: nwave-backend
+    # Time to stop running workflows (they record why) before Docker kills
+    # the backend; a stopped run gets 30 s to clean up.
+    stop_grace_period: 45s
     restart: unless-stopped
     depends_on:
       mongodb:

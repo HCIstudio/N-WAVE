@@ -26,6 +26,9 @@ interface RunRecord {
   nextflowLog?: string;
   /** The run it resumed, in the same folder. */
   resumedFrom?: string;
+  /** While it runs: what to stop if the backend goes away (see runs/orphanedRuns.ts). */
+  processGroup?: number;
+  runnerContainer?: string;
 }
 
 export interface RunSummary {
@@ -72,6 +75,33 @@ export const recordRun = (
   writeIndex(entries);
 };
 
+/** Record what a started run's Nextflow is: its process group and runner container. */
+export const recordRunProcess = (
+  id: string,
+  process: Pick<RunRecord, "processGroup" | "runnerContainer">
+): void => {
+  const index = readIndex();
+  const run = index[id];
+  if (!run) return;
+  const defined = Object.fromEntries(Object.entries(process).filter(([, value]) => value));
+  index[id] = { ...run, ...defined };
+  writeIndex(Object.entries(index));
+};
+
+/** Runs recorded as running, with what to stop of them. */
+export const listUnfinishedRuns = (): Array<
+  { id: string } & Pick<RunRecord, "dir" | "processGroup" | "runnerContainer" | "log">
+> =>
+  Object.entries(readIndex())
+    .filter(([, run]) => run.status === "running")
+    .map(([id, run]) => ({
+      id,
+      dir: run.dir,
+      ...(run.processGroup ? { processGroup: run.processGroup } : {}),
+      ...(run.runnerContainer ? { runnerContainer: run.runnerContainer } : {}),
+      ...(run.log ? { log: run.log } : {}),
+    }));
+
 /** Record how a run ended. */
 export const finishRun = (
   id: string,
@@ -81,8 +111,9 @@ export const finishRun = (
   const index = readIndex();
   const run = index[id];
   if (!run) return;
+  const { processGroup: _group, runnerContainer: _container, ...rest } = run;
   index[id] = {
-    ...run,
+    ...rest,
     status,
     finishedAt: new Date().toISOString(),
     ...(message ? { message: message.slice(0, 500) } : {}),
