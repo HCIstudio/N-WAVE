@@ -6,7 +6,7 @@ page → Glossary).
 
 **On this page:** [Run failures](#run-failures) ·
 [Installation and Docker](#installation-and-docker) · [Files and paths](#files-and-paths) ·
-[Clusters](#clusters) · [The browser demo](#the-browser-demo)
+[Clusters](#clusters) · [The browser demo](#the-browser-demo) · [Saving](#saving)
 
 ## Run failures
 
@@ -155,6 +155,15 @@ The [browser demo](https://hcistudio.github.io/N-WAVE/) has no server: it can't 
 workflows, and it keeps your workflows, custom nodes and installed nf-core modules in this
 browser only (clearing site data removes them). Export a project to run it elsewhere, or
 [install N-WAVE](https://github.com/HCIstudio/N-WAVE/wiki/Installation).
+
+## Saving
+
+### "This workflow was changed elsewhere"
+
+The workflow was saved in another tab, or changed by a custom node update, after you opened it
+here. Nothing was overwritten. Pick **Load the saved version** to drop your changes here,
+**Keep mine as a copy** to save yours as a new workflow, or **Replace it with mine**. See
+[Building workflows](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows#saving-and-the-same-workflow-in-two-tabs).
 
 ## Still stuck?
 

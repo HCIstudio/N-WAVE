@@ -45,8 +45,10 @@ export const updateWorkflowSchema = z
     nodes: workflowNodes.optional(),
     edges: workflowEdges.optional(),
     executionSettings: executionSettingsBlob.optional(),
+    /** The revision the change was made on; without it the save always applies. */
+    baseRevision: z.number().int().nonnegative().optional(),
   })
-  .refine((body) => Object.values(body).some((value) => value !== undefined), {
+  .refine(({ baseRevision: _base, ...changes }) => Object.values(changes).some((value) => value !== undefined), {
     message: "No update data provided",
   });
 export type UpdateWorkflowBody = z.infer<typeof updateWorkflowSchema>;

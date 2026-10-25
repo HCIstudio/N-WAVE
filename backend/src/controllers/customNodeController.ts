@@ -5,6 +5,7 @@ import WorkflowModel from "../models/WorkflowModel";
 import { getErrorMessage } from "../utils/errors";
 import { saveCustomNodeSchema } from "../validation/schemas";
 import { parseBody } from "../validation/validate";
+import { changeWorkflowGraphs, type WorkflowRevisionChange } from "../workflows/revisions";
 import type { JsonObject, WorkflowEdge, WorkflowNode } from "../workflows/types";
 
 interface CustomNodeRegistry {
@@ -76,13 +77,16 @@ export const saveCustomNode = async (
     }
     // Workflows first: if one can't take the definition, the node file stays
     // as it was.
-    const updatedWorkflows = await updateWorkflowsForCustomNode(node);
+    const workflows = await updateWorkflowsForCustomNode(node);
     writeNodeFile(nodePath, node);
 
+    // `workflows` lets an open editor that made the same change itself take
+    // the new revision instead of seeing its next save refused.
     res.status(existed ? 200 : 201).json({
       node,
       nodePath,
-      updatedWorkflows,
+      updatedWorkflows: workflows.length,
+      workflows,
     });
   } catch (error: unknown) {
     res.status(500).json({
@@ -113,10 +117,10 @@ export const deleteCustomNode = async (
     }
 
     fs.unlinkSync(nodePath);
-    let updatedWorkflows = 0;
+    let workflows: WorkflowRevisionChange[] = [];
     let workflowCleanupError: string | undefined;
     try {
-      updatedWorkflows = await purgeCustomNodeFromWorkflows(nodeId);
+      workflows = await purgeCustomNodeFromWorkflows(nodeId);
     } catch (cleanupError: unknown) {
       workflowCleanupError =
         getErrorMessage(cleanupError) || "Workflow cleanup failed";
@@ -127,7 +131,13 @@ export const deleteCustomNode = async (
     }
     res
       .status(200)
-      .json({ id: nodeId, nodePath, updatedWorkflows, workflowCleanupError });
+      .json({
+        id: nodeId,
+        nodePath,
+        updatedWorkflows: workflows.length,
+        workflows,
+        workflowCleanupError,
+      });
   } catch (error: unknown) {
     res.status(500).json({
       message: "Failed to delete custom node",
@@ -136,93 +146,59 @@ export const deleteCustomNode = async (
   }
 };
 
-const purgeCustomNodeFromWorkflows = async (
+const purgeCustomNodeFromWorkflows = (
   nodeId: string
-): Promise<number> => {
-  const workflows = await WorkflowModel.find({
-    "nodes.data.customNodeId": nodeId,
-  });
-  let updatedCount = 0;
-
-  for (const workflow of workflows) {
+): Promise<WorkflowRevisionChange[]> =>
+  changeWorkflowGraphs({ "nodes.data.customNodeId": nodeId }, ({ nodes, edges }) => {
     const removedNodeIds = new Set(
-      workflow.nodes
+      nodes
         .filter((node) => isCustomNodeInstance(node, nodeId))
         .map((node) => node.id)
         .filter(Boolean)
     );
-    if (removedNodeIds.size === 0) continue;
-
-    workflow.nodes = workflow.nodes.filter(
-      (node) => !removedNodeIds.has(node.id)
-    );
-    workflow.edges = workflow.edges.filter(
-      (edge) =>
-        !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target)
-    );
-    workflow.markModified("nodes");
-    workflow.markModified("edges");
-    await workflow.save();
-    updatedCount += 1;
-  }
-
-  return updatedCount;
-};
+    if (removedNodeIds.size === 0) return null;
+    return {
+      nodes: nodes.filter((node) => !removedNodeIds.has(node.id)),
+      edges: edges.filter(
+        (edge) =>
+          !removedNodeIds.has(edge.source) && !removedNodeIds.has(edge.target)
+      ),
+    };
+  });
 
 const updateWorkflowsForCustomNode = async (
   customNode: CustomNodeDefinition
-): Promise<number> => {
+): Promise<WorkflowRevisionChange[]> => {
   const nodeId = customNode.id.trim();
-  if (!nodeId) return 0;
+  if (!nodeId) return [];
+  const validInputs = new Set<unknown>(
+    getCustomPathInputs(customNode).map((input) => input.name)
+  );
+  const validOutputs = new Set<unknown>(
+    getCustomOutputs(customNode).map((output) => output.name)
+  );
 
-  const workflows = await WorkflowModel.find({
-    "nodes.data.customNodeId": nodeId,
-  });
-  let updatedCount = 0;
-
-  for (const workflow of workflows) {
-    let changed = false;
+  return changeWorkflowGraphs({ "nodes.data.customNodeId": nodeId }, ({ nodes, edges }) => {
     const affectedNodeIds = new Set<unknown>();
-    const validInputs = new Set<unknown>(
-      getCustomPathInputs(customNode).map((input) => input.name)
-    );
-    const validOutputs = new Set<unknown>(
-      getCustomOutputs(customNode).map((output) => output.name)
-    );
-
-    workflow.nodes = workflow.nodes.map((node) => {
+    const nextNodes = nodes.map((node) => {
       if (!isCustomNodeInstance(node, nodeId)) return node;
-      changed = true;
       affectedNodeIds.add(node.id);
       return applyCustomNodeDefinitionToWorkflowNode(node, customNode);
     });
+    if (affectedNodeIds.size === 0) return null;
 
-    if (affectedNodeIds.size > 0) {
-      // Check both ends: an edge can join two instances of the node.
-      const nextEdges = workflow.edges.filter(
-        (edge: WorkflowEdge) =>
-          (!affectedNodeIds.has(edge.source) ||
-            !edge.sourceHandle ||
-            validOutputs.has(edge.sourceHandle)) &&
-          (!affectedNodeIds.has(edge.target) ||
-            !edge.targetHandle ||
-            validInputs.has(edge.targetHandle))
-      );
-
-      if (nextEdges.length !== workflow.edges.length) {
-        workflow.edges = nextEdges;
-        changed = true;
-      }
-    }
-
-    if (!changed) continue;
-    workflow.markModified("nodes");
-    workflow.markModified("edges");
-    await workflow.save();
-    updatedCount += 1;
-  }
-
-  return updatedCount;
+    // Check both ends: an edge can join two instances of the node.
+    const nextEdges = edges.filter(
+      (edge: WorkflowEdge) =>
+        (!affectedNodeIds.has(edge.source) ||
+          !edge.sourceHandle ||
+          validOutputs.has(edge.sourceHandle)) &&
+        (!affectedNodeIds.has(edge.target) ||
+          !edge.targetHandle ||
+          validInputs.has(edge.targetHandle))
+    );
+    return { nodes: nextNodes, edges: nextEdges };
+  });
 };
 
 const applyCustomNodeDefinitionToWorkflowNode = (

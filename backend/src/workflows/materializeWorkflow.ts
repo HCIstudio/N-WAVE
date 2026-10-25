@@ -28,6 +28,7 @@ export const materializeWorkflow = (
       readOnly: isReadOnly,
       canDuplicate: true,
     },
+    ...(input.revision === undefined ? {} : { revision: input.revision }),
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
   };

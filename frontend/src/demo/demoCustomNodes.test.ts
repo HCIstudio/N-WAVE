@@ -85,11 +85,13 @@ describe("demo custom nodes", () => {
       ],
     });
 
-    const saved = await demoApi.post<{ updatedWorkflows: number }>(
-      "/custom-nodes",
-      { node: { ...definition(["bam"]), label: "Tool 2" } },
-    );
+    const saved = await demoApi.post<{
+      updatedWorkflows: number;
+      workflows: unknown[];
+    }>("/custom-nodes", { node: { ...definition(["bam"]), label: "Tool 2" } });
     expect(saved.data.updatedWorkflows).toBe(1);
+    // As the backend: which workflows moved to which revision.
+    expect(saved.data.workflows).toEqual([{ id: workflow._id, from: 0, to: 1 }]);
     const updated = demoStore.get(workflow._id);
     expect(updated?.nodes.find((n) => n.id === "t1")?.data).toMatchObject({
       label: "Tool 2",
@@ -98,7 +100,10 @@ describe("demo custom nodes", () => {
     });
     expect(updated?.edges.map((edge) => edge.id)).toEqual(["e2", "e3"]);
 
-    await demoApi.delete("/custom-nodes/tool");
+    const deleted = await demoApi.delete<{ workflows: unknown[] }>(
+      "/custom-nodes/tool",
+    );
+    expect(deleted.data.workflows).toEqual([{ id: workflow._id, from: 1, to: 2 }]);
     const purged = demoStore.get(workflow._id);
     expect(purged?.nodes.map((n) => n.id)).toEqual(["other"]);
     expect(purged?.edges).toEqual([]);

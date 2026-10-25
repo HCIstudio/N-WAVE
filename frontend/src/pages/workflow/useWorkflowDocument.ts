@@ -1,6 +1,6 @@
 // The open workflow as a document: loading it, saving it (and saving
-// automatically), its name and settings, and copying a read-only one (after
-// asking the user).
+// automatically), its name and settings, copying a read-only one (after
+// asking the user), and noticing when it was saved elsewhere meanwhile.
 
 import {
   type Dispatch,
@@ -13,11 +13,16 @@ import {
 import { useNavigate } from "react-router";
 import type { Edge, Node, XYPosition } from "@xyflow/react";
 import api from "../../api";
+import { onWorkflowRevisions } from "../../api/workflowRevisions";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { useLatestRef } from "../../hooks";
 import type { WorkflowDescriptor } from "../../types/backend";
 import type { ExecutionSettings } from "../../types/execution";
-import { getApiErrorMessage } from "../../utils/errors";
+import {
+  getApiErrorMessage,
+  getResponseData,
+  getResponseStatus,
+} from "../../utils/errors";
 import {
   DEFAULT_EXECUTION_SETTINGS,
   ensureStoredExecutionSettings,
@@ -51,6 +56,12 @@ export interface CopiedFromState {
 interface PendingCopy {
   options?: CopyOptions;
   resolvers: ((copied: boolean) => void)[];
+}
+
+/** The workflow was saved elsewhere since this tab loaded or saved it. */
+export interface SaveConflict {
+  /** The stored revision this tab's changes would overwrite. */
+  storedRevision: number;
 }
 
 /** Saves happen this long after the last change. */
@@ -96,6 +107,12 @@ export const useWorkflowDocument = ({
   const [executionSettings, setExecutionSettings] = useState<ExecutionSettings>(
     DEFAULT_EXECUTION_SETTINGS,
   );
+  // The stored revision this tab's graph is based on; saves send it back.
+  const revision = useRef<number | undefined>(undefined);
+  // Changes this tab made through custom node updates, from -> to: the
+  // editor made them too, so it moves along them (see adoptOwnRevisions).
+  const ownRevisions = useRef(new Map<number, number>());
+  const [conflict, setConflict] = useState<SaveConflict | null>(null);
 
   const load = useCallback(async () => {
     if (!workflowId) {
@@ -110,6 +127,9 @@ export const useWorkflowDocument = ({
       const { data } = await api.get<WorkflowDescriptor>(
         `/workflows/${workflowId}`,
       );
+      revision.current = data.revision;
+      ownRevisions.current.clear();
+      setConflict(null);
       setWorkflowName(data.name?.trim() ? data.name : "Untitled Workflow");
       setReadOnly(Boolean(data.isReadOnly || data.origin?.readOnly));
       setRawSource(data.rawSource ?? null);
@@ -250,7 +270,36 @@ export const useWorkflowDocument = ({
     snapshot.workflowName === current.current.workflowName &&
     snapshot.executionSettings === current.current.executionSettings;
 
-  const save = async () => {
+  /** Move along the revisions this tab's own custom node updates made. */
+  const adoptOwnRevisions = useCallback(() => {
+    let next =
+      revision.current === undefined
+        ? undefined
+        : ownRevisions.current.get(revision.current);
+    while (next !== undefined) {
+      ownRevisions.current.delete(revision.current as number);
+      revision.current = next;
+      next = ownRevisions.current.get(next);
+    }
+  }, []);
+
+  useEffect(
+    () =>
+      onWorkflowRevisions((changes) => {
+        for (const change of changes) {
+          if (change.id === workflowId)
+            ownRevisions.current.set(change.from, change.to);
+        }
+        adoptOwnRevisions();
+      }),
+    [workflowId, adoptOwnRevisions],
+  );
+
+  /**
+   * Save. `overwrite` replaces a version saved elsewhere (after a conflict);
+   * otherwise a save based on an older revision is refused.
+   */
+  const save = async ({ overwrite = false }: { overwrite?: boolean } = {}) => {
     if (!workflowId) {
       showError("No workflow ID provided.");
       return;
@@ -260,28 +309,59 @@ export const useWorkflowDocument = ({
       return;
     }
     const sent = current.current;
+    const baseRevision = overwrite
+      ? conflict?.storedRevision
+      : revision.current;
+    let saveAgain = false;
     setIsSaving(true);
     try {
-      await api.put(`/workflows/${workflowId}`, {
-        name: workflowName,
-        nodes: sanitizeNodesForSave(nodes),
-        edges,
-        executionSettings,
-      });
+      const { data } = await api.put<WorkflowDescriptor>(
+        `/workflows/${workflowId}`,
+        {
+          name: workflowName,
+          nodes: sanitizeNodesForSave(nodes),
+          edges,
+          executionSettings,
+          ...(baseRevision === undefined ? {} : { baseRevision }),
+        },
+      );
+      revision.current = data?.revision;
+      adoptOwnRevisions();
+      setConflict(null);
       failedSave.current = null;
       // An edit made while this was sent is still to be saved.
       if (isUnchangedSince(sent)) setIsDirty(false);
       setIsSaved(true);
       setTimeout(() => setIsSaved(false), SAVED_INDICATOR_MS);
     } catch (error) {
-      failedSave.current = sent;
-      showError(
-        `Failed to save workflow. ${getApiErrorMessage(error, "")}`.trim(),
-      );
-      console.error(error);
+      if (getResponseStatus(error) === 409) {
+        const stored = getResponseData(error)?.revision;
+        const storedRevision = typeof stored === "number" ? stored : undefined;
+        // Moved on by a custom node update made here (it landed while this
+        // was sent): not a conflict, save again from the new revision.
+        adoptOwnRevisions();
+        if (
+          storedRevision !== undefined &&
+          storedRevision === revision.current &&
+          storedRevision !== baseRevision
+        ) {
+          saveAgain = true;
+        } else {
+          setConflict({
+            storedRevision: storedRevision ?? (revision.current ?? 0) + 1,
+          });
+        }
+      } else {
+        failedSave.current = sent;
+        showError(
+          `Failed to save workflow. ${getApiErrorMessage(error, "")}`.trim(),
+        );
+        console.error(error);
+      }
     } finally {
       setIsSaving(false);
     }
+    if (saveAgain) await saveRef.current();
   };
 
   // Save automatically after the last change. The timer restarts whenever
@@ -296,13 +376,92 @@ export const useWorkflowDocument = ({
         !isSaving &&
         workflowId &&
         !readOnly &&
+        // Saving now would overwrite the other version: the user decides.
+        !conflict &&
         !isUnchangedSince(failedSave.current)
       ) {
         saveRef.current();
       }
     }, AUTOSAVE_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [isDirty, isSaving, workflowId, nodes, edges, readOnly, saveRef]);
+  }, [
+    isDirty,
+    isSaving,
+    workflowId,
+    nodes,
+    edges,
+    readOnly,
+    conflict,
+    saveRef,
+  ]);
+
+  // Coming back to the tab: a workflow saved elsewhere meanwhile is shown
+  // as saved when nothing here is unsaved, else it is a conflict now
+  // rather than at the next save.
+  const isDirtyRef = useLatestRef(isDirty);
+  useEffect(() => {
+    if (!workflowId || readOnly) return;
+    const check = async () => {
+      if (
+        document.visibilityState !== "visible" ||
+        revision.current === undefined
+      )
+        return;
+      try {
+        const { data } = await api.get<WorkflowDescriptor>(
+          `/workflows/${workflowId}`,
+        );
+        adoptOwnRevisions();
+        if (data.revision === undefined || data.revision === revision.current)
+          return;
+        if (isDirtyRef.current) {
+          setConflict({ storedRevision: data.revision });
+        } else {
+          void load();
+        }
+      } catch {
+        // The next save tells.
+      }
+    };
+    document.addEventListener("visibilitychange", check);
+    return () => document.removeEventListener("visibilitychange", check);
+  }, [workflowId, readOnly, load, isDirtyRef, adoptOwnRevisions]);
+
+  /** Conflict: show the version saved elsewhere (this tab's changes go). */
+  const reloadSaved = useCallback(() => {
+    setConflict(null);
+    void load();
+  }, [load]);
+
+  /** Conflict: keep this tab's version as a new workflow, and open it. */
+  const saveAsCopy = useCallback(async () => {
+    try {
+      const { data } = await api.post<WorkflowDescriptor>("/workflows", {
+        name: `${workflowName} (my version)`,
+        nodes: sanitizeNodesForSave(nodes),
+        edges,
+        executionSettings,
+      });
+      setConflict(null);
+      setIsDirty(false);
+      navigate(`/workflow/${data._id}`);
+    } catch (error) {
+      showError(
+        `Failed to save a copy. ${getApiErrorMessage(error, "")}`.trim(),
+      );
+    }
+  }, [
+    workflowName,
+    nodes,
+    edges,
+    executionSettings,
+    setIsDirty,
+    navigate,
+    showError,
+  ]);
+
+  /** Conflict: replace the version saved elsewhere with this tab's. */
+  const overwriteSaved = () => saveRef.current({ overwrite: true });
 
   /** New settings from the settings dialog: kept, stored and saved. */
   const changeExecutionSettings = useCallback(
@@ -334,7 +493,11 @@ export const useWorkflowDocument = ({
     retryLoad,
     isSaving,
     isSaved,
-    save,
+    save: () => save(),
+    conflict,
+    reloadSaved,
+    saveAsCopy,
+    overwriteSaved,
     requestCopy,
     isCopyPromptOpen,
     confirmCopy,

@@ -39,6 +39,7 @@ export const toWorkflowDescriptor = (workflow: IWorkflow): WorkflowDescriptor =>
     sourceKey: workflowObject.sourceKey ?? null,
     isReadOnly: workflowObject.isReadOnly ?? false,
     isBuiltin: workflowObject.isBuiltin ?? false,
+    revision: workflowObject.revision ?? 0,
     createdAt: workflowObject.createdAt,
     updatedAt: workflowObject.updatedAt,
   });

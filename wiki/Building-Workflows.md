@@ -76,6 +76,15 @@ The undo and redo buttons are next to the zoom controls. Press **?** for all sho
 Shortcuts don't fire while you type in a field. While a run goes, the workflow is locked
 (an amber frame says so) until the run ends.
 
+## Saving, and the same workflow in two tabs
+
+The workflow saves itself two seconds after a change (or press the save button). A save never
+overwrites a newer version saved in another tab: if the workflow was changed elsewhere since
+you opened it, N-WAVE asks what to keep. You can load the saved version, keep yours as a copy,
+or replace the saved version with yours. Changing or deleting a custom node also updates the
+saved workflows that use it; a tab open on one of them shows that version when you come back
+to it, or asks the same question if it has unsaved changes.
+
 ## Getting the Nextflow out
 
 **Download Workflow** saves the script, **Export Project** a runnable project. See

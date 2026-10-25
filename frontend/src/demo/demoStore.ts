@@ -34,10 +34,14 @@ interface StoredWorkflow {
   sourceKey: string | null;
   createdAt: string;
   updatedAt: string;
+  /** Missing on workflows stored before revisions: 0. */
+  revision?: number;
 }
 
 /** Body of a create/update request (same shape the backend accepts). */
-export type WorkflowPayload = Partial<StoredWorkflow>;
+export type WorkflowPayload = Partial<StoredWorkflow> & {
+  baseRevision?: number;
+};
 
 const generateId = (): string => {
   const cryptoObj = globalThis.crypto;
@@ -92,6 +96,7 @@ const materialize = (stored: StoredWorkflow): WorkflowDescriptor => ({
     canDuplicate: true,
   },
   updatedAt: stored.updatedAt,
+  revision: stored.revision ?? 0,
 });
 
 /** A read-only built-in workflow, materialized. Never persisted. */
@@ -202,6 +207,18 @@ export const demoStore = {
       throw new DemoStoreError(404, "Workflow not found for update");
     }
     const existing = workflows[index];
+    const revision = existing.revision ?? 0;
+    // Mirrors the backend: a save from an older revision is refused.
+    if (
+      payload.baseRevision !== undefined &&
+      payload.baseRevision !== revision
+    ) {
+      throw new DemoStoreError(
+        409,
+        "This workflow was changed elsewhere (in another tab or by a custom node update) since it was opened.",
+        { revision },
+      );
+    }
     const updated: StoredWorkflow = {
       ...existing,
       name: payload.name ?? existing.name,
@@ -210,6 +227,7 @@ export const demoStore = {
       edges: payload.edges ?? existing.edges,
       executionSettings: payload.executionSettings ?? existing.executionSettings,
       updatedAt: new Date().toISOString(),
+      revision: revision + 1,
     };
     workflows[index] = updated;
     writeStore(workflows);
@@ -251,9 +269,16 @@ export const demoStore = {
 /** Carries an HTTP-like status so the demo API client can mimic axios errors. */
 export class DemoStoreError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** More of the response body, as the backend sends it (e.g. a 409's revision). */
+  details?: Record<string, unknown>;
+  constructor(
+    status: number,
+    message: string,
+    details?: Record<string, unknown>,
+  ) {
     super(message);
     this.name = "DemoStoreError";
     this.status = status;
+    this.details = details;
   }
 }

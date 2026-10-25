@@ -18,6 +18,8 @@ export interface IWorkflow extends Document {
   importWarnings?: string[];
   isBuiltin?: boolean;
   isReadOnly?: boolean;
+  /** Raised by every write; see workflows/revisions.ts. */
+  revision?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -72,6 +74,11 @@ const WorkflowSchema: Schema = new Schema(
       type: [String],
       required: false,
       default: [],
+    },
+    revision: {
+      type: Number,
+      required: false,
+      default: 0,
     },
     isBuiltin: {
       type: Boolean,

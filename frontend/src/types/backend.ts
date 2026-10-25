@@ -31,4 +31,17 @@ export interface WorkflowDescriptor {
   origin?: WorkflowOriginDescriptor;
   /** Set for saved workflows (not for built-in examples). */
   updatedAt?: string;
+  /**
+   * Raised by every save of a saved workflow. A save sends the one it was
+   * based on as `baseRevision`, and is refused (409) when the stored one is
+   * newer: the workflow was changed elsewhere meanwhile.
+   */
+  revision?: number;
+}
+
+/** A saved workflow a custom node update moved to a new revision. */
+export interface WorkflowRevisionChange {
+  id: string;
+  from: number;
+  to: number;
 }

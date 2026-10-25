@@ -16,21 +16,31 @@ interface DemoResponse<T = unknown> {
 
 /** An error shaped like an axios error so existing catch blocks keep working. */
 class DemoApiError extends Error {
-  response: { status: number; data: { message: string; error: string } };
+  response: {
+    status: number;
+    data: Record<string, unknown> & { message: string; error: string };
+  };
   code: number;
-  constructor(status: number, message: string) {
+  constructor(
+    status: number,
+    message: string,
+    details?: Record<string, unknown>
+  ) {
     super(message);
     this.name = "DemoApiError";
     this.code = status;
-    this.response = { status, data: { message, error: message } };
+    this.response = { status, data: { ...details, message, error: message } };
   }
 }
 
 const ok = <T>(data: T, status = 200): Promise<DemoResponse<T>> =>
   Promise.resolve({ data, status });
 
-const fail = (status: number, message: string): Promise<never> =>
-  Promise.reject(new DemoApiError(status, message));
+const fail = (
+  status: number,
+  message: string,
+  details?: Record<string, unknown>
+): Promise<never> => Promise.reject(new DemoApiError(status, message, details));
 
 // Normalize "/api/workflows" and "/workflows" to a common form, drop querystring.
 const normalize = (url: string): string =>
@@ -41,7 +51,7 @@ const runStore = <T>(fn: () => T): Promise<DemoResponse<T>> => {
     return ok(fn());
   } catch (error) {
     if (error instanceof DemoStoreError) {
-      return fail(error.status, error.message);
+      return fail(error.status, error.message, error.details);
     }
     const message = error instanceof Error ? error.message : "Demo store error";
     return fail(500, message);
@@ -261,8 +271,9 @@ const demoApi = {
     const customNodeMatch = path.match(/^\/custom-nodes\/([^/]+)$/);
     if (customNodeMatch) {
       const id = decodeURIComponent(customNodeMatch[1]);
-      return demoCustomNodes.remove(id)
-        ? ok({ id } as T)
+      const workflows = demoCustomNodes.remove(id);
+      return workflows
+        ? ok({ id, updatedWorkflows: workflows.length, workflows } as T)
         : fail(404, "Custom node not found");
     }
     return fail(404, `No demo handler for DELETE ${path}`);

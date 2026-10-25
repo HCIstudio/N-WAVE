@@ -34,6 +34,7 @@ import { getApiErrorMessage } from "../utils/errors";
 import { findFreePosition } from "../utils/nodePlacement";
 import CanvasNotices from "./workflow/CanvasNotices";
 import CopyPromptDialog from "./workflow/CopyPromptDialog";
+import SaveConflictDialog from "./workflow/SaveConflictDialog";
 import NodePanels from "./workflow/NodePanels";
 import { useCanvasHistory } from "./workflow/useCanvasHistory";
 import { useCanvasShortcuts } from "./workflow/useCanvasShortcuts";
@@ -186,6 +187,15 @@ const WorkflowPageContent: React.FC = () => {
     [setNodes, fitView]
   );
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // The save conflict dialog can be closed to keep looking; saving opens it
+  // again, since nothing is saved until a version is picked.
+  const [conflictDismissed, setConflictDismissed] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new conflict opens the dialog again.
+  useEffect(() => setConflictDismissed(false), [workflow.conflict]);
+  const saveWorkflow = useCallback(() => {
+    if (workflow.conflict) setConflictDismissed(false);
+    else void workflow.save();
+  }, [workflow]);
   useCanvasShortcuts({
     nodes,
     edges,
@@ -196,7 +206,7 @@ const WorkflowPageContent: React.FC = () => {
     readOnly,
     blockedByRun,
     showToast,
-    onSave: workflow.save,
+    onSave: saveWorkflow,
     onRun: () => {
       if (isRunning) return;
       if (check.blockedReason) {
@@ -447,7 +457,7 @@ const WorkflowPageContent: React.FC = () => {
         <BottomBar
           workflowName={workflow.workflowName}
           onWorkflowNameChange={handleWorkflowNameChange}
-          onSave={workflow.save}
+          onSave={saveWorkflow}
           onDownload={handleDownloadScript}
           onExportProject={handleExportProject}
           isExporting={isExporting}
@@ -491,6 +501,14 @@ const WorkflowPageContent: React.FC = () => {
           workflowName={workflowName}
           onCopy={() => void workflow.confirmCopy()}
           onJustLook={workflow.declineCopy}
+        />
+        <SaveConflictDialog
+          isOpen={workflow.conflict !== null && !conflictDismissed}
+          workflowName={workflowName}
+          onReload={workflow.reloadSaved}
+          onSaveAsCopy={() => void workflow.saveAsCopy()}
+          onOverwrite={() => void workflow.overwriteSaved()}
+          onClose={() => setConflictDismissed(true)}
         />
         <ShortcutsDialog
           isOpen={showShortcuts}
