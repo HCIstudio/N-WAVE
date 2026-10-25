@@ -99,6 +99,13 @@ test.describe("demo nf-core library and custom nodes", () => {
     await expect(page.locator(".react-flow__node").first()).toContainText(
       "First lines"
     );
+    // The edit updated this saved workflow too; the editor made the same
+    // change, so its autosave isn't taken for one made elsewhere.
+    const conflict = page.getByRole("dialog", {
+      name: "This workflow was changed elsewhere",
+    });
+    await page.waitForTimeout(3000);
+    await expect(conflict).toHaveCount(0);
 
     await page.reload();
     await openNodeMenu(page);
@@ -108,6 +115,10 @@ test.describe("demo nf-core library and custom nodes", () => {
     await page.getByRole("button", { name: "Delete First lines" }).click();
     await page.getByRole("button", { name: "Delete", exact: true }).click();
     await expect(page.locator(".react-flow__node")).toHaveCount(0);
+    await page.waitForTimeout(3000);
+    await expect(
+      page.getByRole("dialog", { name: "This workflow was changed elsewhere" })
+    ).toHaveCount(0);
 
     await page.reload();
     await openNodeMenu(page);

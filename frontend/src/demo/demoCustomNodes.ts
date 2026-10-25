@@ -2,7 +2,11 @@
 // the backend's /api/custom-nodes responses.
 
 import type { StoredCustomNode } from "../registry/customNodes";
-import type { WorkflowDescriptor, WorkflowNode } from "../types/backend";
+import type {
+  WorkflowDescriptor,
+  WorkflowNode,
+  WorkflowRevisionChange,
+} from "../types/backend";
 import { DemoStoreError, demoStore } from "./demoStore";
 
 const STORAGE_KEY = "nwave.demo.customNodes";
@@ -42,15 +46,19 @@ const editSavedWorkflows = (
   edit: (
     workflow: WorkflowDescriptor,
   ) => Pick<WorkflowDescriptor, "nodes" | "edges">,
-): number => {
-  let updated = 0;
+): WorkflowRevisionChange[] => {
+  const changes: WorkflowRevisionChange[] = [];
   for (const workflow of demoStore.list()) {
     if (workflow.isBuiltin) continue;
     if (!workflow.nodes.some((node) => isInstanceOf(node, id))) continue;
-    demoStore.update(workflow._id, edit(workflow));
-    updated += 1;
+    const updated = demoStore.update(workflow._id, edit(workflow));
+    changes.push({
+      id: workflow._id,
+      from: workflow.revision ?? 0,
+      to: updated.revision ?? 0,
+    });
   }
-  return updated;
+  return changes;
 };
 
 /** Mirrors the backend's applyCustomNodeDefinitionToWorkflowNode(). */
@@ -99,7 +107,9 @@ const applyDefinition = (
 };
 
 /** Mirrors the backend's updateWorkflowsForCustomNode(). */
-const updateSavedWorkflows = (customNode: StoredCustomNode): number => {
+const updateSavedWorkflows = (
+  customNode: StoredCustomNode,
+): WorkflowRevisionChange[] => {
   const validInputs = new Set(
     (customNode.inputs ?? [])
       .filter((input) => input.kind === "path")
@@ -130,7 +140,7 @@ const updateSavedWorkflows = (customNode: StoredCustomNode): number => {
 };
 
 /** Mirrors the backend's purgeCustomNodeFromWorkflows(). */
-const purgeFromSavedWorkflows = (id: string): number =>
+const purgeFromSavedWorkflows = (id: string): WorkflowRevisionChange[] =>
   editSavedWorkflows(id, (workflow) => {
     const removed = new Set(
       workflow.nodes
@@ -157,21 +167,25 @@ export const demoCustomNodes = {
   save(node: StoredCustomNode): {
     node: StoredCustomNode;
     updatedWorkflows: number;
+    workflows: WorkflowRevisionChange[];
   } {
     if (!node || typeof node.id !== "string" || node.id.trim() === "") {
       throw new DemoStoreError(400, "Custom node id is required");
     }
     write([...read().filter((existing) => existing.id !== node.id), node]);
-    return { node, updatedWorkflows: updateSavedWorkflows(node) };
+    const workflows = updateSavedWorkflows(node);
+    return { node, updatedWorkflows: workflows.length, workflows };
   },
 
-  /** Remove a node; returns false when it didn't exist. */
-  remove(id: string): boolean {
+  /**
+   * Remove a node; returns the workflows it was removed from, or null when
+   * it didn't exist.
+   */
+  remove(id: string): WorkflowRevisionChange[] | null {
     const nodes = read();
     const remaining = nodes.filter((node) => node.id !== id);
     write(remaining);
-    if (remaining.length === nodes.length) return false;
-    purgeFromSavedWorkflows(id);
-    return true;
+    if (remaining.length === nodes.length) return null;
+    return purgeFromSavedWorkflows(id);
   },
 };

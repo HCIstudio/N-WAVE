@@ -33,6 +33,27 @@ describe("demoStore", () => {
     expect(demoStore.get(created._id)?.name).toBe("After");
   });
 
+  it("refuses a save based on an older revision, like the backend", async () => {
+    const created = demoStore.create({ name: "Flow" });
+    expect(created.revision).toBe(0);
+    expect(demoStore.update(created._id, { name: "B", baseRevision: 0 }).revision).toBe(1);
+
+    let refused: unknown;
+    try {
+      demoStore.update(created._id, { name: "A", baseRevision: 0 });
+    } catch (error) {
+      refused = error;
+    }
+    expect(refused).toBeInstanceOf(DemoStoreError);
+    expect(refused).toMatchObject({ status: 409, details: { revision: 1 } });
+    expect(demoStore.get(created._id)?.name).toBe("B");
+    // Through the demo API it reads like an axios error.
+    const { default: demoApi } = await import("./demoApi");
+    await expect(
+      demoApi.put(`/workflows/${created._id}`, { name: "A", baseRevision: 0 }),
+    ).rejects.toMatchObject({ response: { status: 409, data: { revision: 1 } } });
+  });
+
   it("deletes a workflow", () => {
     const created = demoStore.create({ name: "Temp" });
     demoStore.remove(created._id);

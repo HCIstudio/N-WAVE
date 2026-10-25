@@ -10,6 +10,7 @@ import {
   listBuiltinWorkflows,
   toWorkflowDescriptor,
 } from "../workflows";
+import { atRevision, revisionOf, withNextRevision } from "../workflows/revisions";
 
 export const saveWorkflow = async (
   req: Request,
@@ -100,7 +101,7 @@ export const updateWorkflow = async (
 
   try {
     const workflowId = req.params.id;
-    const { name, description, nodes, edges, executionSettings } = body;
+    const { name, description, nodes, edges, executionSettings, baseRevision } = body;
 
     if (!workflowId) {
       res.status(400).json({ message: "Invalid workflow ID format" });
@@ -130,15 +131,25 @@ export const updateWorkflow = async (
     if (executionSettings !== undefined)
       updateData.executionSettings = executionSettings;
 
-    const updatedWorkflow: IWorkflow | null =
-      await WorkflowModel.findByIdAndUpdate(
-        workflowId,
-        updateData,
-        { returnDocument: "after", runValidators: true }
-      );
+    // Saved from an older revision: something else saved it meanwhile
+    // (another tab, a custom node update). Don't overwrite that.
+    const updatedWorkflow: IWorkflow | null = await WorkflowModel.findOneAndUpdate(
+      baseRevision === undefined ? { _id: workflowId } : atRevision(workflowId, baseRevision),
+      withNextRevision(updateData),
+      { returnDocument: "after", runValidators: true }
+    );
 
     if (!updatedWorkflow) {
-      res.status(404).json({ message: "Workflow not found for update" });
+      const stored: IWorkflow | null = await WorkflowModel.findById(workflowId);
+      if (!stored) {
+        res.status(404).json({ message: "Workflow not found for update" });
+        return;
+      }
+      res.status(409).json({
+        message:
+          "This workflow was changed elsewhere (in another tab or by a custom node update) since it was opened.",
+        revision: revisionOf(stored),
+      });
       return;
     }
 

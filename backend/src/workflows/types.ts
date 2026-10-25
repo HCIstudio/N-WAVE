@@ -28,6 +28,8 @@ export interface WorkflowDescriptor {
   isBuiltin: boolean;
   isReadOnly: boolean;
   origin: WorkflowOriginDescriptor;
+  /** The stored revision; a save sends it back as `baseRevision`. */
+  revision?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -46,6 +48,7 @@ export interface MaterializeWorkflowInput {
   sourceKey?: string | null;
   isReadOnly?: boolean;
   isBuiltin?: boolean;
+  revision?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

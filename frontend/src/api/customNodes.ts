@@ -5,7 +5,9 @@ import {
   unregisterCustomNode,
   type StoredCustomNode,
 } from "../registry/customNodes";
+import type { WorkflowRevisionChange } from "../types/backend";
 import { getResponseStatus } from "../utils/errors";
+import { announceWorkflowRevisions } from "./workflowRevisions";
 
 const LEGACY_STORAGE_KEY = "nwave.customNodes.v1";
 
@@ -24,16 +26,21 @@ export const refreshCustomNodes = async (): Promise<StoredCustomNode[]> => {
 export const persistCustomNode = async (
   node: StoredCustomNode
 ): Promise<StoredCustomNode> => {
-  const response = await api.post<{ node: StoredCustomNode }>("/custom-nodes", {
-    node,
-  });
+  const response = await api.post<{
+    node: StoredCustomNode;
+    workflows?: WorkflowRevisionChange[];
+  }>("/custom-nodes", { node });
   registerCustomNodes([response.data.node]);
+  announceWorkflowRevisions(response.data.workflows);
   return response.data.node;
 };
 
 export const deleteCustomNode = async (nodeId: string): Promise<void> => {
   try {
-    await api.delete(`/custom-nodes/${encodeURIComponent(nodeId)}`);
+    const response = await api.delete<{ workflows?: WorkflowRevisionChange[] }>(
+      `/custom-nodes/${encodeURIComponent(nodeId)}`
+    );
+    announceWorkflowRevisions(response.data?.workflows);
   } catch (error: unknown) {
     if (getResponseStatus(error) !== 404) {
       throw error;

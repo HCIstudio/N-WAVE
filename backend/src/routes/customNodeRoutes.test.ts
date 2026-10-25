@@ -14,14 +14,37 @@ import {
 
 // Saved workflows are an in-memory list; custom nodes live in a temp directory.
 interface FakeWorkflow {
+  _id: string;
+  revision?: number;
   nodes: Record<string, unknown>[];
   edges: Record<string, unknown>[];
-  markModified: () => void;
-  save: () => Promise<void>;
 }
-const workflows = vi.hoisted(() => ({ list: [] as FakeWorkflow[] }));
+const workflows = vi.hoisted(() => ({
+  list: [] as FakeWorkflow[],
+  // Called before each conditional write, e.g. to save the workflow
+  // "elsewhere" first or to make the write fail.
+  beforeWrite: (_workflow: FakeWorkflow): void => {},
+}));
 vi.mock("../models/WorkflowModel", () => ({
-  default: { find: async () => workflows.list },
+  default: {
+    find: async () => workflows.list.map((workflow) => ({ ...workflow })),
+    findById: async (id: string) => {
+      const workflow = workflows.list.find((candidate) => candidate._id === id);
+      return workflow ? { ...workflow } : null;
+    },
+    findOneAndUpdate: async (
+      filter: { _id: string; revision?: number; $or?: unknown[] },
+      update: { $set: Partial<FakeWorkflow>; $inc: { revision: number } }
+    ) => {
+      const workflow = workflows.list.find((candidate) => candidate._id === filter._id);
+      if (!workflow) return null;
+      workflows.beforeWrite(workflow);
+      const revision = workflow.revision ?? 0;
+      if ((filter.$or ? 0 : filter.revision) !== revision) return null;
+      Object.assign(workflow, update.$set, { revision: revision + update.$inc.revision });
+      return { ...workflow };
+    },
+  },
 }));
 
 import { createApp } from "../app";
@@ -129,19 +152,16 @@ describe("/api/custom-nodes", () => {
 
   it("leaves the node file alone when updating workflows fails", async () => {
     workflows.list = [
-      {
-        nodes: [{ id: "n1", data: { customNodeId: packNode.id } }],
-        edges: [],
-        markModified: () => {},
-        save: async () => {
-          throw new Error("document too large");
-        },
-      },
+      { _id: "w1", nodes: [{ id: "n1", data: { customNodeId: packNode.id } }], edges: [] },
     ];
+    workflows.beforeWrite = () => {
+      throw new Error("document too large");
+    };
     try {
       await save(packNode).expect(500);
     } finally {
       workflows.list = [];
+      workflows.beforeWrite = () => {};
     }
     expect(fs.existsSync(path.join(nodeDirectory, `${packNode.id}.json`))).toBe(
       false
@@ -150,6 +170,7 @@ describe("/api/custom-nodes", () => {
 
   it("drops edges to removed ports at both ends, between two instances", async () => {
     const workflow: FakeWorkflow = {
+      _id: "w1",
       nodes: [
         { id: "n1", data: { customNodeId: packNode.id } },
         { id: "n2", data: { customNodeId: packNode.id } },
@@ -170,17 +191,49 @@ describe("/api/custom-nodes", () => {
           targetHandle: "removed_input",
         },
       ],
-      markModified: () => {},
-      save: async () => {},
     };
     workflows.list = [workflow];
     try {
-      await save(packNode).expect(201);
+      const saved = await save(packNode).expect(201);
+      expect(saved.body.workflows).toEqual([{ id: "w1", from: 0, to: 1 }]);
+      expect(workflow.edges.map((edge) => edge.id)).toEqual(["ok"]);
+
+      const deleted = await request(app)
+        .delete(`/api/custom-nodes/${packNode.id}`)
+        .expect(200);
+      expect(deleted.body.workflows).toEqual([{ id: "w1", from: 1, to: 2 }]);
+      expect(workflow.nodes).toEqual([]);
     } finally {
       workflows.list = [];
     }
-    expect(workflow.edges.map((edge) => edge.id)).toEqual(["ok"]);
-    await request(app).delete(`/api/custom-nodes/${packNode.id}`).expect(200);
+  });
+
+  it("updates a workflow saved meanwhile from what was saved, not over it", async () => {
+    const workflow: FakeWorkflow = {
+      _id: "w1",
+      revision: 4,
+      nodes: [{ id: "n1", data: { customNodeId: packNode.id } }],
+      edges: [],
+    };
+    workflows.list = [workflow];
+    // Another tab saves a new node just before the first write.
+    let savedElsewhere = false;
+    workflows.beforeWrite = (stored) => {
+      if (savedElsewhere) return;
+      savedElsewhere = true;
+      stored.nodes = [...stored.nodes, { id: "added", data: {} }];
+      stored.revision = 5;
+    };
+    try {
+      const saved = await save(packNode).expect(201);
+      expect(saved.body.workflows).toEqual([{ id: "w1", from: 5, to: 6 }]);
+      expect(workflow.nodes.map((node) => node.id)).toEqual(["n1", "added"]);
+      expect(workflow.nodes[0]).toMatchObject({ data: { label: packNode.label } });
+    } finally {
+      workflows.list = [];
+      workflows.beforeWrite = () => {};
+      await request(app).delete(`/api/custom-nodes/${packNode.id}`);
+    }
   });
 
   it("migrates the legacy registry once, so deleted nodes stay deleted", async () => {

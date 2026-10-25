@@ -28,11 +28,19 @@ const { store, WorkflowModelMock } = vi.hoisted(() => {
       return store.get(id) ?? null;
     }
 
-    static async findByIdAndUpdate(id: string, update: Record<string, unknown>) {
-      const existing = store.get(id);
+    // Enough of a conditional update for the routes: an `_id`, optionally at
+    // a revision (`revision`, or the `$or` for revision 0), then $set and $inc.
+    static async findOneAndUpdate(
+      filter: { _id: string; revision?: number; $or?: unknown[] },
+      update: { $set: Record<string, unknown>; $inc: { revision: number } }
+    ) {
+      const existing = store.get(filter._id);
       if (!existing) return null;
-      const updated = { ...existing, ...update };
-      store.set(id, updated);
+      const revision = (existing.revision as number | undefined) ?? 0;
+      const wanted = filter.$or ? 0 : filter.revision;
+      if (wanted !== undefined && wanted !== revision) return null;
+      const updated = { ...existing, ...update.$set, revision: revision + update.$inc.revision };
+      store.set(filter._id, updated);
       return updated;
     }
 
@@ -163,12 +171,58 @@ describe("/api/workflows", () => {
     expect(updated.body.name).toBe("After");
   });
 
+  it("refuses a save based on an older revision", async () => {
+    const created = await request(app)
+      .post("/api/workflows")
+      .send({ name: "Flow", nodes: [], edges: [] });
+    const id = created.body._id;
+    expect(created.body.revision).toBe(0);
+
+    // Tab B saves first, from revision 0.
+    const saved = await request(app)
+      .put(`/api/workflows/${id}`)
+      .send({ nodes: [{ id: "b" }], baseRevision: 0 })
+      .expect(200);
+    expect(saved.body.revision).toBe(1);
+
+    // Tab A, still on revision 0, is refused and told the stored one.
+    const refused = await request(app)
+      .put(`/api/workflows/${id}`)
+      .send({ nodes: [{ id: "a" }], baseRevision: 0 })
+      .expect(409);
+    expect(refused.body.revision).toBe(1);
+    const stored = await request(app).get(`/api/workflows/${id}`).expect(200);
+    expect(stored.body.nodes).toEqual([{ id: "b" }]);
+
+    // From the new revision it applies; without one it always does.
+    await request(app)
+      .put(`/api/workflows/${id}`)
+      .send({ nodes: [{ id: "a" }], baseRevision: 1 })
+      .expect(200);
+    const renamed = await request(app)
+      .put(`/api/workflows/${id}`)
+      .send({ name: "Renamed" })
+      .expect(200);
+    expect(renamed.body.revision).toBe(3);
+
+    await request(app)
+      .put(`/api/workflows/${missingId}`)
+      .send({ name: "x", baseRevision: 0 })
+      .expect(404);
+  });
+
   it("rejects an empty update", async () => {
     const response = await request(app)
       .put(`/api/workflows/${missingId}`)
       .send({})
       .expect(400);
     expect(response.body.details).toContain("No update data provided");
+    // A revision alone isn't a change.
+    const onlyRevision = await request(app)
+      .put(`/api/workflows/${missingId}`)
+      .send({ baseRevision: 2 })
+      .expect(400);
+    expect(onlyRevision.body.details).toContain("No update data provided");
   });
 
   it("refuses to modify built-in workflows", async () => {

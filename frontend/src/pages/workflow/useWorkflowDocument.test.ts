@@ -22,6 +22,7 @@ vi.mock("react-router", async (importOriginal) => ({
 }));
 
 const { useWorkflowDocument } = await import("./useWorkflowDocument");
+const { announceWorkflowRevisions } = await import("../../api/workflowRevisions");
 
 const storedNode = {
   id: "in",
@@ -316,5 +317,169 @@ describe("useWorkflowDocument", () => {
     });
     expect(navigate).toHaveBeenCalledWith("/workflow/copy2", expect.anything());
     unmount();
+  });
+
+  describe("changes saved elsewhere", () => {
+    const sentRevision = (call: number) =>
+      (put.mock.calls[call] as unknown as [string, { baseRevision?: number }])[1]
+        .baseRevision;
+    const conflictError = (revision: number) => ({
+      response: { status: 409, data: { message: "Changed elsewhere", revision } },
+    });
+    const edit = async (
+      rerender: (props: ReturnType<typeof options>) => void,
+      props: ReturnType<typeof options>,
+      x: number,
+    ) => {
+      rerender({
+        ...props,
+        nodes: [{ ...storedNode, position: { x, y: 0 } } as Node],
+        isDirty: true,
+      });
+      await act(async () => {
+        vi.advanceTimersByTime(2000);
+      });
+    };
+
+    it("saves from the revision it loaded, then from the one it saved", async () => {
+      get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [], revision: 3 } });
+      put.mockResolvedValueOnce({ data: { revision: 4 } });
+      vi.useFakeTimers();
+      const props = options();
+      const { rerender, unmount } = renderHook(useWorkflowDocument, { initialProps: props });
+      await flush();
+      await edit(rerender, props, 1);
+      await edit(rerender, props, 2);
+      expect(sentRevision(0)).toBe(3);
+      expect(sentRevision(1)).toBe(4);
+      unmount();
+    });
+
+    it("doesn't overwrite a newer save: it stops saving and asks", async () => {
+      get.mockResolvedValue({ data: { name: "Mine", nodes: [], edges: [], revision: 1 } });
+      put.mockRejectedValueOnce(conflictError(2));
+      vi.useFakeTimers();
+      const props = options();
+      const { result, rerender, unmount } = renderHook(useWorkflowDocument, {
+        initialProps: props,
+      });
+      await flush();
+      await edit(rerender, props, 1);
+      expect(result.current.conflict).toEqual({ storedRevision: 2 });
+      expect(props.showError).not.toHaveBeenCalled();
+      // No autosave while the user decides.
+      await edit(rerender, props, 2);
+      expect(put).toHaveBeenCalledTimes(1);
+
+      // Replacing it sends the stored revision as the base.
+      put.mockResolvedValueOnce({ data: { revision: 3 } });
+      await act(async () => {
+        await result.current.overwriteSaved();
+      });
+      expect(sentRevision(1)).toBe(2);
+      expect(result.current.conflict).toBeNull();
+      unmount();
+    });
+
+    it("loads the saved version, or keeps this one as a copy", async () => {
+      get.mockResolvedValue({ data: { name: "Mine", nodes: [], edges: [], revision: 1 } });
+      vi.useFakeTimers();
+      const props = options();
+      const { result, rerender, unmount } = renderHook(useWorkflowDocument, {
+        initialProps: props,
+      });
+      await flush();
+
+      put.mockRejectedValueOnce(conflictError(5));
+      await edit(rerender, props, 1);
+      expect(result.current.conflict).not.toBeNull();
+      await act(async () => result.current.reloadSaved());
+      await flush();
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(result.current.conflict).toBeNull();
+
+      put.mockRejectedValueOnce(conflictError(6));
+      await edit(rerender, props, 2);
+      post.mockResolvedValueOnce({ data: { _id: "mine2" } });
+      await act(async () => {
+        await result.current.saveAsCopy();
+      });
+      expect(post).toHaveBeenCalledWith(
+        "/workflows",
+        expect.objectContaining({ name: "Mine (my version)" }),
+      );
+      expect(navigate).toHaveBeenCalledWith("/workflow/mine2");
+      unmount();
+    });
+
+    it("takes the revision of a custom node update made in this tab", async () => {
+      get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [], revision: 2 } });
+      put.mockResolvedValue({ data: { revision: 9 } });
+      vi.useFakeTimers();
+      const props = options();
+      const { rerender, unmount } = renderHook(useWorkflowDocument, { initialProps: props });
+      await flush();
+      announceWorkflowRevisions([
+        { id: "other", from: 2, to: 7 },
+        { id: "wf1", from: 2, to: 3 },
+        { id: "wf1", from: 3, to: 4 },
+      ]);
+      await edit(rerender, props, 1);
+      expect(sentRevision(0)).toBe(4);
+      unmount();
+    });
+
+    it("isn't a conflict when the newer save was this tab's custom node update", async () => {
+      get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [], revision: 2 } });
+      vi.useFakeTimers();
+      const props = options();
+      const { result, rerender, unmount } = renderHook(useWorkflowDocument, {
+        initialProps: props,
+      });
+      await flush();
+      // The update lands while the save is on its way.
+      put.mockImplementationOnce(async () => {
+        announceWorkflowRevisions([{ id: "wf1", from: 2, to: 3 }]);
+        throw conflictError(3);
+      });
+      put.mockResolvedValueOnce({ data: { revision: 4 } });
+      await edit(rerender, props, 1);
+      expect(result.current.conflict).toBeNull();
+      // It goes out again at once, from the new revision.
+      expect(sentRevision(1)).toBe(3);
+      unmount();
+    });
+
+    it("on coming back to the tab, shows a newer save, or asks if there are unsaved changes", async () => {
+      get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [], revision: 1 } });
+      const props = options();
+      const { result, rerender, unmount } = renderHook(useWorkflowDocument, {
+        initialProps: props,
+      });
+      await flush();
+      const comeBack = async () => {
+        document.dispatchEvent(new Event("visibilitychange"));
+        await flush();
+      };
+
+      // Same revision: nothing happens.
+      get.mockResolvedValueOnce({ data: { name: "Mine", nodes: [], edges: [], revision: 1 } });
+      await comeBack();
+      expect(get).toHaveBeenCalledTimes(2);
+      expect(props.setNodes).toHaveBeenCalledTimes(1);
+
+      // Saved elsewhere, nothing unsaved here: shown.
+      get.mockResolvedValue({ data: { name: "Mine", nodes: [storedNode], edges: [], revision: 2 } });
+      await comeBack();
+      expect(props.setNodes).toHaveBeenLastCalledWith([storedNode]);
+      expect(result.current.conflict).toBeNull();
+
+      // Saved elsewhere again, with unsaved changes here: a conflict.
+      rerender({ ...props, isDirty: true });
+      get.mockResolvedValue({ data: { name: "Mine", nodes: [], edges: [], revision: 3 } });
+      await comeBack();
+      expect(result.current.conflict).toEqual({ storedRevision: 3 });
+      unmount();
+    });
   });
 });
