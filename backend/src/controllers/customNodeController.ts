@@ -1,7 +1,6 @@
 import type { Request, Response } from "express";
 import fs from "node:fs";
 import path from "node:path";
-import WorkflowModel from "../models/WorkflowModel";
 import { getErrorMessage } from "../utils/errors";
 import { saveCustomNodeSchema } from "../validation/schemas";
 import { parseBody } from "../validation/validate";
