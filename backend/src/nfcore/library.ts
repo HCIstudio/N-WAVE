@@ -474,13 +474,31 @@ export const moduleFileUrl = (
 	return `https://raw.githubusercontent.com/${repo[1]}/${repo[2]}/${entry.source.commit}/${entry.source.path}/${filePath}`;
 };
 
-const downloadFile = async (url: string): Promise<Buffer | null> => {
+/** How a run installs what its workflow uses. */
+export interface InstallOptions {
+	/** Stops the downloads (a cancelled run); nothing half-installed stays. */
+	signal?: AbortSignal;
+	/** Called before each module or subworkflow is installed, with its id. */
+	onInstall?: (id: string) => void;
+}
+
+const downloadFile = async (
+	url: string,
+	signal?: AbortSignal,
+): Promise<Buffer | null> => {
 	try {
 		const response = await axios.get<ArrayBuffer>(url, {
 			responseType: "arraybuffer",
-			headers: { "User-Agent": "N-WAVE-nfcore-installer" },
+			headers: {
+				"User-Agent": "N-WAVE-nfcore-installer",
+				// Uncompressed, so Content-Length is the file's size: GitHub
+				// gzips text files and gives the compressed length, while
+				// axios hands back the unpacked file.
+				"Accept-Encoding": "identity",
+			},
 			// Fail a stalled download instead of hanging the install.
 			timeout: 60_000,
+			signal,
 		});
 		const content = Buffer.from(response.data);
 		// A proxy's or captive portal's page, or a body cut short when the
@@ -521,9 +539,11 @@ const downloadEntryFiles = async (
 	entry: Pick<NfCoreCatalogEntry, "id" | "source">,
 	filePaths: string[],
 	targetRoot: string,
+	signal?: AbortSignal,
 ): Promise<void> => {
 	for (const filePath of filePaths) {
-		const content = await downloadFile(moduleFileUrl(entry, filePath));
+		signal?.throwIfAborted();
+		const content = await downloadFile(moduleFileUrl(entry, filePath), signal);
 		if (!content) {
 			if (filePath === "main.nf") {
 				throw new Error(`${entry.id} has no main.nf at ${entry.source.commit}`);
@@ -545,12 +565,28 @@ const downloadEntryFiles = async (
 // running one's result instead of racing it on the same directory.
 const installsInFlight = new Map<string, Promise<unknown>>();
 
-const installOnce = <T>(id: string, install: () => Promise<T>): Promise<T> => {
+const installOnce = <T>(
+	id: string,
+	install: (signal?: AbortSignal) => Promise<T>,
+	signal?: AbortSignal,
+): Promise<T> => {
 	const running = installsInFlight.get(id);
-	if (running) return running as Promise<T>;
-	const promise = install().finally(() => installsInFlight.delete(id));
+	// Someone else's install goes on when this caller stops waiting for it.
+	if (running) return untilAborted(running as Promise<T>, signal);
+	const promise = install(signal).finally(() => installsInFlight.delete(id));
 	installsInFlight.set(id, promise);
 	return promise;
+};
+
+/** `promise`, or a rejection as soon as `signal` aborts. */
+const untilAborted = <T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> => {
+	if (!signal) return promise;
+	if (signal.aborted) return Promise.reject(signal.reason);
+	return new Promise<T>((resolve, reject) => {
+		const abort = () => reject(signal.reason);
+		signal.addEventListener("abort", abort, { once: true });
+		promise.then(resolve, reject).finally(() => signal.removeEventListener("abort", abort));
+	});
 };
 
 /** A new temp dir next to `installRoot` to download into. */
@@ -563,10 +599,10 @@ const makeTempRoot = (installRoot: string): string => {
  * Download a module's files at the catalog commit into the data dir, write
  * its adapter manifest and record it in the install index.
  */
-export const installModule = (entry: NfCoreCatalogEntry) =>
-	installOnce(entry.id, () => writeModule(entry));
+export const installModule = (entry: NfCoreCatalogEntry, signal?: AbortSignal) =>
+	installOnce(entry.id, (own) => writeModule(entry, own), signal);
 
-const writeModule = async (entry: NfCoreCatalogEntry) => {
+const writeModule = async (entry: NfCoreCatalogEntry, signal?: AbortSignal) => {
 	assertInstallable(entry);
 
 	const installRoot = getInstalledModuleRoot(entry);
@@ -574,7 +610,7 @@ const writeModule = async (entry: NfCoreCatalogEntry) => {
 	const tempRoot = makeTempRoot(installRoot);
 
 	try {
-		await downloadEntryFiles(entry, moduleFilePaths(entry), tempRoot);
+		await downloadEntryFiles(entry, moduleFilePaths(entry), tempRoot, signal);
 
 		const manifest = buildAdapterManifest(entry);
 		fs.writeFileSync(
@@ -613,6 +649,7 @@ const writeModule = async (entry: NfCoreCatalogEntry) => {
  */
 export const ensureModulesInstalled = async (
 	moduleNames: string[],
+	options: InstallOptions = {},
 ): Promise<string[]> => {
 	const installed: string[] = [];
 	for (const moduleName of moduleNames) {
@@ -624,7 +661,8 @@ export const ensureModulesInstalled = async (
 				`nf-core module "${moduleName}" is not installed and not in the catalog`,
 			);
 		}
-		await installModule(entry);
+		options.onInstall?.(entry.id);
+		await installModule(entry, options.signal);
 		installed.push(entry.id);
 	}
 	return installed;
@@ -636,6 +674,7 @@ export const ensureModulesInstalled = async (
  */
 export const installSubworkflow = async (
 	entry: NfCoreSubworkflowEntry,
+	options: InstallOptions = {},
 ): Promise<{
 	installed: InstalledModuleIndexEntry;
 	manifest: ReturnType<typeof buildSubworkflowManifest>;
@@ -644,23 +683,28 @@ export const installSubworkflow = async (
 }> => {
 	assertInstallable(entry);
 	const components = resolveSubworkflowComponents(entry);
-	const dependencies = await ensureModulesInstalled(components.modules);
+	const dependencies = await ensureModulesInstalled(components.modules, options);
 	for (const name of components.subworkflows) {
 		if (findNfCoreSubworkflowDir(name)) continue;
 		const nested = findSubworkflowEntry(`${SUBWORKFLOW_ID_PREFIX}${name}`);
 		if (!nested) continue;
 		// Its own components are part of `components` and installed above.
-		await writeSubworkflow(nested);
+		options.onInstall?.(nested.id);
+		await writeSubworkflow(nested, options.signal);
 		dependencies.push(nested.id);
 	}
-	return { ...(await writeSubworkflow(entry)), dependencies };
+	options.onInstall?.(entry.id);
+	return { ...(await writeSubworkflow(entry, options.signal)), dependencies };
 };
 
 /** Download a subworkflow's own files, manifest and index entry. */
-const writeSubworkflow = (entry: NfCoreSubworkflowEntry) =>
-	installOnce(entry.id, () => writeSubworkflowFiles(entry));
+const writeSubworkflow = (entry: NfCoreSubworkflowEntry, signal?: AbortSignal) =>
+	installOnce(entry.id, (own) => writeSubworkflowFiles(entry, own), signal);
 
-const writeSubworkflowFiles = async (entry: NfCoreSubworkflowEntry) => {
+const writeSubworkflowFiles = async (
+	entry: NfCoreSubworkflowEntry,
+	signal?: AbortSignal,
+) => {
 	assertInstallable(entry);
 	const installRoot = getInstalledSubworkflowRoot(entry);
 	ensureInside(getNwaveDataRoot(), installRoot);
@@ -671,6 +715,7 @@ const writeSubworkflowFiles = async (entry: NfCoreSubworkflowEntry) => {
 			entry,
 			entry.files.paths.filter(isSafeRelativePath),
 			tempRoot,
+			signal,
 		);
 		const manifest = buildSubworkflowManifest(entry);
 		fs.writeFileSync(
@@ -708,6 +753,7 @@ const writeSubworkflowFiles = async (entry: NfCoreSubworkflowEntry) => {
  */
 export const ensureSubworkflowsInstalled = async (
 	names: string[],
+	options: InstallOptions = {},
 ): Promise<string[]> => {
 	const installed: string[] = [];
 	for (const name of names) {
@@ -716,12 +762,15 @@ export const ensureSubworkflowsInstalled = async (
 			// Installed earlier; its includes may have been removed since.
 			if (entry) {
 				const components = resolveSubworkflowComponents(entry);
-				installed.push(...(await ensureModulesInstalled(components.modules)));
+				installed.push(
+					...(await ensureModulesInstalled(components.modules, options)),
+				);
 				installed.push(
 					...(await ensureSubworkflowsInstalled(
 						components.subworkflows.filter(
 							(nested) => !findNfCoreSubworkflowDir(nested),
 						),
+						options,
 					)),
 				);
 			}
@@ -733,7 +782,7 @@ export const ensureSubworkflowsInstalled = async (
 				`nf-core subworkflow "${name}" is not installed and not in the catalog`,
 			);
 		}
-		const result = await installSubworkflow(entry);
+		const result = await installSubworkflow(entry, options);
 		installed.push(...result.dependencies, entry.id);
 	}
 	return installed;

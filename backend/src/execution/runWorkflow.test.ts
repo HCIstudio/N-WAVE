@@ -60,6 +60,7 @@ describe("runNextflowWorkflow setup", () => {
     }
     vi.unstubAllEnvs();
     vi.mocked(prepareScriptRun).mockReset();
+    vi.mocked(startRun).mockClear();
     fs.rmSync(root, { recursive: true, force: true });
   });
 
@@ -90,7 +91,10 @@ describe("runNextflowWorkflow setup", () => {
 
     const res = await run("a");
     await run("b");
-    expect(res.status).toHaveBeenCalledWith(500);
+    // The run id went out first; the failure ends the stream.
+    expect(res.status).not.toHaveBeenCalled();
+    expect(res.output).toMatch(/^N-WAVE run: \S+\n/);
+    expect(res.output).toContain("Failed to setup workflow execution: boom");
     expect(seen).toEqual([
       { dir: path.join(root, "same"), status: "running" },
       { dir: path.join(root, "same_2"), status: "running" },
@@ -112,6 +116,42 @@ describe("runNextflowWorkflow setup", () => {
     const res = await run("c");
     expect(startRun).not.toHaveBeenCalled();
     expect(res.output).toContain("Execution cancelled");
+    const [entry] = listRuns({ isLive: isRunLive });
+    expect(entry?.status).toBe("cancelled");
+    expect(isRunLive(entry?.id ?? "")).toBe(false);
+  });
+
+  it("says which nf-core components it installs, after sending the run id", async () => {
+    vi.mocked(prepareScriptRun).mockImplementation(async (_dirs, _path, _script, _options, install) => {
+      install?.onInstall?.("nf-core/fastqc");
+      install?.onInstall?.("nf-core/multiqc");
+      return { hasNfCoreModules: true, useProcessDocker: true };
+    });
+    const res = await run("installs");
+    expect(res.output).toMatch(
+      /^N-WAVE run: \S+\nN-WAVE: installing nf-core\/fastqc …\nN-WAVE: installing nf-core\/multiqc …\n/
+    );
+  });
+
+  it("stops its installs when cancelled, and counts as cancelled", async () => {
+    let signal: AbortSignal | undefined;
+    vi.mocked(prepareScriptRun).mockImplementation(async (_dirs, _path, _script, _options, install) => {
+      signal = install?.signal;
+      install?.onInstall?.("nf-core/fastqc");
+      // A download that only ends when it is stopped.
+      return new Promise((_, reject) => {
+        install?.signal?.addEventListener("abort", () => reject(new Error("canceled")));
+      });
+    });
+    const res = fakeResponse();
+    const finished = run("stops", res);
+    await vi.waitFor(() => expect(res.output).toContain("installing nf-core/fastqc"));
+    getLiveRun(listRuns()[0]?.id ?? "")?.stop("cancelled");
+    await finished;
+    expect(signal?.aborted).toBe(true);
+    expect(res.output).toContain("Execution cancelled");
+    expect(res.output).not.toContain("Failed to setup");
+    expect(startRun).not.toHaveBeenCalled();
     const [entry] = listRuns({ isLive: isRunLive });
     expect(entry?.status).toBe("cancelled");
     expect(isRunLive(entry?.id ?? "")).toBe(false);

@@ -121,7 +121,9 @@ export const resumedRunLogs = (id: string): { log: string; nextflowLog: string }
 /**
  * Run the workflow and stream its output into `res`. The first line names
  * the run ("N-WAVE run: <id>"), which the browser uses to cancel it and
- * find its results. Setup failures before the stream starts answer 500.
+ * find its results. Setup failures before the stream starts (the run's
+ * folder can't be made) answer 500; later ones end the stream with
+ * "Failed to setup workflow execution: …".
  */
 /** Record how a run ended; a history that can't be written doesn't stop the run's ending. */
 const recordEnd = (...args: Parameters<typeof finishRun>): void => {
@@ -141,6 +143,8 @@ export const runNextflowWorkflow = async (
   let runId: string | null = null;
   let runLog: fs.WriteStream | null = null;
   let cancelledInSetup = false;
+  // Stops the nf-core installs of a run cancelled while it is set up.
+  const setupAbort = new AbortController();
   // Resolves on a cancel while the run is set up (e.g. waiting at the gate).
   let onCancelled = () => {};
   const cancelled = new Promise<void>((resolve) => {
@@ -183,6 +187,7 @@ export const runNextflowWorkflow = async (
     registerRun(id, {
       stop: () => {
         cancelledInSetup = true;
+        setupAbort.abort();
         onCancelled();
       },
     });
@@ -201,6 +206,11 @@ export const runNextflowWorkflow = async (
       res.write(text);
       if (!logFailed) log.write(text);
     };
+    // The run id goes out first, before anything slow (installing nf-core
+    // components can take minutes): the browser shows the run and can
+    // cancel it from here on.
+    res.writeHead(200, STREAM_HEADERS);
+    send(`N-WAVE run: ${id}\n`);
 
     // The run's limits, clamped to what this server allows (see
     // resources.ts); applied as process.resourceLimits.
@@ -216,11 +226,20 @@ export const runNextflowWorkflow = async (
     }
     const prepared = pipeline
       ? preparePipelineRun(dirs, pipeline, resourceConfig, request.runProfile)
-      : await prepareScriptRun(dirs, scriptPath, request.nextflowScript, {
-          useDocker: settings.useDocker,
-          resourceConfig,
-          profile: request.runProfile,
-        });
+      : await prepareScriptRun(
+          dirs,
+          scriptPath,
+          request.nextflowScript,
+          {
+            useDocker: settings.useDocker,
+            resourceConfig,
+            profile: request.runProfile,
+          },
+          {
+            signal: setupAbort.signal,
+            onInstall: (component) => send(`N-WAVE: installing ${component} …\n`),
+          }
+        );
     writeInputFiles(dirs.inputs, request.fileContent, request.fileEncoding);
     if (resumed) restoreNextflowMetadata(dirs);
 
@@ -263,8 +282,6 @@ export const runNextflowWorkflow = async (
     console.log(`Executing: ${launch.command}`);
     console.log(`Working directory: ${dirs.main}`);
 
-    res.writeHead(200, STREAM_HEADERS);
-    send(`N-WAVE run: ${id}\n`);
     if (cancelledInSetup) {
       unregisterRun(id);
       send("\nExecution cancelled\n");
@@ -358,8 +375,18 @@ export const runNextflowWorkflow = async (
       console.warn(`Could not record run ${id}'s process:`, error);
     }
   } catch (error: unknown) {
-    console.error("Setup error:", error);
     openGate();
+    // Cancelled while installing: the stopped download is no failure.
+    if (cancelledInSetup && runId) {
+      unregisterRun(runId);
+      res.write("\nExecution cancelled\n");
+      runLog?.write("\nExecution cancelled\n");
+      recordEnd(runId, "cancelled");
+      runLog?.end();
+      res.end();
+      return;
+    }
+    console.error("Setup error:", error);
     const message = `Failed to setup workflow execution: ${getErrorMessage(error)}`;
     if (runId) {
       unregisterRun(runId);

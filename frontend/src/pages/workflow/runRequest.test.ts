@@ -221,6 +221,19 @@ describe("readRunOutcome", () => {
     });
   });
 
+  it("reads a run that ended while installing its nf-core components", () => {
+    const installing =
+      "N-WAVE run: r3\nN-WAVE: installing nf-core/fastqc …\n";
+    expect(readRunOutcome(`${installing}\nExecution cancelled\n`)).toEqual({
+      kind: "cancelled",
+    });
+    expect(
+      readRunOutcome(
+        `${installing}\nFailed to setup workflow execution: timeout of 60000ms exceeded\n`,
+      ).kind,
+    ).toBe("failed");
+  });
+
   it("finds the run id", () => {
     expect(runIdFromOutput("N-WAVE run: bee_7\nmore")).toBe("bee_7");
     expect(runIdFromOutput("nothing")).toBeUndefined();
