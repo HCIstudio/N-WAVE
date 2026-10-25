@@ -15,6 +15,9 @@ installed; **Remove** takes one out again. In the
 
 When a workflow uses components that aren't installed (a template, an example, a workflow from
 another installation), a banner above the canvas lists them with **Install them**.
+Running the workflow also installs them first: the run panel shows a line per component
+(`N-WAVE: installing nf-core/fastqc …`), and **Cancel** stops the downloads. A component whose
+download was stopped isn't installed; the ones finished before stay installed.
 
 ## What the labels mean
 

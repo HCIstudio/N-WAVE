@@ -6,6 +6,7 @@ import path from "node:path";
 import {
   ensureModulesInstalled,
   ensureSubworkflowsInstalled,
+  type InstallOptions,
 } from "../nfcore/library";
 import type { PipelineRunRequest } from "../validation/schemas";
 import { buildRunProfileConfig, profileUsesDocker, type RunProfile } from "./runProfile";
@@ -81,21 +82,22 @@ export const buildScriptRunFiles = (
 /**
  * A generated (or imported) script: written with its config, and the
  * nf-core components it uses installed (from the catalog's pinned commit)
- * and copied next to it.
+ * and copied next to it. `install` reports each install and can stop them.
  */
 export const prepareScriptRun = async (
   dirs: RunDirectories,
   scriptPath: string,
   nextflowScript: string,
-  options: { useDocker: boolean; resourceConfig: string; profile?: RunProfile }
+  options: { useDocker: boolean; resourceConfig: string; profile?: RunProfile },
+  install: InstallOptions = {}
 ): Promise<PreparedRun> => {
   const run = buildScriptRunFiles(nextflowScript, options);
   fs.writeFileSync(scriptPath, run.script);
   fs.writeFileSync(path.join(dirs.main, MODULE_CONFIG_FILE), run.config);
   fs.writeFileSync(path.join(dirs.workflow, MODULE_CONFIG_FILE), run.config);
 
-  await ensureModulesInstalled(run.modules);
-  await ensureSubworkflowsInstalled(run.subworkflows);
+  await ensureModulesInstalled(run.modules, install);
+  await ensureSubworkflowsInstalled(run.subworkflows, install);
   materializeNfCoreModules(run.script, [dirs.main, dirs.workflow]);
   return run.prepared;
 };
