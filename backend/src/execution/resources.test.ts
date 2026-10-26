@@ -77,6 +77,17 @@ describe("run limits", () => {
     );
   });
 
+  it("caps each task at the run's time limit", () => {
+    const limits = resolveRunLimits({ maxCpus: 4, maxMemory: "4 GB" }, ceiling);
+    expect(buildResourceLimitsConfig(limits, 24 * 60 * 60_000)).toContain(
+      "  resourceLimits = [ cpus: 4, memory: '4.GB', time: '1440m' ]"
+    );
+    // Without a run limit, processes keep their own.
+    expect(buildResourceLimitsConfig(limits, 0)).toContain(
+      "  resourceLimits = [ cpus: 4, memory: '4.GB' ]"
+    );
+  });
+
   it("clamps requests to the ceiling and says so", () => {
     const limits = resolveRunLimits({ maxCpus: 64, maxMemory: "128 GB" }, ceiling);
     expect(limits).toMatchObject({

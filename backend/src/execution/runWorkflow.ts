@@ -215,8 +215,8 @@ export const runNextflowWorkflow = async (
     // The run's limits, clamped to what this server allows (see
     // resources.ts); applied as process.resourceLimits.
     const limits = resolveRunLimits(settings);
-    const resourceConfig = buildResourceLimitsConfig(limits);
     const timeoutMs = resolveTimeoutMs(settings.executionTimeout);
+    const resourceConfig = buildResourceLimitsConfig(limits, timeoutMs);
 
     const scriptPath = path.join(dirs.workflow, `${name}.nf`);
     if (pipeline) {

@@ -1,0 +1,34 @@
+N-WAVE run: ampliseq_1793047858428
+N-WAVE limits: 4 CPUs, 4 GB memory, time limit 1440 min
+N-WAVE: nf-core/ampliseq 3.0.0 needs Nextflow 26.04.0 or newer; this run uses 26.04.0.
+Unable to find image 'nextflow/nextflow:26.04.0' locally
+26.04.0: Pulling from nextflow/nextflow
+c43ec367dbd1: Pull complete
+Digest: sha256:931847eb34865e5078855e6631fd9e1b291efdd25b52c56729927b22b7c2a909
+Status: Downloaded newer image for nextflow/nextflow:26.04.0
+
+ N E X T F L O W   ~  version 26.04.0
+
+Launching `https://github.com/nf-core/ampliseq` [stupefied_mclean] revision: 992e6df340 [3.0.0]
+
+executor >  local (56)
+[e4/d2f2f5] NFC…b_R07-RS207.trim.fasta.gz) | 0 of 1
+Plus 38 more processes waiting for tasks…
+ERROR ~ Error executing process > 'NFCORE_AMPLISEQ:AMPLISEQ:DADA2_TAXONOMY_WF:DADA2_TAXONOMY (ASV_seqs.len.1.fasta,assignTaxonomy_gtdb_R07-RS207.trim.fasta.gz)'
+
+Caused by:
+  process hasn't exited
+
+
+
+ -- Check 'nextflow/.nextflow.log' file for details
+-[nf-core/ampliseq] Pipeline completed with errors-
+WARN: Killing running tasks (1)
+ERROR ~ Pipeline failed. Please refer to troubleshooting docs for common issues: https://nf-co.re/docs/running/troubleshooting
+
+ -- Check 'nextflow/.nextflow.log' file for details
+WARN: Failed to render execution report -- see the log file for details
+WARN: Failed to render execution timeline -- see the log file for details
+
+
+Nextflow execution failed with exit code: 1
