@@ -10,6 +10,9 @@ const log = (name: string) =>
 describe("explainFailure", () => {
   it.each([
     ["oom", "out-of-memory", "SALMON_INDEX", /exit status 137/],
+    ["timelimit", "task-time-limit", "ALIGN_READS", /reached its time limit \(1m\)/],
+    // Nextflow 26.04's report of the same, after Docker downloaded its image.
+    ["hasnt-exited", "task-time-limit", "NFCORE_AMPLISEQ:AMPLISEQ:DADA2_TAXONOMY_WF:DADA2_TAXONOMY", /reached its time limit, so/],
     ["cnf", "command-not-found", "FASTQC_QC", /runs “fastqc”, which isn't installed on this computer/],
     ["missing", "missing-input", undefined, /“reads_R1\.fastq\.gz” isn't where the workflow looks/],
     ["pull", "container-pull", "SALMON_QUANT", /container image/],
@@ -65,7 +68,7 @@ describe("the troubleshooting docs", () => {
 
   it("have a section for every explanation", () => {
     const explained = [
-      ...["oom", "cnf", "missing", "pull", "nodocker", "nospace", "url", "missingout"].map((name) =>
+      ...["oom", "timelimit", "cnf", "missing", "pull", "nodocker", "nospace", "url", "missingout"].map((name) =>
         explainFailure(log(name)),
       ),
       explainFailure("N-WAVE resource problem: the run was stopped after its time limit.\n"),

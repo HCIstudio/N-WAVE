@@ -7,6 +7,7 @@ import { wikiUrl } from "../docs/links";
 export type FailureKind =
   | "resource-limits"
   | "out-of-memory"
+  | "task-time-limit"
   | "docker-unavailable"
   | "container-pull"
   | "command-not-found"
@@ -57,6 +58,25 @@ const PATTERNS: Pattern[] = [
     }),
   },
   {
+    kind: "task-time-limit",
+    title: "A step ran longer than its time limit",
+    docs: "a-step-ran-longer-than-its-time-limit",
+    // Nextflow 26.04 can report the stopped task as "process hasn't exited"
+    // (it asks for the exit code before the task is gone).
+    find: (log) =>
+      firstMatch(log, /Process exceeded running time limit \([^)]*\)/) ??
+      firstMatch(log, /^\s*process hasn't exited\s*$/m),
+    explain: (evidence) => {
+      const limit = evidence.match(/time limit \(([^)]+)\)/)?.[1];
+      return {
+        explanation: `A step was still running when it reached its time limit${
+          limit ? ` (${limit})` : ""
+        }, so Nextflow stopped it. nf-core test profiles give every step 1 hour; with less memory or CPUs than a pipeline expects, or files on a slow drive, steps take longer.`,
+        fix: "Give the run more memory and CPUs in the execution settings, or keep the run's files on a fast local disk, then run again with Resume. N-WAVE lets a step run as long as the run's own time limit.",
+      };
+    },
+  },
+  {
     kind: "out-of-memory",
     title: "A step ran out of memory",
     docs: "out-of-memory",
@@ -85,11 +105,11 @@ const PATTERNS: Pattern[] = [
     kind: "container-pull",
     title: "The step's container image couldn't be downloaded",
     docs: "container-image-cant-be-pulled",
+    // "Unable to find image … locally" only starts a download, which usually
+    // works ("Status: Downloaded newer image"): only Docker's errors count.
     find: (log) =>
-      /Unable to find image '[^']+' locally/.test(log) || /pull access denied|manifest unknown|Failed to pull/i.test(log)
-        ? firstMatch(log, /[^\n]*(?:docker: Error response from daemon|pull access denied|manifest unknown|Failed to pull)[^\n]*/i) ??
-          firstMatch(log, /Unable to find image '[^']+' locally/)
-        : null,
+      firstMatch(log, /[^\n]*(?:pull access denied|manifest unknown|Failed to pull)[^\n]*/i) ??
+      firstMatch(log, /[^\n]*docker: Error response from daemon[^\n]*/i),
     explain: () => ({
       explanation:
         "Docker had to download the step's container image first and couldn't: the image name is wrong, it doesn't exist, or the registry can't be reached.",

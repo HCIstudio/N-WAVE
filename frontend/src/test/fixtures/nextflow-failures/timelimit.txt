@@ -1,0 +1,25 @@
+N E X T F L O W  ~  version 25.10.4
+Launching `main.nf` [ecstatic_baekeland] DSL2 - revision: a51705cfda
+[0e/6d6081] Submitted process > ALIGN_READS
+ERROR ~ Error executing process > 'ALIGN_READS'
+
+Caused by:
+  Process exceeded running time limit (1m)
+
+
+Command executed:
+
+  sleep 90
+
+Command exit status:
+  -
+
+Command output:
+  (empty)
+
+Work dir:
+  /runs/demo/work/0e/6d6081dac131f1c22ac80d4d8043bd
+
+Tip: when you have fixed the problem you can continue the execution adding the option `-resume` to the run command line
+
+ -- Check '.nextflow.log' file for details

@@ -16,6 +16,17 @@ The step used more memory than it was given and was killed (exit status 137). Ra
 **Maximum Memory** in *Execution Settings → Resources*, or the step's memory in its panel.
 On Docker Desktop, also give Docker more memory (*Settings → Resources*).
 
+### A step ran longer than its time limit
+
+Nextflow stopped a step that was still running when it reached its time limit
+(`Process exceeded running time limit`; Nextflow 26.04 may say `process hasn't exited`
+instead). nf-core test profiles give every step at most 1 hour. Steps take longer with less
+memory or fewer CPUs than the pipeline expects, or when the run's files are on a slow drive
+(on Windows, a folder of the Windows drive shared into Docker is much slower than Docker's
+own disk). Raise **Maximum Memory** and **Maximum CPU Cores**, then run again with
+**Resume** so finished steps are reused. N-WAVE lets every step run as long as the run's own
+time limit (**Execution Timeout**), which replaces the test profile's 1 hour.
+
 ### The run hit its resource limits
 
 A step asked for more CPUs or memory than the run may use, or the run reached its time
