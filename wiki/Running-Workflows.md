@@ -48,6 +48,12 @@ lowered to the limit instead of failing. Runs without their own timeout stop aft
 Desktop, Docker's own memory setting also applies
 ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#docker-desktop-doesnt-have-enough-memory)).
 
+## All runs, on the home page
+
+The home page lists every workflow's runs under **Runs**, newest first: pick one for its log
+and results, or open its workflow. Runs that go on show there too, with **Stop all running** to
+stop them at once (each can be resumed later). Each workflow's card says how its last run went.
+
 ## Resuming a run
 
 After a run fails or is cancelled, fix what went wrong and run again with **Resume** on (the

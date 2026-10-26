@@ -30,6 +30,9 @@ import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings"
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
+import RunsOverview from "./home/RunsOverview";
+import { useRunsOverview } from "./home/useRunsOverview";
+import type { RunSummary } from "../api/runs";
 import NewWorkflowDialog, {
   type NewWorkflowChoice,
 } from "../components/common/workflow/NewWorkflowDialog";
@@ -69,10 +72,34 @@ const formatRelativeTime = (iso: string): string => {
   return "just now";
 };
 
+/** How a workflow's last run went, on its card. */
+const LAST_RUN_STYLES: Record<RunSummary["status"], { dot: string; label: string }> = {
+  running: { dot: "bg-yellow-400 animate-pulse", label: "Running now" },
+  succeeded: { dot: "bg-green-500", label: "succeeded" },
+  failed: { dot: "bg-red-500", label: "failed" },
+  cancelled: { dot: "bg-gray-400", label: "cancelled" },
+  unknown: { dot: "bg-gray-400", label: "ended" },
+};
+
+const LastRunPill: React.FC<{ run: RunSummary }> = ({ run }) => {
+  const style = LAST_RUN_STYLES[run.status];
+  const at = run.finishedAt ?? run.startedAt;
+  return (
+    <li
+      className={`${PILL_CLASS} inline-flex items-center gap-1.5`}
+      title={`Last run ${new Date(run.startedAt).toLocaleString()}: ${run.status}${run.message ? `. ${run.message}` : ""}`}
+    >
+      <span aria-hidden className={`h-2 w-2 rounded-full ${style.dot}`} />
+      {run.status === "running" ? style.label : `Ran ${formatRelativeTime(at)}, ${style.label}`}
+    </li>
+  );
+};
+
 const HomePage: React.FC = () => {
   // Prefix for label/input id pairs, unique per component instance.
   const fieldId = useId();
   const [workflows, setWorkflows] = useState<WorkflowDescriptor[]>([]);
+  const runsOverview = useRunsOverview();
   const [loading, setLoading] = useState(true);
   // Failing to load the library replaces the page with a retry state; failed
   // actions (create, delete, ...) only show a toast and keep the page usable.
@@ -479,6 +506,7 @@ const HomePage: React.FC = () => {
     // Built-in demos change with each release of N-WAVE.
     const changedAt =
       wf.updatedAt ?? (isBuiltinWorkflow(wf) ? buildInfo.buildDate : undefined);
+    const lastRun = runsOverview.lastRuns.get(wf._id);
 
     const cardContent = (
       <>
@@ -620,6 +648,7 @@ const HomePage: React.FC = () => {
                   Changed {formatRelativeTime(changedAt)}
                 </li>
               )}
+              {lastRun && <LastRunPill run={lastRun} />}
             </ul>
           </>
         )}
@@ -771,6 +800,14 @@ const HomePage: React.FC = () => {
               </button>
             </div>
           </section>
+
+          {runsOverview.enabled && (
+            <RunsOverview
+              runs={runsOverview.runs}
+              running={runsOverview.running}
+              onStopAll={runsOverview.stopAll}
+            />
+          )}
         </div>
         {actionError && (
           <Toast
