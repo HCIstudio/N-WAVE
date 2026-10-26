@@ -95,6 +95,7 @@ describe("useWorkflowRun", () => {
     expect(hook.result.current.error).toEqual({
       message: "Workflow execution failed",
       output: "N-WAVE run: bee_2\nERROR ~ boom\n",
+      known: false,
     });
     expect(hook.result.current.executionStatus.status.isRunning).toBe(false);
 
@@ -147,9 +148,12 @@ describe("useWorkflowRun", () => {
         config?.onDownloadProgress?.({ event: { target: { responseText: "N-WAVE run: bee_5\n" } } });
         throw unreachable();
       });
-      // N-WAVE restarts: it doesn't answer once, then the run's log says
-      // it stopped it.
+      // N-WAVE restarts: it doesn't answer, its proxy says so (502), then
+      // the run's log says it stopped it.
       readRunLogFrom.mockRejectedValueOnce(unreachable());
+      readRunLogFrom.mockRejectedValueOnce(
+        Object.assign(new Error("Bad Gateway"), { isAxiosError: true, response: { status: 502 } }),
+      );
       const shutdown =
         "N-WAVE run: bee_5\nN-WAVE: the run was stopped because N-WAVE shut down. Resume it to reuse the steps it finished.\n";
       readRunLogFrom.mockResolvedValueOnce({ text: shutdown, end: 120, live: false });
@@ -163,6 +167,8 @@ describe("useWorkflowRun", () => {
       expect(hook.result.current.output).toContain("Waiting for it");
       expect(hook.result.current.error).toBeNull();
 
+      await act(() => vi.advanceTimersByTimeAsync(3500));
+      expect(hook.result.current.error).toBeNull();
       await act(() => vi.advanceTimersByTimeAsync(3500));
       await flush();
       const run = hook.result.current;

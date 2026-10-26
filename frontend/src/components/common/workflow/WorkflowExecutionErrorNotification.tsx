@@ -18,6 +18,8 @@ interface ExecutionError {
   message: string;
   output?: string;
   code?: string | number;
+  /** The reason is known (e.g. N-WAVE shut down): no suggested fixes. */
+  known?: boolean;
 }
 
 interface WorkflowExecutionErrorNotificationProps {
@@ -235,7 +237,7 @@ const WorkflowExecutionErrorNotification: React.FC<
               )}
 
               {/* Guesses, when the log shows no known reason. */}
-              {!explanation && (
+              {!explanation && !error.known && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-text text-sm flex items-center space-x-2">
                     <Lightbulb className="w-3 h-3 text-nextflow-green" />

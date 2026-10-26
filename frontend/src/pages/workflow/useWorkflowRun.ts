@@ -40,15 +40,23 @@ const WAITING_NOTE =
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** The request reached no server (it is down, restarting, or the network dropped). */
-const isUnreachable = (caught: unknown): boolean =>
-  (caught as { isAxiosError?: boolean } | null)?.isAxiosError === true &&
-  !getResponseStatus(caught);
+/**
+ * N-WAVE didn't answer: the network dropped, or it is down or restarting
+ * (then the proxy in front of it answers with a server error: nginx 502,
+ * Vite's dev server 500).
+ */
+const isUnreachable = (caught: unknown): boolean => {
+  if ((caught as { isAxiosError?: boolean } | null)?.isAxiosError !== true) return false;
+  const status = getResponseStatus(caught);
+  return !status || status >= 500;
+};
 
 export interface RunError {
   message: string;
   output?: string;
   code?: string | number;
+  /** N-WAVE knows why it ended (it shut down, or was interrupted): no guesses. */
+  known?: boolean;
 }
 
 interface Options {
@@ -162,6 +170,7 @@ export const useWorkflowRun = ({
         ? `The run hit its resource limits. ${outcome.resourceProblem}`
         : (outcome.reason ?? "Workflow execution failed"),
       output: text,
+      known: Boolean(outcome.reason),
     });
   };
 
