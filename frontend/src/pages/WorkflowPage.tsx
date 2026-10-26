@@ -594,10 +594,8 @@ const WorkflowPageContent: React.FC = () => {
           nodes={canvasNodes}
           onCancel={run.executionStatus.cancelExecution}
           canCancel={run.canCancel}
-          // Always there as the Runs bar (minimized), except in the demo,
-          // which runs nothing.
-          onClose={isDemoMode ? run.executionStatus.hideStatus : undefined}
-          isVisible={!isDemoMode || run.executionStatus.isVisible}
+          // Always there: minimized, it is the Runs bar.
+          isVisible
           runId={isDemoMode ? null : run.lastRunId}
           output={run.output}
           workflowId={workflowId}

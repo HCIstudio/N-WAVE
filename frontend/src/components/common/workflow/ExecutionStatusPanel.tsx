@@ -190,7 +190,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
     return (
       <section
         aria-label="Run panel"
-        className="fixed bottom-20 right-4 z-50 flex items-center gap-3 rounded-lg bg-nextflow-green px-4 py-2 text-white shadow-lg"
+        // Under the node menu (z-10), which can reach down to it.
+        className="fixed bottom-20 right-4 z-[9] flex items-center gap-3 rounded-lg bg-nextflow-green px-4 py-2 text-white shadow-lg"
       >
         <button
           type="button"
