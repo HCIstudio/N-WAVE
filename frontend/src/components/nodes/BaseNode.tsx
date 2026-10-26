@@ -19,6 +19,12 @@ import { checkPortFit, portSummary, sourceContents, targetContents } from "../..
 import type { SelectedFile } from "../../data/types";
 import type { FileEncoding } from "../../utils/fileContent";
 
+/** A port's label: one line on node hover, above the others when its port is hovered. */
+const PORT_LABEL_CLASS =
+  "absolute top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 group-hover/port:z-20 transition-opacity bg-white px-1 py-px rounded shadow-sm border z-10";
+/** What a port takes or gives, shown only while its port is hovered. */
+const PORT_DETAIL_CLASS = "hidden text-[10px] leading-tight text-gray-400 group-hover/port:block";
+
 export interface PortData {
   name: string;
   isConnectable?: boolean;
@@ -236,7 +242,7 @@ const BaseNode = ({
         return (
         <div
           key={port.name}
-          className="absolute left-0"
+          className="group/port absolute left-0"
           style={{ top: `${(100 / (arr.length + 1)) * (index + 1)}%` }}
         >
           <Handle
@@ -257,10 +263,13 @@ const BaseNode = ({
             onMouseDown={onMouseDown}
           />
           {(port.label || many) && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
-              <div className="text-xs text-gray-600">{port.label || port.name}</div>
-              {detail && <div className="text-[10px] text-gray-400">{detail}</div>}
-              <div className="text-[10px] text-gray-400">
+            // Hovering the node names each port in one short line, so the
+            // labels of a node with many ports don't overlap; hovering a
+            // port also shows what it takes.
+            <div className={clsx(PORT_LABEL_CLASS, "right-3")}>
+              <div className="text-[10px] leading-tight text-gray-600">{port.label || port.name}</div>
+              {detail && <div className={PORT_DETAIL_CLASS}>{detail}</div>}
+              <div className={PORT_DETAIL_CLASS}>
                 {many ? "any number of connections, mixed" : "one connection"}
               </div>
             </div>
@@ -375,7 +384,7 @@ const BaseNode = ({
       {data.outputs?.map((port, index, arr) => (
         <div
           key={port.name}
-          className="absolute right-0"
+          className="group/port absolute right-0"
           style={{ top: `${(100 / (arr.length + 1)) * (index + 1)}%` }}
         >
           <Handle
@@ -387,10 +396,10 @@ const BaseNode = ({
             onMouseDown={onMouseDown}
           />
           {port.label && (
-            <div className="absolute left-3 top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity bg-white px-1 py-0.5 rounded shadow-sm border z-10">
-              <div className="text-xs text-gray-600">{port.label}</div>
+            <div className={clsx(PORT_LABEL_CLASS, "left-3")}>
+              <div className="text-[10px] leading-tight text-gray-600">{port.label}</div>
               {(port.fileType || port.filePattern || portSummary({ type, data }, port.name, "outputs")) && (
-                <div className="text-[10px] text-gray-400">
+                <div className={PORT_DETAIL_CLASS}>
                   {port.fileType || port.filePattern
                     ? [port.fileType, port.filePattern].filter(Boolean).join(" ")
                     : portSummary({ type, data }, port.name, "outputs")}
