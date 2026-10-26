@@ -18,20 +18,6 @@ import {
 } from "../samplesheet";
 import type { PipelineParamValue, PipelineParamValues } from "./schema";
 
-/** Pipelines offered in the Pipeline node (any other can be typed in). */
-export const KNOWN_PIPELINES: Array<{
-  name: string;
-  versions: string[];
-  description: string;
-}> = [
-  {
-    name: "rnaseq",
-    versions: ["3.27.0"],
-    description:
-      "RNA sequencing analysis: QC, trimming, alignment or pseudoalignment, quantification.",
-  },
-];
-
 export const PIPELINE_NAME = /^[a-z0-9][a-z0-9_-]*$/;
 export const PIPELINE_VERSION = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 

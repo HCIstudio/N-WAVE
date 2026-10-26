@@ -6,7 +6,6 @@ import { useWorkflowContext } from "../../../context/WorkflowContext";
 import {
   buildPipelineLaunch,
   getPipelineLaunchIssues,
-  KNOWN_PIPELINES,
   PIPELINE_NAME,
   PIPELINE_VERSION,
   pipelineParamsFile,
@@ -23,6 +22,7 @@ import {
 import { getApiErrorMessage } from "../../../utils/errors";
 import CodeBlock from "../../common/data/CodeBlock";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
+import PipelinePicker from "./PipelinePicker";
 import PipelineResults from "./PipelineResults";
 import Term from "../../common/ui/Term";
 
@@ -64,8 +64,6 @@ const PipelinePanel: React.FC<PipelinePanelProps> = ({ node, onSave }) => {
   const values = (node.data.pipelineValues ?? {}) as PipelineParamValues;
   const testProfile = Boolean(node.data.pipelineTestProfile);
   const ports = (node.data.inputs ?? [INPUT_PORT]) as PortData[];
-  const [nameText, setNameText] = useState(name);
-  const [versionText, setVersionText] = useState(version);
   const [schema, setSchema] = useState<
     | { status: "loading" }
     | { status: "loaded"; groups: PipelineParamGroup[] }
@@ -178,60 +176,12 @@ const PipelinePanel: React.FC<PipelinePanelProps> = ({ node, onSave }) => {
         pipeline&apos;s <code>nextflow_schema.json</code>.
       </p>
 
-      <div className="flex flex-wrap gap-2">
-        <div className="min-w-[140px] flex-1">
-          <label
-            htmlFor={`${fieldId}-name`}
-            className="mb-1 block text-xs font-medium text-text-light"
-          >
-            Pipeline
-          </label>
-          <div className="flex items-center gap-1">
-            <span className="whitespace-nowrap text-sm text-text-light">
-              nf-core/
-            </span>
-            <input
-              id={`${fieldId}-name`}
-              list={`${fieldId}-pipelines`}
-              value={nameText}
-              onChange={(event) => setNameText(event.target.value.trim())}
-              onBlur={() => setPipeline(nameText, versionText)}
-              className={`${fieldClassName} font-mono`}
-            />
-          </div>
-          <datalist id={`${fieldId}-pipelines`}>
-            {KNOWN_PIPELINES.map((pipeline) => (
-              <option key={pipeline.name} value={pipeline.name}>
-                {pipeline.description}
-              </option>
-            ))}
-          </datalist>
-        </div>
-        <div className="min-w-[100px] flex-1">
-          <label
-            htmlFor={`${fieldId}-version`}
-            className="mb-1 block text-xs font-medium text-text-light"
-          >
-            Version
-          </label>
-          <input
-            id={`${fieldId}-version`}
-            list={`${fieldId}-versions`}
-            value={versionText}
-            onChange={(event) => setVersionText(event.target.value.trim())}
-            onBlur={() => setPipeline(nameText, versionText)}
-            className={`${fieldClassName} font-mono`}
-          />
-          <datalist id={`${fieldId}-versions`}>
-            {(
-              KNOWN_PIPELINES.find((pipeline) => pipeline.name === nameText)
-                ?.versions ?? []
-            ).map((known) => (
-              <option key={known} value={known} />
-            ))}
-          </datalist>
-        </div>
-      </div>
+      <PipelinePicker
+        name={name}
+        version={version}
+        onChange={setPipeline}
+        fieldClassName={fieldClassName}
+      />
 
       <label className="flex items-center gap-2 text-sm text-text">
         <input

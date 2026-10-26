@@ -43,6 +43,16 @@ export default {
         // page by the same amount.
         overlay: "rgba(0, 0, 0, 0.6)",
       },
+      // A bar sliding along a track: work going on whose length isn't known.
+      keyframes: {
+        indeterminate: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(300%)" },
+        },
+      },
+      animation: {
+        indeterminate: "indeterminate 1.6s ease-in-out infinite",
+      },
       fontFamily: {
         sans: [
           "system-ui",

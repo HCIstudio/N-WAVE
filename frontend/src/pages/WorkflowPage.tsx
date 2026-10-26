@@ -614,6 +614,16 @@ const WorkflowPageContent: React.FC = () => {
             done: nodeRun.done,
             total: nodeRun.total,
             cached: nodeRun.cached,
+            running: nodeRun.running,
+            substeps: nodeRun.processes?.map((process) => ({
+              id: process.process,
+              label: process.label,
+              status: process.status,
+              done: process.done,
+              total: process.total,
+              cached: process.cached,
+              running: process.running,
+            })),
           }))}
         />
       </div>

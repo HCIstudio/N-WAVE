@@ -56,6 +56,35 @@ describe("summarizeNodeRuns", () => {
       "pipeline-1",
     );
     expect(Object.keys(runs)).toEqual(["pipeline-1"]);
+    // One process: no breakdown.
+    expect(runs["pipeline-1"].processes).toBeUndefined();
+  });
+
+  it("breaks a node that runs several processes down by process", () => {
+    const runs = summarizeNodeRuns(
+      [
+        task("NFCORE_ATACSEQ:ATACSEQ:FASTQC", "succeeded", "aa/000001"),
+        task("NFCORE_ATACSEQ:ATACSEQ:FASTQC", "running", "aa/000002"),
+        task("NFCORE_ATACSEQ:PREPARE_GENOME:GUNZIP", "succeeded", "aa/000003"),
+        task("NFCORE_ATACSEQ:ATACSEQ:MERGE:GUNZIP", "failed", "aa/000004"),
+      ],
+      nodes,
+      "pipeline-1",
+    );
+    expect(runs["pipeline-1"]).toMatchObject({ total: 4, done: 2, running: 1, failed: 1 });
+    expect(
+      runs["pipeline-1"].processes?.map(({ label, status, done, total }) => [
+        label,
+        status,
+        done,
+        total,
+      ]),
+    ).toEqual([
+      ["FASTQC", "running", 1, 2],
+      // Same module in two subworkflows: named with the subworkflow.
+      ["PREPARE_GENOME:GUNZIP", "succeeded", 1, 1],
+      ["MERGE:GUNZIP", "failed", 0, 1],
+    ]);
   });
 
   it("maps the STAR + Salmon example's nf-core aliases, subworkflow steps included", () => {

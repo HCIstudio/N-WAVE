@@ -38,6 +38,57 @@ describe("useExecutionStatus", () => {
     expect(result.current.isVisible).toBe(true);
   });
 
+  it("counts all of the run's processes, the ones Nextflow hides too", () => {
+    const { result } = setup();
+    act(() => result.current.startExecution());
+    const feed = (lines: string[]) =>
+      act(() => result.current.parseNextflowOutput(lines.join("\n")));
+
+    // Before any task: every process waits.
+    feed([
+      "[-        ] NFCORE_ATACSEQ:ATACSEQ:FASTQC -",
+      "[-        ] NFCORE_ATACSEQ:ATACSEQ:TRIMGALORE -",
+    ]);
+    expect(result.current.status).toMatchObject({
+      totalProcesses: 2,
+      finishedProcesses: 0,
+    });
+
+    feed([
+      "executor >  local (6)",
+      "[ab/cd1234] NFCORE_ATACSEQ:ATACSEQ:FASTQC (s1) | 2 of 2 ✔",
+      "[ef/012345] NFCORE_ATACSEQ:ATACSEQ:TRIMGALORE (s1) | 1 of 2",
+      "[-        ] NFCORE_ATACSEQ:ATACSEQ:BWA_MEM -",
+      // With colours, as some terminals get it.
+      "\u001b[3mPlus \u001b[1m38\u001b[0m\u001b[3m more processes waiting for tasks…\u001b[0m",
+    ]);
+    expect(result.current.status).toMatchObject({
+      totalProcesses: 41,
+      finishedProcesses: 1,
+    });
+
+    // The next snapshot, read halfway, doesn't lower the counts.
+    feed([
+      "executor >  local (7)",
+      "[ab/cd1234] NFCORE_ATACSEQ:ATACSEQ:FASTQC (s1) | 2 of 2 ✔",
+    ]);
+    expect(result.current.status).toMatchObject({
+      totalProcesses: 41,
+      finishedProcesses: 1,
+    });
+    // A snapshot without "executor >" in front starts at a repeated name.
+    feed([
+      "[ef/012345] NFCORE_ATACSEQ:ATACSEQ:TRIMGALORE (s2) | 2 of 2 ✔",
+      "[ab/cd1234] NFCORE_ATACSEQ:ATACSEQ:FASTQC (s1) | 2 of 2 ✔",
+      "[ef/012345] NFCORE_ATACSEQ:ATACSEQ:TRIMGALORE (s2) | 2 of 2 ✔",
+      "Plus 38 more processes waiting for tasks…",
+    ]);
+    expect(result.current.status).toMatchObject({
+      totalProcesses: 41,
+      finishedProcesses: 2,
+    });
+  });
+
   it("tracks processes from Nextflow's console lines", () => {
     const { result } = setup();
     act(() => result.current.startExecution());

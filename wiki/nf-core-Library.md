@@ -46,7 +46,10 @@ their results.
 ## Whole pipelines
 
 The **nf-core Pipeline** node runs a complete pipeline, such as nf-core/rnaseq, instead of
-single modules. See
+single modules. Pick the pipeline from the list of all nf-core pipelines (search by name or
+by what it does) and one of its releases; the list comes from
+[nf-co.re/pipelines](https://nf-co.re/pipelines). If nf-co.re can't be reached, type the name
+(the part after `nf-core/`) and a release number from the pipeline's page, or `dev`. See
 [Running the nf-core/rnaseq example](https://github.com/HCIstudio/N-WAVE/wiki/Running-the-nf-core-rnaseq-Example)
 and, for the same analysis rebuilt from modules,
 [RNA-seq with STAR and Salmon](https://github.com/HCIstudio/N-WAVE/wiki/RNA-seq-STAR-Salmon-Example).

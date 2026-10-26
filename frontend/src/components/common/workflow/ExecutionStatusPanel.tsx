@@ -53,6 +53,13 @@ export interface WorkflowExecutionStatus {
   currentStage?: string;
   overallProgress: number;
   estimatedTimeRemaining?: number;
+  /**
+   * The run's Nextflow processes, from its console: those listed plus the
+   * "Plus N more processes waiting for tasks…". Unknown until it says.
+   */
+  totalProcesses?: number;
+  /** Processes Nextflow marked finished (✔). */
+  finishedProcesses?: number;
 }
 
 interface ExecutionStatusPanelProps {
@@ -95,6 +102,10 @@ export interface RunStep {
   total: number;
   /** Tasks reused from the cache. */
   cached?: number;
+  /** Tasks going now. */
+  running?: number;
+  /** The processes of a step that runs several (a subworkflow, a pipeline). */
+  substeps?: RunStep[];
 }
 
 const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
@@ -104,9 +115,13 @@ const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
   cached: <RotateCcw className="h-4 w-4 text-sky-600" />,
 };
 
-/** Steps that are done, reused from the cache or run this time. */
-const isStepDone = (step: RunStep): boolean =>
-  step.status === "succeeded" || step.status === "cached";
+/** How many of a step's tasks are done, as the steps list shows it. */
+const stepCount = (step: RunStep): string =>
+  step.status === "cached"
+    ? "reused from cache"
+    : step.cached
+      ? `${step.done} of ${step.total}, ${step.cached} reused`
+      : `${step.done} of ${step.total}`;
 
 export type RunPanelTab = "steps" | "log" | "history";
 
@@ -176,8 +191,30 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
       <X className="w-4 h-4" />
     </button>
   );
-  const stepsDone = steps.filter(isStepDone).length;
   const stepsCached = steps.filter((step) => step.status === "cached").length;
+  // Nextflow learns of tasks as the run goes, so their total grows: progress
+  // is told by what's done and running, not as a share of an unknown whole.
+  const tasksDone = steps.length > 0
+    ? steps.reduce((sum, step) => sum + step.done, 0)
+    : status.completedNodes;
+  const tasksRunning = steps.length > 0
+    ? steps.reduce((sum, step) => sum + (step.running ?? 0), 0)
+    : status.runningNodes;
+  // Without the run's tasks (the demo), the console's processes are counted.
+  const unit = steps.length > 0 ? "task" : "step";
+  const progressText = `${tasksDone} ${unit}${tasksDone === 1 ? "" : "s"} done${
+    status.isRunning ? `, ${tasksRunning} running` : ""
+  }`;
+  // Nextflow's console says how many processes (steps) the run has in all.
+  const totalProcesses = status.totalProcesses ?? 0;
+  const finishedProcesses = Math.min(
+    status.finishedProcesses ?? 0,
+    totalProcesses,
+  );
+  const stepsText =
+    totalProcesses > 0
+      ? `${finishedProcesses} of ${totalProcesses} steps finished`
+      : null;
   const failureCard = isFailed && failure && (
     <FailureExplanationCard
       explanation={failure}
@@ -218,10 +255,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
       >
         {barIcon}
         <span>{title}</span>
-        {status.isRunning && steps.length > 0 && (
-          <span className="text-text-light">
-            {stepsDone} of {steps.length} steps done
-          </span>
+        {status.isRunning && (stepsText || steps.length > 0 || tasksDone > 0) && (
+          <span className="text-text-light">{stepsText ?? progressText}</span>
         )}
       </button>
       <button
@@ -405,34 +440,82 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               <div className="grid grid-cols-2 gap-4 mb-3">
                 <div className="text-center">
                   <div className="text-2xl font-bold text-nextflow-green">
-                    {steps.length > 0
-                      ? stepsDone
-                      : status.completedNodes}
+                    {tasksDone}
                   </div>
-                  <div className="text-xs text-gray-700">Completed</div>
+                  <div className="text-xs text-gray-700">
+                    {steps.length > 0 ? "Tasks done" : "Completed"}
+                  </div>
                 </div>
                 <div className="text-center">
                   <div className="text-2xl font-bold text-blue-500">
-                    {steps.length > 0
-                      ? steps.filter((step) => step.status === "running").length
-                      : status.runningNodes}
+                    {status.isRunning ? tasksRunning : 0}
                   </div>
                   <div className="text-xs text-gray-700">Running</div>
                 </div>
               </div>
 
-              {/* Progress Bar */}
+              {/* Progress: how far isn't known until Nextflow is done. */}
               <div className="mb-2">
                 <div className="flex justify-between text-xs text-gray-800 mb-1">
                   <span>Progress</span>
-                  <span>{Math.round(status.overallProgress)}%</span>
+                  <span>
+                    {status.isRunning && stepsText
+                      ? stepsText
+                      : status.isRunning
+                      ? "Still running…"
+                      : isCancelled
+                        ? "Stopped"
+                        : isFailed
+                          ? "Failed"
+                          : "Done"}
+                  </span>
                 </div>
-                <div className="w-full bg-gray-300 rounded-full h-2">
-                  <div
-                    className="bg-nextflow-green h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${status.overallProgress}%` }}
-                  />
+                <div
+                  role="progressbar"
+                  aria-label="Run progress"
+                  aria-valuetext={
+                    status.isRunning ? (stepsText ?? progressText) : undefined
+                  }
+                  aria-valuenow={
+                    !status.isRunning
+                      ? totalProcesses || 1
+                      : totalProcesses > 0
+                        ? finishedProcesses
+                        : undefined
+                  }
+                  aria-valuemin={0}
+                  aria-valuemax={totalProcesses || 1}
+                  className="relative h-2 w-full overflow-hidden rounded-full bg-gray-300"
+                >
+                  {status.isRunning && totalProcesses > 0 ? (
+                    // Steps finished out of all: a count, not a time estimate.
+                    <div
+                      className="h-2 rounded-full bg-nextflow-green transition-all duration-300"
+                      style={{
+                        width: `${(finishedProcesses / totalProcesses) * 100}%`,
+                      }}
+                    />
+                  ) : status.isRunning ? (
+                    <div className="absolute inset-y-0 left-0 w-1/3 rounded-full bg-nextflow-green animate-indeterminate motion-reduce:w-full motion-reduce:animate-pulse" />
+                  ) : (
+                    <div
+                      className={`h-2 w-full rounded-full ${
+                        isCancelled
+                          ? "bg-gray-500"
+                          : isFailed
+                            ? "bg-red-500"
+                            : "bg-nextflow-green"
+                      }`}
+                    />
+                  )}
                 </div>
+                {status.isRunning && (
+                  <p className="mt-1 text-xs text-gray-700">
+                    {stepsText
+                      ? "Steps differ a lot in how long they take, so this isn't a time estimate."
+                      : `${progressText}. How many steps are left isn't known yet.`}
+                  </p>
+                )}
               </div>
 
               {/* Time Information */}
@@ -477,19 +560,42 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                 {steps.map((step) => (
                   <li
                     key={step.id}
-                    className="flex items-center justify-between border-b border-gray-200 p-3 last:border-b-0"
+                    className="border-b border-gray-200 last:border-b-0"
                   >
-                    <span className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                      {STEP_ICON[step.status]}
-                      {step.label}
-                    </span>
-                    <span className="text-xs text-gray-700">
-                      {step.status === "cached"
-                        ? "reused from cache"
-                        : step.cached
-                          ? `${step.done} of ${step.total}, ${step.cached} reused`
-                          : `${step.done} of ${step.total}`}
-                    </span>
+                    <div className="flex items-center justify-between p-3">
+                      <span className="flex items-center gap-2 text-sm font-medium text-gray-800">
+                        {STEP_ICON[step.status]}
+                        {step.label}
+                      </span>
+                      <span className="text-xs text-gray-700">
+                        {stepCount(step)}
+                      </span>
+                    </div>
+                    {step.substeps && step.substeps.length > 0 && (
+                      <ul
+                        aria-label={`Steps of ${step.label}`}
+                        className="-mt-1 pb-2 pl-9 pr-3"
+                      >
+                        {step.substeps.map((substep) => (
+                          <li
+                            key={substep.id}
+                            className="flex items-center justify-between gap-2 py-0.5"
+                          >
+                            <span className="flex min-w-0 items-center gap-1.5 text-xs text-gray-800">
+                              <span className="shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
+                                {STEP_ICON[substep.status]}
+                              </span>
+                              <span className="truncate font-mono" title={substep.id}>
+                                {substep.label}
+                              </span>
+                            </span>
+                            <span className="shrink-0 text-xs text-gray-700">
+                              {stepCount(substep)}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </li>
                 ))}
               </ul>

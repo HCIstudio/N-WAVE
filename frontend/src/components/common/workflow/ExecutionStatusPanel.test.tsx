@@ -157,10 +157,10 @@ describe("ExecutionStatusPanel", () => {
       minimized: true,
       steps: [
         { id: "a", label: "Filter", status: "succeeded", done: 1, total: 1 },
-        { id: "b", label: "Merge", status: "running", done: 0, total: 1 },
+        { id: "b", label: "Merge", status: "running", done: 0, total: 1, running: 1 },
       ],
     });
-    expect(container.textContent).toContain("1 of 2 steps done");
+    expect(container.textContent).toContain("1 task done, 1 running");
     expect(container.querySelector('[aria-label="Close run panel"]')).toBeNull();
     act(() =>
       (
@@ -173,6 +173,82 @@ describe("ExecutionStatusPanel", () => {
 
     render({ status: failed, onClose, onMinimizedChange });
     expect(container.querySelector('[aria-label="Close run panel"]')).not.toBeNull();
+  });
+
+  it("shows progress without a share of a total that keeps growing", () => {
+    const running: Props["status"] = {
+      ...idle,
+      isRunning: true,
+      startTime: new Date(),
+      currentStage: "Running",
+    };
+    render({
+      status: { ...running, overallProgress: 63 },
+      runId: "run-1",
+      minimized: false,
+      steps: [
+        {
+          id: "pipeline",
+          label: "nf-core Pipeline",
+          status: "running",
+          done: 32,
+          total: 34,
+          running: 2,
+          substeps: [
+            {
+              id: "NFCORE_ATACSEQ:ATACSEQ:FASTQC",
+              label: "FASTQC",
+              status: "succeeded",
+              done: 30,
+              total: 30,
+            },
+            {
+              id: "NFCORE_ATACSEQ:ATACSEQ:MACS2",
+              label: "MACS2",
+              status: "running",
+              done: 2,
+              total: 4,
+              running: 2,
+            },
+          ],
+        },
+      ],
+    });
+    expect(container.textContent).not.toContain("63%");
+    const bar = container.querySelector('[role="progressbar"]');
+    expect(bar?.getAttribute("aria-valuenow")).toBeNull();
+    expect(bar?.getAttribute("aria-valuetext")).toBe("32 tasks done, 2 running");
+    expect(container.textContent).toContain("Still running…");
+
+    // A pipeline's processes show under it.
+    const substeps = container.querySelector(
+      '[aria-label="Steps of nf-core Pipeline"]',
+    );
+    expect(substeps?.textContent).toContain("FASTQC30 of 30");
+    expect(substeps?.textContent).toContain("MACS22 of 4");
+
+    render({
+      status: { ...running, isRunning: false, endTime: new Date(), currentStage: "Nextflow execution completed successfully" },
+      runId: "run-1",
+      minimized: false,
+    });
+    expect(container.textContent).toContain("Done");
+    const doneBar = container.querySelector('[role="progressbar"]');
+    expect(doneBar?.getAttribute("aria-valuenow")).toBe(
+      doneBar?.getAttribute("aria-valuemax"),
+    );
+
+    // Once Nextflow has said how many processes there are, they are counted.
+    render({
+      status: { ...running, totalProcesses: 40, finishedProcesses: 10 },
+      runId: "run-1",
+      minimized: false,
+    });
+    const stepsBar = container.querySelector('[role="progressbar"]');
+    expect(stepsBar?.getAttribute("aria-valuenow")).toBe("10");
+    expect(stepsBar?.getAttribute("aria-valuemax")).toBe("40");
+    expect(container.textContent).toContain("10 of 40 steps finished");
+    expect(container.textContent).not.toContain("%");
   });
 
   it("renders nothing when hidden", () => {
