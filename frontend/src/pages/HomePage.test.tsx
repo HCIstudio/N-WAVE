@@ -17,6 +17,14 @@ vi.mock("../api", () => ({
   },
   isDemoMode: false,
 }));
+// Every workflow's runs (the run list and the cards' last run).
+const listRuns = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => []);
+const cancelRun = vi.fn(async (_id: string) => {});
+vi.mock("../api/runs", () => ({
+  listRuns: (...args: unknown[]) => listRuns(...args),
+  cancelRun: (id: string) => cancelRun(id),
+  getRunLog: async () => "",
+}));
 // The build constants come from vite's `define`, which vitest doesn't load.
 vi.mock("../utils/buildInfo", () => ({
   buildInfo: {
@@ -96,6 +104,8 @@ describe("HomePage", () => {
     localStorage.setItem(...TUTORIAL_DONE);
     sessionStorage.clear();
     get.mockReset();
+    listRuns.mockResolvedValue([]);
+    cancelRun.mockClear();
     post.mockReset();
     put.mockReset();
     apiDelete.mockReset();
@@ -138,6 +148,27 @@ describe("HomePage", () => {
     await user.click(button("Try again"));
     expect(await screen.findByRole("heading", { name: "RNA-seq" })).toBeTruthy();
     expect(get).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows each workflow's last run, and every run with a way to stop the ones going on", async () => {
+    listRuns.mockResolvedValue([
+      { id: "r3", workflowId: "wf-2", workflowName: "Scratch", status: "running", startedAt: daysAgo(0) },
+      { id: "r2", workflowId: "wf-1", workflowName: "RNA-seq", status: "failed", startedAt: daysAgo(2), finishedAt: daysAgo(2) },
+      { id: "r1", workflowId: "wf-1", workflowName: "RNA-seq", status: "succeeded", startedAt: daysAgo(5), finishedAt: daysAgo(5) },
+    ]);
+    await setup([rnaseq, scratch]);
+    const card = (name: string) =>
+      screen.getByRole("heading", { name }).closest("a, article, div[class*='rounded']") as HTMLElement;
+    expect(await within(card("RNA-seq")).findByText("Ran 2 days ago, failed")).toBeTruthy();
+    expect(within(card("Scratch")).getByText("Running now")).toBeTruthy();
+
+    const runs = screen.getByRole("region", { name: "Runs" });
+    expect(within(runs).getByText(/1 going on now/)).toBeTruthy();
+    const user = userEvent.setup();
+    await user.click(within(runs).getByRole("button", { name: "Stop all running (1)" }));
+    await user.click(screen.getByRole("button", { name: "Stop all" }));
+    expect(cancelRun).toHaveBeenCalledWith("r3");
+    expect(cancelRun).toHaveBeenCalledOnce();
   });
 
   it("separates the built-in demos from the user's workflows", async () => {

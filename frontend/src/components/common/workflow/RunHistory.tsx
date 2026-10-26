@@ -1,6 +1,7 @@
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
+import { Link } from "react-router";
 import { cancelRun, getRunLog, listRuns, type RunSummary } from "../../../api/runs";
 import { getErrorMessage } from "../../../utils/errors";
 import { explainFailure } from "../../../execution/failureExplanations";
@@ -114,10 +115,12 @@ const duration = (run: RunSummary): string => {
 };
 
 /** One earlier run: what happened, its log and its results. */
-const RunDetails: React.FC<{ run: RunSummary; onChange: () => void }> = ({
-  run,
-  onChange,
-}) => {
+const RunDetails: React.FC<{
+  run: RunSummary;
+  onChange: () => void;
+  /** Link to the run's workflow (the list of every workflow's runs). */
+  linkWorkflow?: boolean;
+}> = ({ run, onChange, linkWorkflow = false }) => {
   const [log, setLog] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
@@ -153,6 +156,14 @@ const RunDetails: React.FC<{ run: RunSummary; onChange: () => void }> = ({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
+      {linkWorkflow && run.workflowId && (
+        <Link
+          to={`/workflow/${run.workflowId}`}
+          className="self-start text-xs font-medium text-nextflow-green hover:underline"
+        >
+          Open {run.workflowName ?? "the workflow"}
+        </Link>
+      )}
       {run.status === "running" && (
         <div className="flex items-center justify-between gap-2 rounded bg-blue-50 p-2 text-xs text-blue-900">
           <span>This run is still going on the server.</span>
@@ -195,9 +206,11 @@ const RunDetails: React.FC<{ run: RunSummary; onChange: () => void }> = ({
 /** The workflow's earlier runs, newest first (kept by the backend). */
 const RunHistory: React.FC<{
   workflowId: string | null | undefined;
+  /** Every workflow's runs instead (the home page), each with its workflow's name. */
+  everyWorkflow?: boolean;
   /** Changes when a run starts or ends, to reload the list. */
   refreshKey?: unknown;
-}> = ({ workflowId, refreshKey }) => {
+}> = ({ workflowId, everyWorkflow = false, refreshKey }) => {
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -216,9 +229,9 @@ const RunHistory: React.FC<{
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey and reload reload the list.
   useEffect(() => {
-    if (!workflowId) return;
+    if (!workflowId && !everyWorkflow) return;
     let cancelled = false;
-    listRuns(workflowId).then(
+    listRuns(everyWorkflow ? undefined : (workflowId ?? undefined), everyWorkflow ? 100 : undefined).then(
       (list) => {
         if (cancelled) return;
         setRuns(list);
@@ -231,9 +244,9 @@ const RunHistory: React.FC<{
     return () => {
       cancelled = true;
     };
-  }, [workflowId, refreshKey, reload]);
+  }, [workflowId, everyWorkflow, refreshKey, reload]);
 
-  if (!workflowId) {
+  if (!workflowId && !everyWorkflow) {
     return (
       <p className="p-4 text-sm text-gray-700">
         Save the workflow to keep a history of its runs.
@@ -251,7 +264,9 @@ const RunHistory: React.FC<{
   if (runs.length === 0) {
     return (
       <p className="p-4 text-sm text-gray-700">
-        This workflow hasn&apos;t been run on this server yet.
+        {everyWorkflow
+          ? "No workflow has been run on this server yet."
+          : "This workflow hasn't been run on this server yet."}
       </p>
     );
   }
@@ -261,7 +276,7 @@ const RunHistory: React.FC<{
     <div className="flex h-full min-h-0 gap-3 p-3">
       <ul
         aria-label="Earlier runs"
-        className="w-56 shrink-0 space-y-1 overflow-y-auto"
+        className={`${everyWorkflow ? "w-72" : "w-56"} shrink-0 space-y-1 overflow-y-auto`}
       >
         {runs.map((run) => (
           <li key={run.id}>
@@ -275,6 +290,11 @@ const RunHistory: React.FC<{
                   : "border-gray-300 hover:bg-gray-100"
               }`}
             >
+              {everyWorkflow && (
+                <span className="block truncate font-medium text-gray-900">
+                  {run.workflowName ?? run.id}
+                </span>
+              )}
               <span
                 className={`mr-1 rounded px-1.5 py-0.5 font-medium ${STATUS_STYLES[run.status]}`}
               >
@@ -299,6 +319,7 @@ const RunHistory: React.FC<{
           <RunDetails
             run={current}
             onChange={() => setReload((count) => count + 1)}
+            linkWorkflow={everyWorkflow}
           />
         ) : (
           <p className="text-sm text-gray-700">

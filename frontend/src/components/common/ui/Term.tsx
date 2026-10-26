@@ -120,14 +120,14 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
             <p className="mt-1 leading-relaxed">{entry.definition}</p>
             <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1">
               <Link
-                to={`/glossary#${entry.id}`}
+                to={`/help#${entry.id}`}
                 target="_blank"
                 rel="noreferrer"
                 // The card closes when focus leaves its last link.
                 onBlur={entry.docs ? undefined : hideSoon}
                 className="text-nextflow-green underline-offset-2 hover:underline"
               >
-                All terms in the glossary
+                All terms in the glossary (Help)
               </Link>
               {entry.docs && (
                 <a

@@ -197,6 +197,9 @@ export type RunOutcome =
 /** What the backend prints when it stops a run because it shuts down. */
 const SHUTDOWN_STOP = /^N-WAVE: the run was stopped because N-WAVE shut down\..*$/m;
 
+/** What the backend adds to the log of a run it found left behind (see orphanedRuns.ts). */
+const INTERRUPTED = /^N-WAVE: (Interrupted: [^\n]*?)(?: Removed \d+ task containers?\.)?$/m;
+
 /** How a finished run went, from its streamed output. */
 export const readRunOutcome = (output: string): RunOutcome => {
   if (/^Execution cancelled$/m.test(output)) return { kind: "cancelled" };
@@ -204,6 +207,8 @@ export const readRunOutcome = (output: string): RunOutcome => {
   if (shutdown) {
     return { kind: "failed", resourceProblem: null, reason: shutdown.replace(/^N-WAVE: t/, "T") };
   }
+  const interrupted = output.match(INTERRUPTED)?.[1];
+  if (interrupted) return { kind: "failed", resourceProblem: null, reason: interrupted };
   const resourceProblem = findResourceProblem(output);
   const lower = output.toLowerCase();
   const failed =
@@ -213,6 +218,26 @@ export const readRunOutcome = (output: string): RunOutcome => {
     lower.includes("error ~") ||
     resourceProblem !== null;
   return failed ? { kind: "failed", resourceProblem } : { kind: "succeeded" };
+};
+
+/**
+ * How a run went that this page followed instead of starting: its recorded
+ * status decides, its log says why.
+ */
+export const readRecordedOutcome = (
+  output: string,
+  run: { status: string; message?: string } | undefined,
+): RunOutcome => {
+  const fromLog = readRunOutcome(output);
+  if (!run || run.status === "running" || run.status === "unknown") return fromLog;
+  if (run.status === "succeeded") return { kind: "succeeded" };
+  if (run.status === "cancelled") {
+    // Stopped because N-WAVE shut down: say so, like a failure.
+    return fromLog.kind === "failed" && fromLog.reason ? fromLog : { kind: "cancelled" };
+  }
+  return fromLog.kind === "failed"
+    ? { ...fromLog, reason: fromLog.reason ?? (fromLog.resourceProblem ? undefined : run.message) }
+    : { kind: "failed", resourceProblem: null, reason: run.message };
 };
 
 /** The run id the backend prints first ("N-WAVE run: <id>"). */

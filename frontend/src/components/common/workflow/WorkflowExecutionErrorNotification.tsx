@@ -18,12 +18,17 @@ interface ExecutionError {
   message: string;
   output?: string;
   code?: string | number;
+  /** The reason is known (e.g. N-WAVE shut down): no suggested fixes. */
+  known?: boolean;
 }
 
 interface WorkflowExecutionErrorNotificationProps {
   isVisible: boolean;
   onClose: () => void;
-  onRetry: () => Promise<void>;
+  /** Run the workflow again from the start (the run panel shows it). */
+  onRetry: () => void;
+  /** Run it again reusing the steps that finished, when it has a cache. */
+  onResume?: () => void;
   /** Open the run panel's full log. */
   onShowLog?: () => void;
   error: ExecutionError;
@@ -40,57 +45,24 @@ const WorkflowExecutionErrorNotification: React.FC<
   isVisible,
   onClose,
   onRetry,
+  onResume,
   onShowLog,
   error,
   explanation,
   stepLabel,
   onShowStep,
 }) => {
-  const [isRetrying, setIsRetrying] = useState(false);
-  const [retryAttempt, setRetryAttempt] = useState(0);
   const [isExpanded, setIsExpanded] = useState(true);
   const [isSlideIn, setIsSlideIn] = useState(false);
-  const [retrySuccess, setRetrySuccess] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
       setIsSlideIn(true);
       setIsExpanded(true);
-      // Reset retry state when a new error appears
-      if (!isRetrying) {
-        setRetryAttempt(0);
-      }
     } else {
       setIsSlideIn(false);
     }
-  }, [isVisible, isRetrying]);
-
-  const handleRetry = async () => {
-    setIsRetrying(true);
-    setRetryAttempt((prev) => prev + 1);
-    setRetrySuccess(false); // Reset success state
-
-    // Add a small delay to ensure UI updates are visible
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    try {
-      await onRetry();
-      // Success! Show success feedback briefly before closing
-      setRetrySuccess(true);
-      setIsExpanded(true); // Expand to show success message
-      setTimeout(() => {
-        onClose(); // Close notification after showing success
-      }, 2000);
-    } catch (retryError) {
-      console.error("Retry failed:", retryError);
-      // Keep expanded to show error details after failed retry
-      // Suggestions will repopulate automatically when error prop updates
-      setRetrySuccess(false);
-      setIsExpanded(true);
-    } finally {
-      setIsRetrying(false);
-    }
-  };
+  }, [isVisible]);
 
   const getSuggestedFixes = (errorMessage: string): string[] => {
     const suggestions: string[] = [];
@@ -196,41 +168,30 @@ const WorkflowExecutionErrorNotification: React.FC<
               {getErrorIcon(error.message)}
               <div className="flex-1">
                 <h3 className="font-semibold text-text text-sm">
-                  {retrySuccess
-                    ? "Workflow Executed Successfully!"
-                    : isRetrying
-                    ? "Retrying Workflow Execution..."
-                    : "Workflow Execution Failed"}
+                  Workflow Execution Failed
                 </h3>
-                {isRetrying && retryAttempt > 0 && (
-                  <p className="text-text-light text-xs">
-                    Attempt {retryAttempt}
-                  </p>
-                )}
               </div>
             </div>
 
             <div className="flex items-center space-x-2">
-              {!isRetrying && (
-                <button
-                  type="button"
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="p-1 text-text-light hover:text-text transition-colors"
-                  title={isExpanded ? "Collapse details" : "Expand details"}
-                >
-                  {isExpanded ? (
-                    <ChevronUp className="w-4 h-4" />
-                  ) : (
-                    <ChevronDown className="w-4 h-4" />
-                  )}
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-1 text-text-light hover:text-text transition-colors"
+                title={isExpanded ? "Collapse details" : "Expand details"}
+              >
+                {isExpanded ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
 
               <button
                 type="button"
                 onClick={onClose}
+                aria-label="Close"
                 className="p-1 text-text-light hover:text-text transition-colors"
-                disabled={isRetrying}
               >
                 <X className="w-4 h-4" />
               </button>
@@ -244,46 +205,11 @@ const WorkflowExecutionErrorNotification: React.FC<
             }`}
           >
             <div className="space-y-3">
-              {/* Success Status - Show when retry succeeds */}
-              {retrySuccess && (
-                <div className="bg-green-900/20 border border-green-500/40 rounded p-3">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
-                      <div className="w-2 h-2 bg-white rounded-full" />
-                    </div>
-                    <p className="text-green-100 text-sm font-medium">
-                      Retry successful! Workflow executed without errors.
-                    </p>
-                  </div>
-                  <p className="text-green-200 text-xs mt-1">
-                    The notification will close automatically.
-                  </p>
-                </div>
-              )}
-
-              {/* Retry Status - Show prominently when retrying */}
-              {isRetrying && (
-                <div className="bg-nextflow-green/20 border border-nextflow-green/40 rounded p-3">
-                  <div className="flex items-center space-x-2">
-                    <RefreshCw className="w-4 h-4 animate-spin text-nextflow-green" />
-                    <p className="text-green-100 text-sm font-medium">
-                      Retrying workflow execution... (Attempt {retryAttempt})
-                    </p>
-                  </div>
-                  <p className="text-green-200 text-xs mt-1">
-                    Please wait while we attempt to execute the workflow again.
-                  </p>
-                </div>
-              )}
-
-              {/* Error Message - Hide when retry succeeds */}
-              {!retrySuccess && (
-                <div className="bg-background border border-red-500/50 rounded p-3">
-                  <p className="text-text text-sm leading-relaxed">
-                    {error.message}
-                  </p>
-                </div>
-              )}
+              <div className="bg-background border border-red-500/50 rounded p-3">
+                <p className="text-text text-sm leading-relaxed">
+                  {error.message}
+                </p>
+              </div>
 
               {/* Output Section */}
               {error.output && (
@@ -301,7 +227,7 @@ const WorkflowExecutionErrorNotification: React.FC<
               )}
 
               {/* A recognised reason, explained, instead of guesses. */}
-              {!retrySuccess && !isRetrying && explanation && (
+              {explanation && (
                 <FailureExplanationCard
                   explanation={explanation}
                   stepLabel={stepLabel}
@@ -310,8 +236,8 @@ const WorkflowExecutionErrorNotification: React.FC<
                 />
               )}
 
-              {/* Suggested Fixes - Hide when retry succeeds or during retry */}
-              {!retrySuccess && !isRetrying && !explanation && (
+              {/* Guesses, when the log shows no known reason. */}
+              {!explanation && !error.known && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-text text-sm flex items-center space-x-2">
                     <Lightbulb className="w-3 h-3 text-nextflow-green" />
@@ -335,25 +261,31 @@ const WorkflowExecutionErrorNotification: React.FC<
             </div>
           </div>
 
-          {/* Bottom section with Retry button */}
+          {/* Run again: resuming reuses the steps that finished. */}
           <div className="flex justify-start gap-2 pt-3 border-t border-panel-border mt-3">
+            {onResume && (
+              <button
+                type="button"
+                onClick={onResume}
+                title="Run again, reusing the steps that finished"
+                className="px-4 py-2 text-sm rounded bg-nextflow-green hover:bg-nextflow-green-dark text-white transition-colors flex items-center space-x-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Resume</span>
+              </button>
+            )}
             <button
               type="button"
-              onClick={handleRetry}
-              disabled={isRetrying}
-              className="px-4 py-2 text-sm rounded bg-nextflow-green hover:bg-nextflow-green-dark text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              onClick={onRetry}
+              title="Run again from the start"
+              className={`px-4 py-2 text-sm rounded transition-colors flex items-center space-x-2 ${
+                onResume
+                  ? "border border-panel-border text-text hover:bg-accent"
+                  : "bg-nextflow-green hover:bg-nextflow-green-dark text-white"
+              }`}
             >
-              {isRetrying ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Retrying...</span>
-                </>
-              ) : (
-                <>
-                  <RefreshCw className="w-4 h-4" />
-                  <span>Retry</span>
-                </>
-              )}
+              <RefreshCw className="w-4 h-4" />
+              <span>{onResume ? "Run again from the start" : "Retry"}</span>
             </button>
             {onShowLog && (
               <button

@@ -78,6 +78,8 @@ interface Options {
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
   showError: (message: string) => void;
+  /** Tells the user something happened that they didn't do (a newer version loaded). */
+  showNotice?: (message: string) => void;
 }
 
 export const useWorkflowDocument = ({
@@ -89,6 +91,7 @@ export const useWorkflowDocument = ({
   isDirty,
   setIsDirty,
   showError,
+  showNotice,
 }: Options) => {
   const navigate = useNavigate();
   const [workflowName, setWorkflowName] = useState("");
@@ -418,6 +421,9 @@ export const useWorkflowDocument = ({
           setConflict({ storedRevision: data.revision });
         } else {
           void load();
+          showNotice?.(
+            "This workflow was changed in another tab (or by a custom node update); the newer version is shown now.",
+          );
         }
       } catch {
         // The next save tells.
@@ -425,7 +431,7 @@ export const useWorkflowDocument = ({
     };
     document.addEventListener("visibilitychange", check);
     return () => document.removeEventListener("visibilitychange", check);
-  }, [workflowId, readOnly, load, isDirtyRef, adoptOwnRevisions]);
+  }, [workflowId, readOnly, load, isDirtyRef, adoptOwnRevisions, showNotice]);
 
   /** Conflict: show the version saved elsewhere (this tab's changes go). */
   const reloadSaved = useCallback(() => {

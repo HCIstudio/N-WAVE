@@ -43,6 +43,8 @@ export const createApp = (): Express => {
     credentials: true,
   };
 
+  // A page following a run reads where its log goes on and whether it's live.
+  corsOptions.exposedHeaders = ["X-Run-Live", "X-Log-End"];
   app.use(cors(corsOptions));
   app.use(express.json({ limit: REQUEST_BODY_LIMIT }));
   app.use(express.urlencoded({ extended: true, limit: REQUEST_BODY_LIMIT }));

@@ -33,9 +33,10 @@ runs it and shows the results.
 
 ## Elsewhere
 
-- **Glossary** in N-WAVE: every term (process, channel, tuple, `meta`, samplesheet, …) in a
-  sentence or two. Open it from the home page, or with the ⓘ buttons next to the terms.
-  Online: [glossary in the demo](https://hcistudio.github.io/N-WAVE/glossary).
+- **Help** in N-WAVE: what N-WAVE does, the node colors, the canvas, and a glossary of every
+  term (process, channel, tuple, `meta`, samplesheet, …) in a sentence or two. Open it from the
+  home page, the canvas's **?** button, or the ⓘ buttons next to the terms.
+  Online: [Help in the demo](https://hcistudio.github.io/N-WAVE/help).
 - **[README](https://github.com/HCIstudio/N-WAVE#readme)**: overview, configuration, security
   and architecture.
 - **[CONTRIBUTING.md](https://github.com/HCIstudio/N-WAVE/blob/main/CONTRIBUTING.md)**:

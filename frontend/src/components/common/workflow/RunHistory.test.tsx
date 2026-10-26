@@ -1,5 +1,6 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunSummary } from "../../../api/runs";
 
@@ -21,7 +22,7 @@ const runs: RunSummary[] = [
     finishedAt: "2026-10-15T09:00:30.000Z",
   },
 ];
-const listRuns = vi.fn(async (_workflowId: string) => runs);
+const listRuns = vi.fn(async (_workflowId?: string, _limit?: number) => runs);
 const getRunLog = vi.fn(
   async (id: string) =>
     `log of ${id}\nERROR ~ boom\nCommand error:\n  .command.sh: line 2: fastqc: command not found`,
@@ -30,7 +31,7 @@ const listRunResults = vi.fn(async (_id: string) => []);
 const cancelRun = vi.fn(async (_id: string) => undefined);
 vi.mock("../../../api/runs", () => ({
   cancelRun: (id: string) => cancelRun(id),
-  listRuns: (id: string) => listRuns(id),
+  listRuns: (id?: string, limit?: number) => listRuns(id, limit),
   getRunLog: (id: string) => getRunLog(id),
   listRunResults: (id: string) => listRunResults(id),
   runResultUrl: (id: string, path: string) => `/api/${id}/${path}`,
@@ -63,7 +64,7 @@ describe("RunHistory", () => {
   it("lists the workflow's runs and shows a run's message and log", async () => {
     act(() => root.render(<RunHistory workflowId="wf1" />));
     await flush();
-    expect(listRuns).toHaveBeenCalledWith("wf1");
+    expect(listRuns).toHaveBeenCalledWith("wf1", undefined);
     const buttons = container.querySelectorAll(
       '[aria-label="Earlier runs"] button',
     );
@@ -145,5 +146,25 @@ describe("RunHistory", () => {
   it("RunLog shows a placeholder until there is output", () => {
     act(() => root.render(<RunLog text="" />));
     expect(container.textContent).toContain("No output yet");
+  });
+  it("lists every workflow's runs by workflow name, with a link to the workflow", async () => {
+    listRuns.mockResolvedValueOnce(
+      runs.map((run) => ({ ...run, workflowName: "RNA-seq" })),
+    );
+    act(() =>
+      root.render(
+        <MemoryRouter>
+          <RunHistory workflowId={null} everyWorkflow />
+        </MemoryRouter>,
+      ),
+    );
+    await flush();
+    expect(listRuns).toHaveBeenCalledWith(undefined, 100);
+    const buttons = container.querySelectorAll('[aria-label="Earlier runs"] button');
+    expect(buttons[0].textContent).toContain("RNA-seq");
+    act(() => (buttons[0] as HTMLButtonElement).click());
+    await flush();
+    const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Open RNA-seq");
+    expect(link?.getAttribute("href")).toBe("/workflow/wf1");
   });
 });

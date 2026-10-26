@@ -1,13 +1,16 @@
 // Running the workflow: starting a run, following its streamed output,
-// cancelling it, and what the run panel and error notice show about it.
+// cancelling it, and what the run panel and error notice show about it. A
+// run this page didn't start, or whose stream broke, is followed through its
+// log until it ends.
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Edge, Node } from "@xyflow/react";
-import api from "../../api";
+import api, { isDemoMode } from "../../api";
+import { listRuns, readRunLogFrom } from "../../api/runs";
 import type { ToastType } from "../../components/common";
 import type { RunPanelTab } from "../../components/common/workflow/ExecutionStatusPanel";
 import type { NodeData } from "../../components/nodes/BaseNode";
-import { useExecutionStatus } from "../../hooks";
+import { useExecutionStatus, useLatestRef } from "../../hooks";
 import { buildPipelineLaunch } from "../../registry/pipelines/launch";
 import type { ExecutionSettings } from "../../types/execution";
 import {
@@ -19,17 +22,41 @@ import { createLineReader, parseRunId } from "../../utils/streamLines";
 import {
   buildRunRequest,
   findRunProblem,
+  readRecordedOutcome,
   readRunOutcome,
+  type RunOutcome,
   runIdFromOutput,
 } from "./runRequest";
 
 /** The log updates at most this often while a run streams. */
 const LOG_REFRESH_MS = 250;
+/** How often a followed run's log is read. */
+const FOLLOW_INTERVAL_MS = 1000;
+/** How often N-WAVE is asked again while it doesn't answer. */
+const RECONNECT_INTERVAL_MS = 3000;
+
+const WAITING_NOTE =
+  "\nN-WAVE: N-WAVE doesn't answer (it may be restarting). Waiting for it, to show how the run went on…\n";
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * N-WAVE didn't answer: the network dropped, or it is down or restarting
+ * (then the proxy in front of it answers with a server error: nginx 502,
+ * Vite's dev server 500).
+ */
+const isUnreachable = (caught: unknown): boolean => {
+  if ((caught as { isAxiosError?: boolean } | null)?.isAxiosError !== true) return false;
+  const status = getResponseStatus(caught);
+  return !status || status >= 500;
+};
 
 export interface RunError {
   message: string;
   output?: string;
   code?: string | number;
+  /** N-WAVE knows why it ended (it shut down, or was interrupted): no guesses. */
+  known?: boolean;
 }
 
 interface Options {
@@ -67,13 +94,18 @@ export const useWorkflowRun = ({
   const [output, setOutput] = useState("");
   const pendingOutput = useRef<string | null>(null);
   const [panelTab, setPanelTab] = useState<RunPanelTab>("steps");
-  const [panelMinimized, setPanelMinimized] = useState(false);
+  // The run panel stays on the page as a small Runs bar until a run starts
+  // or it is expanded.
+  const [panelMinimized, setPanelMinimized] = useState(true);
   const [error, setError] = useState<RunError | null>(null);
 
   const executionStatus = useExecutionStatus({
     nodes,
     executionId: currentExecutionId,
   });
+  // The run this page follows through its log, if any; set `stopped` to end it.
+  const following = useRef<{ stopped: boolean } | null>(null);
+  const latest = useLatestRef({ nodes, edges, isRunning, executionStatus });
 
   // The Run button (while running), Show runs and Show full log all bring
   // the run panel back, expanded.
@@ -99,12 +131,15 @@ export const useWorkflowRun = ({
     pendingOutput.current = text;
   };
 
-  const finish = (text: string, launchNodeId: string | undefined) => {
+  const finish = (
+    text: string,
+    launchNodeId: string | undefined,
+    outcome: RunOutcome = readRunOutcome(text),
+  ) => {
     pendingOutput.current = null;
     setOutput(text);
     setCurrentExecutionId(null);
 
-    const outcome = readRunOutcome(text);
     // Remember the run on the Pipeline node, to show its reports.
     const runId = runIdFromOutput(text);
     if (launchNodeId && runId) {
@@ -135,37 +170,11 @@ export const useWorkflowRun = ({
         ? `The run hit its resource limits. ${outcome.resourceProblem}`
         : (outcome.reason ?? "Workflow execution failed"),
       output: text,
+      known: Boolean(outcome.reason),
     });
   };
 
-  const fail = (caught: unknown, startedRunId: string | null) => {
-    // The connection dropped (network, sleep, proxy) after the run started:
-    // the server goes on with it, so it hasn't failed. Its end shows in the
-    // run history, where it can also be stopped.
-    const lostConnection =
-      (caught as { isAxiosError?: boolean } | null)?.isAxiosError === true &&
-      !getResponseStatus(caught);
-    if (startedRunId && lostConnection) {
-      pendingOutput.current = null;
-      setOutput((previous) =>
-        [
-          previous.trimEnd(),
-          `N-WAVE: the connection was lost, but run ${startedRunId} goes on on the server. Its result will be in the run history (Runs).`,
-        ]
-          .filter(Boolean)
-          .join("\n"),
-      );
-      executionStatus.completeExecution(
-        false,
-        "The connection was lost; the run goes on on the server.",
-      );
-      setError({
-        message:
-          "The connection to N-WAVE was lost, but the run goes on on the server. Open Runs to follow it or stop it; don't start it again.",
-        output: "",
-      });
-      return;
-    }
+  const fail = (caught: unknown) => {
     console.error("Workflow execution failed:", caught);
     const data = getResponseData(caught);
     // The execute endpoint reports the specific problem in `error`.
@@ -195,9 +204,97 @@ export const useWorkflowRun = ({
     });
   };
 
+  /**
+   * Follow a run through its log until it ends: one this page didn't start
+   * (the workflow was reopened while it ran), or one whose stream broke (the
+   * connection dropped, or N-WAVE restarted). While N-WAVE doesn't answer,
+   * it waits for it. `fresh` starts the progress over (a reopened page).
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: finish, fail and queueOutput only set state.
+  const follow = useCallback(async (runId: string, fresh: boolean) => {
+    if (following.current) following.current.stopped = true;
+    const token = { stopped: false };
+    following.current = token;
+    setIsRunning(true);
+    setCurrentExecutionId(runId);
+    setLastRunId(runId);
+    if (fresh) {
+      latest.current.executionStatus.startExecution();
+      setOutput("");
+      setPanelMinimized(false);
+    }
+    const lineReader = createLineReader((line) =>
+      latest.current.executionStatus.parseNextflowOutput(line),
+    );
+    let text = "";
+    let offset = 0;
+    let waiting = false;
+    try {
+      while (!token.stopped) {
+        try {
+          const chunk = await readRunLogFrom(runId, offset);
+          waiting = false;
+          text += chunk.text;
+          offset = chunk.end;
+          lineReader.feed(text);
+          queueOutput(text);
+          if (!chunk.live) break;
+        } catch (caught: unknown) {
+          if (getResponseStatus(caught) === 404) break;
+          if (!isUnreachable(caught)) throw caught;
+          if (!waiting) queueOutput(`${text}${WAITING_NOTE}`);
+          waiting = true;
+        }
+        await sleep(waiting ? RECONNECT_INTERVAL_MS : FOLLOW_INTERVAL_MS);
+      }
+      if (token.stopped) return;
+      lineReader.flush(text);
+      // Its recorded status says how it ended (the log may stop short,
+      // e.g. when N-WAVE was killed while it ran).
+      const recorded = (await listRuns(workflowId, 20).catch(() => [])).find(
+        (candidate) => candidate.id === runId,
+      );
+      const launch = buildPipelineLaunch(latest.current.nodes, latest.current.edges);
+      finish(text, launch?.nodeId, readRecordedOutcome(text, recorded));
+    } catch (caught: unknown) {
+      if (!token.stopped) fail(caught);
+    } finally {
+      if (following.current === token) {
+        following.current = null;
+        setIsRunning(false);
+        setCurrentExecutionId(null);
+      }
+    }
+  }, [workflowId, latest]);
+
+  // Reopening the workflow while one of its runs goes on shows that run.
+  useEffect(() => {
+    if (isDemoMode || !workflowId) return;
+    let cancelled = false;
+    void listRuns(workflowId, 5)
+      .then((runs) => {
+        const live = runs.find((candidate) => candidate.status === "running");
+        if (!cancelled && live && !latest.current.isRunning) void follow(live.id, true);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [workflowId, follow, latest]);
+
+  // Leaving the page stops following (the run goes on on the server).
+  useEffect(
+    () => () => {
+      if (following.current) following.current.stopped = true;
+    },
+    [],
+  );
+
   const run = async (settings: ExecutionSettings, options: { resume?: boolean } = {}) => {
     // The run's id once the server started it (the stream's first line).
     let startedRunId: string | null = null;
+    // Set when the stream broke and the run is followed through its log.
+    let handedOver = false;
     setIsRunning(true);
     setExecutionSettings(settings);
     executionStatus.startExecution();
@@ -252,10 +349,19 @@ export const useWorkflowRun = ({
       lineReader.flush(text);
       finish(text, launch?.nodeId);
     } catch (caught: unknown) {
-      fail(caught, startedRunId);
+      if (startedRunId && isUnreachable(caught)) {
+        // The run may well go on (or was stopped by a restart): find out
+        // from its log once N-WAVE answers, instead of starting it again.
+        handedOver = true;
+        void follow(startedRunId, false);
+      } else {
+        fail(caught);
+      }
     } finally {
-      setIsRunning(false);
-      setCurrentExecutionId(null);
+      if (!handedOver) {
+        setIsRunning(false);
+        setCurrentExecutionId(null);
+      }
     }
   };
 

@@ -3,13 +3,13 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { GLOSSARY } from "../glossary/glossary";
-import GlossaryPage from "./GlossaryPage";
+import HelpPage from "./HelpPage";
 
-const setup = (entry = "/glossary") => {
+const setup = (entry = "/help") => {
   const user = userEvent.setup();
   render(
     <MemoryRouter initialEntries={[entry]}>
-      <GlossaryPage />
+      <HelpPage />
     </MemoryRouter>,
   );
   return { user };
@@ -17,13 +17,21 @@ const setup = (entry = "/glossary") => {
 
 const terms = () => screen.queryAllByRole("term").map((term) => term.textContent);
 
-describe("GlossaryPage", () => {
+describe("HelpPage", () => {
   it("lists every term with its explanation and related terms", () => {
     setup();
+    expect(screen.getByRole("heading", { name: "Help", level: 1 })).toBeTruthy();
     expect(screen.getByRole("heading", { name: "Glossary" })).toBeTruthy();
     expect(terms()).toEqual(GLOSSARY.map((entry) => entry.term));
     const meta = document.getElementById("meta") as HTMLElement;
     expect(within(meta).getByRole("link", { name: "Tuple" }).getAttribute("href")).toBe("#tuple");
+  });
+
+  it("says what N-WAVE does, what the node colors mean and what the canvas has", () => {
+    setup();
+    expect(screen.getByRole("heading", { name: "What N-WAVE does" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Node colors and shapes" })).toBeTruthy();
+    expect(screen.getByText("Run and Resume:")).toBeTruthy();
   });
 
   it("links each term to its guide in the wiki, and the page to the other docs", () => {

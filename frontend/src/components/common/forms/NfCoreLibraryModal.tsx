@@ -1,5 +1,5 @@
 import type React from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { isDemoMode } from "../../../api";
 import {
   getNfCoreCatalog,
@@ -163,12 +163,17 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
     }
   };
 
+  // Stops the install in progress (Cancel on its button).
+  const installAbort = useRef<AbortController | null>(null);
+
   const handleInstall = async (module: { id: string }) => {
+    const controller = new AbortController();
+    installAbort.current = controller;
     setInstallingId(module.id);
     setError(null);
     setNotice(null);
     try {
-      const { dependencies } = await installNfCoreModule(module.id);
+      const { dependencies } = await installNfCoreModule(module.id, controller.signal);
       await refreshInstalledNfCoreNodes();
       setInstalled([module.id, ...dependencies], true);
       setNotice(
@@ -178,8 +183,13 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
       );
       onInstalled();
     } catch (installError: unknown) {
-      setError(getApiErrorMessage(installError, `Failed to install ${module.id}`));
+      if (controller.signal.aborted) {
+        setNotice(`Installing ${module.id} was cancelled.`);
+      } else {
+        setError(getApiErrorMessage(installError, `Failed to install ${module.id}`));
+      }
     } finally {
+      installAbort.current = null;
       setInstallingId(null);
     }
   };
@@ -388,21 +398,26 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                   >
                     {isInstalling ? "Removing..." : "Remove"}
                   </button>
+                ) : isInstalling ? (
+                  <button
+                    type="button"
+                    onClick={() => installAbort.current?.abort()}
+                    aria-label={`Cancel installing ${module.id}`}
+                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent"
+                  >
+                    Installing… Cancel
+                  </button>
                 ) : (
                   <button
                     type="button"
-                    disabled={!canInstall || isInstalling}
+                    disabled={!canInstall || installingId !== null}
                     onClick={() => handleInstall(module)}
                     aria-label={
                       canInstall ? `Install ${module.id}` : undefined
                     }
                     className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isInstalling
-                      ? "Installing..."
-                      : canInstall
-                        ? "Install"
-                        : "Needs config"}
+                    {canInstall ? "Install" : "Needs config"}
                   </button>
                 )}
               </div>
@@ -483,21 +498,26 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                   >
                     {isInstalling ? "Removing..." : "Remove"}
                   </button>
+                ) : isInstalling ? (
+                  <button
+                    type="button"
+                    onClick={() => installAbort.current?.abort()}
+                    aria-label={`Cancel installing ${subworkflow.id}`}
+                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent"
+                  >
+                    Installing… Cancel
+                  </button>
                 ) : (
                   <button
                     type="button"
-                    disabled={!canInstall || isInstalling}
+                    disabled={!canInstall || installingId !== null}
                     onClick={() => handleInstall(subworkflow)}
                     aria-label={
                       canInstall ? `Install ${subworkflow.id}` : undefined
                     }
                     className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isInstalling
-                      ? "Installing..."
-                      : canInstall
-                        ? "Install"
-                        : "Unsupported"}
+                    {canInstall ? "Install" : "Unsupported"}
                   </button>
                 )}
               </div>

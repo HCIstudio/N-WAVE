@@ -132,42 +132,23 @@ describe("WorkflowExecutionErrorNotification", () => {
     expect(screen.queryByRole("button", { name: "Show full log" })).toBeNull();
   });
 
-  it("retries, reports success, then closes", async () => {
-    let finish: () => void = () => {};
-    const onRetry = vi.fn(
-      () =>
-        new Promise<void>((resolve) => {
-          finish = resolve;
-        }),
-    );
-    const { all } = show({ onRetry });
+  it("runs again at once from Retry, without waiting for the run", () => {
+    const onRetry = vi.fn();
+    show({ onRetry });
     fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-
-    expect(screen.getByText("Retrying Workflow Execution...")).toBeTruthy();
-    expect(screen.getByText("Attempt 1")).toBeTruthy();
-    expect(
-      (screen.getByRole("button", { name: "Retrying..." }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
-    expect(screen.queryByText("Suggested Fixes")).toBeNull();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(100);
-    });
     expect(onRetry).toHaveBeenCalledOnce();
-    await act(async () => {
-      finish();
-    });
-    expect(screen.getByText("Workflow Executed Successfully!")).toBeTruthy();
-    expect(screen.queryByText("Something broke")).toBeNull();
-    expect(all.onClose).not.toHaveBeenCalled();
-
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(2000);
-    });
-    expect(all.onClose).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Retrying/)).toBeNull();
   });
 
+  it("offers Resume first when the workflow has a cache", () => {
+    const onRetry = vi.fn();
+    const onResume = vi.fn();
+    show({ onRetry, onResume });
+    fireEvent.click(screen.getByRole("button", { name: "Resume" }));
+    expect(onResume).toHaveBeenCalledOnce();
+    fireEvent.click(screen.getByRole("button", { name: "Run again from the start" }));
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
   it("keeps the error up when the retry fails", async () => {
     const consoleError = vi
       .spyOn(console, "error")

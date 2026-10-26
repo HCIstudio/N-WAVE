@@ -91,6 +91,13 @@ export const installNfCoreModule = async (
   const body = parseBody(installNfCoreModuleSchema, req, res);
   if (!body) return;
 
+  // The browser cancelled (or went away): stop downloading. The component
+  // being downloaded isn't installed; finished ones stay.
+  const cancel = new AbortController();
+  res.on("close", () => {
+    if (!res.writableFinished) cancel.abort();
+  });
+
   try {
     if (isSubworkflowId(body.id)) {
       const entry = findSubworkflowEntry(body.id);
@@ -101,7 +108,7 @@ export const installNfCoreModule = async (
         );
       }
       const { installed, manifest, dependencies } =
-        await installSubworkflow(entry);
+        await installSubworkflow(entry, { signal: cancel.signal });
       res
         .status(201)
         .json({ module: entry, installed, manifest, dependencies });
@@ -111,9 +118,10 @@ export const installNfCoreModule = async (
     if (!entry) {
       throw new NfCoreLibraryError(404, `Unknown nf-core module: ${body.id}`);
     }
-    const { installed, manifest } = await installModule(entry);
+    const { installed, manifest } = await installModule(entry, cancel.signal);
     res.status(201).json({ module: entry, installed, manifest });
   } catch (error: unknown) {
+    if (cancel.signal.aborted) return;
     sendError(res, error, "Failed to install nf-core module");
   }
 };

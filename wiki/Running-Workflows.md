@@ -5,8 +5,11 @@ finds a problem, Run is disabled and its tooltip says why.
 
 ## The run panel
 
-The panel opens with the run and stays until you close it; **Show runs** in the bottom bar
-brings it back.
+The panel opens with the run. Minimized, it is the **Runs** bar at the bottom right of the
+canvas, always there: click it for the run's steps and log, or the workflow's earlier runs. If
+you leave the page while a run goes, the run goes on; opening the workflow again shows it,
+live. If the connection drops (or N-WAVE restarts), the panel waits for N-WAVE and then shows
+how the run ended, instead of starting it again.
 
 - **Steps**: the progress of each step, by its name on the canvas, and the run's key results
   (such as the MultiQC report) when it ends.
@@ -45,12 +48,19 @@ lowered to the limit instead of failing. Runs without their own timeout stop aft
 Desktop, Docker's own memory setting also applies
 ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#docker-desktop-doesnt-have-enough-memory)).
 
+## All runs, on the home page
+
+The home page lists every workflow's runs under **Runs**, newest first: pick one for its log
+and results, or open its workflow. Runs that go on show there too, with **Stop all running** to
+stop them at once (each can be resumed later). Each workflow's card says how its last run went.
+
 ## Resuming a run
 
 After a run fails or is cancelled, fix what went wrong and run again with **Resume** on (the
-button next to Run; it's on by default after a failure). The run reuses every step whose code
-and inputs haven't changed and only runs what you changed and what follows. **Resume** shows
-once a saved workflow has a run with a cache.
+switch on the Run button; it's on by default after a failure). The run reuses every step whose
+code and inputs haven't changed and only runs what you changed and what follows. The switch is
+greyed until a saved workflow has a run with a cache. When a run fails, its notice offers
+**Resume** too.
 
 The cache is each step's work folder. **Execution Settings → Run cache** shows its size and
 clears it; results and logs stay.

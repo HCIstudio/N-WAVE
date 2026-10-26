@@ -1,8 +1,8 @@
 When a run fails for a common reason, N-WAVE says so in plain language: in the error notice,
 the run panel and the run's entry under **History**, with the step it happened in (**Show**
 moves the canvas to it) and a link to the matching section below. The full output is under
-the run panel's **Log** tab. For the words used here, see the **Glossary** in N-WAVE (home
-page → Glossary).
+the run panel's **Log** tab. For the words used here, see the glossary on the **Help** page in
+N-WAVE (home page → Help).
 
 **On this page:** [Run failures](#run-failures) ·
 [Installation and Docker](#installation-and-docker) · [Files and paths](#files-and-paths) ·

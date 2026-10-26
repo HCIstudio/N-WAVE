@@ -26,11 +26,11 @@ test.describe("run panel", () => {
     await expect(panel).toBeVisible();
 
     await panel.getByRole("button", { name: "Maximize panel" }).click();
-    await panel.getByRole("button", { name: "Close run panel" }).click();
-    await expect(panel).toHaveCount(0);
+    await panel.getByRole("button", { name: "Minimize run panel" }).click();
+    await expect(panel.getByRole("tab", { name: "Log" })).toHaveCount(0);
 
-    // The bottom bar brings it back, with the last run's log.
-    await page.getByRole("button", { name: "Show runs" }).click();
+    // The Runs bar brings it back, with the last run's log.
+    await panel.getByRole("button", { name: "Expand run panel" }).click();
     await expect(panel.getByLabel("Run log", { exact: true })).toContainText("Error:");
     await panel.getByRole("tab", { name: "History" }).click();
     await expect(panel).toContainText("hasn't been run on this server");

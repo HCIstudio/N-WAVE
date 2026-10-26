@@ -127,12 +127,14 @@ export const getNfCoreCatalog = async (): Promise<NfCoreCatalogResponse> => {
  * subworkflows a subworkflow brought in.
  */
 export const installNfCoreModule = async (
-  id: string
+  id: string,
+  /** Cancels the install: the server stops downloading. */
+  signal?: AbortSignal
 ): Promise<{ manifest: NfCoreAdapterManifest; dependencies: string[] }> => {
   const response = await api.post<{
     manifest: NfCoreAdapterManifest;
     dependencies?: string[];
-  }>("/nfcore/install", { id });
+  }>("/nfcore/install", { id }, { signal });
 
   return {
     manifest: response.data.manifest,

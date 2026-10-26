@@ -84,6 +84,10 @@ const WorkflowPageContent: React.FC = () => {
     (message: string) => showToast(message, "error"),
     [showToast]
   );
+  const showNotice = useCallback(
+    (message: string) => showToast(message, "info"),
+    [showToast]
+  );
   const { id: workflowId } = useParams<{ id: string }>();
   const { screenToFlowPosition, getNodes, fitView } = useReactFlow();
 
@@ -96,6 +100,7 @@ const WorkflowPageContent: React.FC = () => {
     isDirty,
     setIsDirty,
     showError,
+    showNotice,
   });
   const {
     readOnly,
@@ -135,6 +140,17 @@ const WorkflowPageContent: React.FC = () => {
     showToast,
   });
   const { isRunning } = run;
+  // Closing or reloading the tab while a run goes asks first (the run goes
+  // on, and opening the workflow again follows it).
+  useEffect(() => {
+    if (!isRunning) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isRunning]);
   const guards = useEditGuards({
     isRunning,
     readOnly,
@@ -554,7 +570,18 @@ const WorkflowPageContent: React.FC = () => {
           <WorkflowExecutionErrorNotification
             isVisible
             onClose={run.dismissError}
-            onRetry={() => run.run(executionSettings)}
+            onRetry={() => {
+              run.dismissError();
+              void run.run(executionSettings);
+            }}
+            onResume={
+              resume.available
+                ? () => {
+                    run.dismissError();
+                    void run.run(executionSettings, { resume: true });
+                  }
+                : undefined
+            }
             onShowLog={run.showLog}
             error={run.error}
             explanation={failure}
@@ -567,8 +594,8 @@ const WorkflowPageContent: React.FC = () => {
           nodes={canvasNodes}
           onCancel={run.executionStatus.cancelExecution}
           canCancel={run.canCancel}
-          onClose={run.executionStatus.hideStatus}
-          isVisible={run.executionStatus.isVisible}
+          // Always there: minimized, it is the Runs bar.
+          isVisible
           runId={isDemoMode ? null : run.lastRunId}
           output={run.output}
           workflowId={workflowId}

@@ -9,7 +9,7 @@ import {
   listRuns,
   type WorkflowCache,
 } from "../../api/runs";
-import { getApiErrorMessage } from "../../utils/errors";
+import { getApiErrorMessage, getResponseStatus } from "../../utils/errors";
 
 interface Options {
   /** The saved workflow (runs of unsaved ones aren't kept together). */
@@ -18,6 +18,9 @@ interface Options {
   enabled: boolean;
   isRunning: boolean;
 }
+
+/** How long to wait before asking a restarting N-WAVE again. */
+const RETRY_MS = 3000;
 
 /** Whether a run that ended this way is best resumed. */
 export const resumesAfter = (status: string | undefined): boolean =>
@@ -28,6 +31,9 @@ export const useRunResume = ({ workflowId, enabled, isRunning }: Options) => {
   const [resume, setResume] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
+
+  // Set when N-WAVE didn't answer (restarting): ask again a bit later.
+  const [retry, setRetry] = useState(0);
 
   const refresh = useCallback(async () => {
     if (!enabled || !workflowId) {
@@ -41,16 +47,21 @@ export const useRunResume = ({ workflowId, enabled, isRunning }: Options) => {
       ]);
       setCache(nextCache);
       setResume(nextCache.folders > 0 && resumesAfter(lastRun?.status));
-    } catch {
-      // An older backend without the cache API: no Resume choice.
-      setCache(null);
+    } catch (caught: unknown) {
+      // An older backend without the cache API: no Resume choice. One that
+      // doesn't answer (restarting) keeps what was known.
+      const status = getResponseStatus(caught);
+      if (status && status < 500) setCache(null);
+      else window.setTimeout(() => setRetry((count) => count + 1), RETRY_MS);
     }
   }, [enabled, workflowId]);
 
-  // On opening the workflow, and each time a run ends.
+  // On opening the workflow, each time a run ends, and again while N-WAVE
+  // doesn't answer (a run that ended because it shut down).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry asks again.
   useEffect(() => {
     if (!isRunning) void refresh();
-  }, [isRunning, refresh]);
+  }, [isRunning, refresh, retry]);
 
   const clear = useCallback(async () => {
     if (!workflowId) return;

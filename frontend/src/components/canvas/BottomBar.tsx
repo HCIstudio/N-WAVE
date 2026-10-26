@@ -1,6 +1,6 @@
 import type React from "react";
 import { useState, useEffect, useRef } from "react";
-import { Link } from "react-router";
+import { Link, useNavigate } from "react-router";
 import {
   Home,
   Save,
@@ -11,9 +11,7 @@ import {
   Settings,
   Container,
   FolderDown,
-  History,
   Hourglass,
-  RotateCcw,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
@@ -38,11 +36,12 @@ interface BottomBarProps {
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
   onExecutionSettingsChange: (settings: ExecutionSettings) => void;
-  /** Open the run panel: the last run's steps and log, and earlier runs. */
+  /** Open the run panel: the running workflow's steps and log. */
   onShowRuns?: () => void;
   /**
-   * The Resume choice next to Run, when earlier runs left a cache: the next
-   * run then reuses the steps that haven't changed.
+   * The Resume switch on the Run button, a setting of the next run: with a
+   * cache from earlier runs, the run reuses the steps that haven't changed.
+   * Off (greyed) while there is no cache.
    */
   resume?: { available: boolean; on: boolean; onChange: (on: boolean) => void };
   /** More sections at the end of the execution settings (the run cache). */
@@ -75,6 +74,9 @@ const BottomBar: React.FC<BottomBarProps> = ({
   const [settingsChanged, setSettingsChanged] = useState(false);
   const [settingsSaved, setSettingsSaved] = useState(true);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  // Home while a run goes: ask first (the run goes on without the page).
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const navigate = useNavigate();
   const modalRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
@@ -385,6 +387,11 @@ const BottomBar: React.FC<BottomBarProps> = ({
       >
         <Link
           to="/"
+          onClick={(event) => {
+            if (!isRunning) return;
+            event.preventDefault();
+            setConfirmLeave(true);
+          }}
           className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
           aria-label="Home"
         >
@@ -435,72 +442,81 @@ const BottomBar: React.FC<BottomBarProps> = ({
 
         {checkControl}
 
-        {/* Run Button: while a run goes, it shows the run panel's hourglass
-            and brings that panel back. */}
-        {onRun &&
-          (isRunning ? (
-            <button
-              type="button"
-              onClick={onShowRuns}
-              className="inline-flex items-center gap-1.5 rounded-md bg-nextflow-green px-2 py-1.5 text-xs font-medium text-white ring-2 ring-nextflow-green/40 hover:bg-nextflow-green/90"
-              aria-label="Show the running workflow"
-              title="The workflow is running. Click to show its progress."
-            >
-              <Hourglass className="h-4 w-4 animate-pulse" aria-hidden />
-              Running
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleRun}
-              disabled={runBlockedReason !== null}
-              className="p-1.5 text-white bg-nextflow-green hover:bg-nextflow-green/90 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Run Workflow"
-              title={
-                runBlockedReason
-                  ? runBlockedReason
-                  : executionSettings.runProfile
-                  ? `Run through the profile "${executionSettings.runProfile}"`
-                  : executionSettings.container?.enabled
-                  ? "Run with Docker"
-                  : "Run locally"
-              }
-            >
-              <Play className="w-4 h-4" />
-            </button>
-          ))}
-
-        {onRun && !isRunning && resume?.available && (
-          <button
-            type="button"
-            onClick={() => resume.onChange(!resume.on)}
-            aria-pressed={resume.on}
-            className={`inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs transition-colors ${
-              resume.on
-                ? "bg-sky-100 text-sky-900 ring-1 ring-sky-500"
-                : "text-text hover:bg-accent"
-            }`}
-            title={
-              resume.on
-                ? "Resume is on: the next run reuses the steps whose code and inputs haven't changed. Click to run every step."
-                : "Resume is off: the next run runs every step. Click to reuse unchanged steps from the last run."
-            }
-          >
-            <RotateCcw className="h-3.5 w-3.5" aria-hidden />
-            Resume
-          </button>
-        )}
-
-        {onShowRuns && (
-          <button
-            type="button"
-            onClick={onShowRuns}
-            className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
-            aria-label="Show runs"
-            title="Show the run panel: the last run's steps and log, and earlier runs"
-          >
-            <History className="w-4 h-4" />
-          </button>
+        {/* Run, with its Resume switch: a setting of the run, not an action.
+            While a run goes, the button shows the hourglass and brings the
+            run panel back. */}
+        {onRun && (
+          <div className="inline-flex items-stretch overflow-hidden rounded-md ring-1 ring-nextflow-green/50">
+            {isRunning ? (
+              <button
+                type="button"
+                onClick={onShowRuns}
+                className="inline-flex items-center gap-1.5 bg-nextflow-green px-2 py-1.5 text-xs font-medium text-white hover:bg-nextflow-green/90"
+                aria-label="Show the running workflow"
+                title="The workflow is running. Click to show its progress."
+              >
+                <Hourglass className="h-4 w-4 animate-pulse" aria-hidden />
+                Running
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleRun}
+                disabled={runBlockedReason !== null}
+                className="p-1.5 text-white bg-nextflow-green hover:bg-nextflow-green/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Run Workflow"
+                title={
+                  runBlockedReason
+                    ? runBlockedReason
+                    : `${
+                        executionSettings.runProfile
+                          ? `Run through the profile "${executionSettings.runProfile}"`
+                          : executionSettings.container?.enabled
+                            ? "Run with Docker"
+                            : "Run locally"
+                      }${resume?.on ? ", resuming the last run" : ""}`
+                }
+              >
+                <Play className="w-4 h-4" />
+              </button>
+            )}
+            {resume && (
+              <button
+                type="button"
+                role="switch"
+                aria-checked={resume.on}
+                aria-label="Resume"
+                disabled={!resume.available || isRunning}
+                onClick={() => resume.onChange(!resume.on)}
+                className={`inline-flex items-center gap-1.5 border-l border-nextflow-green/40 px-2 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${
+                  resume.on
+                    ? "bg-nextflow-green/10 font-medium text-nextflow-green"
+                    : "bg-background text-text-light hover:bg-accent"
+                }`}
+                title={
+                  !resume.available
+                    ? "Resume: a run reuses the steps an earlier run of this workflow finished. Nothing to reuse yet."
+                    : resume.on
+                      ? "Resume is on: the next run reuses the steps whose code and inputs haven't changed. Click to run every step."
+                      : "Resume is off: the next run runs every step. Click to reuse the steps the last run finished."
+                }
+              >
+                <span
+                  aria-hidden
+                  className={`relative h-3 w-5 rounded-full transition-colors ${
+                    resume.on ? "bg-nextflow-green" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-2 w-2 rounded-full bg-white transition-all ${
+                      resume.on ? "left-2.5" : "left-0.5"
+                    }`}
+                  />
+                </span>
+                Resume
+              </button>
+            )}
+          </div>
         )}
 
         <button
@@ -546,6 +562,20 @@ const BottomBar: React.FC<BottomBarProps> = ({
           )}
         </button>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmLeave}
+        variant="primary"
+        title="A run is going"
+        message="The run goes on when you leave this page. Open this workflow again to follow it, or stop it from the run list on the home page."
+        confirmText="Leave"
+        cancelText="Stay"
+        onConfirm={() => {
+          setConfirmLeave(false);
+          navigate("/");
+        }}
+        onClose={() => setConfirmLeave(false)}
+      />
 
       {/* Confirmation Dialog for Unsaved Changes */}
       <ConfirmDialog

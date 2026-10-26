@@ -10,7 +10,7 @@ import type {
 const getNfCoreCatalog = vi.fn(
   async (): Promise<NfCoreCatalogResponse> => catalog([]),
 );
-const installNfCoreModule = vi.fn(async (_id: string) => ({
+const installNfCoreModule = vi.fn(async (_id: string, _signal?: AbortSignal) => ({
   dependencies: [] as string[],
 }));
 const uninstallNfCoreModule = vi.fn(async (_id: string) => {});
@@ -18,7 +18,8 @@ const refreshInstalledNfCoreNodes = vi.fn(async () => 0);
 vi.mock("../../../api", () => ({ default: {}, isDemoMode: false }));
 vi.mock("../../../api/nfcore", () => ({
   getNfCoreCatalog: () => getNfCoreCatalog(),
-  installNfCoreModule: (id: string) => installNfCoreModule(id),
+  installNfCoreModule: (id: string, signal?: AbortSignal) =>
+    installNfCoreModule(id, signal),
   uninstallNfCoreModule: (id: string) => uninstallNfCoreModule(id),
   refreshInstalledNfCoreNodes: () => refreshInstalledNfCoreNodes(),
 }));
@@ -245,7 +246,7 @@ describe("NfCoreLibraryModal", () => {
     const { user, onInstalled } = await setup(catalog([fastqc]));
     await user.click(button("Install nf-core/fastqc"));
 
-    expect(installNfCoreModule).toHaveBeenCalledWith("nf-core/fastqc");
+    expect(installNfCoreModule).toHaveBeenCalledWith("nf-core/fastqc", expect.any(AbortSignal));
     expect(refreshInstalledNfCoreNodes).toHaveBeenCalled();
     expect(
       (await screen.findByRole("status")).textContent,
@@ -263,10 +264,29 @@ describe("NfCoreLibraryModal", () => {
     const { user } = await setup(catalog([fastqc]));
     await user.click(button("Install nf-core/fastqc"));
     const pending = within(row("FASTQC")).getByRole("button") as HTMLButtonElement;
-    expect(pending.textContent).toBe("Installing...");
-    expect(pending.disabled).toBe(true);
+    expect(pending.textContent).toBe("Installing… Cancel");
+    expect(pending.disabled).toBe(false);
     finish({ dependencies: [] });
     expect(await screen.findByRole("button", { name: "Remove nf-core/fastqc" })).toBeTruthy();
+  });
+
+  it("cancels an install from its button", async () => {
+    let signal: AbortSignal | undefined;
+    installNfCoreModule.mockImplementation(
+      (_id: string, abort?: AbortSignal) =>
+        new Promise((_, reject) => {
+          signal = abort;
+          abort?.addEventListener("abort", () => reject(new Error("canceled")));
+        }),
+    );
+    const { user, onInstalled } = await setup(catalog([fastqc]));
+    await user.click(button("Install nf-core/fastqc"));
+    await user.click(button("Cancel installing nf-core/fastqc"));
+    expect(signal?.aborted).toBe(true);
+    expect(await screen.findByText("Installing nf-core/fastqc was cancelled.")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(onInstalled).not.toHaveBeenCalled();
+    expect(button("Install nf-core/fastqc").disabled).toBe(false);
   });
 
   it("shows why an install failed", async () => {

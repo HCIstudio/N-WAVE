@@ -203,8 +203,13 @@ test.describe("canvas flow", () => {
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
     await expect(page.locator('[data-id="demo-file-input"] [data-kind="input"]')).toHaveCount(1);
     await expect(page.locator('[data-id="demo-output"] [data-kind="step"]')).toHaveCount(1);
-    const legend = page.getByRole("list", { name: "Node kinds" });
-    await expect(legend).toContainText("nf-core steps");
+    // The canvas explains them on the Help page, opened from its ? button.
+    const [help] = await Promise.all([
+      page.context().waitForEvent("page"),
+      page.getByRole("link", { name: "Help" }).click(),
+    ]);
+    await expect(help.getByRole("heading", { name: "Node colors and shapes" })).toBeVisible();
+    await expect(help.getByText("nf-core steps")).toBeVisible();
   });
 
   test("a node can't be connected to itself", async ({ page }) => {

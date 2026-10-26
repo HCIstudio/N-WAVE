@@ -1,7 +1,7 @@
 import type React from "react";
 import { memo } from "react";
 import { useReactFlow } from "@xyflow/react";
-import { Keyboard, Maximize, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { CircleHelp, Keyboard, Maximize, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 
 export interface HistoryControls {
   canUndo: boolean;
@@ -86,6 +86,17 @@ const CustomControls: React.FC<{
           <Keyboard size={16} />
         </button>
       )}
+      {/* Help opens in another tab, so the canvas stays as it is. */}
+      <a
+        href={`${import.meta.env.BASE_URL}help`}
+        target="_blank"
+        rel="noreferrer"
+        aria-label="Help"
+        title="Help: what N-WAVE does, the node colors, and the glossary (opens in a new tab)"
+        className={buttonClass}
+      >
+        <CircleHelp size={16} />
+      </a>
     </div>
   );
 };
