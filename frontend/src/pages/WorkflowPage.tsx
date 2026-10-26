@@ -140,6 +140,17 @@ const WorkflowPageContent: React.FC = () => {
     showToast,
   });
   const { isRunning } = run;
+  // Closing or reloading the tab while a run goes asks first (the run goes
+  // on, and opening the workflow again follows it).
+  useEffect(() => {
+    if (!isRunning) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isRunning]);
   const guards = useEditGuards({
     isRunning,
     readOnly,
@@ -583,8 +594,10 @@ const WorkflowPageContent: React.FC = () => {
           nodes={canvasNodes}
           onCancel={run.executionStatus.cancelExecution}
           canCancel={run.canCancel}
-          onClose={run.executionStatus.hideStatus}
-          isVisible={run.executionStatus.isVisible}
+          // Always there as the Runs bar (minimized), except in the demo,
+          // which runs nothing.
+          onClose={isDemoMode ? run.executionStatus.hideStatus : undefined}
+          isVisible={!isDemoMode || run.executionStatus.isVisible}
           runId={isDemoMode ? null : run.lastRunId}
           output={run.output}
           workflowId={workflowId}

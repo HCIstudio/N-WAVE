@@ -74,14 +74,15 @@ describe("BottomBar", () => {
       expect(button("Loading...")).toBeTruthy();
     });
 
-    it("offers Resume next to Run when there is a cache", async () => {
+    it("has a Resume switch on Run, greyed while there is no cache", async () => {
       const onChange = vi.fn();
       const { rerender, all } = show({
         onRun: vi.fn(),
         resume: { available: true, on: true, onChange },
       });
-      const toggle = button("Resume");
-      expect(toggle.getAttribute("aria-pressed")).toBe("true");
+      const toggle = screen.getByRole("switch", { name: "Resume" }) as HTMLButtonElement;
+      expect(toggle.getAttribute("aria-checked")).toBe("true");
+      expect(button("Run Workflow").title).toBe("Run with Docker, resuming the last run");
       await userEvent.click(toggle);
       expect(onChange).toHaveBeenCalledWith(false);
       rerender(
@@ -89,13 +90,24 @@ describe("BottomBar", () => {
           <BottomBar {...all} resume={{ available: false, on: false, onChange }} />
         </MemoryRouter>,
       );
-      expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+      const off = screen.getByRole("switch", { name: "Resume" }) as HTMLButtonElement;
+      expect(off.disabled).toBe(true);
+      expect(off.title).toContain("Nothing to reuse yet");
       rerender(
         <MemoryRouter>
           <BottomBar {...all} isRunning />
         </MemoryRouter>,
       );
-      expect(screen.queryByRole("button", { name: "Resume" })).toBeNull();
+      expect((screen.getByRole("switch", { name: "Resume" }) as HTMLButtonElement).disabled).toBe(true);
+    });
+
+    it("asks before going home while a run goes", async () => {
+      show({ onRun: vi.fn(), isRunning: true });
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("link", { name: "Home" }));
+      expect(screen.getByText(/The run goes on when you leave this page/)).toBeTruthy();
+      await user.click(button("Stay"));
+      expect(screen.queryByText(/The run goes on when you leave this page/)).toBeNull();
     });
 
         it("links home", () => {
@@ -136,7 +148,6 @@ describe("BottomBar", () => {
     it("hides optional buttons without handlers", () => {
       show();
       expect(screen.queryByRole("button", { name: "Run Workflow" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Show runs" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Export Project" })).toBeNull();
     });
 
@@ -176,8 +187,7 @@ describe("BottomBar", () => {
       expect(screen.queryByRole("button", { name: "Run Workflow" })).toBeNull();
       const user = userEvent.setup();
       await user.click(button("Show the running workflow"));
-      await user.click(button("Show runs"));
-      expect(onShowRuns).toHaveBeenCalledTimes(2);
+      expect(onShowRuns).toHaveBeenCalledOnce();
       expect(onRun).not.toHaveBeenCalled();
     });
   });

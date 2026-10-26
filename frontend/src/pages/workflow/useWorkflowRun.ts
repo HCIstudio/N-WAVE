@@ -86,7 +86,9 @@ export const useWorkflowRun = ({
   const [output, setOutput] = useState("");
   const pendingOutput = useRef<string | null>(null);
   const [panelTab, setPanelTab] = useState<RunPanelTab>("steps");
-  const [panelMinimized, setPanelMinimized] = useState(false);
+  // The run panel stays on the page as a small Runs bar until a run starts
+  // or it is expanded.
+  const [panelMinimized, setPanelMinimized] = useState(true);
   const [error, setError] = useState<RunError | null>(null);
 
   const executionStatus = useExecutionStatus({
@@ -210,6 +212,7 @@ export const useWorkflowRun = ({
     if (fresh) {
       latest.current.executionStatus.startExecution();
       setOutput("");
+      setPanelMinimized(false);
     }
     const lineReader = createLineReader((line) =>
       latest.current.executionStatus.parseNextflowOutput(line),
