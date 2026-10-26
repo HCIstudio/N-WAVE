@@ -13,7 +13,67 @@ export interface NodeRunSummary {
   /** Tasks reused from the cache, counted in `done` too. */
   cached: number;
   tasks: RunTask[];
+  /**
+   * The node's processes, when it runs more than one (a subworkflow or a
+   * whole pipeline), in the order their first task showed up.
+   */
+  processes?: ProcessRunSummary[];
 }
+
+/** What the last run did for one Nextflow process of a node. */
+export interface ProcessRunSummary
+  extends Omit<NodeRunSummary, "processes" | "tasks"> {
+  /** Nextflow's full name, e.g. "NFCORE_ATACSEQ:ATACSEQ:FASTQC". */
+  process: string;
+  /** The process's own name, e.g. "FASTQC". */
+  label: string;
+}
+
+/** Counts and the overall status of a set of tasks. */
+const summarizeTasks = (tasks: RunTask[]) => {
+  const failed = tasks.filter((task) => task.status === "failed").length;
+  const running = tasks.filter((task) => task.status === "running").length;
+  const cached = tasks.filter((task) => task.status === "cached").length;
+  return {
+    status: (failed > 0
+      ? "failed"
+      : running > 0
+        ? "running"
+        : cached === tasks.length
+          ? "cached"
+          : "succeeded") as NodeRunSummary["status"],
+    total: tasks.length,
+    done: tasks.length - failed - running,
+    failed,
+    running,
+    cached,
+  };
+};
+
+/**
+ * A node's tasks by process. Processes are named by their last part;
+ * where two share it (the same module in two subworkflows), by the last two.
+ */
+const summarizeProcesses = (tasks: RunTask[]): ProcessRunSummary[] => {
+  const byProcess = new Map<string, RunTask[]>();
+  for (const task of tasks) {
+    byProcess.set(task.process, [...(byProcess.get(task.process) ?? []), task]);
+  }
+  const lastPart = (process: string, parts: number) =>
+    process.split(":").slice(-parts).join(":");
+  const names = [...byProcess.keys()];
+  return names.map((process) => {
+    const short = lastPart(process, 1);
+    const shared = names.some(
+      (other) => other !== process && lastPart(other, 1) === short,
+    );
+    return {
+      process,
+      label: shared ? lastPart(process, 2) : short,
+      ...summarizeTasks(byProcess.get(process) ?? []),
+    };
+  });
+};
 
 /**
  * Process names differ only in case and separators between the generator
@@ -66,25 +126,11 @@ export const summarizeNodeRuns = (
 
   const summaries: Record<string, NodeRunSummary> = {};
   for (const [nodeId, nodeTasks] of grouped) {
-    const failed = nodeTasks.filter((task) => task.status === "failed").length;
-    const running = nodeTasks.filter((task) => task.status === "running").length;
-    const cached = nodeTasks.filter((task) => task.status === "cached").length;
-    const done = nodeTasks.length - failed - running;
+    const processes = summarizeProcesses(nodeTasks);
     summaries[nodeId] = {
-      status:
-        failed > 0
-          ? "failed"
-          : running > 0
-            ? "running"
-            : cached === nodeTasks.length
-              ? "cached"
-              : "succeeded",
-      total: nodeTasks.length,
-      done,
-      failed,
-      running,
-      cached,
+      ...summarizeTasks(nodeTasks),
       tasks: nodeTasks,
+      ...(processes.length > 1 ? { processes } : {}),
     };
   }
   return summaries;

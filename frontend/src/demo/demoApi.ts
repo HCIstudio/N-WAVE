@@ -147,6 +147,22 @@ const demoApi = {
           fail(404, error instanceof Error ? error.message : String(error))
       );
     }
+    if (path === "/pipelines") {
+      // Straight from nf-co.re; the Pipeline panel copes when it can't be read.
+      return runAsync(async () => {
+        const { PIPELINES_URL, parsePipelinesJson } = await import(
+          "../registry/pipelines/catalog"
+        );
+        const response = await fetch(PIPELINES_URL);
+        if (!response.ok) {
+          throw new DemoStoreError(
+            502,
+            `Could not load the list of nf-core pipelines (HTTP ${response.status}).`,
+          );
+        }
+        return { pipelines: parsePipelinesJson(await response.json()) } as T;
+      });
+    }
     if (path === "/pipelines/schema") {
       const query = new URL(url, "http://demo").searchParams;
       return runAsync(

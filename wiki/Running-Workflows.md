@@ -11,8 +11,11 @@ you leave the page while a run goes, the run goes on; opening the workflow again
 live. If the connection drops (or N-WAVE restarts), the panel waits for N-WAVE and then shows
 how the run ended, instead of starting it again.
 
-- **Steps**: the progress of each step, by its name on the canvas, and the run's key results
-  (such as the MultiQC report) when it ends.
+- **Steps**: how many of the run's steps (Nextflow processes) have finished, the progress of
+  each step by its name on the canvas, and the run's key results (such as the MultiQC report)
+  when it ends. A whole pipeline or a subworkflow lists its own steps under it. The bar counts
+  finished steps, not time: steps differ a lot in how long they take, and until Nextflow says
+  how many steps there are, the bar only shows that the run is going.
 - **Log**: the full output as it arrives, with a **Copy** button.
 - **History**: the workflow's earlier runs, each with its outcome, log and results.
 

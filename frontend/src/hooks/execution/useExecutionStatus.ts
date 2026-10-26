@@ -7,6 +7,18 @@ import type {
   NodeExecutionStatus,
 } from "../../components/common/workflow/ExecutionStatusPanel";
 
+// Colours and styles in Nextflow's console output.
+const ANSI_CODES = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+
+/**
+ * A process in Nextflow's progress: "[-        ] NAME -" before its first
+ * task, "[ab/123456] NAME (tag) | 2 of 3" after. Group 1 is the name.
+ */
+const PROCESS_LINE =
+  /^\[(?:-\s*|[0-9a-f]{2}\/[0-9a-f]{6})\]\s+(\S+)(?:\s+\([^)]*\))?\s*(?:-$|\|\s*\d+\s+of\s+\d+)/;
+
+const newSnapshot = () => ({ names: new Set<string>(), finished: 0 });
+
 interface UseExecutionStatusOptions {
   nodes: Node<NodeData>[];
   onStatusChange?: (status: WorkflowExecutionStatus) => void;
@@ -32,6 +44,9 @@ export const useExecutionStatus = ({
   const statusRef = useRef(status);
   const progressUpdateInterval = useRef<NodeJS.Timeout | undefined>(undefined);
   const runtimeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
+  // Nextflow prints a snapshot of its processes after each "executor >"
+  // line: what the current one has listed so far.
+  const snapshot = useRef(newSnapshot());
 
   // Update ref when status changes
   useEffect(() => {
@@ -53,6 +68,7 @@ export const useExecutionStatus = ({
       runtimeTimer.current = undefined;
     }
 
+    snapshot.current = newSnapshot();
     // DO NOT initialize canvas nodes - only track actual Nextflow processes
     setStatus({
       isRunning: true,
@@ -101,6 +117,39 @@ export const useExecutionStatus = ({
             currentStage: `Started: ${launchMatch[1]} [${launchMatch[2]}]`,
           }));
         }
+      }
+
+      // How many processes the run has: each snapshot lists every process
+      // with tasks and, if the screen is short, counts the rest as "Plus N
+      // more processes waiting for tasks…". The total doesn't shrink, and a
+      // snapshot read halfway can only count fewer, so the highest is kept.
+      const plain = line.replace(ANSI_CODES, "").trim();
+      if (/^executor >/.test(plain)) snapshot.current = newSnapshot();
+      const listedMatch = plain.match(PROCESS_LINE);
+      const plusMatch = plain.match(/^Plus\s+(\d+)\s+more processes waiting/);
+      if (listedMatch || plusMatch) {
+        if (listedMatch) {
+          // A process listed again starts the next snapshot.
+          if (snapshot.current.names.has(listedMatch[1])) {
+            snapshot.current = newSnapshot();
+          }
+          snapshot.current.names.add(listedMatch[1]);
+          if (/✔$/.test(plain)) snapshot.current.finished += 1;
+        }
+        const waiting = plusMatch ? Number.parseInt(plusMatch[1], 10) : 0;
+        const listed = snapshot.current.names.size;
+        const { finished } = snapshot.current;
+        setStatus((prevStatus) => ({
+          ...prevStatus,
+          totalProcesses: Math.max(
+            prevStatus.totalProcesses ?? 0,
+            listed + waiting,
+          ),
+          finishedProcesses: Math.max(
+            prevStatus.finishedProcesses ?? 0,
+            finished,
+          ),
+        }));
       }
 
       // Parse executor info to get total running processes
