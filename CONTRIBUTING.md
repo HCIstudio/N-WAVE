@@ -8,6 +8,10 @@ to pass, and how changes reach `main`.
 You need **Node 20.19 or newer** (mongoose 9 requires it), **pnpm 10** (`corepack enable` picks the pinned version), **MongoDB 7**,
 and **Docker** if you want to execute workflows.
 
+With nvm, `nvm use` in the repository picks Node 20 (from `.nvmrc`). `pnpm install` warns
+("Unsupported engine") on an older Node; with one, tools fail with confusing errors such as
+`Cannot find module '@biomejs/cli-linux-x64/biome'`.
+
 ```bash
 # MongoDB
 docker run -d --name nwave-mongo -p 127.0.0.1:27017:27017 mongo:7
