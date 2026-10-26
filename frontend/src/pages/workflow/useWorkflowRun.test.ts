@@ -1,4 +1,5 @@
 import type { Edge, Node } from "@xyflow/react";
+import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { flush, renderHook } from "../../test/renderHook";
@@ -13,7 +14,16 @@ vi.mock("../../api", () => ({
   isDemoMode: false,
 }));
 
+const listRuns = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => []);
+const readRunLogFrom = vi.fn();
+vi.mock("../../api/runs", () => ({
+  listRuns: (...args: unknown[]) => listRuns(...args),
+  readRunLogFrom: (...args: unknown[]) => readRunLogFrom(...args),
+}));
+
 const { useWorkflowRun } = await import("./useWorkflowRun");
+
+const unreachable = () => Object.assign(new Error("Network Error"), { isAxiosError: true });
 
 /** A run whose output streams in two parts, then ends. */
 const streamedRun = (output: string) =>
@@ -46,6 +56,7 @@ describe("useWorkflowRun", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    listRuns.mockResolvedValue([]);
     hook = renderHook((props) => useWorkflowRun(props), { initialProps: options });
   });
   afterEach(() => hook.unmount());
@@ -129,17 +140,73 @@ describe("useWorkflowRun", () => {
     expect(hook.result.current.panelTab).toBe("log");
   });
 
-  it("says a run goes on when the connection drops after it started", async () => {
-    post.mockImplementationOnce(async (_url, _body, config) => {
-      config?.onDownloadProgress?.({ event: { target: { responseText: "N-WAVE run: bee_5\n" } } });
-      throw Object.assign(new Error("Network Error"), { isAxiosError: true });
-    });
-    await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
-    await flush();
-    const run = hook.result.current;
-    expect(run.error?.message).toContain("the run goes on on the server");
-    expect(run.output).toContain("run bee_5 goes on on the server");
-    expect(run.lastRunId).toBe("bee_5");
+  it("waits for N-WAVE when the connection drops, then shows how the run ended", async () => {
+    vi.useFakeTimers();
+    try {
+      post.mockImplementationOnce(async (_url, _body, config) => {
+        config?.onDownloadProgress?.({ event: { target: { responseText: "N-WAVE run: bee_5\n" } } });
+        throw unreachable();
+      });
+      // N-WAVE restarts: it doesn't answer once, then the run's log says
+      // it stopped it.
+      readRunLogFrom.mockRejectedValueOnce(unreachable());
+      const shutdown =
+        "N-WAVE run: bee_5\nN-WAVE: the run was stopped because N-WAVE shut down. Resume it to reuse the steps it finished.\n";
+      readRunLogFrom.mockResolvedValueOnce({ text: shutdown, end: 120, live: false });
+      listRuns.mockResolvedValue([{ id: "bee_5", status: "cancelled", startedAt: "" }]);
+
+      await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
+      await flush();
+      expect(hook.result.current.isRunning).toBe(true);
+      expect(hook.result.current.canCancel).toBe(true);
+      await act(() => vi.advanceTimersByTimeAsync(500));
+      expect(hook.result.current.output).toContain("Waiting for it");
+      expect(hook.result.current.error).toBeNull();
+
+      await act(() => vi.advanceTimersByTimeAsync(3500));
+      await flush();
+      const run = hook.result.current;
+      expect(run.isRunning).toBe(false);
+      expect(run.lastRunId).toBe("bee_5");
+      expect(run.output).toBe(shutdown);
+      expect(run.error?.message).toBe(
+        "The run was stopped because N-WAVE shut down. Resume it to reuse the steps it finished.",
+      );
+      // The run wasn't started again.
+      expect(post).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("follows a run that goes on when the workflow is opened", async () => {
+    hook.unmount();
+    vi.useFakeTimers();
+    try {
+      listRuns.mockResolvedValue([{ id: "bee_6", status: "running", startedAt: "" }]);
+      readRunLogFrom
+        .mockResolvedValueOnce({ text: "N-WAVE run: bee_6\n", end: 18, live: true })
+        .mockResolvedValueOnce({ text: "Done\n", end: 23, live: false });
+      hook = renderHook((props) => useWorkflowRun(props), { initialProps: options });
+      await flush();
+      expect(hook.result.current.isRunning).toBe(true);
+      expect(hook.result.current.canCancel).toBe(true);
+      expect(readRunLogFrom).toHaveBeenCalledWith("bee_6", 0);
+
+      listRuns.mockResolvedValue([{ id: "bee_6", status: "succeeded", startedAt: "" }]);
+      await act(() => vi.advanceTimersByTimeAsync(1500));
+      await flush();
+      expect(readRunLogFrom).toHaveBeenLastCalledWith("bee_6", 18);
+      expect(hook.result.current.isRunning).toBe(false);
+      expect(hook.result.current.output).toBe("N-WAVE run: bee_6\nDone\n");
+      expect(options.showToast).toHaveBeenCalledWith(
+        expect.stringContaining("executed successfully"),
+        "success",
+      );
+      expect(post).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("doesn't start a run with an empty, connected File Input", async () => {

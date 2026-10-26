@@ -74,3 +74,35 @@ describe("run files behind symlinks", () => {
     expect(file.text).toBe("output");
   });
 });
+
+describe("following a run's log", () => {
+  let root: string;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-follow-"));
+    vi.stubEnv("NWAVE_DATA_DIR", path.join(root, "data"));
+    fs.writeFileSync(path.join(root, "nwave-run.log"), "N-WAVE run: follow_1\nline one\n");
+    recordRun("follow_1", root);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("sends what came after a byte offset, where to go on, and whether the run is live", async () => {
+    const all = await request(app).get("/api/execute/runs/follow_1/log").expect(200);
+    expect(all.text).toBe("N-WAVE run: follow_1\nline one\n");
+    expect(all.headers["x-run-live"]).toBe("0");
+    const end = Number(all.headers["x-log-end"]);
+    expect(end).toBe(Buffer.byteLength(all.text));
+
+    fs.appendFileSync(path.join(root, "nwave-run.log"), "line two ✔\n");
+    const more = await request(app).get(`/api/execute/runs/follow_1/log?from=${end}`).expect(200);
+    expect(more.text).toBe("line two ✔\n");
+    expect(Number(more.headers["x-log-end"])).toBe(end + Buffer.byteLength("line two ✔\n"));
+
+    const none = await request(app)
+      .get(`/api/execute/runs/follow_1/log?from=${more.headers["x-log-end"]}`)
+      .expect(200);
+    expect(none.text).toBe("");
+  });
+});

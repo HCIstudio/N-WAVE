@@ -559,7 +559,18 @@ const WorkflowPageContent: React.FC = () => {
           <WorkflowExecutionErrorNotification
             isVisible
             onClose={run.dismissError}
-            onRetry={() => run.run(executionSettings)}
+            onRetry={() => {
+              run.dismissError();
+              void run.run(executionSettings);
+            }}
+            onResume={
+              resume.available
+                ? () => {
+                    run.dismissError();
+                    void run.run(executionSettings, { resume: true });
+                  }
+                : undefined
+            }
             onShowLog={run.showLog}
             error={run.error}
             explanation={failure}

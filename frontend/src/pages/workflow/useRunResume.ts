@@ -9,7 +9,7 @@ import {
   listRuns,
   type WorkflowCache,
 } from "../../api/runs";
-import { getApiErrorMessage } from "../../utils/errors";
+import { getApiErrorMessage, getResponseStatus } from "../../utils/errors";
 
 interface Options {
   /** The saved workflow (runs of unsaved ones aren't kept together). */
@@ -41,9 +41,10 @@ export const useRunResume = ({ workflowId, enabled, isRunning }: Options) => {
       ]);
       setCache(nextCache);
       setResume(nextCache.folders > 0 && resumesAfter(lastRun?.status));
-    } catch {
-      // An older backend without the cache API: no Resume choice.
-      setCache(null);
+    } catch (caught: unknown) {
+      // An older backend without the cache API: no Resume choice. One that
+      // doesn't answer (restarting) keeps what was known.
+      if (getResponseStatus(caught)) setCache(null);
     }
   }, [enabled, workflowId]);
 

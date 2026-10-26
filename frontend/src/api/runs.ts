@@ -40,10 +40,10 @@ export interface RunSummary {
   resumedFrom?: string;
 }
 
-/** Recorded runs of a workflow, newest first. */
-export const listRuns = async (workflowId: string, limit?: number): Promise<RunSummary[]> => {
+/** Recorded runs of a workflow (or, without one, of every workflow), newest first. */
+export const listRuns = async (workflowId?: string, limit?: number): Promise<RunSummary[]> => {
   const response = await api.get<{ runs: RunSummary[] }>("/execute/runs", {
-    params: { workflowId, ...(limit ? { limit } : {}) },
+    params: { ...(workflowId ? { workflowId } : {}), ...(limit ? { limit } : {}) },
   });
   return response.data.runs;
 };
@@ -81,6 +81,30 @@ export const getRunLog = async (runId: string): Promise<string> => {
     { responseType: "text", transformResponse: (data) => data },
   );
   return response.data;
+};
+
+/** What a run's log gained since `from` (a byte offset), for following it. */
+export interface RunLogChunk {
+  text: string;
+  /** Where the next read goes on from. */
+  end: number;
+  /** The run still goes on. */
+  live: boolean;
+}
+
+export const readRunLogFrom = async (runId: string, from: number): Promise<RunLogChunk> => {
+  const response = await api.get<string>(
+    `/execute/runs/${encodeURIComponent(runId)}/log`,
+    { params: { from }, responseType: "text", transformResponse: (data) => data },
+  );
+  const headers = response.headers as Record<string, string | undefined>;
+  const text = String(response.data ?? "");
+  const end = Number(headers["x-log-end"]);
+  return {
+    text,
+    end: Number.isFinite(end) ? end : from + new TextEncoder().encode(text).length,
+    live: headers["x-run-live"] === "1",
+  };
 };
 
 /** One Nextflow task of a run (from the backend's reading of its log). */

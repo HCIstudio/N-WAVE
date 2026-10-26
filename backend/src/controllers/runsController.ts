@@ -56,7 +56,12 @@ export const listRunsHandler = (req: Request, res: Response): void => {
   res.json({ runs: listRuns({ workflowId, limit, isLive: isRunLive }) });
 };
 
-/** A recorded run's full output, as the run panel showed it. */
+/**
+ * A recorded run's output, as the run panel showed it. `?from=<byte>` sends
+ * only what was written after that, so a page can follow a run it didn't
+ * start (reopened, or after the connection was lost). `X-Run-Live` says
+ * whether the run still goes on, `X-Log-End` where to continue from.
+ */
 export const getRunLog = (req: Request, res: Response): void => {
   const id = parseRunId(req, res);
   if (!id) return;
@@ -65,9 +70,21 @@ export const getRunLog = (req: Request, res: Response): void => {
     res.status(404).json({ message: `No log for run ${id}` });
     return;
   }
+  // Checked before the size is read, so a run that ends meanwhile is
+  // followed once more and its last lines aren't missed.
+  const live = isRunLive(id);
+  const size = fs.statSync(file).size;
+  const from = Math.min(size, Math.max(0, Math.floor(Number(req.query.from) || 0)));
   res.setHeader("Content-Type", "text/plain; charset=utf-8");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  fs.createReadStream(file).pipe(res);
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader("X-Run-Live", live ? "1" : "0");
+  res.setHeader("X-Log-End", String(size));
+  if (from >= size) {
+    res.end();
+    return;
+  }
+  fs.createReadStream(file, { start: from, end: size - 1 }).pipe(res);
 };
 
 /** `{ files }`: the files in a run's results directory. */
