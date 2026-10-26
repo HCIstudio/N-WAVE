@@ -29,7 +29,8 @@ bottom bar saves at once).
   the bin in the bottom-right corner. Hover a connection and click **×** to remove it.
 
 Node colors show their kind: **inputs** light blue, **nf-core steps** green, **other steps**
-grey (the legend is on the home page and in the canvas's corner).
+grey (the legend is on the home page and on the Help page, which the canvas's **?** button
+opens).
 
 ## Connecting
 
@@ -94,4 +95,4 @@ to it, or asks the same question if it has unsaved changes.
 
 - [Running workflows](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows)
 - [Custom nodes](https://github.com/HCIstudio/N-WAVE/wiki/Custom-Nodes), for steps of your own
-- The **Glossary** in N-WAVE, for terms such as *channel*, *tuple* or *meta*
+- The **Help** page in N-WAVE (its glossary), for terms such as *channel*, *tuple* or *meta*

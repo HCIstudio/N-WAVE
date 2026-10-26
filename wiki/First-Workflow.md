@@ -69,4 +69,5 @@ whole script is what **Download Workflow** saves. Your workflow is saved automat
 - [Node reference](https://github.com/HCIstudio/N-WAVE/wiki/Nodes): what every node does.
 - [nf-core library](https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library): real
   bioinformatics tools, or start from the **QC of FASTQ files** template.
-- Unknown terms: the **Glossary** in N-WAVE (home page → Glossary, or the ⓘ buttons).
+- Unknown terms: the **Help** page in N-WAVE (home page → Help, the canvas's **?** button, or
+  the ⓘ buttons).

@@ -20,7 +20,7 @@ each step produced.
   It builds, edits and exports workflows; running them needs an installation.
 - **Learn it:** the [wiki](https://github.com/HCIstudio/N-WAVE/wiki) starts with
   [your first workflow in 10 minutes](https://github.com/HCIstudio/N-WAVE/wiki/First-Workflow).
-  The **Glossary** in N-WAVE explains the terms.
+  The **Help** page in N-WAVE explains the app and its terms.
 
 ## What it does
 

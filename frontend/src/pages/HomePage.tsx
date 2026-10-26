@@ -3,7 +3,7 @@ import { useState, useRef, useEffect, useCallback, useId } from "react";
 import { Link, useNavigate } from "react-router";
 import {
   AlertTriangle,
-  BookA,
+  CircleHelp,
   BookOpen,
   Copy,
   Pencil,
@@ -687,11 +687,11 @@ const HomePage: React.FC = () => {
                 <span>Wiki</span>
               </a>
               <Link
-                to="/glossary"
+                to="/help"
                 className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
               >
-                <BookA size={16} aria-hidden />
-                <span>Glossary</span>
+                <CircleHelp size={16} aria-hidden />
+                <span>Help</span>
               </Link>
               <button
                 type="button"

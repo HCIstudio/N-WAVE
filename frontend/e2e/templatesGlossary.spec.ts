@@ -25,9 +25,9 @@ test.describe("templates and glossary", () => {
     await tuple.hover();
     const card = page.getByRole("dialog", { name: "Tuple" });
     await expect(card).toContainText("Several values that travel together");
-    await expect(card.getByRole("link", { name: "All terms in the glossary" })).toHaveAttribute(
+    await expect(card.getByRole("link", { name: "All terms in the glossary (Help)" })).toHaveAttribute(
       "href",
-      /\/glossary#tuple$/,
+      /\/help#tuple$/,
     );
   });
 
@@ -43,9 +43,10 @@ test.describe("templates and glossary", () => {
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
   });
 
-  test("the glossary lists the terms, and the home page links to it", async ({ page }) => {
+  test("the Help page lists the terms, and the home page links to it", async ({ page }) => {
     await page.goto("./");
-    await page.getByRole("link", { name: "Glossary" }).click();
+    await page.getByRole("link", { name: "Help" }).click();
+    await expect(page.getByRole("heading", { name: "Help", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Glossary" })).toBeVisible();
     await expect(page.getByRole("term")).toHaveCount(25);
     await page.getByPlaceholder("Search terms...").fill("sample");

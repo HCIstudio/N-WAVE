@@ -31,9 +31,16 @@ const router = createBrowserRouter(
               }),
             },
             {
+              path: "help",
+              lazy: async () => ({
+                Component: (await import("./pages/HelpPage")).default,
+              }),
+            },
+            {
+              // Its old name, for links and bookmarks from before.
               path: "glossary",
               lazy: async () => ({
-                Component: (await import("./pages/GlossaryPage")).default,
+                Component: (await import("./pages/HelpPage")).default,
               }),
             },
             {

@@ -24,8 +24,8 @@ describe("Term", () => {
     await user.hover(button);
     const card = screen.getByRole("dialog", { name: "Tuple" });
     expect(card.textContent).toContain("Several values that travel together");
-    expect(screen.getByRole("link", { name: "All terms in the glossary" }).getAttribute("href")).toBe(
-      "/glossary#tuple",
+    expect(screen.getByRole("link", { name: "All terms in the glossary (Help)" }).getAttribute("href")).toBe(
+      "/help#tuple",
     );
     expect(screen.getByRole("link", { name: "Guide: nf-core library" }).getAttribute("href")).toBe(
       "https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library#using-a-module",
