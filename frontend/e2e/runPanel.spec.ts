@@ -30,7 +30,7 @@ test.describe("run panel", () => {
     await expect(panel.getByRole("tab", { name: "Log" })).toHaveCount(0);
 
     // The Runs bar brings it back, with the last run's log.
-    await panel.getByRole("button", { name: "Expand run panel" }).click();
+    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
     await expect(panel.getByLabel("Run log", { exact: true })).toContainText("Error:");
     await panel.getByRole("tab", { name: "History" }).click();
     await expect(panel).toContainText("hasn't been run on this server");
