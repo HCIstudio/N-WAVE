@@ -62,6 +62,15 @@ export interface NodePackImportResult {
   installedComponents: string[];
   /** Nodes or components that failed, with the reason. */
   failures: string[];
+  /** Stopped by `signal`: the rest wasn't installed or saved. */
+  cancelled?: boolean;
+}
+
+export interface NodePackImportOptions {
+  /** Stops the installs; what finished stays installed. */
+  signal?: AbortSignal;
+  /** Called before each component is installed. */
+  onInstalling?: (id: string, position: number, count: number) => void;
 }
 
 /**
@@ -71,6 +80,7 @@ export interface NodePackImportResult {
 export const importPackNodes = async (
   nodes: StoredCustomNode[],
   missingComponents: string[],
+  options: NodePackImportOptions = {},
 ): Promise<NodePackImportResult> => {
   const result: NodePackImportResult = {
     saved: [],
@@ -84,13 +94,22 @@ export const importPackNodes = async (
       Number(!b.startsWith("nf-core/subworkflows/")),
   );
   const brought = new Set<string>();
-  for (const id of ordered) {
+  for (const [position, id] of ordered.entries()) {
     if (brought.has(id)) continue;
+    if (options.signal?.aborted) {
+      result.cancelled = true;
+      break;
+    }
+    options.onInstalling?.(id, position + 1, ordered.length);
     try {
-      const { dependencies } = await installNfCoreModule(id);
+      const { dependencies } = await installNfCoreModule(id, options.signal);
       result.installedComponents.push(id);
       for (const dependency of dependencies) brought.add(dependency);
     } catch (error) {
+      if (options.signal?.aborted) {
+        result.cancelled = true;
+        break;
+      }
       result.failures.push(
         `${id}: ${getApiErrorMessage(error, "could not be installed")}`,
       );
@@ -99,6 +118,7 @@ export const importPackNodes = async (
   if (result.installedComponents.length > 0) {
     await refreshInstalledNfCoreNodes().catch(() => 0);
   }
+  if (result.cancelled) return result;
   for (const node of nodes) {
     try {
       result.saved.push(await persistCustomNode(node));

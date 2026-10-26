@@ -84,6 +84,10 @@ const WorkflowPageContent: React.FC = () => {
     (message: string) => showToast(message, "error"),
     [showToast]
   );
+  const showNotice = useCallback(
+    (message: string) => showToast(message, "info"),
+    [showToast]
+  );
   const { id: workflowId } = useParams<{ id: string }>();
   const { screenToFlowPosition, getNodes, fitView } = useReactFlow();
 
@@ -96,6 +100,7 @@ const WorkflowPageContent: React.FC = () => {
     isDirty,
     setIsDirty,
     showError,
+    showNotice,
   });
   const {
     readOnly,
