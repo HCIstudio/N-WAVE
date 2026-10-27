@@ -4,6 +4,7 @@ import { Check, Copy } from "lucide-react";
 import { Link } from "react-router";
 import { cancelRun, getRunLog, listRuns, type RunSummary } from "../../../api/runs";
 import { getErrorMessage } from "../../../utils/errors";
+import { stripTerminalCodes } from "../../../utils/terminalCodes";
 import { explainFailure } from "../../../execution/failureExplanations";
 import FailureExplanationCard from "./FailureExplanationCard";
 import RunResultsList from "./RunResultsList";
@@ -14,9 +15,10 @@ const ERROR_LINE =
 
 /** A run's output, with error lines marked, scrolled to the end. */
 export const RunLog: React.FC<{ text: string; label?: string }> = ({
-  text,
+  text: raw,
   label = "Run log",
 }) => {
+  const text = stripTerminalCodes(raw);
   const ref = useRef<HTMLPreElement>(null);
   // Follow the output while it grows, unless the reader scrolled up.
   const atBottom = useRef(true);
