@@ -10,6 +10,7 @@ import executeRoutes from "./routes/executeRoutes";
 import nfcoreRoutes from "./routes/nfcoreRoutes";
 import customNodeRoutes from "./routes/customNodeRoutes";
 import pipelineRoutes from "./routes/pipelineRoutes";
+import settingsRoutes from "./routes/settingsRoutes";
 import { getErrorMessage } from "./utils/errors";
 
 /** Maximum JSON/urlencoded request body; input file contents travel inline. */
@@ -58,6 +59,12 @@ export const createApp = (): Express => {
   app.use("/api/nfcore", nfcoreRoutes);
   app.use("/api/custom-nodes", customNodeRoutes);
   app.use("/api/pipelines", pipelineRoutes);
+  app.use("/api/settings", settingsRoutes);
+
+  // Whether N-WAVE answers (pages watch this to notice it went away and came back).
+  app.get("/api/health", (_req: Request, res: Response) => {
+    res.json({ ok: true });
+  });
 
   // Turn body-parser failures (malformed JSON, oversized bodies) into JSON
   // errors instead of Express's default HTML page.

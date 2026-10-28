@@ -259,6 +259,16 @@ describe("run history", () => {
     expect(cleared.body).toEqual({ bytes: 0, folders: 0 });
     expect(fs.existsSync(path.join(runDir, "nextflow/work"))).toBe(false);
     expect(fs.existsSync(path.join(runDir, RUN_LOG_FILE))).toBe(true);
+
+    // All workflows' caches together.
+    fs.mkdirSync(path.join(runDir, ".nextflow"), { recursive: true });
+    fs.writeFileSync(path.join(runDir, ".nextflow", "history"), "x");
+    expect((await request(app).get("/api/execute/caches").expect(200)).body.folders).toBe(1);
+    expect((await request(app).delete("/api/execute/caches").expect(200)).body).toEqual({
+      bytes: 0,
+      folders: 0,
+      skipped: 0,
+    });
   });
 });
 

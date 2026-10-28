@@ -7,7 +7,9 @@ import {
   getExecutionLimits,
 } from "../controllers/executeController";
 import {
+  deleteAllCaches,
   deleteWorkflowCache,
+  getAllCaches,
   getRunLog,
   getWorkflowCache,
   getRunResultFile,
@@ -28,6 +30,8 @@ router.get("/limits", getExecutionLimits);
 router.get("/runs", listRunsHandler);
 router.get("/cache", getWorkflowCache);
 router.delete("/cache", deleteWorkflowCache);
+router.get("/caches", getAllCaches);
+router.delete("/caches", deleteAllCaches);
 router.get("/runs/:id/log", getRunLog);
 router.get("/runs/:id/files", listRunResultFiles);
 // Path-style, so a served report's relative links (report_files/x.png) work.
