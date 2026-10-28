@@ -49,6 +49,29 @@ describe("summarizeNodeRuns", () => {
     expect(runs["demo-merge"]).toMatchObject({ status: "succeeded", done: 2, cached: 1 });
   });
 
+  it("counts a failed task whose error is ignored as done, not failed", () => {
+    const runs = summarizeNodeRuns(
+      [
+        task("NFCORE_MAG:MAG:BINNING:MAXBIN2", "ignored", "85/280734"),
+        task("NFCORE_MAG:MAG:BINNING:METABAT2", "succeeded", "aa/000002"),
+      ],
+      nodes,
+      "pipeline-1",
+    );
+    expect(runs["pipeline-1"]).toMatchObject({
+      status: "succeeded",
+      total: 2,
+      done: 2,
+      failed: 0,
+      ignored: 1,
+    });
+    expect(runs["pipeline-1"].processes?.[0]).toMatchObject({
+      label: "MAXBIN2",
+      status: "succeeded",
+      ignored: 1,
+    });
+  });
+
     it("gives every task to the pipeline node when a whole pipeline runs", () => {
     const runs = summarizeNodeRuns(
       [task("NFCORE_RNASEQ:RNASEQ:FASTQC", "running")],

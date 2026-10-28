@@ -9,6 +9,8 @@ export interface NodeRunSummary {
   total: number;
   done: number;
   failed: number;
+  /** Tasks that failed but whose error Nextflow ignores, counted in `done`. */
+  ignored: number;
   running: number;
   /** Tasks reused from the cache, counted in `done` too. */
   cached: number;
@@ -32,6 +34,7 @@ export interface ProcessRunSummary
 /** Counts and the overall status of a set of tasks. */
 const summarizeTasks = (tasks: RunTask[]) => {
   const failed = tasks.filter((task) => task.status === "failed").length;
+  const ignored = tasks.filter((task) => task.status === "ignored").length;
   const running = tasks.filter((task) => task.status === "running").length;
   const cached = tasks.filter((task) => task.status === "cached").length;
   return {
@@ -45,6 +48,7 @@ const summarizeTasks = (tasks: RunTask[]) => {
     total: tasks.length,
     done: tasks.length - failed - running,
     failed,
+    ignored,
     running,
     cached,
   };

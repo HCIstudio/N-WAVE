@@ -3,6 +3,7 @@ import {
   Pause,
   CheckCircle,
   XCircle,
+  AlertTriangle,
   X,
   Clock,
   Hourglass,
@@ -102,6 +103,8 @@ export interface RunStep {
   total: number;
   /** Tasks reused from the cache. */
   cached?: number;
+  /** Tasks that failed but whose error Nextflow ignores. */
+  ignored?: number;
   /** Tasks going now. */
   running?: number;
   /** The processes of a step that runs several (a subworkflow, a pipeline). */
@@ -115,13 +118,26 @@ const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
   cached: <RotateCcw className="h-4 w-4 text-sky-600" />,
 };
 
+/** A step that went on past an ignored error gets a warning sign. */
+const stepIcon = (step: RunStep): React.ReactNode =>
+  step.ignored && step.status !== "failed" && step.status !== "running" ? (
+    <AlertTriangle className="h-4 w-4 text-amber-500" />
+  ) : (
+    STEP_ICON[step.status]
+  );
+
 /** How many of a step's tasks are done, as the steps list shows it. */
-const stepCount = (step: RunStep): string =>
-  step.status === "cached"
-    ? "reused from cache"
-    : step.cached
-      ? `${step.done} of ${step.total}, ${step.cached} reused`
-      : `${step.done} of ${step.total}`;
+const stepCount = (step: RunStep): string => {
+  const count =
+    step.status === "cached"
+      ? "reused from cache"
+      : step.cached
+        ? `${step.done} of ${step.total}, ${step.cached} reused`
+        : `${step.done} of ${step.total}`;
+  return step.ignored
+    ? `${count}, ${step.ignored} error${step.ignored === 1 ? "" : "s"} ignored`
+    : count;
+};
 
 export type RunPanelTab = "steps" | "log" | "history";
 
@@ -564,7 +580,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                   >
                     <div className="flex items-center justify-between p-3">
                       <span className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                        {STEP_ICON[step.status]}
+                        {stepIcon(step)}
                         {step.label}
                       </span>
                       <span className="text-xs text-gray-700">
@@ -583,7 +599,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                           >
                             <span className="flex min-w-0 items-center gap-1.5 text-xs text-gray-800">
                               <span className="shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                                {STEP_ICON[substep.status]}
+                                {stepIcon(substep)}
                               </span>
                               <span className="truncate font-mono" title={substep.id}>
                                 {substep.label}

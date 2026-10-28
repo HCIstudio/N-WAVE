@@ -18,6 +18,7 @@ const STATUS_STYLE: Record<RunTask["status"], string> = {
   succeeded: "bg-green-100 text-green-900",
   cached: "bg-sky-100 text-sky-900",
   failed: "bg-red-100 text-red-900",
+  ignored: "bg-amber-100 text-amber-900",
 };
 
 const formatSize = (bytes: number): string =>
@@ -82,7 +83,7 @@ const TaskResults: React.FC<{
         <span
           className={`rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_STYLE[task.status]}`}
         >
-          {task.status}
+          {task.status === "ignored" ? "error ignored" : task.status}
         </span>
         <span className="font-mono text-xs text-text">{task.name}</span>
         {task.exitCode !== undefined && task.exitCode !== 0 && (
@@ -163,7 +164,11 @@ const NodeRunResults: React.FC<{ nodeId: string }> = ({ nodeId }) => {
         Last run: {summary.done} of {summary.total} task
         {summary.total === 1 ? "" : "s"} done
         {summary.running > 0 ? `, ${summary.running} running` : ""}
-        {summary.failed > 0 ? `, ${summary.failed} failed` : ""}.
+        {summary.failed > 0 ? `, ${summary.failed} failed` : ""}
+        {summary.ignored > 0
+          ? `, ${summary.ignored} failed but ignored (the run went on without ${summary.ignored === 1 ? "its" : "their"} results)`
+          : ""}
+        .
       </p>
       <ul className="space-y-2">
         {summary.tasks.map((task, index) => (
