@@ -12,6 +12,7 @@ vi.mock("../../../api", () => ({
 const { default: ExecutionSettingsComponent } = await import(
   "./ExecutionSettings"
 );
+const { resetRunDefaults } = await import("../../../settings/useRunDefaults");
 
 type Responses = Record<string, unknown>;
 
@@ -35,7 +36,22 @@ const allAvailable: Responses = {
     maxMemory: "64.GB",
     defaultTimeoutMinutes: 60,
   },
+  "/settings": {
+    runDefaults: {
+      maxCpus: 6,
+      maxMemory: "12.GB",
+      timeoutMinutes: 0,
+      resume: "after-failure",
+      runProfiles: [
+        { name: "cluster", executor: "slurm", containerEngine: "apptainer", queue: "short" },
+      ],
+      runProfile: "cluster",
+    },
+  },
 };
+
+/** Settings with limits of the workflow's own. */
+const ownLimits = { useDefaults: false } as const;
 
 const show = (settings: ExecutionSettings = defaultExecutionSettings) => {
   const onSettingsChange = vi.fn();
@@ -70,6 +86,7 @@ const openTab = async (name: string) => {
 describe("ExecutionSettings", () => {
   beforeEach(() => {
     get.mockReset();
+    resetRunDefaults();
     serve(allAvailable);
   });
 
@@ -378,14 +395,39 @@ describe("ExecutionSettings", () => {
   });
 
   describe("Resources tab", () => {
+    it("uses the run defaults until the workflow sets its own limits", async () => {
+      const onChange = show();
+      await openTab("Resources");
+      const toggle = screen.getByLabelText("Use the run defaults") as HTMLInputElement;
+      expect(toggle.checked).toBe(true);
+      expect(
+        await screen.findByText(/Runs get 6 CPU cores, 12 GB of memory and the server's time limit/),
+      ).toBeTruthy();
+      expect(screen.queryByLabelText("Maximum CPU Cores")).toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Change the defaults in Settings" }).getAttribute("href"),
+      ).toBe("/settings");
+
+      fireEvent.click(toggle);
+      expect(onChange).toHaveBeenLastCalledWith({
+        resources: {
+          ...defaultExecutionSettings.resources,
+          useDefaults: false,
+          maxCpus: 6,
+          maxMemory: "12.GB",
+          maxTime: "",
+        },
+      });
+    });
+
     it("shows the server limits and default timeout", async () => {
-      show();
+      show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
       const note = await screen.findByRole("note", { name: "Server limits" });
       expect(note.textContent).toContain(
         "This server allows up to 16 CPU cores and 64 GB of memory per run",
       );
-      expect(screen.getByText(/0 uses\s+the server default \(60 minutes\)/)).toBeTruthy();
+      expect(screen.getByText(/0\s+uses the server default \(60 minutes, set with NWAVE_EXECUTION_TIMEOUT\)/)).toBeTruthy();
       expect(
         (screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max,
       ).toBe("16");
@@ -396,14 +438,14 @@ describe("ExecutionSettings", () => {
         ...allAvailable,
         "/execute/limits": { ...(allAvailable["/execute/limits"] as object), defaultTimeoutMinutes: 0 },
       });
-      show();
+      show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
       expect(await screen.findByText(/\(no limit\)/)).toBeTruthy();
     });
 
     it("works without server limits", async () => {
       serve({ ...allAvailable, "/execute/limits": new Error("404") });
-      show(withSettings({ resources: { maxCpus: 48 } }));
+      show(withSettings({ resources: { ...ownLimits, maxCpus: 48 } }));
       await openTab("Resources");
       expect(screen.queryByRole("note", { name: "Server limits" })).toBeNull();
       expect(
@@ -416,9 +458,9 @@ describe("ExecutionSettings", () => {
     });
 
     it("changes CPU, memory and timeout", async () => {
-      const onChange = show(withSettings({ resources: { maxTime: "PT2H" } }));
+      const onChange = show(withSettings({ resources: { ...ownLimits, maxTime: "PT2H" } }));
       await openTab("Resources");
-      const resources = { ...defaultExecutionSettings.resources, maxTime: "PT2H" };
+      const resources = { ...defaultExecutionSettings.resources, ...ownLimits, maxTime: "PT2H" };
 
       expect(
         (screen.getByLabelText("Execution Timeout (minutes)") as HTMLInputElement)
@@ -452,6 +494,49 @@ describe("ExecutionSettings", () => {
       expect(onChange).toHaveBeenLastCalledWith({
         resources: { ...resources, maxTime: "" },
       });
+    });
+  });
+
+  describe("Profiles tab", () => {
+    it("picks the default profile, this computer or one of the Settings page's profiles", async () => {
+      const onChange = show();
+      await openTab("Profiles");
+      const select = screen.getByLabelText("Runs of this workflow use") as HTMLSelectElement;
+      await waitFor(() =>
+        expect([...select.options].map((option) => option.text)).toEqual([
+          "The default (cluster)",
+          "This computer (Execution and Resources settings)",
+          "cluster: SLURM cluster",
+        ]),
+      );
+      expect(select.value).toBe("@default");
+      fireEvent.change(select, { target: { value: "" } });
+      expect(onChange).toHaveBeenLastCalledWith({ runProfile: "" });
+      fireEvent.change(select, { target: { value: "@default" } });
+      expect(onChange).toHaveBeenLastCalledWith({ runProfile: undefined });
+    });
+
+    it("offers to move a workflow's own profiles to Settings", async () => {
+      const put = vi.fn(async (_url: string, body: unknown) => ({ data: body }));
+      const api = (await import("../../../api")).default as unknown as Record<string, unknown>;
+      api.put = put;
+      const onChange = show({
+        ...defaultExecutionSettings,
+        runProfiles: [{ name: "old", executor: "local", containerEngine: "docker" }],
+      });
+      await openTab("Profiles");
+      await screen.findByText(/keeps profiles of its own.*old/);
+      await userEvent.setup().click(screen.getByRole("button", { name: "Move to Settings" }));
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith({ runProfiles: [] }));
+      expect(put).toHaveBeenCalledWith("/settings", {
+        runDefaults: expect.objectContaining({
+          runProfiles: [
+            expect.objectContaining({ name: "cluster" }),
+            { name: "old", executor: "local", containerEngine: "docker" },
+          ],
+        }),
+      });
+      Reflect.deleteProperty(api, "put");
     });
   });
 

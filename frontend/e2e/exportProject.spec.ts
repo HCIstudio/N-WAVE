@@ -48,22 +48,20 @@ test.describe("export project", () => {
     expect(files["Demo_1_-_Text_basics/inputs/sample.txt"]).toContain("Barry");
   });
 
-  test("exports the workflow's run profiles for -profile", async ({ page }) => {
+  test("exports the run profiles of the Settings page for -profile", async ({ page }) => {
+    await page.goto("./settings");
+    await page.getByRole("button", { name: "SLURM cluster profile" }).click();
+    const card = page.getByRole("listitem", { name: "Profile slurm" });
+    await card.getByLabel("Partition (queue)").fill("short");
+    await card.getByLabel("Name").fill("hpc");
+    await page.getByRole("button", { name: "Save run defaults" }).click();
+    await expect(page.getByText(/^Saved\./)).toBeVisible();
+
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     await addNode(page, "File Input");
-
-    await page.getByRole("button", { name: "Execution Settings" }).click();
-    await page.getByRole("button", { name: "Profiles" }).click();
-    await page.getByRole("button", { name: "SLURM cluster profile" }).click();
-    const card = page.getByRole("listitem", { name: "Profile slurm" });
-    await card.getByLabel("Partition (queue)").fill("short");
-    await card.getByLabel("Name").fill("hpc");
-    await page.getByRole("button", { name: "Close", exact: true }).click();
-    // Closing with unsaved settings asks first.
-    await page.getByRole("button", { name: "Save & Close" }).click();
 
     const files = await unzip(await exportProject(page));
     const [config] = Object.entries(files).find(([name]) => name.endsWith("/nextflow.config")) ?? [];

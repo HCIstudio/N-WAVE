@@ -11,9 +11,15 @@ export interface ExecutionSettings {
   // Settings format version; settings saved before versions have none.
   version?: number;
 
-  /** Run profiles for clusters and the cloud (see execution/runProfiles.ts). */
+  /**
+   * Run profiles kept in the workflow itself, from before they moved to the
+   * Settings page; they are offered next to those (see execution/runProfiles.ts).
+   */
   runProfiles?: RunProfile[];
-  /** The profile runs from N-WAVE use; none: this computer with the settings below. */
+  /**
+   * The profile runs from N-WAVE use. Unset: the default from the Settings
+   * page; "" (THIS_COMPUTER): this computer with the settings below.
+   */
   runProfile?: string;
 
   // Core execution mode
@@ -40,6 +46,8 @@ export interface ExecutionSettings {
 
   // Resource allocation
   resources: {
+    /** False: this workflow's own limits below; otherwise those on the Settings page. */
+    useDefaults?: boolean;
     maxCpus: number;
     maxMemory: string;
     maxTime: string; // ISO 8601 duration format

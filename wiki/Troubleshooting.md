@@ -13,7 +13,8 @@ N-WAVE (home page → Help).
 ### Out of memory
 
 The step used more memory than it was given and was killed (exit status 137). Raise
-**Maximum Memory** in *Execution Settings → Resources*, or the step's memory in its panel.
+**Maximum Memory** in **Settings → Run limits** (or the workflow's *Execution Settings →
+Resources*), or the step's memory in its panel.
 On Docker Desktop, also give Docker more memory (*Settings → Resources*).
 
 ### A step ran longer than its time limit
@@ -30,8 +31,8 @@ time limit (**Execution Timeout**), which replaces the test profile's 1 hour.
 ### The run hit its resource limits
 
 A step asked for more CPUs or memory than the run may use, or the run reached its time
-limit. The run's first lines say which limits it got. Raise them in
-*Execution Settings → Resources*. The server caps them with `NWAVE_MAX_CPUS`,
+limit. The run's first lines say which limits it got. Raise them in **Settings → Run limits**,
+or in the workflow's *Execution Settings → Resources*. The server caps them with `NWAVE_MAX_CPUS`,
 `NWAVE_MAX_MEMORY` and `NWAVE_EXECUTION_TIMEOUT` (24 hours by default; see
 [Configuration](https://github.com/HCIstudio/N-WAVE#configuration)).
 

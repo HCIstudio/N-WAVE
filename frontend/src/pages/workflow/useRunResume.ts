@@ -1,6 +1,6 @@
 // Resuming runs: whether the workflow has a cache from earlier runs, the
-// Resume choice next to Run (on by default after a failed or cancelled run),
-// and clearing the cache.
+// Resume choice next to Run (on by default after a failed or cancelled run,
+// or as the Settings page says), and clearing the cache.
 
 import { useCallback, useEffect, useState } from "react";
 import {
@@ -9,6 +9,7 @@ import {
   listRuns,
   type WorkflowCache,
 } from "../../api/runs";
+import type { ResumeMode } from "../../api/settings";
 import { getApiErrorMessage, getResponseStatus } from "../../utils/errors";
 
 interface Options {
@@ -17,6 +18,8 @@ interface Options {
   /** Off in the in-browser demo, which keeps no cache. */
   enabled: boolean;
   isRunning: boolean;
+  /** When Resume starts out on (the Settings page). */
+  mode?: ResumeMode;
 }
 
 /** How long to wait before asking a restarting N-WAVE again. */
@@ -26,7 +29,16 @@ const RETRY_MS = 3000;
 export const resumesAfter = (status: string | undefined): boolean =>
   status === "failed" || status === "cancelled";
 
-export const useRunResume = ({ workflowId, enabled, isRunning }: Options) => {
+/** Whether Resume starts out on, for a workflow with a cache. */
+export const resumesByDefault = (mode: ResumeMode, lastStatus: string | undefined): boolean =>
+  mode === "always" || (mode === "after-failure" && resumesAfter(lastStatus));
+
+export const useRunResume = ({
+  workflowId,
+  enabled,
+  isRunning,
+  mode = "after-failure",
+}: Options) => {
   const [cache, setCache] = useState<WorkflowCache | null>(null);
   const [resume, setResume] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +58,7 @@ export const useRunResume = ({ workflowId, enabled, isRunning }: Options) => {
         listRuns(workflowId, 1),
       ]);
       setCache(nextCache);
-      setResume(nextCache.folders > 0 && resumesAfter(lastRun?.status));
+      setResume(nextCache.folders > 0 && resumesByDefault(mode, lastRun?.status));
     } catch (caught: unknown) {
       // An older backend without the cache API: no Resume choice. One that
       // doesn't answer (restarting) keeps what was known.
@@ -54,7 +66,7 @@ export const useRunResume = ({ workflowId, enabled, isRunning }: Options) => {
       if (status && status < 500) setCache(null);
       else window.setTimeout(() => setRetry((count) => count + 1), RETRY_MS);
     }
-  }, [enabled, workflowId]);
+  }, [enabled, workflowId, mode]);
 
   // On opening the workflow, each time a run ends, and again while N-WAVE
   // doesn't answer (a run that ended because it shut down).

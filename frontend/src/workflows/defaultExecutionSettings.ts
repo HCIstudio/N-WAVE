@@ -5,6 +5,9 @@
 import { ExecutionMode, type ExecutionSettings } from "../types/execution";
 
 export const defaultExecutionSettings: ExecutionSettings = {
+  // Current settings: limits and run profile come from the Settings page
+  // (see pages/workflow/executionSettings.ts).
+  version: 3,
   mode: ExecutionMode.DOCKER,
   nextflow: {
     version: "25.04.4",

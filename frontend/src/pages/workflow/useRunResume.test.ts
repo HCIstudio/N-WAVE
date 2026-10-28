@@ -8,7 +8,7 @@ const api = vi.hoisted(() => ({
 }));
 vi.mock("../../api/runs", () => api);
 
-const { resumesAfter, useRunResume } = await import("./useRunResume");
+const { resumesAfter, resumesByDefault, useRunResume } = await import("./useRunResume");
 
 describe("useRunResume", () => {
   beforeEach(() => {
@@ -23,6 +23,21 @@ describe("useRunResume", () => {
       false,
       false,
     ]);
+  });
+
+  it("starts Resume as the Settings page says", () => {
+    expect(resumesByDefault("always", "succeeded")).toBe(true);
+    expect(resumesByDefault("never", "failed")).toBe(false);
+    expect(resumesByDefault("after-failure", "failed")).toBe(true);
+    expect(resumesByDefault("after-failure", "succeeded")).toBe(false);
+  });
+
+  it("turns Resume on after a successful run too when the Settings page says always", async () => {
+    api.listRuns.mockResolvedValue([{ id: "r1", status: "succeeded" }]);
+    const { result } = renderHook(() =>
+      useRunResume({ workflowId: "wf1", enabled: true, isRunning: false, mode: "always" }),
+    );
+    await waitFor(() => expect(result.current.resume).toBe(true));
   });
 
   it("turns Resume on after a failed run, and off once the cache is cleared", async () => {

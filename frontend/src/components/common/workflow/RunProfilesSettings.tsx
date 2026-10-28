@@ -17,6 +17,8 @@ interface RunProfilesSettingsProps {
   /** The profile runs from N-WAVE use ("" or undefined: this computer). */
   runProfile?: string;
   onChange: (change: { runProfiles?: RunProfile[]; runProfile?: string }) => void;
+  /** The label of the profile choice. */
+  runLabel?: string;
 }
 
 const inputClass =
@@ -182,11 +184,12 @@ const ProfileEditor: React.FC<{
   );
 };
 
-/** The execution settings' Profiles tab: where steps run, for exports and runs. */
+/** The run profiles (Settings page): where steps run, for exports and runs. */
 const RunProfilesSettings: React.FC<RunProfilesSettingsProps> = ({
   profiles,
   runProfile = "",
   onChange,
+  runLabel = "Runs from N-WAVE use",
 }) => {
   const id = useId();
   const replace = (index: number, profile: RunProfile) => {
@@ -220,7 +223,7 @@ const RunProfilesSettings: React.FC<RunProfilesSettingsProps> = ({
 
       <div>
         <label htmlFor={`${id}-run`} className="mb-1 block text-sm font-medium text-text">
-          Runs from N-WAVE use
+          {runLabel}
         </label>
         <select
           id={`${id}-run`}

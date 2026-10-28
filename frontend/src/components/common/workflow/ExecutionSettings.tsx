@@ -14,7 +14,6 @@ import {
   HelpCircle,
   Server,
 } from "lucide-react";
-import { MemoryInput } from "../forms";
 import api from "../../../api";
 import type { ExecutionSettings } from "../../../types/execution";
 import {
@@ -23,14 +22,14 @@ import {
 } from "../../../utils/duration";
 import { getErrorMessage, getErrorName } from "../../../utils/errors";
 import Term from "../ui/Term";
-import RunProfilesSettings from "./RunProfilesSettings";
+import { availableRunProfiles, usesDefaultLimits } from "../../../settings/effectiveSettings";
+import { useRunDefaults } from "../../../settings/useRunDefaults";
+import { useServerLimits } from "../../../settings/useServerLimits";
+import ResourceLimitsFields from "./ResourceLimitsFields";
+import RunProfilePicker from "./RunProfilePicker";
 
-/** GET /execute/limits: the most a run may use on this server. */
-interface ServerLimits {
-  maxCpus: number;
-  maxMemory: string;
-  defaultTimeoutMinutes: number;
-}
+/** The Settings page, opened in its own tab so the canvas stays as it is. */
+const SETTINGS_URL = `${import.meta.env.BASE_URL}settings`;
 
 interface DockerStatus {
   dockerAvailable: boolean;
@@ -76,7 +75,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
       [section]: { ...(settings[section] as object), ...patch },
     } as Partial<ExecutionSettings>);
   const useDocker = settings.container?.enabled ?? false;
-  const maxCpus = settings.resources?.maxCpus ?? 4;
   // Prefix for label/input id pairs, unique per component instance.
   const fieldId = useId();
   const [dockerStatus, setDockerStatus] = useState<DockerStatus | null>(null);
@@ -84,7 +82,18 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     null
   );
   const [loading, setLoading] = useState(false);
-  const [serverLimits, setServerLimits] = useState<ServerLimits | null>(null);
+  const serverLimits = useServerLimits();
+  const { defaults: runDefaults, save: saveRunDefaults } = useRunDefaults();
+  const useDefaultLimits = usesDefaultLimits(settings);
+  // Profiles kept in the workflow from before go to the Settings page.
+  const moveProfilesToDefaults = async () => {
+    const own = settings.runProfiles ?? [];
+    await saveRunDefaults({
+      ...runDefaults,
+      runProfiles: availableRunProfiles({ ...settings, runProfiles: own }, runDefaults),
+    });
+    onSettingsChange({ runProfiles: [] });
+  };
   const [activeTab, setActiveTab] = useState<string>("execution");
   const [showDirectoryHelp, setShowDirectoryHelp] = useState(false);
 
@@ -117,20 +126,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   useEffect(() => {
     checkStatus();
   }, [checkStatus]);
-
-  // What this server allows (NWAVE_MAX_CPUS / NWAVE_MAX_MEMORY); the demo
-  // has no backend, so there is nothing to show there.
-  useEffect(() => {
-    let cancelled = false;
-    api.get<ServerLimits>("/execute/limits").then(
-      (response) => !cancelled && setServerLimits(response.data),
-      () => !cancelled && setServerLimits(null),
-    );
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-  const cpuSliderMax = Math.max(serverLimits?.maxCpus ?? 32, maxCpus);
 
   const commonContainerImages = [
     { value: "ubuntu:22.04", label: "Ubuntu 22.04 (Recommended)" },
@@ -627,112 +622,78 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
       case "resources":
         return (
           <div className="space-y-6">
-            {/* CPU Limits */}
-            <div>
-              <label htmlFor={`${fieldId}-max-cpus`} className="block text-sm font-medium text-text mb-3">
-                Maximum CPU Cores
-              </label>
-              <div className="flex items-center gap-4">
-                <input
-                  id={`${fieldId}-max-cpus`}
-                  type="range"
-                  min="1"
-                  max={cpuSliderMax}
-                  value={maxCpus}
-                  onChange={(e) =>
-                    updateSection("resources", { maxCpus: Number.parseInt(e.target.value, 10) })
-                  }
-                  className="flex-1 h-2 bg-accent rounded-lg appearance-none cursor-pointer slider"
-                  style={{
-                    background: `linear-gradient(to right, #00A878 0%, #00A878 ${
-                      ((maxCpus - 1) / Math.max(1, cpuSliderMax - 1)) * 100
-                    }%, #3A3A3A ${
-                      ((maxCpus - 1) / Math.max(1, cpuSliderMax - 1)) * 100
-                    }%, #3A3A3A 100%)`,
-                  }}
-                />
-                <span className="text-sm font-medium text-nextflow-green bg-panel-background px-3 py-1 rounded-md min-w-[3rem] text-center">
-                  {maxCpus}
-                </span>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <label htmlFor={`${fieldId}-use-default-limits`} className="text-sm font-medium text-text">
+                  Use the run defaults
+                </label>
+                <p className="mt-1 text-xs text-text-light">
+                  {useDefaultLimits
+                    ? `Runs get ${runDefaults.maxCpus} CPU cores, ${runDefaults.maxMemory.replace(".", " ")} of memory and ${
+                        runDefaults.timeoutMinutes > 0
+                          ? `${runDefaults.timeoutMinutes} minutes`
+                          : "the server's time limit"
+                      }, as set for all workflows.`
+                    : "This workflow has limits of its own."}{" "}
+                  <a
+                    href={SETTINGS_URL}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-nextflow-green hover:underline"
+                  >
+                    Change the defaults in Settings
+                  </a>
+                </p>
               </div>
-              <p className="text-xs text-text-light mt-2">
-                Maximum number of CPU cores any single process can use. Steps
-                that ask for more are capped to this.
-              </p>
-            </div>
-
-            {/* Memory Limits */}
-            <div>
-              <label htmlFor={`${fieldId}-max-memory`} className="block text-sm font-medium text-text mb-2">
-                Maximum Memory
-              </label>
-              <MemoryInput
-                id={`${fieldId}-max-memory`}
-                value={settings.resources?.maxMemory ?? "4.GB"}
-                onChange={(val) => updateSection("resources", { maxMemory: val })}
-                className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
-              />
-              <p className="text-xs text-text-light mt-2">
-                Maximum memory any single process can use; steps that ask for
-                more are capped to this. nf-core/rnaseq needs about 6–15 GB
-                even with its test data.
-              </p>
-            </div>
-
-            {serverLimits && (
-              <p
-                role="note"
-                aria-label="Server limits"
-                className="rounded-md border border-panel-border p-3 text-xs text-text-light"
-              >
-                This server allows up to {serverLimits.maxCpus} CPU cores and{" "}
-                {serverLimits.maxMemory.replace(".", " ")} of memory per run
-                (set with NWAVE_MAX_CPUS / NWAVE_MAX_MEMORY); higher values
-                are lowered to these.
-              </p>
-            )}
-
-            {/* Execution Timeout */}
-            <div>
-              <label htmlFor={`${fieldId}-execution-timeout-minutes`} className="block text-sm font-medium text-text mb-2">
-                Execution Timeout (minutes)
-              </label>
               <input
-                id={`${fieldId}-execution-timeout-minutes`}
-                type="number"
-                min="0"
-                max="10080"
-                value={isoDurationToMinutes(settings.resources?.maxTime)}
+                id={`${fieldId}-use-default-limits`}
+                type="checkbox"
+                checked={useDefaultLimits}
                 onChange={(e) =>
+                  updateSection(
+                    "resources",
+                    e.target.checked
+                      ? { useDefaults: true }
+                      : {
+                          // Start from the defaults.
+                          useDefaults: false,
+                          maxCpus: runDefaults.maxCpus,
+                          maxMemory: runDefaults.maxMemory,
+                          maxTime: minutesToIsoDuration(runDefaults.timeoutMinutes),
+                        },
+                  )
+                }
+                className="mt-1 h-4 w-4 accent-nextflow-green"
+              />
+            </div>
+            {!useDefaultLimits && (
+              <ResourceLimitsFields
+                limits={{
+                  maxCpus: settings.resources?.maxCpus ?? 4,
+                  maxMemory: settings.resources?.maxMemory ?? "4.GB",
+                  timeoutMinutes: isoDurationToMinutes(settings.resources?.maxTime),
+                }}
+                onChange={({ timeoutMinutes, ...patch }) =>
                   updateSection("resources", {
-                    maxTime: minutesToIsoDuration(
-                      Number.parseInt(e.target.value, 10) || 0
-                    ),
+                    ...patch,
+                    ...(timeoutMinutes === undefined
+                      ? {}
+                      : { maxTime: minutesToIsoDuration(timeoutMinutes) }),
                   })
                 }
-                placeholder="0 = server default"
-                className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
+                serverLimits={serverLimits}
               />
-              <p className="text-xs text-text-light mt-2">
-                Maximum time the workflow can run before it is stopped. 0 uses
-                the server default
-                {serverLimits
-                  ? serverLimits.defaultTimeoutMinutes > 0
-                    ? ` (${serverLimits.defaultTimeoutMinutes} minutes)`
-                    : " (no limit)"
-                  : " (24 hours unless NWAVE_EXECUTION_TIMEOUT says otherwise)"}
-                .
-              </p>
-            </div>
+            )}
           </div>
         );
 
       case "profiles":
         return (
-          <RunProfilesSettings
-            profiles={settings.runProfiles ?? []}
-            runProfile={settings.runProfile}
+          <RunProfilePicker
+            settings={settings}
+            runDefaults={runDefaults}
             onChange={onSettingsChange}
+            onMoveToDefaults={moveProfilesToDefaults}
           />
         );
 
