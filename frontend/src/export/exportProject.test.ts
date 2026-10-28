@@ -150,6 +150,15 @@ describe("buildProjectFiles", () => {
     expect(config).toContain("docker.runOptions = '-u $(id -u):$(id -g)'");
   });
 
+  it("turns on Nextflow's execution report, timeline and trace", () => {
+    const config = files["nextflow.config"];
+    expect(config).toContain(
+      'report {\n  enabled = true\n  file = "${params.outdir}/pipeline_info/execution_report.html"\n  overwrite = true\n}',
+    );
+    expect(config).toContain('file = "${params.outdir}/pipeline_info/execution_timeline.html"');
+    expect(config).toContain('file = "${params.outdir}/pipeline_info/execution_trace.txt"');
+  });
+
   it("adds the workflow's run profiles to the config and README", () => {
     const withProfiles = buildProjectFiles({
       workflowName: "QC run",

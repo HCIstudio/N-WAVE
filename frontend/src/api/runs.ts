@@ -154,3 +154,50 @@ export const getTaskFileText = async (
   );
   return response.data;
 };
+
+/** Nextflow's reports of a run: the execution report and timeline (HTML) and the trace. */
+export type RunReportKind = "report" | "timeline" | "trace";
+
+/** Which of Nextflow's reports a run has. */
+export const listRunReports = async (
+  runId: string,
+): Promise<Record<RunReportKind, boolean>> => {
+  const response = await api.get<Record<RunReportKind, boolean>>(
+    `/execute/runs/${encodeURIComponent(runId)}/reports`,
+  );
+  return response.data;
+};
+
+/** Where one of a run's reports opens. */
+export const runReportUrl = (runId: string, kind: RunReportKind): string =>
+  `${import.meta.env.VITE_API_BASE_URL || "/api"}/execute/runs/${encodeURIComponent(runId)}/reports/${kind}`;
+
+/** One task of a run's trace: its times (ms) and resource use (bytes). */
+export interface TraceTask {
+  hash: string;
+  name: string;
+  process: string;
+  /** COMPLETED, CACHED, FAILED, ABORTED. */
+  status: string;
+  exit: number | null;
+  attempt: number;
+  submit: number | null;
+  start: number | null;
+  complete: number | null;
+  duration: number | null;
+  realtime: number | null;
+  /** Percent of one CPU. */
+  cpu: number | null;
+  peakRss: number | null;
+  /** What the task asked for. */
+  cpus: number | null;
+  memory: number | null;
+}
+
+/** The run's trace: each task's times and resource use. */
+export const getRunTrace = async (runId: string): Promise<TraceTask[]> => {
+  const response = await api.get<{ tasks: TraceTask[] }>(
+    `/execute/runs/${encodeURIComponent(runId)}/trace`,
+  );
+  return response.data.tasks;
+};

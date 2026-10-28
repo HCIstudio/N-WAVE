@@ -35,6 +35,10 @@ vi.mock("../../../api/runs", () => ({
   getRunLog: (id: string) => getRunLog(id),
   listRunResults: (id: string) => listRunResults(id),
   runResultUrl: (id: string, path: string) => `/api/${id}/${path}`,
+  listRunReports: async () => ({ report: true, timeline: true, trace: false }),
+  runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
+  getRunTrace: async () => [],
+  listRunTasks: async () => [],
 }));
 
 const { default: RunHistory, RunLog } = await import("./RunHistory");

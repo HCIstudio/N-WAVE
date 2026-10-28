@@ -41,8 +41,9 @@ with `params.json` pointing `input` at the samplesheet and `fasta`/`gtf` at the 
    cancel it at any time.
 4. When the run finishes, double-click the **nf-core/rnaseq** node again. Its **Results** section
    links the key reports: open `multiqc/star_salmon/multiqc_report.html` for the summary of every
-   sample (QC, alignment rates, counts) and `pipeline_info/execution_report_*.html` for Nextflow's
-   resource usage per task. **All result files** lists everything else, e.g. the gene counts in
+   sample (QC, alignment rates, counts). The run panel's **Performance** tab opens Nextflow's
+   **Execution report** and **Timeline**, and shows how long each step took and how much memory
+   it used. **All result files** lists everything else, e.g. the gene counts in
    `star_salmon/salmon.merged.gene_counts.tsv`.
 
 The example is read-only. Changing anything (moving a node, editing a setting, saving) makes an
