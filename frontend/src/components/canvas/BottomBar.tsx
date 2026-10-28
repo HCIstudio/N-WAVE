@@ -16,6 +16,11 @@ import {
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
 import type { ExecutionSettings } from "../../types/execution";
+import {
+  nameForEditing,
+  nameFromEditing,
+  UNTITLED_WORKFLOW,
+} from "../../utils/workflowName";
 
 interface BottomBarProps {
   workflowName: string;
@@ -158,7 +163,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   }, [showExecutionSettings, settingsChanged, settingsSaved]);
 
   const handleNameDoubleClick = () => {
-    setTempName(workflowName);
+    setTempName(nameForEditing(workflowName));
     setIsEditingName(true);
   };
 
@@ -167,8 +172,9 @@ const BottomBar: React.FC<BottomBarProps> = ({
   };
 
   const handleNameSubmit = () => {
-    if (tempName !== workflowName) {
-      onWorkflowNameChange(tempName);
+    const name = nameFromEditing(tempName);
+    if (name !== workflowName) {
+      onWorkflowNameChange(name);
     }
     setIsEditingName(false);
   };
@@ -403,6 +409,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
             <input
               type="text"
               value={tempName}
+              placeholder={UNTITLED_WORKFLOW}
+              aria-label="Workflow name"
               onChange={handleNameChange}
               onKeyDown={handleNameKeyDown}
               onBlur={handleNameBlur}
@@ -416,7 +424,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
               title="Double-click to rename"
               className="px-2 py-0.5 cursor-pointer text-sm"
             >
-              {isLoading ? "Loading..." : workflowName || "Untitled Workflow"}
+              {isLoading ? "Loading..." : workflowName || UNTITLED_WORKFLOW}
             </button>
           )}
         </div>

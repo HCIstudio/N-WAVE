@@ -41,6 +41,11 @@ import WorkflowPreview, {
 } from "../components/common/workflow/WorkflowPreview";
 import fondaLogo from "../assets/fonda-logo.png";
 import {
+  nameForEditing,
+  nameFromEditing,
+  UNTITLED_WORKFLOW,
+} from "../utils/workflowName";
+import {
   TUTORIAL_BOX_CLASS,
   TutorialBadge,
 } from "../components/tutorial/TutorialCallout";
@@ -206,7 +211,10 @@ const HomePage: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setEditingId(wf._id);
-    const data = { name: wf.name || "", description: wf.description || "" };
+    const data = {
+      name: nameForEditing(wf.name || ""),
+      description: wf.description || "",
+    };
     setEditData(data);
     setOriginalEditData(data);
   };
@@ -220,9 +228,10 @@ const HomePage: React.FC = () => {
 
   const handleSave = async (id: string) => {
     try {
-      await api.put(`/workflows/${id}`, editData);
+      const saved = { ...editData, name: nameFromEditing(editData.name) };
+      await api.put(`/workflows/${id}`, saved);
       setWorkflows((prev) =>
-        prev.map((wf) => (wf._id === id ? { ...wf, ...editData } : wf))
+        prev.map((wf) => (wf._id === id ? { ...wf, ...saved } : wf))
       );
       setEditingId(null);
       setOriginalEditData(null);
@@ -323,7 +332,7 @@ const HomePage: React.FC = () => {
           : await api.post("/workflows", {
               name:
                 choice.template.id === "empty"
-                  ? "Untitled Workflow"
+                  ? UNTITLED_WORKFLOW
                   : choice.template.name,
               nodes: choice.template.nodes,
               edges: choice.template.edges,
@@ -596,6 +605,8 @@ const HomePage: React.FC = () => {
               <textarea
                 ref={nameTextareaRef}
                 value={editData.name}
+                placeholder={UNTITLED_WORKFLOW}
+                aria-label="Workflow name"
                 onChange={(e) => handleInputChange(e, "name")}
                 onKeyDown={handleInputKeyDown}
                 onClick={(e) => {
