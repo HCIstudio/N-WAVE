@@ -40,6 +40,8 @@ interface BottomBarProps {
   checkControl?: React.ReactNode;
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
+  /** What runs use: the workflow's settings with the Settings page's defaults filled in. */
+  runSettings?: ExecutionSettings;
   onExecutionSettingsChange: (settings: ExecutionSettings) => void;
   /** Open the run panel: the running workflow's steps and log. */
   onShowRuns?: () => void;
@@ -68,6 +70,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   checkControl,
   isLoading = false,
   executionSettings,
+  runSettings = executionSettings,
   onExecutionSettingsChange,
   onShowRuns,
   resume,
@@ -312,23 +315,23 @@ const BottomBar: React.FC<BottomBarProps> = ({
                 <div className="text-sm text-text-light">
                   <div>
                     <span className="font-medium text-text">
-                      {executionSettings.runProfile
-                        ? `Profile ${executionSettings.runProfile}`
-                        : `${executionSettings.container?.enabled ? "Docker" : "Local"} execution`}
+                      {runSettings.runProfile
+                        ? `Profile ${runSettings.runProfile}`
+                        : `${runSettings.container?.enabled ? "Docker" : "Local"} execution`}
                     </span>
-                    {executionSettings.container?.enabled && (
+                    {runSettings.container?.enabled && (
                       <span className="ml-2">
-                        {executionSettings.container?.defaultImage}
+                        {runSettings.container?.defaultImage}
                       </span>
                     )}
                     <span className="ml-2">
-                      • {executionSettings.resources?.maxCpus || 1} CPU cores,{" "}
-                      {executionSettings.resources?.maxMemory || "2.GB"}
+                      • {runSettings.resources?.maxCpus || 1} CPU cores,{" "}
+                      {runSettings.resources?.maxMemory || "2.GB"}
                     </span>
                     <span className="ml-2">
                       •{" "}
-                      {executionSettings.resources?.maxTime
-                        ? `${executionSettings.resources.maxTime} timeout`
+                      {runSettings.resources?.maxTime
+                        ? `${runSettings.resources.maxTime} timeout`
                         : "server default timeout"}
                     </span>
                   </div>
@@ -477,8 +480,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
                   runBlockedReason
                     ? runBlockedReason
                     : `${
-                        executionSettings.runProfile
-                          ? `Run through the profile "${executionSettings.runProfile}"`
+                        runSettings.runProfile
+                          ? `Run through the profile "${runSettings.runProfile}"`
                           : executionSettings.container?.enabled
                             ? "Run with Docker"
                             : "Run locally"

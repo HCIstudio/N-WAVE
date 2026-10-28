@@ -1,11 +1,12 @@
 A run profile says where a workflow's steps run: on **this computer**, on a **SLURM
 cluster** or on **AWS Batch**. It also sets the container engine and default resources.
-Profiles are part of the workflow's execution settings.
+Profiles are kept on the [Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings) page,
+for every workflow.
 
 ## Making a profile
 
-Open *Execution Settings → Profiles* and click **SLURM cluster profile**, **AWS Batch
-profile** or **Local profile**. Each starts from sensible values; change them in its card:
+Open **Settings** on the home page and, under **Run profiles**, click **SLURM cluster
+profile**, **AWS Batch profile** or **Local profile**. Click **Save run defaults** when done. Each starts from sensible values; change them in its card:
 
 | Setting | Meaning |
 | --- | --- |
@@ -29,9 +30,13 @@ and can't be chosen for runs.
   `profiles.config` instead:
   `nextflow run nf-core/<pipeline> … -profile test,slurm -c profiles.config`. See
   [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects).
-- **For runs from N-WAVE** (local and SLURM profiles): choose it under
-  **Runs from N-WAVE use**. The Run button's tooltip and the run's first lines name it. The
-  default, *This computer*, uses the other execution settings.
+- **For runs from N-WAVE** (local and SLURM profiles): choose the profile all workflows use
+  under **Runs use by default** in Settings, or one for a single workflow in its
+  *Execution Settings → Profiles*. The Run button's tooltip and the run's first lines name it.
+  *This computer* uses the other execution settings.
+
+Workflows made before profiles moved to Settings may still keep profiles of their own; they can
+still be used, and *Execution Settings → Profiles* offers **Move to Settings**.
 
 ## Running on SLURM from N-WAVE
 

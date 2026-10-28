@@ -12,6 +12,7 @@
 - [Node packs](https://github.com/HCIstudio/N-WAVE/wiki/Node-Packs)
 - [Running workflows](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows)
 - [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)
+- [Settings and notifications](https://github.com/HCIstudio/N-WAVE/wiki/Settings)
 - [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects)
 - [Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting)
 

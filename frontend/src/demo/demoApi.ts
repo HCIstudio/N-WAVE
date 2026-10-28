@@ -103,6 +103,16 @@ const runAsync = <T>(fn: () => Promise<T>): Promise<DemoResponse<T>> =>
     }
   );
 
+const DEMO_SETTINGS_KEY = "nwave-demo-run-defaults";
+
+const readDemoRunDefaults = (): unknown => {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_SETTINGS_KEY) ?? "null") ?? {};
+  } catch {
+    return {};
+  }
+};
+
 const EXECUTION_DISABLED_MESSAGE =
   "Workflow execution is disabled in the hosted demo. Download the Docker version to run workflows for real. You can still build, edit, import and inspect the generated Nextflow script here.";
 
@@ -209,6 +219,15 @@ const demoApi = {
     if (path === "/execute/runs") {
       return ok({ runs: [] } as T);
     }
+    if (path === "/execute/caches") {
+      return ok({ bytes: 0, folders: 0 } as T);
+    }
+    if (path === "/settings") {
+      return ok({ runDefaults: readDemoRunDefaults() } as T);
+    }
+    if (path === "/health") {
+      return ok({ ok: true } as T);
+    }
 
     return fail(404, `No demo handler for GET ${path}`);
   },
@@ -262,6 +281,17 @@ const demoApi = {
 
   put<T = unknown>(url: string, data?: unknown): Promise<DemoResponse<T>> {
     const path = normalize(url);
+    // The run defaults are kept in this browser (there is no server to share them).
+    if (path === "/settings") {
+      const runDefaults = (data as { runDefaults?: unknown } | undefined)?.runDefaults;
+      if (!runDefaults || typeof runDefaults !== "object") {
+        return fail(400, "runDefaults is required");
+      }
+      return runStore(() => {
+        localStorage.setItem(DEMO_SETTINGS_KEY, JSON.stringify(runDefaults));
+        return { runDefaults } as T;
+      });
+    }
     const workflowMatch = path.match(/^\/workflows\/([^/]+)$/);
     if (workflowMatch) {
       return runStore(

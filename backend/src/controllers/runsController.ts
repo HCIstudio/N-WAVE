@@ -15,7 +15,9 @@ import {
 } from "../runs/runIndex";
 import { findTaskWorkDir, listTaskOutputs, readRunTasks } from "../runs/taskEvents";
 import {
+  clearAllCaches,
   clearWorkflowCache,
+  measureAllCaches,
   measureWorkflowCache,
   WorkflowCacheInUseError,
 } from "../runs/workflowCache";
@@ -191,6 +193,21 @@ const parseWorkflowId = (req: Request, res: Response): string | null => {
 export const getWorkflowCache = async (req: Request, res: Response): Promise<void> => {
   const workflowId = parseWorkflowId(req, res);
   if (workflowId) res.json(await measureWorkflowCache(workflowId));
+};
+
+/** The run cache of all workflows together. */
+export const getAllCaches = async (_req: Request, res: Response): Promise<void> => {
+  res.json(await measureAllCaches());
+};
+
+/** Delete the run cache of all workflows, except folders a run still uses. */
+export const deleteAllCaches = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const skipped = await clearAllCaches(isRunLive);
+    res.json({ ...(await measureAllCaches()), skipped });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getErrorMessage(error) });
+  }
 };
 
 /** Delete a workflow's run cache; 409 while one of its runs is going. */

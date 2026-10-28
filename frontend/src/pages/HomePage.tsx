@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Settings,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -741,6 +742,13 @@ const HomePage: React.FC = () => {
                 <Upload size={16} />
                 <span>Import Workflow</span>
               </button>
+              <Link
+                to="/settings"
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <Settings size={16} aria-hidden />
+                <span>Settings</span>
+              </Link>
             </div>
           </div>
           {isHomeTutorialActive && (

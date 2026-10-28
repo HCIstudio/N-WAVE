@@ -7,8 +7,15 @@ import { isoDurationToMinutes } from "../../utils/duration";
 
 const STORAGE_KEY = "executionSettings";
 
-/** Version 2: no time limit of the app's own by default (was 30 minutes). */
-export const EXECUTION_SETTINGS_VERSION = 2;
+/** `runProfile` for runs on this computer, whatever the default profile is. */
+export const THIS_COMPUTER = "";
+
+/**
+ * Version 2: no time limit of the app's own by default (was 30 minutes).
+ * Version 3: limits and the run profile come from the Settings page unless
+ * the workflow chose its own.
+ */
+export const EXECUTION_SETTINGS_VERSION = 3;
 
 export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
   version: EXECUTION_SETTINGS_VERSION,
@@ -70,22 +77,30 @@ export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
  * Settings saved by an older version, brought up to date. Settings from
  * before versions still carry the old 30-minute default limit, which stopped
  * most nf-core pipeline runs early: it becomes the server's default. A limit
- * chosen later is saved with a version and kept.
+ * chosen later is saved with a version and kept. Before version 3, limits
+ * other than the old defaults were chosen for the workflow: it keeps them.
+ * A workflow without a run profile ran on this computer: it still does.
  */
 export const migrateExecutionSettings = (
   settings: ExecutionSettings,
 ): ExecutionSettings => {
-  if ((settings.version ?? 1) >= EXECUTION_SETTINGS_VERSION) return settings;
-  const resources = settings.resources
-    ? {
-        ...settings.resources,
-        maxTime:
-          settings.resources.maxTime === "PT30M"
-            ? ""
-            : settings.resources.maxTime,
-      }
-    : settings.resources;
-  return { ...settings, resources, version: EXECUTION_SETTINGS_VERSION };
+  const version = settings.version ?? 1;
+  if (version >= EXECUTION_SETTINGS_VERSION) return settings;
+  let resources = settings.resources;
+  if (resources && version < 2 && resources.maxTime === "PT30M") {
+    resources = { ...resources, maxTime: "" };
+  }
+  if (resources) {
+    const ownLimits =
+      resources.maxCpus !== 4 || resources.maxMemory !== "4.GB" || Boolean(resources.maxTime);
+    resources = { ...resources, useDefaults: !ownLimits };
+  }
+  return {
+    ...settings,
+    resources,
+    runProfile: settings.runProfile ?? THIS_COMPUTER,
+    version: EXECUTION_SETTINGS_VERSION,
+  };
 };
 
 /** The settings kept in browser storage, or null. */

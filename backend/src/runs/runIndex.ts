@@ -177,6 +177,15 @@ export const listWorkflowRunDirs = (workflowId: string): string[] => [
   ),
 ];
 
+/** The folders of all recorded runs that still exist, with the workflow each belongs to. */
+export const listAllRunDirs = (): Array<{ dir: string; workflowId?: string }> => {
+  const dirs = new Map<string, string | undefined>();
+  for (const run of Object.values(readIndex())) {
+    if (!dirs.has(run.dir) && fs.existsSync(run.dir)) dirs.set(run.dir, run.workflowId);
+  }
+  return [...dirs].map(([dir, workflowId]) => ({ dir, workflowId }));
+};
+
 /** Whether a run that is still going uses `dir`. */
 export const isRunDirInUse = (dir: string, isLive: (id: string) => boolean): boolean =>
   Object.entries(readIndex()).some(([id, run]) => run.dir === dir && isLive(id));
