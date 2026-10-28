@@ -63,7 +63,8 @@ How far each part of nf-core has been tested with N-WAVE (as of 1.4).
 | Pipeline | Result |
 | --- | --- |
 | rnaseq 3.27.0 | Runs end to end (Demo 2). |
-| atacseq 2.1.2, chipseq 2.1.0, ampliseq 3.0.0, fetchngs 1.13.0, mag 5.5.0, sarek 3.10.0, scrnaseq 4.2.0 | Their settings form loads and the launch is built correctly. Not yet run to the end: the test machine couldn't reach GitHub's API, the plugin registry and the container registries. fetchngs also downloads from ENA. |
+| atacseq 2.1.2, chipseq 2.1.0, ampliseq 3.0.0, fetchngs 1.13.0, scrnaseq 4.2.0, sarek 3.10.0 | Run end to end (Docker on a desktop machine). |
+| mag 5.5.0 | Runs end to end. One task (MAXBIN2) fails on the test data; mag is set to go on without it, and the node shows *Results ready, 1 error ignored*. |
 
 **Modules and subworkflows on the canvas:** checked with `nextflow lint` on every change
 (CI), and run with Nextflow's stub mode, which runs each module's stub instead of its tool:
