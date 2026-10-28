@@ -1,12 +1,12 @@
 A run profile says where a workflow's steps run: on **this computer**, on a **SLURM
 cluster** or on **AWS Batch**. It also sets the container engine and default resources.
-Profiles are kept on the [Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings) page,
+Profiles are kept in [Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings),
 for every workflow.
 
 ## Making a profile
 
-Open **Settings** on the home page and, under **Run profiles**, click **SLURM cluster
-profile**, **AWS Batch profile** or **Local profile**. Click **Save run defaults** when done. Each starts from sensible values; change them in its card:
+Open **Global Settings** on the home page and, under **Run profiles**, click **SLURM cluster
+profile**, **AWS Batch profile** or **Local profile**. Click **Save global settings** when done. Each starts from sensible values; change them in its card:
 
 | Setting | Meaning |
 | --- | --- |
@@ -31,12 +31,12 @@ and can't be chosen for runs.
   `nextflow run nf-core/<pipeline> … -profile test,slurm -c profiles.config`. See
   [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects).
 - **For runs from N-WAVE** (local and SLURM profiles): choose the profile all workflows use
-  under **Runs use by default** in Settings, or one for a single workflow in its
-  *Execution Settings → Profiles*. The Run button's tooltip and the run's first lines name it.
+  under **Runs use by default** in Global Settings. For a single workflow, turn off
+  **Use the global run profile** in its *Execution Settings → Profiles* and choose another. The Run button's tooltip and the run's first lines name it.
   *This computer* uses the other execution settings.
 
-Workflows made before profiles moved to Settings may still keep profiles of their own; they can
-still be used, and *Execution Settings → Profiles* offers **Move to Settings**.
+Workflows made before profiles moved to Global Settings may still keep profiles of their own; they can
+still be used, and *Execution Settings → Profiles* offers **Move to Global Settings**.
 
 ## Running on SLURM from N-WAVE
 

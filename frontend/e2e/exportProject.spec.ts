@@ -54,7 +54,7 @@ test.describe("export project", () => {
     const card = page.getByRole("listitem", { name: "Profile slurm" });
     await card.getByLabel("Partition (queue)").fill("short");
     await card.getByLabel("Name").fill("hpc");
-    await page.getByRole("button", { name: "Save run defaults" }).click();
+    await page.getByRole("button", { name: "Save global settings" }).click();
     await expect(page.getByText(/^Saved\./)).toBeVisible();
 
     await page.goto("./");

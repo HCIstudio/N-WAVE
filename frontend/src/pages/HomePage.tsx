@@ -747,7 +747,7 @@ const HomePage: React.FC = () => {
                 className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
               >
                 <Settings size={16} aria-hidden />
-                <span>Settings</span>
+                <span>Global Settings</span>
               </Link>
             </div>
           </div>

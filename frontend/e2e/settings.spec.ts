@@ -24,9 +24,9 @@ test("execution settings edits reach the workflow's settings", async ({
   await page.getByRole("button", { name: "Resources" }).click();
   // The workflow takes the run defaults until it sets its own limits.
   await expect(page.getByText(/^Runs get 4 CPU cores/)).toBeVisible();
-  await page.getByLabel("Use the run defaults").uncheck();
-  await page.getByLabel("Maximum CPU Cores").fill("8");
-  await expect(summary).toContainText("8 CPU cores");
+  await page.getByLabel("Use the global limits").uncheck();
+  await page.getByLabel("Maximum CPU Cores").fill("3");
+  await expect(summary).toContainText("3 CPU cores");
   await page.getByLabel("Execution Timeout (minutes)").fill("45");
   await expect(summary).toContainText("PT45M timeout");
 });
@@ -34,12 +34,12 @@ test("execution settings edits reach the workflow's settings", async ({
 // The Settings page: run defaults every workflow uses.
 test("run defaults on the Settings page reach new workflows", async ({ page }) => {
   await page.goto("./");
-  await page.getByRole("link", { name: "Settings" }).click();
-  await expect(page.getByRole("heading", { name: "Settings", level: 1 })).toBeVisible();
+  await page.getByRole("link", { name: "Global Settings" }).click();
+  await expect(page.getByRole("heading", { name: "Global Settings", level: 1 })).toBeVisible();
 
   await page.getByLabel("Maximum CPU Cores").fill("6");
   await page.getByLabel("Execution Timeout (minutes)").fill("90");
-  await page.getByRole("button", { name: "Save run defaults" }).click();
+  await page.getByRole("button", { name: "Save global settings" }).click();
   await expect(page.getByText(/^Saved\./)).toBeVisible();
 
   await page.getByRole("link", { name: "Workflows" }).click();

@@ -49,7 +49,7 @@ const RunDefaultsSettings: React.FC = () => {
     setStatus(null);
     try {
       setDraft(await save(draft));
-      setStatus({ ok: true, text: "Saved. Workflows without their own settings use these from now on." });
+      setStatus({ ok: true, text: "Saved. Every workflow's runs use these limits from now on." });
     } catch (caught: unknown) {
       setStatus({ ok: false, text: getApiErrorMessage(caught, "The run defaults could not be saved.") });
     } finally {
@@ -70,8 +70,9 @@ const RunDefaultsSettings: React.FC = () => {
           Run limits
         </h2>
         <p className="mb-4 mt-1 text-sm text-text-light">
-          The most a run may use, for every workflow that doesn't set its own limits (Execution
-          Settings → Resources on the canvas).
+          The most any run may use. Workflows use these limits unless they set lower ones of
+          their own (Execution Settings → Resources on the canvas); a workflow's limits can't go
+          above these.
         </p>
         <ResourceLimitsFields
           limits={draft}
@@ -123,8 +124,9 @@ const RunDefaultsSettings: React.FC = () => {
           }
         />
         <p className="mt-3 text-xs text-text-light">
-          A workflow can choose another profile, or this computer, in Execution Settings →
-          Profiles. Workflows from before this page keep running on this computer.
+          Workflows use this profile unless they choose another one, or this computer, in
+          Execution Settings → Profiles. Workflows from before Global Settings keep running on this
+          computer.
         </p>
       </section>
 
@@ -136,7 +138,7 @@ const RunDefaultsSettings: React.FC = () => {
           title={problems.length > 0 ? "Fix the problems of the run profiles first" : undefined}
           className="rounded-md bg-nextflow-green px-4 py-2 text-sm font-medium text-white hover:bg-nextflow-green/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {saving ? "Saving…" : "Save run defaults"}
+          {saving ? "Saving…" : "Save global settings"}
         </button>
         <button
           type="button"

@@ -73,6 +73,10 @@ describe("SettingsPage", () => {
     expect(toggle.checked).toBe(false);
     expect(FakeNotification.requestPermission).not.toHaveBeenCalled();
     expect((screen.getByRole("button", { name: "Send test notification" }) as HTMLButtonElement).disabled).toBe(true);
+    // The events are greyed out while notifications are off.
+    const events = screen.getByRole("group", { name: "Notify when" }) as HTMLFieldSetElement;
+    expect(events.disabled).toBe(true);
+    expect(events.className).toContain("opacity-50");
 
     FakeNotification.requestPermission.mockImplementationOnce(async () => {
       FakeNotification.permission = "granted";
@@ -80,6 +84,7 @@ describe("SettingsPage", () => {
     });
     await user.click(toggle);
     await waitFor(() => expect(toggle.checked).toBe(true));
+    expect(events.className).not.toContain("opacity-50");
     expect(JSON.parse(localStorage.getItem("nwave-notifications") ?? "{}").enabled).toBe(true);
 
     await user.click(screen.getByLabelText("A run finished"));
@@ -109,7 +114,7 @@ describe("SettingsPage", () => {
   it("edits and saves the run defaults, with the server's limits", async () => {
     const user = setup();
     expect(await screen.findByRole("note", { name: "Server limits" })).toBeTruthy();
-    const save = screen.getByRole("button", { name: "Save run defaults" }) as HTMLButtonElement;
+    const save = screen.getByRole("button", { name: "Save global settings" }) as HTMLButtonElement;
     expect(save.disabled).toBe(true);
 
     fireEvent.change(screen.getByLabelText("Maximum CPU Cores"), { target: { value: "8" } });

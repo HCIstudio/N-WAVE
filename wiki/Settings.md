@@ -1,6 +1,8 @@
-The **Settings** button on the home page, next to **Import Workflow**, opens the settings for
-all of N-WAVE. A workflow can still set its own limits and run profile in its
-[execution settings](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows#execution-settings).
+The **Global Settings** button on the home page, next to **Import Workflow**, opens the
+settings for all of N-WAVE. In its
+[execution settings](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows#execution-settings),
+a workflow can choose another run profile and lower limits of its own, but never higher limits
+than the global ones.
 
 ## Notifications
 
@@ -26,11 +28,12 @@ allow them in the site settings (the icon left of the address) and reload the pa
 
 ## Run limits
 
-**Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout** for every workflow that
-doesn't set its own (*Execution Settings → Resources → Use the run defaults*). The page shows
-what the server allows: higher values are lowered to `NWAVE_MAX_CPUS` and `NWAVE_MAX_MEMORY`,
-and a timeout of 0 uses `NWAVE_EXECUTION_TIMEOUT` (24 hours unless set). Each step may run as
-long as the run.
+**Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout**: the most any run may use.
+Workflows use these unless they set lower ones (*Execution Settings → Resources*, with
+**Use the global limits** turned off). A workflow's limits above these are lowered to them, and
+its settings say so. The page shows what the server allows: higher values are lowered to
+`NWAVE_MAX_CPUS` and `NWAVE_MAX_MEMORY`, and a timeout of 0 uses `NWAVE_EXECUTION_TIMEOUT`
+(24 hours unless set). Each step may run as long as the run.
 
 ## Resume
 
@@ -40,11 +43,12 @@ whenever earlier runs left a cache, or never. The switch can always be changed b
 ## Run profiles
 
 The [run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles) and the one runs use
-by default. A workflow can choose another profile, or this computer, in
-*Execution Settings → Profiles*. Workflows from before this page keep running on this computer
-until you choose otherwise.
+(**Runs use by default**). Workflows follow it, also when it changes later, unless
+*Execution Settings → Profiles → Use the global run profile* is turned off and they choose
+another profile or this computer. Workflows from before Global Settings keep running on this
+computer until you choose otherwise.
 
-Click **Save run defaults** to apply changes. The run limits, Resume and profiles are kept by
+Click **Save global settings** to apply changes. The run limits, Resume and profiles are kept by
 N-WAVE (in `settings.json` in its data folder), so every browser uses the same.
 
 ## Run cache
