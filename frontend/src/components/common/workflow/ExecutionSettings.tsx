@@ -25,10 +25,11 @@ import Term from "../ui/Term";
 import { availableRunProfiles, usesDefaultLimits } from "../../../settings/effectiveSettings";
 import { useRunDefaults } from "../../../settings/useRunDefaults";
 import { useServerLimits } from "../../../settings/useServerLimits";
+import { formatMemory } from "../../../utils/memory";
 import ResourceLimitsFields from "./ResourceLimitsFields";
 import RunProfilePicker from "./RunProfilePicker";
 
-/** The Settings page, opened in its own tab so the canvas stays as it is. */
+/** The Global Settings page, opened in its own tab so the canvas stays as it is. */
 const SETTINGS_URL = `${import.meta.env.BASE_URL}settings`;
 
 interface DockerStatus {
@@ -625,23 +626,23 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <label htmlFor={`${fieldId}-use-default-limits`} className="text-sm font-medium text-text">
-                  Use the run defaults
+                  Use the global limits
                 </label>
                 <p className="mt-1 text-xs text-text-light">
                   {useDefaultLimits
-                    ? `Runs get ${runDefaults.maxCpus} CPU cores, ${runDefaults.maxMemory.replace(".", " ")} of memory and ${
+                    ? `Runs get ${runDefaults.maxCpus} CPU cores, ${formatMemory(runDefaults.maxMemory)} of memory and ${
                         runDefaults.timeoutMinutes > 0
                           ? `${runDefaults.timeoutMinutes} minutes`
                           : "the server's time limit"
-                      }, as set for all workflows.`
-                    : "This workflow has limits of its own."}{" "}
+                      }, as set in Global Settings.`
+                    : "This workflow has lower limits of its own; it can't go above the global ones."}{" "}
                   <a
                     href={SETTINGS_URL}
                     target="_blank"
                     rel="noreferrer"
                     className="text-nextflow-green hover:underline"
                   >
-                    Change the defaults in Settings
+                    Change them in Global Settings
                   </a>
                 </p>
               </div>
@@ -682,6 +683,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   })
                 }
                 serverLimits={serverLimits}
+                ceiling={runDefaults}
               />
             )}
           </div>

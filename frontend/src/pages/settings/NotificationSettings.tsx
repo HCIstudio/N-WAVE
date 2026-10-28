@@ -32,6 +32,8 @@ const NotificationSettings: React.FC = () => {
   const [testResult, setTestResult] = useState<string | null>(null);
   const usable = support === "granted" || support === "default";
   const hint = supportHint(support);
+  // The events only count while notifications are on.
+  const eventsOn = prefs.enabled && support === "granted";
 
   const toggle = async (enabled: boolean) => {
     setTestResult(null);
@@ -68,10 +70,16 @@ const NotificationSettings: React.FC = () => {
         </p>
       )}
 
-      <fieldset className="mt-3 space-y-1.5 pl-6" disabled={!prefs.enabled || support !== "granted"}>
+      <fieldset
+        className={`mt-3 space-y-1.5 pl-6 ${eventsOn ? "" : "opacity-50"}`}
+        disabled={!eventsOn}
+      >
         <legend className="sr-only">Notify when</legend>
         {NOTIFICATION_EVENTS.map((event) => (
-          <label key={event.id} className="flex items-center gap-2 text-sm text-text">
+          <label
+            key={event.id}
+            className={`flex items-center gap-2 text-sm text-text ${eventsOn ? "" : "cursor-not-allowed"}`}
+          >
             <input
               type="checkbox"
               checked={prefs.events[event.id]}

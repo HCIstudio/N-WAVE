@@ -1,13 +1,14 @@
 import type React from "react";
 import { useId } from "react";
 import type { ServerLimits } from "../../../settings/useServerLimits";
+import { formatMemory, memoryBytes } from "../../../utils/memory";
 import { MemoryInput } from "../forms";
 
 export interface ResourceLimits {
   maxCpus: number;
   /** e.g. "4.GB". */
   maxMemory: string;
-  /** 0: the server's own limit. */
+  /** 0: the limit above it (the global one, or the server's). */
   timeoutMinutes: number;
 }
 
@@ -15,48 +16,90 @@ interface ResourceLimitsFieldsProps {
   limits: ResourceLimits;
   onChange: (patch: Partial<ResourceLimits>) => void;
   serverLimits: ServerLimits | null;
+  /** For a workflow's own limits: the global ones, which they can't exceed. */
+  ceiling?: ResourceLimits;
 }
 
 const inputClass =
   "w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green";
 
-/** The most a run may use: CPU cores, memory and time, with what the server allows. */
+const timeLimitText = (minutes: number, serverLimits: ServerLimits | null): string =>
+  minutes > 0
+    ? `${minutes} minutes`
+    : serverLimits
+      ? serverLimits.defaultTimeoutMinutes > 0
+        ? `${serverLimits.defaultTimeoutMinutes} minutes, the server's limit`
+        : "no time limit"
+      : "the server's time limit";
+
+/** The most a run may use: CPU cores, memory and time, with what is allowed above it. */
 const ResourceLimitsFields: React.FC<ResourceLimitsFieldsProps> = ({
   limits,
   onChange,
   serverLimits,
+  ceiling,
 }) => {
   const fieldId = useId();
-  const { maxCpus } = limits;
-  const cpuSliderMax = Math.max(serverLimits?.maxCpus ?? 32, maxCpus);
-  const filled = ((maxCpus - 1) / Math.max(1, cpuSliderMax - 1)) * 100;
+  const cpuMax = Math.min(serverLimits?.maxCpus ?? Number.POSITIVE_INFINITY, ceiling?.maxCpus ?? Number.POSITIVE_INFINITY);
+  const memoryTooHigh =
+    ceiling !== undefined && memoryBytes(limits.maxMemory) > memoryBytes(ceiling.maxMemory);
+  const timeTooHigh =
+    ceiling !== undefined &&
+    ceiling.timeoutMinutes > 0 &&
+    (limits.timeoutMinutes === 0 || limits.timeoutMinutes > ceiling.timeoutMinutes);
+
   return (
     <div className="space-y-6">
+      {ceiling ? (
+        <p
+          role="note"
+          aria-label="Global limits"
+          className="rounded-md border border-panel-border p-3 text-xs text-text-light"
+        >
+          This workflow can use at most {ceiling.maxCpus} CPU cores,{" "}
+          {formatMemory(ceiling.maxMemory)} of memory and{" "}
+          {timeLimitText(ceiling.timeoutMinutes, serverLimits)}, as set in Global Settings. Higher
+          values are lowered to these.
+        </p>
+      ) : (
+        serverLimits && (
+          <p
+            role="note"
+            aria-label="Server limits"
+            className="rounded-md border border-panel-border p-3 text-xs text-text-light"
+          >
+            This server allows up to {serverLimits.maxCpus} CPU cores and{" "}
+            {formatMemory(serverLimits.maxMemory)} of memory per run (set with NWAVE_MAX_CPUS /
+            NWAVE_MAX_MEMORY); higher values are lowered to these.
+          </p>
+        )
+      )}
+
       <div>
-        <label htmlFor={`${fieldId}-max-cpus`} className="block text-sm font-medium text-text mb-3">
+        <label htmlFor={`${fieldId}-max-cpus`} className="block text-sm font-medium text-text mb-2">
           Maximum CPU Cores
         </label>
-        <div className="flex items-center gap-4">
-          <input
-            id={`${fieldId}-max-cpus`}
-            type="range"
-            min="1"
-            max={cpuSliderMax}
-            value={maxCpus}
-            onChange={(e) => onChange({ maxCpus: Number.parseInt(e.target.value, 10) })}
-            className="flex-1 h-2 bg-accent rounded-lg appearance-none cursor-pointer slider"
-            style={{
-              background: `linear-gradient(to right, #00A878 0%, #00A878 ${filled}%, #3A3A3A ${filled}%, #3A3A3A 100%)`,
-            }}
-          />
-          <span className="text-sm font-medium text-nextflow-green bg-panel-background px-3 py-1 rounded-md min-w-[3rem] text-center">
-            {maxCpus}
-          </span>
-        </div>
+        <input
+          id={`${fieldId}-max-cpus`}
+          type="number"
+          min="1"
+          max={Number.isFinite(cpuMax) ? cpuMax : undefined}
+          value={limits.maxCpus}
+          onChange={(e) => {
+            const value = Number.parseInt(e.target.value, 10);
+            if (Number.isFinite(value)) onChange({ maxCpus: Math.max(1, Math.min(value, cpuMax)) });
+          }}
+          className={inputClass}
+        />
         <p className="text-xs text-text-light mt-2">
           Maximum number of CPU cores any single process can use. Steps that ask for more are
           capped to this.
         </p>
+        {ceiling && limits.maxCpus > ceiling.maxCpus && (
+          <p role="alert" className="mt-1 text-xs text-yellow-500">
+            More than Global Settings allow: runs get {ceiling.maxCpus} CPU cores.
+          </p>
+        )}
       </div>
 
       <div>
@@ -71,21 +114,13 @@ const ResourceLimitsFields: React.FC<ResourceLimitsFieldsProps> = ({
         />
         <p className="text-xs text-text-light mt-2">
           Maximum memory any single process can use; steps that ask for more are capped to this.
-          nf-core/rnaseq needs about 6–15 GB even with its test data.
         </p>
+        {memoryTooHigh && ceiling && (
+          <p role="alert" className="mt-1 text-xs text-yellow-500">
+            More than Global Settings allow: runs get {formatMemory(ceiling.maxMemory)}.
+          </p>
+        )}
       </div>
-
-      {serverLimits && (
-        <p
-          role="note"
-          aria-label="Server limits"
-          className="rounded-md border border-panel-border p-3 text-xs text-text-light"
-        >
-          This server allows up to {serverLimits.maxCpus} CPU cores and{" "}
-          {serverLimits.maxMemory.replace(".", " ")} of memory per run (set with NWAVE_MAX_CPUS /
-          NWAVE_MAX_MEMORY); higher values are lowered to these.
-        </p>
-      )}
 
       <div>
         <label
@@ -98,22 +133,31 @@ const ResourceLimitsFields: React.FC<ResourceLimitsFieldsProps> = ({
           id={`${fieldId}-execution-timeout-minutes`}
           type="number"
           min="0"
-          max="10080"
+          max={ceiling && ceiling.timeoutMinutes > 0 ? ceiling.timeoutMinutes : 10080}
           value={limits.timeoutMinutes}
           onChange={(e) => onChange({ timeoutMinutes: Number.parseInt(e.target.value, 10) || 0 })}
-          placeholder="0 = server default"
+          placeholder={ceiling ? "0 = the global limit" : "0 = server default"}
           className={inputClass}
         />
         <p className="text-xs text-text-light mt-2">
           Maximum time the workflow can run before it is stopped; each step may run as long. 0
-          uses the server default
-          {serverLimits
-            ? serverLimits.defaultTimeoutMinutes > 0
-              ? ` (${serverLimits.defaultTimeoutMinutes} minutes, set with NWAVE_EXECUTION_TIMEOUT)`
-              : " (no limit)"
-            : " (24 hours unless NWAVE_EXECUTION_TIMEOUT says otherwise)"}
+          uses{" "}
+          {ceiling
+            ? `the global limit (${timeLimitText(ceiling.timeoutMinutes, serverLimits)})`
+            : `the server default${
+                serverLimits
+                  ? serverLimits.defaultTimeoutMinutes > 0
+                    ? ` (${serverLimits.defaultTimeoutMinutes} minutes, set with NWAVE_EXECUTION_TIMEOUT)`
+                    : " (no limit)"
+                  : " (24 hours unless NWAVE_EXECUTION_TIMEOUT says otherwise)"
+              }`}
           .
         </p>
+        {timeTooHigh && ceiling && limits.timeoutMinutes > 0 && (
+          <p role="alert" className="mt-1 text-xs text-yellow-500">
+            Longer than Global Settings allow: runs stop after {ceiling.timeoutMinutes} minutes.
+          </p>
+        )}
       </div>
     </div>
   );

@@ -16,7 +16,7 @@ const CANVAS_PARTS: { name: string; what: string }[] = [
   { name: "Workflow check", what: "The shield next to Run lists what keeps the workflow from running." },
   { name: "Run and Resume", what: "Run starts it; with Resume on, it reuses the steps an earlier run finished." },
   { name: "Runs", what: "The bar at the bottom right: the run's steps, log and results, and earlier runs." },
-  { name: "Execution settings", what: "Docker or not, where results go, and this workflow's own limits or run profile (the defaults are in Settings)." },
+  { name: "Execution settings", what: "Docker or not, where results go, and this workflow's own limits or run profile (the global ones are in Global Settings)." },
   { name: "Export Project", what: "A folder with the script, config, modules and inputs, to run anywhere." },
   { name: "Keyboard shortcuts", what: "Press ? on the canvas: undo, copy, paste, duplicate and more." },
 ];

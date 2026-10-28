@@ -9,7 +9,7 @@ import AllCachesSettings from "./settings/AllCachesSettings";
 import NotificationSettings from "./settings/NotificationSettings";
 import RunDefaultsSettings from "./settings/RunDefaultsSettings";
 
-/** Settings for all of N-WAVE: notifications, what runs use by default, the cache. */
+/** Global Settings: notifications, the limits and profile every run uses, the cache. */
 const SettingsPage: React.FC = () => {
   const headingId = useId();
   return (
@@ -21,11 +21,11 @@ const SettingsPage: React.FC = () => {
             Workflows
           </Link>
           <h1 id={headingId} className="mt-4 text-3xl font-bold text-text">
-            Settings
+            Global Settings
           </h1>
           <p className="mt-1 text-sm text-text-light">
-            For all workflows. A workflow can still set its own limits and run profile in its
-            Execution Settings.
+            For all workflows. In its Execution Settings, a workflow can choose another run
+            profile and lower limits of its own, but never higher limits than these.
           </p>
         </div>
 

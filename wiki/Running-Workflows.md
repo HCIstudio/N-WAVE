@@ -36,8 +36,8 @@ The **Execution Settings** button in the bottom bar opens the workflow's setting
 | --- | --- |
 | **Execution** | Whether steps run in Docker containers (recommended) and the default image for steps without their own. Also shows whether Docker and Nextflow are available. |
 | **Output** | The **Output Directory** (default `results`) and the **Output Naming Pattern** for run folders (`{workflow_name}`, `{timestamp}`, `{date}`). |
-| **Resources** | **Use the run defaults** (the limits on the [Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings) page), or turn it off to set **Maximum CPU Cores**, **Maximum Memory** and the **Execution Timeout** for this workflow. |
-| **Profiles** | Where this workflow's steps run: the default profile from Settings, this computer, or another profile ([Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)). |
+| **Resources** | **Use the global limits** (from [Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)), or turn it off to set lower **Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout** for this workflow. Values above the global limits are lowered to them. |
+| **Profiles** | **Use the global run profile**, or turn it off to choose this computer or another profile for this workflow ([Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)). |
 | **Advanced** | The Nextflow version, what to do when a step fails, and clean-up after a failure. |
 
 Below the tabs, **Run cache** shows how much space the workflow's cache takes.
@@ -61,16 +61,16 @@ stop them at once (each can be resumed later). Each workflow's card says how its
 
 After a run fails or is cancelled, fix what went wrong and run again with **Resume** on (the
 switch on the Run button; it's on by default after a failure, or as
-[Settings → Resume](https://github.com/HCIstudio/N-WAVE/wiki/Settings#resume) says). The run reuses every step whose
+[Global Settings → Resume](https://github.com/HCIstudio/N-WAVE/wiki/Settings#resume) says). The run reuses every step whose
 code and inputs haven't changed and only runs what you changed and what follows. The switch is
 greyed until a saved workflow has a run with a cache. When a run fails, its notice offers
 **Resume** too.
 
 The cache is each step's work folder. **Execution Settings → Run cache** shows its size and
-clears it; results and logs stay. **Settings → Run cache** does the same for all workflows.
+clears it; results and logs stay. **Global Settings → Run cache** does the same for all workflows.
 
 A long run can tell you when it ends while you're in another tab: turn on
-[notifications](https://github.com/HCIstudio/N-WAVE/wiki/Settings#notifications) in Settings.
+[notifications](https://github.com/HCIstudio/N-WAVE/wiki/Settings#notifications) in Global Settings.
 
 ## When N-WAVE stops during a run
 

@@ -1,10 +1,12 @@
-// A workflow's execution settings with the run defaults of the Settings page
-// filled in: what its runs and exports actually use.
+// A workflow's execution settings with the Global Settings filled in: what
+// its runs and exports actually use. A workflow's own limits can be lower than
+// the global ones, not higher.
 
 import type { RunDefaults } from "../api/settings";
 import type { RunProfile } from "../execution/runProfiles";
 import type { ExecutionSettings } from "../types/execution";
-import { minutesToIsoDuration } from "../utils/duration";
+import { isoDurationToMinutes, minutesToIsoDuration } from "../utils/duration";
+import { smallerMemory } from "../utils/memory";
 
 /**
  * The profiles a workflow can use: those of the Settings page, then any the
@@ -24,6 +26,24 @@ export const availableRunProfiles = (
 export const usesDefaultLimits = (settings: ExecutionSettings): boolean =>
   settings.resources?.useDefaults !== false;
 
+/** A workflow's own limits, lowered to the global ones where they are higher. */
+export const capToGlobalLimits = (
+  resources: ExecutionSettings["resources"],
+  defaults: RunDefaults,
+): ExecutionSettings["resources"] => {
+  const ownMinutes = isoDurationToMinutes(resources.maxTime);
+  const globalMinutes = defaults.timeoutMinutes;
+  // 0 is "the limit above": the global one for a workflow, the server's globally.
+  const minutes =
+    globalMinutes > 0 && (ownMinutes === 0 || ownMinutes > globalMinutes) ? globalMinutes : ownMinutes;
+  return {
+    ...resources,
+    maxCpus: Math.min(resources.maxCpus, defaults.maxCpus),
+    maxMemory: smallerMemory(resources.maxMemory, defaults.maxMemory),
+    maxTime: minutesToIsoDuration(minutes),
+  };
+};
+
 export const applyRunDefaults = (
   settings: ExecutionSettings,
   defaults: RunDefaults,
@@ -36,8 +56,8 @@ export const applyRunDefaults = (
         maxMemory: defaults.maxMemory,
         maxTime: minutesToIsoDuration(defaults.timeoutMinutes),
       }
-    : settings.resources,
+    : capToGlobalLimits(settings.resources, defaults),
   runProfiles: availableRunProfiles(settings, defaults),
-  // Unset: the default profile; "": this computer.
+  // Unset: the global profile; "": this computer.
   runProfile: settings.runProfile ?? defaults.runProfile ?? "",
 });

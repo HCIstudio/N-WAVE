@@ -395,17 +395,17 @@ describe("ExecutionSettings", () => {
   });
 
   describe("Resources tab", () => {
-    it("uses the run defaults until the workflow sets its own limits", async () => {
+    it("uses the global limits until the workflow sets its own", async () => {
       const onChange = show();
       await openTab("Resources");
-      const toggle = screen.getByLabelText("Use the run defaults") as HTMLInputElement;
+      const toggle = screen.getByLabelText("Use the global limits") as HTMLInputElement;
       expect(toggle.checked).toBe(true);
       expect(
-        await screen.findByText(/Runs get 6 CPU cores, 12 GB of memory and the server's time limit/),
+        await screen.findByText(/Runs get 6 CPU cores, 12 GB of memory and the server's time limit, as set in Global Settings/),
       ).toBeTruthy();
       expect(screen.queryByLabelText("Maximum CPU Cores")).toBeNull();
       expect(
-        screen.getByRole("link", { name: "Change the defaults in Settings" }).getAttribute("href"),
+        screen.getByRole("link", { name: "Change them in Global Settings" }).getAttribute("href"),
       ).toBe("/settings");
 
       fireEvent.click(toggle);
@@ -420,17 +420,26 @@ describe("ExecutionSettings", () => {
       });
     });
 
-    it("shows the server limits and default timeout", async () => {
+    it("says how far a workflow's own limits can go", async () => {
       show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
-      const note = await screen.findByRole("note", { name: "Server limits" });
-      expect(note.textContent).toContain(
-        "This server allows up to 16 CPU cores and 64 GB of memory per run",
+      const note = await screen.findByRole("note", { name: "Global limits" });
+      await waitFor(() =>
+        expect(note.textContent).toContain(
+          "This workflow can use at most 6 CPU cores, 12 GB of memory and 60 minutes, the server's limit, as set in Global Settings",
+        ),
       );
-      expect(screen.getByText(/0\s+uses the server default \(60 minutes, set with NWAVE_EXECUTION_TIMEOUT\)/)).toBeTruthy();
-      expect(
-        (screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max,
-      ).toBe("16");
+      expect(screen.queryByRole("note", { name: "Server limits" })).toBeNull();
+      // The lower of the server's 16 and the global 6.
+      expect((screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max).toBe("6");
+      expect(screen.getByText(/0\s+uses the global limit/)).toBeTruthy();
+    });
+
+    it("warns about own limits above the global ones", async () => {
+      show(withSettings({ resources: { ...ownLimits, maxCpus: 8, maxMemory: "16.GB" } }));
+      await openTab("Resources");
+      expect(await screen.findByText("More than Global Settings allow: runs get 6 CPU cores.")).toBeTruthy();
+      expect(screen.getByText("More than Global Settings allow: runs get 12 GB.")).toBeTruthy();
     });
 
     it("says when the server has no timeout", async () => {
@@ -440,21 +449,15 @@ describe("ExecutionSettings", () => {
       });
       show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
-      expect(await screen.findByText(/\(no limit\)/)).toBeTruthy();
+      expect(await screen.findByText(/12 GB of memory and no time limit/)).toBeTruthy();
     });
 
     it("works without server limits", async () => {
       serve({ ...allAvailable, "/execute/limits": new Error("404") });
-      show(withSettings({ resources: { ...ownLimits, maxCpus: 48 } }));
+      show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
-      expect(screen.queryByRole("note", { name: "Server limits" })).toBeNull();
-      expect(
-        screen.getByText(/24 hours unless NWAVE_EXECUTION_TIMEOUT says otherwise/),
-      ).toBeTruthy();
-      // The slider reaches the current value even above the usual 32.
-      expect(
-        (screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max,
-      ).toBe("48");
+      expect(await screen.findByText(/12 GB of memory and the server's time limit, as set/)).toBeTruthy();
+      expect((screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max).toBe("6");
     });
 
     it("changes CPU, memory and timeout", async () => {
@@ -468,10 +471,17 @@ describe("ExecutionSettings", () => {
       ).toBe("120");
 
       fireEvent.change(screen.getByLabelText("Maximum CPU Cores"), {
-        target: { value: "8" },
+        target: { value: "5" },
       });
       expect(onChange).toHaveBeenLastCalledWith({
-        resources: { ...resources, maxCpus: 8 },
+        resources: { ...resources, maxCpus: 5 },
+      });
+      // No more than the global 6.
+      fireEvent.change(screen.getByLabelText("Maximum CPU Cores"), {
+        target: { value: "20" },
+      });
+      expect(onChange).toHaveBeenLastCalledWith({
+        resources: { ...resources, maxCpus: 6 },
       });
 
       fireEvent.change(screen.getByLabelText("Maximum Memory"), {
@@ -498,25 +508,37 @@ describe("ExecutionSettings", () => {
   });
 
   describe("Profiles tab", () => {
-    it("picks the default profile, this computer or one of the Settings page's profiles", async () => {
+    it("uses the global run profile, or one the workflow chooses", async () => {
       const onChange = show();
       await openTab("Profiles");
+      const toggle = screen.getByLabelText("Use the global run profile") as HTMLInputElement;
       const select = screen.getByLabelText("Runs of this workflow use") as HTMLSelectElement;
-      await waitFor(() =>
-        expect([...select.options].map((option) => option.text)).toEqual([
-          "The default (cluster)",
-          "This computer (Execution and Resources settings)",
-          "cluster: SLURM cluster",
-        ]),
-      );
-      expect(select.value).toBe("@default");
+      expect(toggle.checked).toBe(true);
+      expect(select.disabled).toBe(true);
+      await waitFor(() => expect(select.value).toBe("cluster"));
+      expect(screen.getByText(/Runs use cluster, as set in Global Settings/)).toBeTruthy();
+      expect([...select.options].map((option) => option.text)).toEqual([
+        "This computer (Execution and Resources settings)",
+        "cluster: SLURM cluster",
+      ]);
+      // Turned off, it starts from the global choice.
+      fireEvent.click(toggle);
+      expect(onChange).toHaveBeenLastCalledWith({ runProfile: "cluster" });
+    });
+
+    it("lets a workflow run on this computer while the global profile is a cluster", async () => {
+      const onChange = show({ ...defaultExecutionSettings, runProfile: "cluster" });
+      await openTab("Profiles");
+      const select = screen.getByLabelText("Runs of this workflow use") as HTMLSelectElement;
+      await waitFor(() => expect(select.value).toBe("cluster"));
+      expect(select.disabled).toBe(false);
       fireEvent.change(select, { target: { value: "" } });
       expect(onChange).toHaveBeenLastCalledWith({ runProfile: "" });
-      fireEvent.change(select, { target: { value: "@default" } });
+      fireEvent.click(screen.getByLabelText("Use the global run profile"));
       expect(onChange).toHaveBeenLastCalledWith({ runProfile: undefined });
     });
 
-    it("offers to move a workflow's own profiles to Settings", async () => {
+    it("offers to move a workflow's own profiles to Global Settings", async () => {
       const put = vi.fn(async (_url: string, body: unknown) => ({ data: body }));
       const api = (await import("../../../api")).default as unknown as Record<string, unknown>;
       api.put = put;
@@ -526,7 +548,7 @@ describe("ExecutionSettings", () => {
       });
       await openTab("Profiles");
       await screen.findByText(/keeps profiles of its own.*old/);
-      await userEvent.setup().click(screen.getByRole("button", { name: "Move to Settings" }));
+      await userEvent.setup().click(screen.getByRole("button", { name: "Move to Global Settings" }));
       await waitFor(() => expect(onChange).toHaveBeenCalledWith({ runProfiles: [] }));
       expect(put).toHaveBeenCalledWith("/settings", {
         runDefaults: expect.objectContaining({
