@@ -7,6 +7,10 @@ vi.mock("../../../api/runs", () => ({
   getRunLog: vi.fn(async () => ""),
   listRunResults: vi.fn(async () => []),
   runResultUrl: () => "",
+  listRunReports: vi.fn(async () => ({ report: false, timeline: false, trace: false })),
+  runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
+  getRunTrace: vi.fn(async () => []),
+  listRunTasks: vi.fn(async () => []),
 }));
 
 const { default: ExecutionStatusPanel } = await import(
@@ -138,10 +142,11 @@ describe("ExecutionStatusPanel", () => {
     const tabs = [...container.querySelectorAll('[role="tab"]')];
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Steps",
+      "Performance",
       "Log",
       "History",
     ]);
-    act(() => (tabs[2] as HTMLButtonElement).click());
+    act(() => (tabs[3] as HTMLButtonElement).click());
     expect(onTabChange).toHaveBeenCalledWith("history");
 
     const panel = container.querySelector('[aria-label="Run panel"]');

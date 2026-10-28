@@ -16,8 +16,15 @@ how the run ended, instead of starting it again.
   when it ends. A whole pipeline or a subworkflow lists its own steps under it. The bar counts
   finished steps, not time: steps differ a lot in how long they take, and until Nextflow says
   how many steps there are, the bar only shows that the run is going.
+- **Performance**: once the run has ended (also when it failed), **Execution report** and
+  **Timeline** open Nextflow's own reports in a new tab. Below them: how long the run took, its
+  CPU hours, and how many tasks were cached, retried or failed. A table lists the steps, slowest
+  first, with their total and longest task time and their peak memory next to the memory they
+  had, plus a bar for when each ran. A step that used 90% or more of its memory gets a hint: it
+  is the first to fail with exit status 137 (out of memory).
 - **Log**: the full output as it arrives, with a **Copy** button.
-- **History**: the workflow's earlier runs, each with its outcome, log and results.
+- **History**: the workflow's earlier runs, each with its outcome, log, results, its report
+  buttons and the same time and memory per step.
 
 On the canvas, each node shows **Running**, **Results ready**, **Failed** or **Reused from
 cache**. Double-click a node and open **Results** to see the files its tasks produced, with a
@@ -92,6 +99,7 @@ Each run has a folder in the output directory, named by the naming pattern, for 
 | `inputs/` | The uploaded files and samplesheets. |
 | `workflow/` | The script and config that ran. |
 | `nextflow/` | Nextflow's work folders (the run cache) and its log. |
+| `nwave_reports/<run>/` | Nextflow's execution report, timeline and trace (`execution_trace.txt`, tab separated) of each run, also of resumed ones. |
 | `nwave-run.log` | The output the run panel showed. |
 
 The run panel's **Results** and each node's **Results** tab open these files in the browser.

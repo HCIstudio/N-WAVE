@@ -47,6 +47,7 @@ import type { RunProfile } from "./runProfile";
 import { removeRunTaskContainers } from "./taskContainers";
 import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
 import { isClearingWorkflowCache } from "../runs/workflowCache";
+import { buildReportsConfig } from "../runs/runReports";
 
 export interface WorkflowRunRequest {
   /** The Nextflow script ("" for a pipeline). */
@@ -216,7 +217,8 @@ export const runNextflowWorkflow = async (
     // resources.ts); applied as process.resourceLimits.
     const limits = resolveRunLimits(settings);
     const timeoutMs = resolveTimeoutMs(settings.executionTimeout);
-    const resourceConfig = buildResourceLimitsConfig(limits, timeoutMs);
+    // With the report, timeline and trace every run gets (runs/runReports.ts).
+    const resourceConfig = `${buildResourceLimitsConfig(limits, timeoutMs)}\n\n${buildReportsConfig(id)}`;
 
     const scriptPath = path.join(dirs.workflow, `${name}.nf`);
     if (pipeline) {

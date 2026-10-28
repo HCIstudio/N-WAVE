@@ -13,6 +13,7 @@ import {
   listRuns,
   realFileInRun,
 } from "../runs/runIndex";
+import { findRunReports, isReportKind, parseTrace } from "../runs/runReports";
 import { findTaskWorkDir, listTaskOutputs, readRunTasks } from "../runs/taskEvents";
 import {
   clearAllCaches,
@@ -122,6 +123,51 @@ export const getRunResultFile = (req: Request, res: Response): void => {
     return;
   }
   sendSandboxed(res, real);
+};
+
+/** `{ report, timeline, trace }`: which of Nextflow's reports the run has. */
+export const listRunReports = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  if (!dir) {
+    res.status(404).json({ message: `Unknown run ${id}` });
+    return;
+  }
+  const found = findRunReports(dir, id);
+  res.json({ report: Boolean(found.report), timeline: Boolean(found.timeline), trace: Boolean(found.trace) });
+};
+
+/** One of the run's reports: the execution report or timeline (HTML), or the trace. */
+export const getRunReport = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const kind = String(req.params.kind ?? "");
+  const dir = findRunDir(id);
+  const file = dir && isReportKind(kind) ? findRunReports(dir, id)[kind] : undefined;
+  const real = dir && file ? realFileInRun(dir, file) : null;
+  if (!real) {
+    res.status(404).json({ message: "This run has no such report" });
+    return;
+  }
+  if (kind === "trace") {
+    res.type("text/plain").sendFile(real);
+    return;
+  }
+  sendSandboxed(res, real);
+};
+
+/** `{ tasks }`: each task's times and resource use, from the run's trace. */
+export const getRunTrace = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  const file = dir ? findRunReports(dir, id).trace : undefined;
+  if (!file) {
+    res.status(404).json({ message: "This run has no trace" });
+    return;
+  }
+  res.json({ id, tasks: parseTrace(fs.readFileSync(file, "utf8")) });
 };
 
 /** `{ tasks }`: what each task of a run is doing, from Nextflow's log. */
