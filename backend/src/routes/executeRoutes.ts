@@ -12,8 +12,11 @@ import {
   getAllCaches,
   getRunLog,
   getWorkflowCache,
+  getRunReport,
   getRunResultFile,
+  getRunTrace,
   getRunTaskFile,
+  listRunReports,
   listRunResultFiles,
   listRunsHandler,
   listRunTaskFiles,
@@ -37,6 +40,9 @@ router.get("/runs/:id/files", listRunResultFiles);
 // Path-style, so a served report's relative links (report_files/x.png) work.
 router.get("/runs/:id/results/*", getRunResultFile);
 router.get("/runs/:id/tasks", listRunTasks);
+router.get("/runs/:id/reports", listRunReports);
+router.get("/runs/:id/reports/:kind", getRunReport);
+router.get("/runs/:id/trace", getRunTrace);
 router.get("/runs/:id/tasks/:prefix/:rest/files", listRunTaskFiles);
 router.get("/runs/:id/tasks/:prefix/:rest/file", getRunTaskFile);
 router.get("/runs/:id/tasks/:prefix/:rest/output/*", getRunTaskFile);
