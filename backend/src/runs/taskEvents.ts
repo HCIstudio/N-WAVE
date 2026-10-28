@@ -11,7 +11,8 @@ import path from "node:path";
  * directory. The work directory also holds the files the task produced.
  */
 
-export type TaskStatus = "running" | "succeeded" | "failed" | "cached";
+/** "ignored": failed, but its process lets the run go on (errorStrategy 'ignore'). */
+export type TaskStatus = "running" | "succeeded" | "failed" | "ignored" | "cached";
 
 export interface RunTask {
   /** Nextflow's task hash, e.g. "b7/8cc335" (also its work directory). */
@@ -33,12 +34,22 @@ const SUBMITTED =
 const COMPLETED =
   /Task completed > TaskHandler\[.*?name: (.+?); status: \w+; exit: (\S+); error: (.*?); workDir: (\S+?)(?:\]|\s)/;
 
+// errorStrategy 'ignore': "[85/280734] NOTE: Process `NAME (tag)` terminated
+// with an error exit status (255) -- Error is ignored".
+const IGNORED = /\[([0-9a-f]{2}\/[0-9a-f]{6})\] NOTE: .* -- Error is ignored/;
+
 const processOf = (name: string): string => name.replace(/\s+\(.*\)$/, "");
 
 /** The run's tasks in the order they were submitted. */
 export const parseTaskEvents = (log: string): RunTask[] => {
   const tasks = new Map<string, RunTask>();
+  const ignored = new Set<string>();
   for (const line of log.split("\n")) {
+    const ignoredMatch = line.match(IGNORED);
+    if (ignoredMatch) {
+      ignored.add(ignoredMatch[1] ?? "");
+      continue;
+    }
     const submitted = line.match(SUBMITTED);
     if (submitted) {
       const [, hash = "", kind, name = ""] = submitted;
@@ -78,7 +89,12 @@ export const parseTaskEvents = (log: string): RunTask[] => {
       });
     }
   }
-  return [...tasks.values()];
+  // The note can come before or after the task's "completed" line.
+  return [...tasks.values()].map((task) =>
+    task.status === "failed" && ignored.has(task.hash)
+      ? { ...task, status: "ignored" }
+      : task,
+  );
 };
 
 /** The run's tasks, or [] when Nextflow hasn't written its log yet. */

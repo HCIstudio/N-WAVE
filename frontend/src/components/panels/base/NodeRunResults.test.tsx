@@ -34,6 +34,7 @@ const summaryOf = (
   total: tasks.length,
   done: tasks.length,
   failed: 0,
+  ignored: 0,
   running: 0,
   cached: 0,
   tasks,
@@ -140,6 +141,28 @@ describe("NodeRunResults", () => {
     expect(
       await screen.findByText("This step produced no files."),
     ).toBeTruthy();
+  });
+
+  it("tells which tasks failed but were ignored", async () => {
+    listTaskFiles.mockResolvedValue([]);
+    renderWithRun(
+      <NodeRunResults nodeId="n1" />,
+      summaryOf(
+        [
+          task({ hash: "a" }),
+          task({ hash: "b", name: "MAXBIN2", status: "ignored", exitCode: 255 }),
+        ],
+        { ignored: 1 },
+      ),
+    );
+    expect(
+      screen.getByText(
+        "Last run: 2 of 2 tasks done, 1 failed but ignored (the run went on without its results).",
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText("error ignored")).toBeTruthy();
+    expect(screen.getByText("exit 255")).toBeTruthy();
+    await screen.findAllByText("This step produced no files.");
   });
 
   it("shows why the files could not be listed", async () => {

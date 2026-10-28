@@ -89,6 +89,31 @@ describe("useExecutionStatus", () => {
     });
   });
 
+  it("reads lines whose task hash is a link to its work directory", () => {
+    // Newer Nextflow versions print the hash as an OSC 8 link.
+    const link = (hash: string) =>
+      `\u001b[2m[\u001b[0m\u001b[34m\u001b]8;;file:///results/work/${hash}0000\u0007${hash}\u001b]8;;\u0007\u001b[0m\u001b[2m]\u001b[0m`;
+    const { result } = setup();
+    act(() => result.current.startExecution());
+    act(() =>
+      result.current.parseNextflowOutput(
+        [
+          "executor >  local (5)",
+          `${link("72/6ebddb")} NFC…AW_DATA_FILES (sampleID_2) | 4 of 4, cached: 4 ✔`,
+          `${link("57/a60080")} NFC…PLISEQ:FASTQC (sampleID_2) | 1 of 4`,
+          "Plus 3 more processes waiting for tasks…",
+        ].join("\n"),
+      ),
+    );
+    expect(result.current.status).toMatchObject({
+      totalProcesses: 5,
+      finishedProcesses: 1,
+      totalNodes: 2,
+      completedNodes: 1,
+      runningNodes: 1,
+    });
+  });
+
   it("tracks processes from Nextflow's console lines", () => {
     const { result } = setup();
     act(() => result.current.startExecution());

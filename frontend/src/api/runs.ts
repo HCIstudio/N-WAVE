@@ -114,7 +114,8 @@ export interface RunTask {
   name: string;
   /** Process name without the tag, e.g. "ALIGN:SAMTOOLS_SORT". */
   process: string;
-  status: "running" | "succeeded" | "failed" | "cached";
+  /** "ignored": failed, but the process lets the run go on. */
+  status: "running" | "succeeded" | "failed" | "ignored" | "cached";
   exitCode?: number;
 }
 
