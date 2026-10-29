@@ -11,6 +11,7 @@ import {
   RefreshCw,
   Save,
   Settings,
+  Signpost,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -733,6 +734,14 @@ const HomePage: React.FC = () => {
               >
                 <CircleHelp size={16} aria-hidden />
                 <span>Help</span>
+              </Link>
+              <Link
+                to="/roadmap"
+                title="Where N-WAVE is going"
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <Signpost size={16} aria-hidden />
+                <span>Roadmap</span>
               </Link>
               <button
                 type="button"

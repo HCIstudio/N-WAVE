@@ -132,6 +132,18 @@ describe("HomePage", () => {
     expect(screen.queryByText("Loading workflows...")).toBeNull();
   });
 
+  it("links to Help, the Roadmap and Global Settings", async () => {
+    get.mockResolvedValue({ data: [] });
+    render(
+      <MemoryRouter>
+        <HomePage />
+      </MemoryRouter>,
+    );
+    expect((await screen.findByRole("link", { name: "Roadmap" })).getAttribute("href")).toBe("/roadmap");
+    expect(screen.getByRole("link", { name: "Help" }).getAttribute("href")).toBe("/help");
+    expect(screen.getByRole("link", { name: "Global Settings" }).getAttribute("href")).toBe("/settings");
+  });
+
   it("offers a retry when the workflows can't be loaded", async () => {
     get.mockRejectedValueOnce({ response: { data: { message: "ECONNREFUSED" } } });
     get.mockResolvedValueOnce({ data: [rnaseq] });

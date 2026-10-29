@@ -124,7 +124,11 @@ const HelpPage: React.FC = () => {
           <a href={README_URL} target="_blank" rel="noreferrer" className="text-nextflow-green hover:underline">
             README
           </a>{" "}
-          for installation and settings.
+          for installation and settings. What comes next is on the{" "}
+          <Link to="/roadmap" className="text-nextflow-green hover:underline">
+            roadmap
+          </Link>
+          .
         </nav>
         <h2 id="glossary" className="mt-8 text-xl font-semibold text-text">
           Glossary

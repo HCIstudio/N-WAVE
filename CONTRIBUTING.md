@@ -119,6 +119,13 @@ in both `frontend/package.json` and `backend/package.json` to it (e.g. `1.4.0`) 
 request. When it is newer than the latest tag, the merge releases exactly that version, and
 later merges continue from it. The two files must match, or the release fails.
 
+A minor or major release also updates the Roadmap page (`/roadmap`) in
+`frontend/src/roadmap/roadmap.ts`: mark the release `released`, set `ROADMAP_UPDATED_FOR` to it,
+move the next release to `in-progress`, and add or change planned releases to match the
+milestones. The unit tests fail until `ROADMAP_UPDATED_FOR` matches the version in
+`package.json`. The **Roadmap links** CI step checks the issue and milestone numbers against
+GitHub. The roadmap never shows dates.
+
 **One-time setup, `RELEASE_TOKEN`:** the version commit is pushed back to the protected `main`,
 so CI pushes as an actor that bypasses the ruleset. Create a fine-grained personal access token
 owned by a repository admin, for this repository with *Contents: Read and write*, and add it

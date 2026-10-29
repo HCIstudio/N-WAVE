@@ -23,12 +23,13 @@ pnpm nfcore:catalog  # regenerate the nf-core catalog (see ../scripts/README.md)
 
 | Folder | What's in it |
 | --- | --- |
-| `src/pages/` | The home page, the glossary page and the workflow editor (`WorkflowPage.tsx`, with its hooks in `pages/workflow/`) |
+| `src/pages/` | The home page, Help, Global Settings, the Roadmap and the workflow editor (`WorkflowPage.tsx`, with its hooks in `pages/workflow/`) |
 | `src/components/` | Canvas, nodes, node panels ([panels](src/components/panels/README.md)), shared UI ([common](src/components/common/README.md)), tutorial |
 | `src/registry/` | Node definitions: ports, settings and the code each node generates; nf-core, custom nodes, node packs, pipelines |
 | `src/generators/` | Graph → Nextflow script ([generators](src/generators/README.md)) |
 | `src/execution/` | What runs show: task mapping, failure explanations, run profiles |
 | `src/export/` | Download and Export Project |
+| `src/roadmap/` | The Roadmap page's releases and features, updated with every minor release |
 | `src/glossary/`, `src/templates/`, `src/workflows/` | Glossary terms, New Workflow templates, workflow helpers (node kinds, import, default settings) |
 | `src/hooks/` | Shared hooks ([hooks](src/hooks/README.md)) |
 | `src/demo/` | The browser demo's in-browser backend |
