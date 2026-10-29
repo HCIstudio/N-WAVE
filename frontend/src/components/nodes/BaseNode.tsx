@@ -15,6 +15,7 @@ import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
 import { acceptsManyConnections } from "../../registry/portArity";
+import { useFeature } from "../../settings/useFeatures";
 import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
 import type { FileEncoding } from "../../utils/fileContent";
@@ -114,8 +115,9 @@ const BaseNode = ({
       : "",
   );
   const { getNode } = useReactFlow();
+  const hintsOn = useFeature("connectionHints");
   const fitOf = (portName: string): { fits: boolean; message?: string } | null => {
-    if (!dragFrom) return null;
+    if (!dragFrom || !hintsOn) return null;
     const [fromId, fromHandle = ""] = dragFrom.split("\n");
     const from = fromId === id ? undefined : (getNode(fromId) as Node<NodeData> | undefined);
     if (!from) return null;

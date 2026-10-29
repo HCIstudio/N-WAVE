@@ -58,4 +58,18 @@ describe("WorkflowCheckButton", () => {
     expect(screen.getByText(/the workflow is ready to run/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Check again" })).toBeNull();
   });
+
+  it("says problems only warn when the check doesn't block the run", () => {
+    render(
+      <WorkflowCheckButton
+        problems={problems}
+        nodeLabels={{ reads: "Reads" }}
+        onShowNode={vi.fn()}
+        isChecking={false}
+        blocking={false}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Workflow check: 1 problem, 1 warning" }));
+    expect(screen.getByText(/you can run anyway/)).toBeTruthy();
+  });
 });

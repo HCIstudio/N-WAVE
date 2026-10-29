@@ -9,6 +9,7 @@ const api = vi.hoisted(() => ({
 vi.mock("../../api/runs", () => api);
 
 const { resumesAfter, resumesByDefault, useRunResume } = await import("./useRunResume");
+const { resetFeatures } = await import("../../settings/useFeatures");
 
 describe("useRunResume", () => {
   beforeEach(() => {
@@ -93,5 +94,21 @@ describe("useRunResume", () => {
     await waitFor(() => expect(result.current.available).toBe(true));
     await act(() => result.current.clear());
     expect(result.current.error).toContain("still going");
+  });
+
+  it("offers nothing and starts every run from scratch while Resume is switched off", async () => {
+    api.listRuns.mockResolvedValue([{ status: "failed" }]);
+    resetFeatures({ resume: false });
+    try {
+      const { result } = renderHook(() =>
+        useRunResume({ workflowId: "wf1", enabled: true, isRunning: false, mode: "always" }),
+      );
+      await act(async () => {});
+      expect(api.getWorkflowCache).not.toHaveBeenCalled();
+      expect(result.current.available).toBe(false);
+      expect(result.current.resume).toBe(false);
+    } finally {
+      resetFeatures();
+    }
   });
 });

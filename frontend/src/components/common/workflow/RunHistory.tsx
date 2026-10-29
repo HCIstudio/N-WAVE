@@ -9,6 +9,7 @@ import { explainFailure } from "../../../execution/failureExplanations";
 import FailureExplanationCard from "./FailureExplanationCard";
 import RunPerformance, { RunReportButtons } from "./RunPerformance";
 import RunResultsList from "./RunResultsList";
+import { useFeature } from "../../../settings/useFeatures";
 
 /** Lines that point at the problem in a Nextflow log. */
 const ERROR_LINE =
@@ -156,7 +157,9 @@ const RunDetails: React.FC<{
       cancelled = true;
     };
   }, [run.id, run.status]);
-  const failure = log ? explainFailure(log) : null;
+  const explanationsOn = useFeature("failureExplanations");
+  const performanceOn = useFeature("performance");
+  const failure = log && explanationsOn ? explainFailure(log) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -195,7 +198,7 @@ const RunDetails: React.FC<{
           <RunResultsList runId={run.id} label="Run reports" />
         </section>
       )}
-      {run.status !== "running" && (
+      {run.status !== "running" && performanceOn && (
         <details className="rounded border border-gray-200 text-gray-800">
           <summary className="cursor-pointer px-2 py-1 text-sm font-medium">
             Time and memory per step

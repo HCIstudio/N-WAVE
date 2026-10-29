@@ -48,11 +48,51 @@ The [run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles) and th
 another profile or this computer. Workflows from before Global Settings keep running on this
 computer until you choose otherwise.
 
-Click **Save global settings** to apply changes. The run limits, Resume and profiles are kept by
-N-WAVE (in `settings.json` in its data folder), so every browser uses the same.
+Click **Save global settings** to apply changes. The run limits, Resume, profiles and
+[feature switches](#features) are kept by N-WAVE (in `settings.json` in its data folder), so
+every browser uses the same.
 
 ## Run cache
 
 How much space the run cache of all workflows takes, and **Clear all caches**. Folders of runs
 that are still going are left alone. Results, inputs and logs stay. A single workflow's cache
 is in its execution settings.
+
+## Features
+
+Switch N-WAVE's features on and off, for example to keep a course or a lab's installation
+simple, or to compare how people work with and without a feature. **Off hides a feature; it
+doesn't break anything:** workflows that use it still open and run. The switches apply to
+everyone using this N-WAVE and are saved as soon as you change one (no **Save** needed).
+
+| Switch | Name for `NWAVE_FEATURES` | Off |
+| --- | --- | --- |
+| Workflow check before running | `workflowCheck` | `block` (the default): problems keep Run disabled. `warn`: they're shown, but the workflow can run. `off`: no check (Nextflow reports the problems when the run fails). |
+| Connection hints | `connectionHints` | Inputs don't light up while dragging a connection, and connections that don't fit get no warning. |
+| Failure explanations | `failureExplanations` | A failed run shows its log, without an explanation in plain language. |
+| Glossary and Help | `glossary` | No ⓘ term explanations, and no Help button or page. |
+| Templates and built-in examples | `templates` | **New Workflow** starts an empty workflow, and the built-in demos and the tutorial are hidden. Their links still open. |
+| Custom code | `customCode` | No custom processes, **Code** tab or converting nodes to custom ones. Workflows with custom code still run. |
+| Node packs | `nodePacks` | Node packs can't be added, exported or managed. Nodes from installed packs still work. |
+| Resume | `resume` | Every run starts from scratch; the Resume switch and the run cache settings are hidden. |
+| Run profiles | `runProfiles` | Runs use this computer; run profiles can't be chosen or edited. |
+| Notifications | `notifications` | No browser notifications, and their settings are hidden. |
+| Run performance and reports | `performance` | No **Performance** tab, execution report or timeline after a run. |
+
+Every run records which features were on when it started (in the run history, `runs.json` in
+N-WAVE's data folder), so runs can be compared later.
+
+### Fixing switches for an installation
+
+Whoever runs N-WAVE can fix switches when it starts, so they can't be changed in the app. A
+fixed switch shows **Fixed by this installation** and can't be clicked. Set either or both:
+
+- `NWAVE_FEATURES`: a comma-separated list, e.g.
+  `NWAVE_FEATURES="connectionHints=off,workflowCheck=warn"`. On/off switches take `on` or `off`
+  (also `true`/`false`, `yes`/`no`, `1`/`0`); `workflowCheck` takes `block`, `warn` or `off`.
+- `NWAVE_FEATURES_FILE`: the path of a JSON file, e.g.
+  `{"connectionHints": false, "workflowCheck": "warn"}`.
+
+Where both name the same switch, `NWAVE_FEATURES` wins. Names or values N-WAVE doesn't know are
+skipped, with a warning in the backend's log. Switches that neither sets can still be changed
+in the app.

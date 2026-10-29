@@ -36,6 +36,7 @@ vi.mock("../utils/buildInfo", () => ({
 }));
 
 const { default: HomePage } = await import("./HomePage");
+const { resetFeatures } = await import("../settings/useFeatures");
 
 const TUTORIAL_DONE = ["nwave.demoTutorial.completed", "custom-nodes-v3"] as const;
 
@@ -624,6 +625,36 @@ describe("HomePage", () => {
     it("isn't shown without the demo workflow", async () => {
       await setup([rnaseq]);
       expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
+    });
+  });
+
+  describe("with features switched off", () => {
+    afterEach(() => resetFeatures());
+
+    it("hides the demos and the tutorial, and starts new workflows empty, without templates", async () => {
+      localStorage.clear();
+      resetFeatures({ templates: false });
+      post.mockResolvedValue({ data: { _id: "new-1" } });
+      const { user } = await setup([rnaseq, demo]);
+      expect(screen.queryByRole("region", { name: "Built-in demos" })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Retake Tutorial" })).toBeNull();
+      expect(screen.queryByRole("heading", { name: "Basic demo" })).toBeNull();
+
+      await user.click(button("New Workflow"));
+      expect(screen.queryByRole("button", { name: "Empty workflow" })).toBeNull();
+      expect(post).toHaveBeenCalledWith(
+        "/workflows",
+        expect.objectContaining({ name: "Untitled Workflow", nodes: [], edges: [] }),
+      );
+      expect(await screen.findByText("Opened new-1")).toBeTruthy();
+    });
+
+    it("has no Help link without the glossary", async () => {
+      resetFeatures({ glossary: false });
+      await setup([]);
+      expect(screen.queryByRole("link", { name: "Help" })).toBeNull();
+      expect(screen.getByRole("link", { name: "Global Settings" })).toBeTruthy();
     });
   });
 });

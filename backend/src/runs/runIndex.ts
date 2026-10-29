@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getNwaveDataRoot } from "../execution/nfcoreModules";
+import type { Features } from "../settings/features";
 import { readJsonFile, writeJsonFile } from "../utils/jsonFile";
 
 // Runs started by this backend, by execution id, so their results can be
@@ -26,6 +27,8 @@ interface RunRecord {
   nextflowLog?: string;
   /** The run it resumed, in the same folder. */
   resumedFrom?: string;
+  /** Which features were on when it started (Global Settings → Features). */
+  features?: Features;
   /** While it runs: what to stop if the backend goes away (see runs/orphanedRuns.ts). */
   processGroup?: number;
   runnerContainer?: string;
@@ -59,7 +62,10 @@ const writeIndex = (entries: Array<[string, RunRecord]>): void => {
 export const recordRun = (
   id: string,
   dir: string,
-  meta: Pick<RunRecord, "workflowId" | "workflowName" | "log" | "nextflowLog" | "resumedFrom"> = {}
+  meta: Pick<
+    RunRecord,
+    "workflowId" | "workflowName" | "log" | "nextflowLog" | "resumedFrom" | "features"
+  > = {}
 ): void => {
   const entries = Object.entries(readIndex()).filter(([runId]) => runId !== id);
   const defined = Object.fromEntries(Object.entries(meta).filter(([, value]) => value));

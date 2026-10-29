@@ -21,6 +21,8 @@ interface WorkflowCheckButtonProps {
   /** Ask the server again (Docker, Nextflow); none without a server. */
   onRecheck?: () => void;
   isChecking: boolean;
+  /** Whether problems keep the workflow from running (false: they only warn). */
+  blocking?: boolean;
 }
 
 const WorkflowCheckButton: React.FC<WorkflowCheckButtonProps> = ({
@@ -29,6 +31,7 @@ const WorkflowCheckButton: React.FC<WorkflowCheckButtonProps> = ({
   onShowNode,
   onRecheck,
   isChecking,
+  blocking = true,
 }) => {
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -56,7 +59,8 @@ const WorkflowCheckButton: React.FC<WorkflowCheckButtonProps> = ({
     problems.length === 0
       ? "No problems found"
       : [
-          errors > 0 && `${errors} problem${errors > 1 ? "s" : ""} to fix before running`,
+          errors > 0 &&
+            `${errors} problem${errors > 1 ? "s" : ""}${blocking ? " to fix before running" : ""}`,
           warnings > 0 && `${warnings} warning${warnings > 1 ? "s" : ""}`,
         ]
           .filter(Boolean)
@@ -113,9 +117,11 @@ const WorkflowCheckButton: React.FC<WorkflowCheckButtonProps> = ({
           ) : (
             <>
               <p className="mb-2 text-xs text-text-light">
-                {errors > 0
+                {errors > 0 && blocking
                   ? "Fix the problems marked red to run the workflow; warnings don't stop it."
-                  : "The workflow can run; these may not be what you want."}
+                  : errors > 0
+                    ? "The problems marked red will likely make the run fail, but you can run anyway."
+                    : "The workflow can run; these may not be what you want."}
               </p>
               <ul className="max-h-72 space-y-1.5 overflow-y-auto">
                 {problems.map((problem) => (

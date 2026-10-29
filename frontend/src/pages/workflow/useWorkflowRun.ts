@@ -20,6 +20,7 @@ import {
 } from "../../utils/errors";
 import { createLineReader, parseRunId } from "../../utils/streamLines";
 import { explainFailure } from "../../execution/failureExplanations";
+import { currentFeatures } from "../../settings/useFeatures";
 import { type EndedRun, notifyRunEnded } from "../../notifications/runNotifications";
 import {
   buildRunRequest,
@@ -180,7 +181,8 @@ export const useWorkflowRun = ({
       outcome.kind === "failed"
         ? outcome.resourceProblem
           ? "It hit its resource limits"
-          : (outcome.reason ?? explainFailure(text)?.title)
+          : (outcome.reason ??
+            (currentFeatures().failureExplanations ? explainFailure(text)?.title : undefined))
         : undefined,
     );
     if (outcome.kind === "cancelled") return;

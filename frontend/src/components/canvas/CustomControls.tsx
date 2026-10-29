@@ -1,6 +1,7 @@
 import type React from "react";
 import { memo } from "react";
 import { useReactFlow } from "@xyflow/react";
+import { useFeature } from "../../settings/useFeatures";
 import { CircleHelp, Keyboard, Maximize, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 
 export interface HistoryControls {
@@ -18,6 +19,7 @@ const CustomControls: React.FC<{
   onShowShortcuts?: () => void;
 }> = ({ history, onShowShortcuts }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const glossaryOn = useFeature("glossary");
 
   return (
     <div
@@ -87,16 +89,18 @@ const CustomControls: React.FC<{
         </button>
       )}
       {/* Help opens in another tab, so the canvas stays as it is. */}
-      <a
-        href={`${import.meta.env.BASE_URL}help`}
-        target="_blank"
-        rel="noreferrer"
-        aria-label="Help"
-        title="Help: what N-WAVE does, the node colors, and the glossary (opens in a new tab)"
-        className={buttonClass}
-      >
-        <CircleHelp size={16} />
-      </a>
+      {glossaryOn && (
+        <a
+          href={`${import.meta.env.BASE_URL}help`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="Help"
+          title="Help: what N-WAVE does, the node colors, and the glossary (opens in a new tab)"
+          className={buttonClass}
+        >
+          <CircleHelp size={16} />
+        </a>
+      )}
     </div>
   );
 };

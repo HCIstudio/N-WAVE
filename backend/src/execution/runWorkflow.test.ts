@@ -107,6 +107,15 @@ describe("runNextflowWorkflow setup", () => {
     expect(runs.some((entry) => isRunLive(entry.id))).toBe(false);
   });
 
+  it("records which features were on when the run started", async () => {
+    vi.stubEnv("NWAVE_FEATURES", "resume=off,workflowCheck=warn");
+    vi.mocked(prepareScriptRun).mockRejectedValue(new Error("boom"));
+    await run("f");
+    const index = JSON.parse(fs.readFileSync(path.join(root, "data", "runs.json"), "utf8"));
+    const [record] = Object.values(index) as Array<{ features?: Record<string, unknown> }>;
+    expect(record?.features).toMatchObject({ resume: false, workflowCheck: "warn", glossary: true });
+  });
+
   it("can be cancelled while it is set up", async () => {
     vi.mocked(prepareScriptRun).mockImplementation(async () => {
       const id = listRuns()[0]?.id ?? "";

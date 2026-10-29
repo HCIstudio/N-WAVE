@@ -21,6 +21,7 @@ vi.mock("../utils/buildInfo", () => ({
 
 const { default: SettingsPage } = await import("./SettingsPage");
 const { resetRunDefaults } = await import("../settings/useRunDefaults");
+const { resetFeatures } = await import("../settings/useFeatures");
 
 const runDefaults = {
   maxCpus: 4,
@@ -148,5 +149,21 @@ describe("SettingsPage", () => {
     await user.click(within(cache).getByRole("button", { name: "Clear all" }));
     expect(del).toHaveBeenCalledWith("/execute/caches");
     expect(await within(cache).findByText(/except 1 run folder a run still uses/)).toBeTruthy();
+  });
+
+  it("has a Features section, and hides the settings of features that are switched off", async () => {
+    resetFeatures({ notifications: false, resume: false, runProfiles: false, glossary: false });
+    try {
+      setup();
+      expect(screen.getByRole("region", { name: "Features" })).toBeTruthy();
+      expect(await screen.findByLabelText("Maximum CPU Cores")).toBeTruthy();
+      expect(screen.queryByLabelText("Send browser notifications")).toBeNull();
+      expect(screen.queryByLabelText("Resume is on by Run")).toBeNull();
+      expect(screen.queryByRole("region", { name: "Run profiles" })).toBeNull();
+      const about = screen.getByRole("region", { name: "About" });
+      expect(within(about).queryByRole("link", { name: "Help" })).toBeNull();
+    } finally {
+      resetFeatures();
+    }
   });
 });

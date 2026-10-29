@@ -11,6 +11,7 @@ import {
 } from "../../api/runs";
 import type { ResumeMode } from "../../api/settings";
 import { getApiErrorMessage, getResponseStatus } from "../../utils/errors";
+import { useFeature } from "../../settings/useFeatures";
 
 interface Options {
   /** The saved workflow (runs of unsaved ones aren't kept together). */
@@ -39,6 +40,9 @@ export const useRunResume = ({
   isRunning,
   mode = "after-failure",
 }: Options) => {
+  // Global Settings → Features: without Resume, every run starts from scratch.
+  const resumeOn = useFeature("resume");
+  const offered = enabled && resumeOn;
   const [cache, setCache] = useState<WorkflowCache | null>(null);
   const [resume, setResume] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -48,7 +52,7 @@ export const useRunResume = ({
   const [retry, setRetry] = useState(0);
 
   const refresh = useCallback(async () => {
-    if (!enabled || !workflowId) {
+    if (!offered || !workflowId) {
       setCache(null);
       return;
     }
@@ -66,7 +70,7 @@ export const useRunResume = ({
       if (status && status < 500) setCache(null);
       else window.setTimeout(() => setRetry((count) => count + 1), RETRY_MS);
     }
-  }, [enabled, workflowId, mode]);
+  }, [offered, workflowId, mode]);
 
   // On opening the workflow, each time a run ends, and again while N-WAVE
   // doesn't answer (a run that ended because it shut down).

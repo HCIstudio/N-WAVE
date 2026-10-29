@@ -4,14 +4,18 @@ import { Link } from "react-router";
 import { ArrowLeft, Info } from "lucide-react";
 import { isDemoMode } from "../api";
 import PageLayout from "../components/layout/PageLayout";
+import { useFeature } from "../settings/useFeatures";
 import { buildInfo } from "../utils/buildInfo";
 import AllCachesSettings from "./settings/AllCachesSettings";
+import FeatureSettings from "./settings/FeatureSettings";
 import NotificationSettings from "./settings/NotificationSettings";
 import RunDefaultsSettings from "./settings/RunDefaultsSettings";
 
-/** Global Settings: notifications, the limits and profile every run uses, the cache. */
+/** Global Settings: notifications, the limits and profile every run uses, the cache, features. */
 const SettingsPage: React.FC = () => {
   const headingId = useId();
+  const notificationsOn = useFeature("notifications");
+  const glossaryOn = useFeature("glossary");
   return (
     <PageLayout>
       <main aria-labelledby={headingId} className="mx-auto max-w-3xl space-y-6 p-8">
@@ -29,9 +33,10 @@ const SettingsPage: React.FC = () => {
           </p>
         </div>
 
-        <NotificationSettings />
+        {notificationsOn && <NotificationSettings />}
         <RunDefaultsSettings />
         {!isDemoMode && <AllCachesSettings />}
+        <FeatureSettings />
 
         <section aria-label="About" className="rounded-lg border border-panel-border p-5 text-sm text-text-light">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-text">
@@ -40,9 +45,11 @@ const SettingsPage: React.FC = () => {
           </h2>
           <p className="mt-1">
             N-WAVE {buildInfo.version} ({buildInfo.displayBuildDate}).{" "}
-            <Link to="/help" className="text-nextflow-green hover:underline">
-              Help
-            </Link>
+            {glossaryOn && (
+              <Link to="/help" className="text-nextflow-green hover:underline">
+                Help
+              </Link>
+            )}
           </p>
         </section>
       </main>

@@ -24,6 +24,7 @@ import { getErrorMessage, getErrorName } from "../../../utils/errors";
 import Term from "../ui/Term";
 import { availableRunProfiles, usesDefaultLimits } from "../../../settings/effectiveSettings";
 import { useRunDefaults } from "../../../settings/useRunDefaults";
+import { useFeature } from "../../../settings/useFeatures";
 import { useServerLimits } from "../../../settings/useServerLimits";
 import { formatMemory } from "../../../utils/memory";
 import ResourceLimitsFields from "./ResourceLimitsFields";
@@ -85,6 +86,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   const [loading, setLoading] = useState(false);
   const serverLimits = useServerLimits();
   const { defaults: runDefaults, save: saveRunDefaults } = useRunDefaults();
+  const runProfilesOn = useFeature("runProfiles");
   const useDefaultLimits = usesDefaultLimits(settings);
   // Profiles kept in the workflow from before go to the Settings page.
   const moveProfilesToDefaults = async () => {
@@ -154,7 +156,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     { id: "execution", label: "Execution", icon: Settings },
     { id: "output", label: "Output", icon: FolderOpen },
     { id: "resources", label: "Resources", icon: Cpu },
-    { id: "profiles", label: "Profiles", icon: Server },
+    ...(runProfilesOn ? [{ id: "profiles", label: "Profiles", icon: Server }] : []),
     { id: "advanced", label: "Advanced", icon: AlertTriangle },
   ];
 
@@ -690,6 +692,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
         );
 
       case "profiles":
+        if (!runProfilesOn) return null;
         return (
           <RunProfilePicker
             settings={settings}

@@ -5,6 +5,7 @@ import type { ResumeMode, RunDefaults } from "../../api/settings";
 import ResourceLimitsFields from "../../components/common/workflow/ResourceLimitsFields";
 import RunProfilesSettings from "../../components/common/workflow/RunProfilesSettings";
 import { findProfileProblems } from "../../execution/runProfiles";
+import { useFeature } from "../../settings/useFeatures";
 import { useRunDefaults } from "../../settings/useRunDefaults";
 import { useServerLimits } from "../../settings/useServerLimits";
 import { getApiErrorMessage } from "../../utils/errors";
@@ -25,6 +26,8 @@ const RunDefaultsSettings: React.FC = () => {
   const id = useId();
   const { defaults, loaded, error: loadError, save } = useRunDefaults();
   const serverLimits = useServerLimits();
+  const resumeOn = useFeature("resume");
+  const runProfilesOn = useFeature("runProfiles");
   const [draft, setDraft] = useState<RunDefaults>(defaults);
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
@@ -81,54 +84,58 @@ const RunDefaultsSettings: React.FC = () => {
         />
       </section>
 
-      <section aria-labelledby={`${id}-resume`} className={sectionClass}>
-        <h2 id={`${id}-resume`} className="flex items-center gap-2 text-lg font-semibold text-text">
-          <RotateCcw className="h-5 w-5" aria-hidden />
-          Resume
-        </h2>
-        <label htmlFor={`${id}-resume-mode`} className="mb-1 mt-3 block text-sm font-medium text-text">
-          Resume is on by Run
-        </label>
-        <select
-          id={`${id}-resume-mode`}
-          value={draft.resume}
-          onChange={(event) => set({ resume: event.target.value as ResumeMode })}
-          className="w-full rounded-md border border-panel-border bg-background px-2 py-1.5 text-sm text-text"
-        >
-          {RESUME_CHOICES.map((choice) => (
-            <option key={choice.value} value={choice.value}>
-              {choice.label}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-text-light">
-          Resume reuses the steps an earlier run finished whose code and inputs haven't changed.
-          It can always be turned on or off next to Run.
-        </p>
-      </section>
+      {resumeOn && (
+        <section aria-labelledby={`${id}-resume`} className={sectionClass}>
+          <h2 id={`${id}-resume`} className="flex items-center gap-2 text-lg font-semibold text-text">
+            <RotateCcw className="h-5 w-5" aria-hidden />
+            Resume
+          </h2>
+          <label htmlFor={`${id}-resume-mode`} className="mb-1 mt-3 block text-sm font-medium text-text">
+            Resume is on by Run
+          </label>
+          <select
+            id={`${id}-resume-mode`}
+            value={draft.resume}
+            onChange={(event) => set({ resume: event.target.value as ResumeMode })}
+            className="w-full rounded-md border border-panel-border bg-background px-2 py-1.5 text-sm text-text"
+          >
+            {RESUME_CHOICES.map((choice) => (
+              <option key={choice.value} value={choice.value}>
+                {choice.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-text-light">
+            Resume reuses the steps an earlier run finished whose code and inputs haven't changed.
+            It can always be turned on or off next to Run.
+          </p>
+        </section>
+      )}
 
-      <section aria-labelledby={`${id}-profiles`} className={sectionClass}>
-        <h2 id={`${id}-profiles`} className="mb-3 flex items-center gap-2 text-lg font-semibold text-text">
-          <Server className="h-5 w-5" aria-hidden />
-          Run profiles
-        </h2>
-        <RunProfilesSettings
-          profiles={draft.runProfiles}
-          runProfile={draft.runProfile}
-          runLabel="Runs use by default"
-          onChange={(change) =>
-            set({
-              ...(change.runProfiles ? { runProfiles: change.runProfiles } : {}),
-              ...(change.runProfile === undefined ? {} : { runProfile: change.runProfile || undefined }),
-            })
-          }
-        />
-        <p className="mt-3 text-xs text-text-light">
-          Workflows use this profile unless they choose another one, or this computer, in
-          Execution Settings → Profiles. Workflows from before Global Settings keep running on this
-          computer.
-        </p>
-      </section>
+      {runProfilesOn && (
+        <section aria-labelledby={`${id}-profiles`} className={sectionClass}>
+          <h2 id={`${id}-profiles`} className="mb-3 flex items-center gap-2 text-lg font-semibold text-text">
+            <Server className="h-5 w-5" aria-hidden />
+            Run profiles
+          </h2>
+          <RunProfilesSettings
+            profiles={draft.runProfiles}
+            runProfile={draft.runProfile}
+            runLabel="Runs use by default"
+            onChange={(change) =>
+              set({
+                ...(change.runProfiles ? { runProfiles: change.runProfiles } : {}),
+                ...(change.runProfile === undefined ? {} : { runProfile: change.runProfile || undefined }),
+              })
+            }
+          />
+          <p className="mt-3 text-xs text-text-light">
+            Workflows use this profile unless they choose another one, or this computer, in
+            Execution Settings → Profiles. Workflows from before Global Settings keep running on this
+            computer.
+          </p>
+        </section>
+      )}
 
       <div className="sticky bottom-0 flex flex-wrap items-center gap-3 border-t border-panel-border bg-background py-3">
         <button

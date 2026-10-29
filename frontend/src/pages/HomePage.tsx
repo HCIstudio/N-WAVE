@@ -33,6 +33,8 @@ import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
 import RunsOverview from "./home/RunsOverview";
+import { useFeature } from "../settings/useFeatures";
+import { WORKFLOW_TEMPLATES } from "../templates/workflowTemplates";
 import { useRunsOverview } from "./home/useRunsOverview";
 import type { RunSummary } from "../api/runs";
 import NewWorkflowDialog, {
@@ -142,6 +144,10 @@ const HomePage: React.FC = () => {
   const editingCardRef = useRef<HTMLDivElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
+  // Global Settings → Features: without templates, no demos (and no tutorial,
+  // which starts from one), and New Workflow starts empty.
+  const templatesOn = useFeature("templates");
+  const glossaryOn = useFeature("glossary");
   const [isTutorialIntroVisible, setIsTutorialIntroVisible] = useState(() => {
     return localStorage.getItem(TUTORIAL_COMPLETED_KEY) !== TUTORIAL_VERSION;
   });
@@ -500,11 +506,19 @@ const HomePage: React.FC = () => {
     },
   ];
 
-  const hasDemoWorkflow = workflows.some((wf) => wf._id === DEMO_WORKFLOW_ID);
+  const hasDemoWorkflow = templatesOn && workflows.some((wf) => wf._id === DEMO_WORKFLOW_ID);
   const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
   const isBuiltinWorkflow = (wf: WorkflowDescriptor) =>
     wf._id === DEMO_WORKFLOW_ID || Boolean(wf.isBuiltin);
-  const builtinWorkflows = workflows.filter(isBuiltinWorkflow);
+  const builtinWorkflows = templatesOn ? workflows.filter(isBuiltinWorkflow) : [];
+  const startNewWorkflow = () => {
+    const empty = WORKFLOW_TEMPLATES.find((template) => template.id === "empty");
+    if (!templatesOn && empty) {
+      void handleNewWorkflow({ kind: "template", template: empty });
+      return;
+    }
+    setIsNewWorkflowOpen(true);
+  };
   const userWorkflows = workflows.filter((wf) => !isBuiltinWorkflow(wf));
   const hasUserWorkflows = userWorkflows.length > 0;
 
@@ -710,7 +724,7 @@ const HomePage: React.FC = () => {
               <NodeKindLegend className="mt-2" />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              {!isHomeTutorialActive && (
+              {!isHomeTutorialActive && templatesOn && (
                 <button
                   type="button"
                   onClick={retakeTutorial}
@@ -728,13 +742,15 @@ const HomePage: React.FC = () => {
                 <BookOpen size={16} />
                 <span>Wiki</span>
               </a>
-              <Link
-                to="/help"
-                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
-              >
-                <CircleHelp size={16} aria-hidden />
-                <span>Help</span>
-              </Link>
+              {glossaryOn && (
+                <Link
+                  to="/help"
+                  className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                >
+                  <CircleHelp size={16} aria-hidden />
+                  <span>Help</span>
+                </Link>
+              )}
               <Link
                 to="/roadmap"
                 title="Where N-WAVE is going"
@@ -811,15 +827,17 @@ const HomePage: React.FC = () => {
             </h2>
             {!hasUserWorkflows && (
               <p className="mt-1 max-w-3xl text-sm text-text-light">
-                You haven&apos;t created any workflows yet. Start a new one,
-                import an existing Nextflow script, or duplicate a demo.
+                You haven&apos;t created any workflows yet. Start a new one
+                {templatesOn
+                  ? ", import an existing Nextflow script, or duplicate a demo."
+                  : " or import an existing Nextflow script."}
               </p>
             )}
             <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
               {userWorkflows.map((wf) => renderWorkflowCard(wf))}
               <button
                 type="button"
-                onClick={() => setIsNewWorkflowOpen(true)}
+                onClick={startNewWorkflow}
                 disabled={pendingAction !== null}
                 className="flex min-h-[12rem] items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent transition-colors disabled:cursor-wait disabled:opacity-70"
               >

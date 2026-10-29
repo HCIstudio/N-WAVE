@@ -47,6 +47,8 @@ export const capToGlobalLimits = (
 export const applyRunDefaults = (
   settings: ExecutionSettings,
   defaults: RunDefaults,
+  /** Run profiles switched on (Global Settings → Features); off, runs use this computer. */
+  runProfilesOn = true,
 ): ExecutionSettings => ({
   ...settings,
   resources: usesDefaultLimits(settings)
@@ -59,5 +61,5 @@ export const applyRunDefaults = (
     : capToGlobalLimits(settings.resources, defaults),
   runProfiles: availableRunProfiles(settings, defaults),
   // Unset: the global profile; "": this computer.
-  runProfile: settings.runProfile ?? defaults.runProfile ?? "",
+  runProfile: runProfilesOn ? (settings.runProfile ?? defaults.runProfile ?? "") : "",
 });

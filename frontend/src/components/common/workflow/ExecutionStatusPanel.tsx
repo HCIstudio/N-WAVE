@@ -19,6 +19,7 @@ import {
 import { useState } from "react";
 import { nodeIdForProcess } from "../../../execution/nodeRuns";
 import RunPerformance, { RunReportButtons } from "./RunPerformance";
+import { useFeature } from "../../../settings/useFeatures";
 import RunResultsList from "./RunResultsList";
 import RunHistory, { RunLog } from "./RunHistory";
 import FailureExplanationCard from "./FailureExplanationCard";
@@ -160,7 +161,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   nodes,
   output = "",
   workflowId,
-  tab = "steps",
+  tab: requestedTab = "steps",
   onTabChange,
   steps = [],
   minimized = false,
@@ -170,7 +171,11 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   onShowFailedStep,
 }) => {
   const [maximized, setMaximized] = useState(false);
+  // Global Settings → Features can switch the Performance tab off.
+  const performanceOn = useFeature("performance");
   if (!isVisible) return null;
+  const tabs = TABS.filter((item) => performanceOn || item.id !== "performance");
+  const tab = requestedTab === "performance" && !performanceOn ? "steps" : requestedTab;
   // Steps in the Performance tab are named as their nodes on the canvas.
   const canvasLabelFor = (process: string): string | undefined => {
     const id = nodeIdForProcess(process, nodes);
@@ -410,7 +415,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
           aria-label="Run panel views"
           className="flex shrink-0 gap-1 border-b border-gray-300 px-2 pt-2"
         >
-          {TABS.map((item) => (
+          {tabs.map((item) => (
             <button
               key={item.id}
               type="button"

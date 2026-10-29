@@ -48,6 +48,7 @@ import { removeRunTaskContainers } from "./taskContainers";
 import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
 import { isClearingWorkflowCache } from "../runs/workflowCache";
 import { buildReportsConfig } from "../runs/runReports";
+import { readFeatures } from "../settings/features";
 
 export interface WorkflowRunRequest {
   /** The Nextflow script ("" for a pipeline). */
@@ -179,6 +180,7 @@ export const runNextflowWorkflow = async (
         log: logs?.log,
         nextflowLog: logs?.nextflowLog,
         resumedFrom: resumed?.id,
+        features: readFeatures().features,
       });
     } catch (error: unknown) {
       console.warn(`Could not record run ${id}:`, error);

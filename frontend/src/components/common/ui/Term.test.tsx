@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import Term from "./Term";
+import { resetFeatures } from "../../../settings/useFeatures";
 
 const setup = () => {
   const user = userEvent.setup();
@@ -51,5 +52,22 @@ describe("Term", () => {
     expect(screen.getByRole("dialog", { name: "Tuple" })).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Elsewhere" }));
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("shows only the word when the glossary is switched off", () => {
+    resetFeatures({ glossary: false });
+    try {
+      render(
+        <MemoryRouter>
+          <p>
+            Each row becomes a <Term id="tuple">tuple</Term>.
+          </p>
+        </MemoryRouter>,
+      );
+      expect(screen.getByText(/Each row becomes a tuple/)).toBeTruthy();
+      expect(screen.queryByRole("button")).toBeNull();
+    } finally {
+      resetFeatures();
+    }
   });
 });
