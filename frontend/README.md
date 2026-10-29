@@ -31,6 +31,7 @@ pnpm nfcore:catalog  # regenerate the nf-core catalog (see ../scripts/README.md)
 | `src/export/` | Download and Export Project |
 | `src/roadmap/` | The Roadmap page's releases and features, updated with every minor release |
 | `src/glossary/`, `src/templates/`, `src/workflows/` | Glossary terms, New Workflow templates, workflow helpers (node kinds, import, default settings) |
+| `src/settings/`, `src/notifications/` | Global Settings shared by every page (run defaults, feature switches) and browser notifications |
 | `src/hooks/` | Shared hooks ([hooks](src/hooks/README.md)) |
 | `src/demo/` | The browser demo's in-browser backend |
 | `src/api.ts`, `src/api/` | The backend client |

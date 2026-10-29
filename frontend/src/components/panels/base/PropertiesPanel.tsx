@@ -10,8 +10,15 @@ import NodeCodeView from "./NodeCodeView";
 import NodeRunResults from "./NodeRunResults";
 import NfCoreModuleDocs from "../process/NfCoreModuleDocs";
 import { useNodeRun } from "../../../execution/RunTasksContext";
+import { useFeature } from "../../../settings/useFeatures";
 
 type PanelTab = "settings" | "code" | "results";
+
+const PANEL_TABS: [PanelTab, string][] = [
+  ["settings", "Settings"],
+  ["code", "Code"],
+  ["results", "Results"],
+];
 
 interface PropertiesPanelProps {
   node: Node<NodeData>;
@@ -53,7 +60,11 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const panelRef = useRef<HTMLDivElement>(null);
   const [label, setLabel] = useState(node.data.label || "");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<PanelTab>("settings");
+  const [chosenTab, setActiveTab] = useState<PanelTab>("settings");
+  // Global Settings → Features: without custom code, no Code tab.
+  const codeOn = useFeature("customCode");
+  const tabs = PANEL_TABS.filter(([tab]) => codeOn || tab !== "code");
+  const activeTab = chosenTab === "code" && !codeOn ? "settings" : chosenTab;
   const hasRun = Boolean(useNodeRun(node.id).summary);
 
   const [position, setPosition] = useState({
@@ -272,13 +283,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         aria-label="Node panel views"
         className="flex gap-1 border-b border-panel-border px-2"
       >
-        {(
-          [
-            ["settings", "Settings"],
-            ["code", "Code"],
-            ["results", "Results"],
-          ] as const
-        ).map(([tab, title]) => (
+        {tabs.map(([tab, title]) => (
           <button
             key={tab}
             type="button"
@@ -290,7 +295,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             onClick={() => setActiveTab(tab)}
             onKeyDown={(e) => {
               if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
-                const order: PanelTab[] = ["settings", "code", "results"];
+                const order = tabs.map(([name]) => name);
                 const step = e.key === "ArrowRight" ? 1 : order.length - 1;
                 const next =
                   order[(order.indexOf(tab) + step) % order.length] ?? "settings";

@@ -131,7 +131,7 @@ export const RELEASES: RoadmapRelease[] = [
     why: "So we can learn which of N-WAVE's aids actually help, and so large workflows stay readable.",
     features: [
       { title: "This roadmap page", issue: 203, status: "released" },
-      { title: "Feature switches in Global Settings", issue: 190 },
+      { title: "Feature switches in Global Settings", issue: 190, status: "released" },
       { title: "Verbose mode: log and export what happens in N-WAVE", issue: 191 },
       { title: "Minimap, nested views and run progress by stage", issue: 192 },
       { title: "Failure explanations show their evidence and certainty", issue: 193 },

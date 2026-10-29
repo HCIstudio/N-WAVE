@@ -104,6 +104,15 @@ const runAsync = <T>(fn: () => Promise<T>): Promise<DemoResponse<T>> =>
   );
 
 const DEMO_SETTINGS_KEY = "nwave-demo-run-defaults";
+const DEMO_FEATURES_KEY = "nwave-demo-features";
+
+const readDemoFeatures = (): unknown => {
+  try {
+    return JSON.parse(localStorage.getItem(DEMO_FEATURES_KEY) ?? "null") ?? {};
+  } catch {
+    return {};
+  }
+};
 
 const readDemoRunDefaults = (): unknown => {
   try {
@@ -223,7 +232,11 @@ const demoApi = {
       return ok({ bytes: 0, folders: 0 } as T);
     }
     if (path === "/settings") {
-      return ok({ runDefaults: readDemoRunDefaults() } as T);
+      return ok({
+        runDefaults: readDemoRunDefaults(),
+        features: readDemoFeatures(),
+        lockedFeatures: [],
+      } as T);
     }
     if (path === "/health") {
       return ok({ ok: true } as T);
@@ -290,6 +303,17 @@ const demoApi = {
       return runStore(() => {
         localStorage.setItem(DEMO_SETTINGS_KEY, JSON.stringify(runDefaults));
         return { runDefaults } as T;
+      });
+    }
+    // So are the feature switches; nothing is fixed by an installation here.
+    if (path === "/settings/features") {
+      const features = (data as { features?: unknown } | undefined)?.features;
+      if (!features || typeof features !== "object") {
+        return fail(400, "features is required");
+      }
+      return runStore(() => {
+        localStorage.setItem(DEMO_FEATURES_KEY, JSON.stringify(features));
+        return { features, lockedFeatures: [] } as T;
       });
     }
     const workflowMatch = path.match(/^\/workflows\/([^/]+)$/);

@@ -53,6 +53,7 @@ import { useWorkflowRun } from "./workflow/useWorkflowRun";
 import { useRunResume } from "./workflow/useRunResume";
 import { applyRunDefaults } from "../settings/effectiveSettings";
 import { useRunDefaults } from "../settings/useRunDefaults";
+import { useFeature } from "../settings/useFeatures";
 import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
 import {
@@ -115,9 +116,11 @@ const WorkflowPageContent: React.FC = () => {
   // What runs and exports use: the workflow's settings with the defaults of
   // the Settings page filled in.
   const runDefaults = useRunDefaults();
+  // Without run profiles (Global Settings → Features), runs use this computer.
+  const runProfilesOn = useFeature("runProfiles");
   const runSettings = useMemo(
-    () => applyRunDefaults(executionSettings, runDefaults.defaults),
-    [executionSettings, runDefaults.defaults]
+    () => applyRunDefaults(executionSettings, runDefaults.defaults, runProfilesOn),
+    [executionSettings, runDefaults.defaults, runProfilesOn]
   );
   // A fresh copy of an example says so once it's open.
   const location = useLocation();
@@ -197,9 +200,10 @@ const WorkflowPageContent: React.FC = () => {
     missingNfCoreComponents,
   });
   // Connections whose ports don't fit; stable while a drag moves nodes.
+  const hintsOn = useFeature("connectionHints");
   const hintsKey = useMemo(
-    () => JSON.stringify(connectionHints(nodes, edges)),
-    [nodes, edges]
+    () => JSON.stringify(hintsOn ? connectionHints(nodes, edges) : {}),
+    [nodes, edges, hintsOn]
   );
   const edgeHints = useMemo(() => JSON.parse(hintsKey), [hintsKey]);
   const nodeLabels = useMemo(
@@ -270,6 +274,8 @@ const WorkflowPageContent: React.FC = () => {
     showError,
   });
   const runTasks = useRunTasks(isDemoMode ? null : run.lastRunId, isRunning, nodes);
+  // Resume can be switched off in Global Settings → Features.
+  const resumeOn = useFeature("resume");
   const resume = useRunResume({
     workflowId,
     enabled: !isDemoMode,
@@ -278,10 +284,12 @@ const WorkflowPageContent: React.FC = () => {
   });
   const [isExporting, setIsExporting] = useState(false);
 
-  // Why the last run failed, and the step it failed in, if the log says.
+  // Why the last run failed, and the step it failed in, if the log says
+  // (unless failure explanations are switched off).
+  const explanationsOn = useFeature("failureExplanations");
   const failure = useMemo(
-    () => (!isRunning && run.output ? explainFailure(run.output) : null),
-    [isRunning, run.output]
+    () => (explanationsOn && !isRunning && run.output ? explainFailure(run.output) : null),
+    [explanationsOn, isRunning, run.output]
   );
   const failedNodeId = failure?.process
     ? nodeIdForProcess(
@@ -504,13 +512,16 @@ const WorkflowPageContent: React.FC = () => {
           isRunning={isRunning}
           runBlockedReason={check.blockedReason}
           checkControl={
-            <WorkflowCheckButton
-              problems={check.problems}
-              nodeLabels={nodeLabels}
-              onShowNode={showNode}
-              onRecheck={isDemoMode ? undefined : () => void check.recheck()}
-              isChecking={check.isChecking}
-            />
+            check.mode === "off" ? undefined : (
+              <WorkflowCheckButton
+                problems={check.problems}
+                nodeLabels={nodeLabels}
+                onShowNode={showNode}
+                onRecheck={isDemoMode ? undefined : () => void check.recheck()}
+                isChecking={check.isChecking}
+                blocking={check.mode === "block"}
+              />
+            )
           }
           isLoading={workflow.isLoading}
           executionSettings={executionSettings}
@@ -518,12 +529,12 @@ const WorkflowPageContent: React.FC = () => {
           onExecutionSettingsChange={handleExecutionSettingsChange}
           onShowRuns={run.openPanel}
           resume={
-            isDemoMode
+            isDemoMode || !resumeOn
               ? undefined
               : { available: resume.available, on: resume.resume, onChange: resume.setResume }
           }
           settingsExtra={
-            isDemoMode ? undefined : (
+            isDemoMode || !resumeOn ? undefined : (
               <RunCacheSettings
                 cache={resume.cache}
                 onClear={() => void resume.clear()}

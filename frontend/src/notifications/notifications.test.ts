@@ -9,6 +9,7 @@ import {
   setNotificationNavigator,
   writeNotificationPrefs,
 } from "./notifications";
+import { resetFeatures } from "../settings/useFeatures";
 
 const shown: Array<{ title: string; options: NotificationOptions; close: () => void; onclick?: () => void }> = [];
 
@@ -110,5 +111,15 @@ describe("notifications", () => {
     setView(true);
     expect(sendTestNotification()).toBe(true);
     expect(shown[0].title).toBe("N-WAVE notifications work");
+  });
+
+  it("sends nothing while notifications are switched off for this N-WAVE", () => {
+    resetFeatures({ notifications: false });
+    try {
+      expect(notify("runSucceeded", content)).toBe(false);
+      expect(shown).toHaveLength(0);
+    } finally {
+      resetFeatures();
+    }
   });
 });

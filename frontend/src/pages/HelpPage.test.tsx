@@ -4,6 +4,7 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it } from "vitest";
 import { GLOSSARY } from "../glossary/glossary";
 import HelpPage from "./HelpPage";
+import { resetFeatures } from "../settings/useFeatures";
 
 const setup = (entry = "/help") => {
   const user = userEvent.setup();
@@ -58,5 +59,17 @@ describe("HelpPage", () => {
     await user.clear(screen.getByPlaceholderText("Search terms..."));
     await user.type(screen.getByPlaceholderText("Search terms..."), "zzz");
     expect(screen.getByText("No term matches “zzz”.")).toBeTruthy();
+  });
+
+  it("says Help is switched off, instead of the glossary, when the glossary is off", () => {
+    resetFeatures({ glossary: false });
+    try {
+      setup();
+      expect(screen.getByText("Help and the glossary are switched off on this N-WAVE.")).toBeTruthy();
+      expect(screen.queryByRole("heading", { name: "Glossary" })).toBeNull();
+      expect(terms()).toEqual([]);
+    } finally {
+      resetFeatures();
+    }
   });
 });

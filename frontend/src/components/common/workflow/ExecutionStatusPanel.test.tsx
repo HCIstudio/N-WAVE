@@ -13,6 +13,7 @@ vi.mock("../../../api/runs", () => ({
   listRunTasks: vi.fn(async () => []),
 }));
 
+const { resetFeatures } = await import("../../../settings/useFeatures");
 const { default: ExecutionStatusPanel } = await import(
   "./ExecutionStatusPanel"
 );
@@ -96,6 +97,16 @@ describe("ExecutionStatusPanel", () => {
     }
     render({ status: { ...failed, isRunning: true }, tab: "log", output: "", failure });
     expect(container.querySelector('[aria-label="Why the run failed"]')).toBeNull();
+
+    // Switched off in Global Settings → Features: only the log.
+    resetFeatures({ failureExplanations: false });
+    try {
+      render({ status: failed, tab: "log", output: "ERROR ~ boom", failure, failedStepLabel: "FastQC" });
+      expect(container.querySelector('[aria-label="Why the run failed"]')).toBeNull();
+      expect(container.textContent).toContain("ERROR ~ boom");
+    } finally {
+      resetFeatures();
+    }
   });
 
   it("tells which steps were reused from the cache", () => {
@@ -281,5 +292,18 @@ describe("ExecutionStatusPanel", () => {
   it("renders nothing when hidden", () => {
     render({ isVisible: false });
     expect(container.innerHTML).toBe("");
+  });
+
+  it("has no Performance tab while run performance is switched off", () => {
+    resetFeatures({ performance: false });
+    try {
+      render({ status: failed, tab: "performance", runId: "bee_2" });
+      const tabs = Array.from(container.querySelectorAll('[role="tab"]'));
+      expect(tabs.map((tab) => tab.textContent)).toEqual(["Steps", "Log", "History"]);
+      expect(tabs[0].getAttribute("aria-selected")).toBe("true");
+      expect(container.querySelector('[aria-label="Run performance"]')).toBeNull();
+    } finally {
+      resetFeatures();
+    }
   });
 });

@@ -3,6 +3,8 @@
 // browser only. Notifications are sent only while the tab isn't in view (the
 // page shows the same itself), and once when several tabs notice the same.
 
+import { currentFeatures } from "../settings/useFeatures";
+
 export type NotificationEvent = "runSucceeded" | "runFailed" | "backendLost";
 
 export const NOTIFICATION_EVENTS: { id: NotificationEvent; label: string }[] = [
@@ -144,6 +146,8 @@ const show = ({ title, body, tag, path }: NotificationContent): Notification => 
  * isn't in view and no other tab sent it. Returns whether it was sent.
  */
 export const notify = (event: NotificationEvent, content: NotificationContent): boolean => {
+  // Global Settings → Features can switch notifications off for everyone.
+  if (!currentFeatures().notifications) return false;
   const prefs = readNotificationPrefs();
   if (!prefs.enabled || !prefs.events[event]) return false;
   if (notificationSupport() !== "granted") return false;

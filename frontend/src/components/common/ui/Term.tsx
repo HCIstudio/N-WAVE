@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { WIKI_PAGES, wikiUrl } from "../../../docs/links";
 import { Info } from "lucide-react";
 import { glossaryEntry, type GlossaryId } from "../../../glossary/glossary";
+import { useFeature } from "../../../settings/useFeatures";
 
 const CARD_WIDTH = 288;
 
@@ -21,6 +22,7 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
   const [anchor, setAnchor] = useState<DOMRect | null>(null);
   // Clicked open: stays until clicked again, Escape or a click elsewhere.
   const [pinned, setPinned] = useState(false);
+  const glossaryOn = useFeature("glossary");
 
   const show = () => {
     window.clearTimeout(closeTimer.current);
@@ -56,6 +58,9 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
     : 0;
   // Below the button, or above it near the bottom of the window.
   const below = anchor ? anchor.bottom + 160 < window.innerHeight : true;
+
+  // Global Settings → Features: without the glossary, just the words.
+  if (!glossaryOn) return <>{children}</>;
 
   return (
     <span className="inline-flex items-center gap-1">

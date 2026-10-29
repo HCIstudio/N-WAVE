@@ -1,6 +1,7 @@
 import { ExternalLink, Lightbulb } from "lucide-react";
 import type React from "react";
 import type { FailureExplanation } from "../../../execution/failureExplanations";
+import { useFeature } from "../../../settings/useFeatures";
 
 interface FailureExplanationCardProps {
   explanation: FailureExplanation;
@@ -19,6 +20,9 @@ const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
   tone = "light",
 }) => {
   const dark = tone === "dark";
+  // Global Settings → Features can switch explanations off everywhere.
+  const explanationsOn = useFeature("failureExplanations");
+  if (!explanationsOn) return null;
   return (
     <section
       aria-label="Why the run failed"

@@ -8,6 +8,7 @@ import { NodeKindSwatch } from "../components/common/workflow/NodeKindLegend";
 import { NODE_KIND_ORDER, NODE_KINDS } from "../workflows/nodeKinds";
 import { GLOSSARY, glossaryEntry } from "../glossary/glossary";
 import { README_URL, WIKI_PAGES, WIKI_URL, wikiUrl } from "../docs/links";
+import { useFeature } from "../settings/useFeatures";
 
 /** What a part of the canvas does, for the "On the canvas" list. */
 const CANVAS_PARTS: { name: string; what: string }[] = [
@@ -31,10 +32,32 @@ const HelpPage: React.FC = () => {
     ? GLOSSARY.filter((entry) => `${entry.term} ${entry.definition}`.toLowerCase().includes(query))
     : GLOSSARY;
 
+  const glossaryOn = useFeature("glossary");
+
   // The page is loaded on demand, after the browser looked for the anchor.
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
   }, [hash]);
+
+  // Switched off in Global Settings → Features (e.g. an old link or bookmark).
+  if (!glossaryOn) {
+    return (
+      <PageLayout>
+        <main aria-labelledby={headingId} className="mx-auto max-w-3xl p-8">
+          <Link to="/" className="inline-flex items-center gap-1 text-sm text-nextflow-green hover:underline">
+            <ArrowLeft size={16} aria-hidden />
+            Workflows
+          </Link>
+          <h1 id={headingId} className="mt-4 text-3xl font-bold text-text">
+            Help
+          </h1>
+          <p className="mt-2 text-sm text-text-light">
+            Help and the glossary are switched off on this N-WAVE.
+          </p>
+        </main>
+      </PageLayout>
+    );
+  }
 
   return (
     <PageLayout>

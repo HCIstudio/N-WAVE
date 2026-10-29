@@ -76,4 +76,9 @@ describe("applyRunDefaults", () => {
     const settings = { ...DEFAULT_EXECUTION_SETTINGS, runProfiles: [own, { ...slurm, queue: "old" }] };
     expect(availableRunProfiles(settings, defaults)).toEqual([slurm, own]);
   });
+
+  it("runs on this computer while run profiles are switched off", () => {
+    expect(applyRunDefaults(DEFAULT_EXECUTION_SETTINGS, defaults, false).runProfile).toBe("");
+    expect(applyRunDefaults({ ...DEFAULT_EXECUTION_SETTINGS, runProfile: "slurm" }, defaults, false).runProfile).toBe("");
+  });
 });

@@ -41,6 +41,7 @@ in `src/validation/schemas.ts`; invalid requests get `400` with `{ message, erro
 | `GET /nfcore/modules/source?id=`, `/nfcore/modules/files?id=` | A component's `main.nf`, or all its files (installed copy, else GitHub at the catalog commit). |
 | `GET/POST /custom-nodes`, `DELETE /custom-nodes/:id` | Custom nodes and node packs. |
 | `GET /pipelines/schema` | An nf-core pipeline's parameter schema. |
+| `GET/PUT /settings`, `PUT /settings/features` | Global Settings: the run defaults, and the feature switches with the ones the installation fixes (`NWAVE_FEATURES`, `NWAVE_FEATURES_FILE`; changing those gets `409`). |
 
 ## Structure
 

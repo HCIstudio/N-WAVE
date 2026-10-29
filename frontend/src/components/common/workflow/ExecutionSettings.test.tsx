@@ -13,6 +13,7 @@ const { default: ExecutionSettingsComponent } = await import(
   "./ExecutionSettings"
 );
 const { resetRunDefaults } = await import("../../../settings/useRunDefaults");
+const { resetFeatures } = await import("../../../settings/useFeatures");
 
 type Responses = Record<string, unknown>;
 
@@ -599,5 +600,17 @@ describe("ExecutionSettings", () => {
         screen.queryByText(/Docker execution is enabled but Docker is not/),
       ).toBeNull();
     });
+  });
+
+  it("has no Profiles tab while run profiles are switched off", async () => {
+    resetFeatures({ runProfiles: false });
+    try {
+      show();
+      await screen.findByText(/Docker: (Available|Not Available)/);
+      expect(screen.queryByRole("button", { name: "Profiles" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Execution" })).toBeTruthy();
+    } finally {
+      resetFeatures();
+    }
   });
 });

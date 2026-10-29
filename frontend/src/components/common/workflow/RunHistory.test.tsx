@@ -42,6 +42,7 @@ vi.mock("../../../api/runs", () => ({
 }));
 
 const { default: RunHistory, RunLog } = await import("./RunHistory");
+const { resetFeatures } = await import("../../../settings/useFeatures");
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
@@ -170,5 +171,31 @@ describe("RunHistory", () => {
     await flush();
     const link = Array.from(container.querySelectorAll("a")).find((a) => a.textContent === "Open RNA-seq");
     expect(link?.getAttribute("href")).toBe("/workflow/wf1");
+  });
+
+  it("shows a run without explanation, reports or performance while those are switched off", async () => {
+    resetFeatures({ failureExplanations: false, performance: false });
+    try {
+      act(() => root.render(<RunHistory workflowId="wf1" />));
+      await flush();
+      const first = container.querySelector('[aria-label="Earlier runs"] button') as HTMLButtonElement;
+      act(() => first.click());
+      await flush();
+      expect(container.querySelector('[aria-label="Log of run bee_2"]')?.textContent).toContain("log of bee_2");
+      expect(container.querySelector('[aria-label="Why the run failed"]')).toBeNull();
+      expect(container.textContent).not.toContain("Execution report");
+      expect(container.textContent).not.toContain("Time and memory per step");
+    } finally {
+      resetFeatures();
+    }
+  });
+
+  it("links a finished run's execution report and timeline", async () => {
+    act(() => root.render(<RunHistory workflowId="wf1" />));
+    await flush();
+    act(() => (container.querySelector('[aria-label="Earlier runs"] button') as HTMLButtonElement).click());
+    await flush();
+    expect(container.textContent).toContain("Execution report");
+    expect(container.textContent).toContain("Time and memory per step");
   });
 });

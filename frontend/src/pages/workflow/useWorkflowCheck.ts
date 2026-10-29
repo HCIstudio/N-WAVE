@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import api, { isDemoMode } from "../../api";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import type { NodeProblem } from "../../execution/NodeProblemsContext";
+import { useFeature, useWorkflowCheckMode } from "../../settings/useFeatures";
 import type { ExecutionSettings } from "../../types/execution";
 import {
   checkWorkflow,
@@ -44,6 +45,10 @@ interface Options {
 export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponents }: Options) => {
   const [server, setServer] = useState<ServerState>(UNKNOWN);
   const [isChecking, setIsChecking] = useState(false);
+  // Global Settings → Features: block on problems, only warn, or no check;
+  // without connection hints, ports that don't fit aren't reported either.
+  const mode = useWorkflowCheckMode();
+  const hintsOn = useFeature("connectionHints");
 
   // The demo has no server to run on (it says so when Run is pressed).
   const recheck = useCallback(async () => {
@@ -68,8 +73,13 @@ export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponen
   }, [recheck]);
 
   const problems = useMemo(
-    () => checkWorkflow(nodes, edges, { missingNfCoreComponents, settings, ...server }),
-    [nodes, edges, missingNfCoreComponents, settings, server],
+    () =>
+      mode === "off"
+        ? []
+        : checkWorkflow(nodes, edges, { missingNfCoreComponents, settings, ...server }).filter(
+            (problem) => hintsOn || !problem.id.startsWith("fit:"),
+          ),
+    [nodes, edges, missingNfCoreComponents, settings, server, mode, hintsOn],
   );
 
   // Nodes re-render when their problems change, not on every edit (a drag).
@@ -88,7 +98,8 @@ export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponen
   return {
     problems,
     nodeProblems,
-    blockedReason: runBlockedReason(problems),
+    blockedReason: mode === "block" ? runBlockedReason(problems) : null,
+    mode,
     recheck,
     isChecking,
   };

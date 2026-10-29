@@ -31,6 +31,7 @@ vi.mock("../process/NfCoreModuleDocs", () => ({
 
 const { RunTasksContext } = await import("../../../execution/RunTasksContext");
 const { default: PropertiesPanel } = await import("./PropertiesPanel");
+const { resetFeatures } = await import("../../../settings/useFeatures");
 // Loaded after the panel: loading the node definitions first goes through an
 // import cycle that leaves registry/index without their exports.
 const { nodeDefinitions } = await import("../../../registry/nodeDefinitions");
@@ -353,5 +354,16 @@ describe("PropertiesPanel", () => {
       rerender({ recenterTrigger: 1 });
       expect(panel().style.left).toBe(`${window.innerWidth - 560 - 20}px`);
     });
+  });
+
+  it("has no Code tab while custom code is switched off", () => {
+    resetFeatures({ customCode: false });
+    try {
+      show();
+      expect(screen.queryByRole("tab", { name: "Code" })).toBeNull();
+      expect(screen.getByRole("tab", { name: "Settings" }).getAttribute("aria-selected")).toBe("true");
+    } finally {
+      resetFeatures();
+    }
   });
 });

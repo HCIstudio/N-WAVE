@@ -11,6 +11,7 @@ import {
 import { MEMORY_WARNING_SHARE, summarizeTrace, type TraceSummary } from "../../../execution/traceSummary";
 import { formatDuration } from "../../../notifications/runNotifications";
 import { formatBytes } from "../../../utils/fileContent";
+import { useFeature } from "../../../settings/useFeatures";
 
 const REPORT_LINKS: { kind: RunReportKind; label: string; icon: React.ReactNode }[] = [
   { kind: "report", label: "Execution report", icon: <ChartColumn className="h-4 w-4" aria-hidden /> },
@@ -46,7 +47,10 @@ export const RunReportLinks: React.FC<{ runId: string; reports: Record<RunReport
 /** The report buttons, once it's known which reports the run has. */
 export const RunReportButtons: React.FC<{ runId: string }> = ({ runId }) => {
   const [reports, setReports] = useState<Record<RunReportKind, boolean> | null>(null);
+  // Global Settings → Features can switch the reports off.
+  const performanceOn = useFeature("performance");
   useEffect(() => {
+    if (!performanceOn) return;
     let cancelled = false;
     setReports(null);
     listRunReports(runId).then(
@@ -56,8 +60,8 @@ export const RunReportButtons: React.FC<{ runId: string }> = ({ runId }) => {
     return () => {
       cancelled = true;
     };
-  }, [runId]);
-  return reports ? <RunReportLinks runId={runId} reports={reports} /> : null;
+  }, [runId, performanceOn]);
+  return reports && performanceOn ? <RunReportLinks runId={runId} reports={reports} /> : null;
 };
 
 /** A step's time; tasks that ran under a second show as such. */

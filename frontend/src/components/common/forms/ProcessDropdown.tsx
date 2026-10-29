@@ -15,6 +15,7 @@ import NodePacksModal from "./NodePacksModal";
 import SearchInput from "./SearchInput";
 import Term from "../ui/Term";
 import type { GlossaryId } from "../../../glossary/glossary";
+import { useFeature } from "../../../settings/useFeatures";
 
 /** The glossary entry that explains the nodes of a menu section. */
 const CATEGORY_TERMS: Record<string, GlossaryId> = {
@@ -46,6 +47,9 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
   const [isPacksOpen, setIsPacksOpen] = useState(false);
   const [editNode, setEditNode] = useState<StoredCustomNode | null>(null);
   const { error, isLoading, refresh } = useInstalledNfCoreNodes();
+  // Global Settings → Features: custom code and node packs can be switched off.
+  const customCodeOn = useFeature("customCode");
+  const nodePacksOn = useFeature("nodePacks");
 
   useEffect(() => {
     refresh().finally(async () => {
@@ -59,7 +63,9 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
   // after (re)loading custom/nf-core nodes to recompute this list.
   // biome-ignore lint/correctness/useExhaustiveDependencies: registryVersion is the invalidation signal.
   const filteredProcesses = useMemo(() => {
-    const nextflowProcesses = getNextflowProcesses();
+    const nextflowProcesses = getNextflowProcesses().filter(
+      (category) => customCodeOn || category.category !== "Custom",
+    );
 
     if (!searchTerm) {
       return nextflowProcesses;
@@ -75,7 +81,7 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
         return { ...category, processes };
       })
       .filter((category) => category.processes.length > 0);
-  }, [searchTerm, registryVersion]);
+  }, [searchTerm, registryVersion, customCodeOn]);
 
   return (
     <div className="absolute right-0 mt-2 w-80 bg-background border border-accent rounded-md shadow-lg z-20 flex flex-col">
@@ -94,25 +100,29 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
           <DynamicIcon name="PackagePlus" className="h-4 w-4" />
           nf-core Library
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setEditNode(null);
-            setIsCustomNodeOpen(true);
-          }}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
-        >
-          <DynamicIcon name="FileCode" className="h-4 w-4" />
-          Custom process
-        </button>
-        <button
-          type="button"
-          onClick={() => setIsPacksOpen(true)}
-          className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
-        >
-          <DynamicIcon name="Boxes" className="h-4 w-4" />
-          Node packs
-        </button>
+        {customCodeOn && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditNode(null);
+              setIsCustomNodeOpen(true);
+            }}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
+          >
+            <DynamicIcon name="FileCode" className="h-4 w-4" />
+            Custom process
+          </button>
+        )}
+        {nodePacksOn && (
+          <button
+            type="button"
+            onClick={() => setIsPacksOpen(true)}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
+          >
+            <DynamicIcon name="Boxes" className="h-4 w-4" />
+            Node packs
+          </button>
+        )}
       </div>
       <div className="p-1 overflow-y-auto max-h-96">
         {isLoading && (
@@ -155,7 +165,7 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
                       </p>
                     </div>
                   </button>
-                  {process.initialData?.customNodeId && (
+                  {customCodeOn && process.initialData?.customNodeId && (
                     <div className="mr-2 flex items-center gap-1">
                       <button
                         type="button"
