@@ -318,7 +318,7 @@ describe("runner docker API version", () => {
   });
 });
 
-describe("buildLocalNextflowCommand", () => {
+describe("buildLocalNextflowCommand: pinned Nextflow version", () => {
   const options = {
     scriptPath: "workflow/demo.nf",
     withModuleConfig: false,
