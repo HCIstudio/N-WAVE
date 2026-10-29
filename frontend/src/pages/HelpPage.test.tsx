@@ -46,6 +46,7 @@ describe("HelpPage", () => {
       "https://github.com/HCIstudio/N-WAVE/wiki/First-Workflow",
       "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting",
       "https://github.com/HCIstudio/N-WAVE#readme",
+      "/roadmap",
     ]);
   });
 

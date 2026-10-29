@@ -52,6 +52,12 @@ jobs:
       - name: Script tests (nf-core parsers, docs links)
         run: node --test ../scripts/*.test.mjs
 
+      - name: Roadmap links (issues and milestones on GitHub)
+        run: pnpm vitest run src/roadmap/roadmap.github.test.ts
+        env:
+          CHECK_ROADMAP_LINKS: "1"
+          GITHUB_TOKEN: ${{ github.token }}
+
       - name: Typecheck & build
         run: pnpm build
 
