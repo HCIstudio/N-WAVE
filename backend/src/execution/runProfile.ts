@@ -9,21 +9,23 @@ import { z } from "zod";
 
 const memory = z.string().regex(/^\d+(\.\d+)?\s*\.?\s*(KB|MB|GB|TB)$/i).max(32);
 
-export const runProfileSchema = z
-  .object({
-    name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/),
-    executor: z.enum(["local", "slurm", "awsbatch"]),
-    queue: z.string().regex(/^[A-Za-z0-9_.:/@-]{1,256}$/).optional(),
-    containerEngine: z.enum(["docker", "singularity", "apptainer", "none"]),
-    cpus: z.number().int().min(1).max(1_024).optional(),
-    memory: memory.optional(),
-    time: z.string().regex(/^\d+(\.\d+)?\s*(s|m|h|d)$/).max(32).optional(),
-    // Written into a single-quoted config string.
-    clusterOptions: z.string().regex(/^[^'\\\n\r]{1,500}$/).optional(),
-    queueSize: z.number().int().min(1).max(10_000).optional(),
-    awsRegion: z.string().max(64).optional(),
-    workDir: z.string().max(1_024).optional(),
-  })
+/** A profile's fields; profiles kept in the settings may also be AWS Batch ones (for exports). */
+export const runProfileFieldsSchema = z.object({
+  name: z.string().regex(/^[A-Za-z][A-Za-z0-9_]{0,39}$/),
+  executor: z.enum(["local", "slurm", "awsbatch"]),
+  queue: z.string().regex(/^[A-Za-z0-9_.:/@-]{1,256}$/).optional(),
+  containerEngine: z.enum(["docker", "singularity", "apptainer", "none"]),
+  cpus: z.number().int().min(1).max(1_024).optional(),
+  memory: memory.optional(),
+  time: z.string().regex(/^\d+(\.\d+)?\s*(s|m|h|d)$/).max(32).optional(),
+  // Written into a single-quoted config string.
+  clusterOptions: z.string().regex(/^[^'\\\n\r]{1,500}$/).optional(),
+  queueSize: z.number().int().min(1).max(10_000).optional(),
+  awsRegion: z.string().max(64).optional(),
+  workDir: z.string().max(1_024).optional(),
+});
+
+export const runProfileSchema = runProfileFieldsSchema
   .refine((profile) => profile.executor !== "awsbatch", {
     message: "AWS Batch profiles are for exported projects; N-WAVE can't run them itself yet",
     path: ["executor"],

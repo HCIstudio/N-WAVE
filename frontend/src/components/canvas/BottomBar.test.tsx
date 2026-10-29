@@ -228,6 +228,25 @@ describe("BottomBar", () => {
       expect(all.onWorkflowNameChange).not.toHaveBeenCalled();
     });
 
+    it("names an unnamed workflow without its placeholder in the way", async () => {
+      const { all } = show({ workflowName: "Untitled Workflow" });
+      const user = userEvent.setup();
+      await user.dblClick(button("Untitled Workflow"));
+      const input = screen.getByRole("textbox") as HTMLInputElement;
+      expect(input.value).toBe("");
+      expect(input.placeholder).toBe("Untitled Workflow");
+      await user.type(input, "rnaseq{Enter}");
+      expect(all.onWorkflowNameChange).toHaveBeenCalledWith("rnaseq");
+    });
+
+    it("leaves an unnamed workflow unnamed when nothing is typed", async () => {
+      const { all } = show({ workflowName: "Untitled Workflow" });
+      const user = userEvent.setup();
+      await user.dblClick(button("Untitled Workflow"));
+      await user.keyboard("{Enter}");
+      expect(all.onWorkflowNameChange).not.toHaveBeenCalled();
+    });
+
     it("does not rename when the name is unchanged", async () => {
       const { all } = show();
       const { user } = await startEditing();

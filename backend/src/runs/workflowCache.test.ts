@@ -4,8 +4,10 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { recordRun } from "./runIndex";
 import {
+  clearAllCaches,
   clearWorkflowCache,
   isClearingWorkflowCache,
+  measureAllCaches,
   measureWorkflowCache,
   WorkflowCacheInUseError,
 } from "./workflowCache";
@@ -58,5 +60,26 @@ describe("workflow cache", () => {
     expect(isClearingWorkflowCache("wf-d")).toBe(true);
     await cleared;
     expect(isClearingWorkflowCache("wf-d")).toBe(false);
+  });
+
+  it("measures and clears every workflow's cache, except folders a run still uses", async () => {
+    const a = path.join(root, "all_a");
+    const b = path.join(root, "all_b");
+    write(path.join(a, "nextflow", "work", "aa", "bb", "out.txt"), "1234");
+    write(path.join(a, "results", "out.txt"), "results stay");
+    write(path.join(b, ".nextflow", "history"), "12");
+    recordRun("all_a", a, { workflowId: "wf-a" });
+    recordRun("all_b", b, { workflowId: "wf-b" });
+
+    const before = await measureAllCaches();
+    expect(before.folders).toBeGreaterThanOrEqual(2);
+
+    expect(await clearAllCaches((id) => id === "all_b")).toBe(1);
+    expect(fs.existsSync(path.join(a, "nextflow", "work"))).toBe(false);
+    expect(fs.existsSync(path.join(a, "results", "out.txt"))).toBe(true);
+    expect(fs.existsSync(path.join(b, ".nextflow", "history"))).toBe(true);
+
+    expect(await clearAllCaches(() => false)).toBe(0);
+    expect(await measureAllCaches()).toEqual({ bytes: 0, folders: 0 });
   });
 });

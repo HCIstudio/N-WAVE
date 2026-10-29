@@ -293,6 +293,34 @@ describe("HomePage", () => {
       expect(screen.queryByRole("textbox")).toBeNull();
     });
 
+    it("names an unnamed workflow without its placeholder in the way", async () => {
+      put.mockResolvedValue({ data: {} });
+      const { user } = await setup([workflow("wf-2", "Untitled Workflow")]);
+      await user.click(
+        within(card("Untitled Workflow")).getByRole("button", { name: "Edit" }),
+      );
+      const [name] = screen.getAllByRole("textbox") as HTMLTextAreaElement[];
+      expect(name.value).toBe("");
+      expect(name.placeholder).toBe("Untitled Workflow");
+      await user.type(name, "rnaseq{Enter}");
+      expect(put).toHaveBeenCalledWith("/workflows/wf-2", {
+        name: "rnaseq",
+        description: "Untitled Workflow description",
+      });
+    });
+
+    it("keeps an emptied name as Untitled Workflow", async () => {
+      put.mockResolvedValue({ data: {} });
+      const { user } = await setup([rnaseq]);
+      const { name } = await startEditing(user);
+      await user.clear(name);
+      await user.keyboard("{Enter}");
+      expect(put).toHaveBeenCalledWith("/workflows/wf-1", {
+        name: "Untitled Workflow",
+        description: "RNA-seq description",
+      });
+    });
+
     it("saves with the save button", async () => {
       put.mockResolvedValue({ data: {} });
       const { user } = await setup([rnaseq]);

@@ -16,8 +16,15 @@ how the run ended, instead of starting it again.
   when it ends. A whole pipeline or a subworkflow lists its own steps under it. The bar counts
   finished steps, not time: steps differ a lot in how long they take, and until Nextflow says
   how many steps there are, the bar only shows that the run is going.
+- **Performance**: once the run has ended (also when it failed), **Execution report** and
+  **Timeline** open Nextflow's own reports in a new tab. Below them: how long the run took, its
+  CPU hours, and how many tasks were cached, retried or failed. A table lists the steps, slowest
+  first, with their total and longest task time and their peak memory next to the memory they
+  had, plus a bar for when each ran. A step that used 90% or more of its memory gets a hint: it
+  is the first to fail with exit status 137 (out of memory).
 - **Log**: the full output as it arrives, with a **Copy** button.
-- **History**: the workflow's earlier runs, each with its outcome, log and results.
+- **History**: the workflow's earlier runs, each with its outcome, log, results, its report
+  buttons and the same time and memory per step.
 
 On the canvas, each node shows **Running**, **Results ready**, **Failed** or **Reused from
 cache**. Double-click a node and open **Results** to see the files its tasks produced, with a
@@ -36,8 +43,8 @@ The **Execution Settings** button in the bottom bar opens the workflow's setting
 | --- | --- |
 | **Execution** | Whether steps run in Docker containers (recommended) and the default image for steps without their own. Also shows whether Docker and Nextflow are available. |
 | **Output** | The **Output Directory** (default `results`) and the **Output Naming Pattern** for run folders (`{workflow_name}`, `{timestamp}`, `{date}`). |
-| **Resources** | **Maximum CPU Cores**, **Maximum Memory** and the **Execution Timeout** for the run. |
-| **Profiles** | Where steps run: this computer, a SLURM cluster or AWS Batch ([Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)). |
+| **Resources** | **Use the global limits** (from [Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)), or turn it off to set lower **Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout** for this workflow. Values above the global limits are lowered to them. |
+| **Profiles** | **Use the global run profile**, or turn it off to choose this computer or another profile for this workflow ([Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)). |
 | **Advanced** | The Nextflow version, what to do when a step fails, and clean-up after a failure. |
 
 Below the tabs, **Run cache** shows how much space the workflow's cache takes.
@@ -60,13 +67,17 @@ stop them at once (each can be resumed later). Each workflow's card says how its
 ## Resuming a run
 
 After a run fails or is cancelled, fix what went wrong and run again with **Resume** on (the
-switch on the Run button; it's on by default after a failure). The run reuses every step whose
+switch on the Run button; it's on by default after a failure, or as
+[Global Settings → Resume](https://github.com/HCIstudio/N-WAVE/wiki/Settings#resume) says). The run reuses every step whose
 code and inputs haven't changed and only runs what you changed and what follows. The switch is
 greyed until a saved workflow has a run with a cache. When a run fails, its notice offers
 **Resume** too.
 
 The cache is each step's work folder. **Execution Settings → Run cache** shows its size and
-clears it; results and logs stay.
+clears it; results and logs stay. **Global Settings → Run cache** does the same for all workflows.
+
+A long run can tell you when it ends while you're in another tab: turn on
+[notifications](https://github.com/HCIstudio/N-WAVE/wiki/Settings#notifications) in Global Settings.
 
 ## When N-WAVE stops during a run
 
@@ -88,6 +99,7 @@ Each run has a folder in the output directory, named by the naming pattern, for 
 | `inputs/` | The uploaded files and samplesheets. |
 | `workflow/` | The script and config that ran. |
 | `nextflow/` | Nextflow's work folders (the run cache) and its log. |
+| `nwave_reports/<run>/` | Nextflow's execution report, timeline and trace (`execution_trace.txt`, tab separated) of each run, also of resumed ones. |
 | `nwave-run.log` | The output the run panel showed. |
 
 The run panel's **Results** and each node's **Results** tab open these files in the browser.

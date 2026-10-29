@@ -37,6 +37,7 @@ import {
   loadErrorFor,
   sanitizeNodesForSave,
 } from "./workflowDocument";
+import { UNTITLED_WORKFLOW } from "../../utils/workflowName";
 
 /** What an editable copy takes over from the read-only original. */
 export interface CopyOptions {
@@ -133,7 +134,7 @@ export const useWorkflowDocument = ({
       revision.current = data.revision;
       ownRevisions.current.clear();
       setConflict(null);
-      setWorkflowName(data.name?.trim() ? data.name : "Untitled Workflow");
+      setWorkflowName(data.name?.trim() ? data.name : UNTITLED_WORKFLOW);
       setReadOnly(Boolean(data.isReadOnly || data.origin?.readOnly));
       setRawSource(data.rawSource ?? null);
       setImportWarnings(data.importWarnings ?? []);

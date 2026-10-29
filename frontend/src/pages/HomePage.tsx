@@ -10,6 +10,7 @@ import {
   Plus,
   RefreshCw,
   Save,
+  Settings,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -40,6 +41,11 @@ import WorkflowPreview, {
   countNodes,
 } from "../components/common/workflow/WorkflowPreview";
 import fondaLogo from "../assets/fonda-logo.png";
+import {
+  nameForEditing,
+  nameFromEditing,
+  UNTITLED_WORKFLOW,
+} from "../utils/workflowName";
 import {
   TUTORIAL_BOX_CLASS,
   TutorialBadge,
@@ -206,7 +212,10 @@ const HomePage: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setEditingId(wf._id);
-    const data = { name: wf.name || "", description: wf.description || "" };
+    const data = {
+      name: nameForEditing(wf.name || ""),
+      description: wf.description || "",
+    };
     setEditData(data);
     setOriginalEditData(data);
   };
@@ -220,9 +229,10 @@ const HomePage: React.FC = () => {
 
   const handleSave = async (id: string) => {
     try {
-      await api.put(`/workflows/${id}`, editData);
+      const saved = { ...editData, name: nameFromEditing(editData.name) };
+      await api.put(`/workflows/${id}`, saved);
       setWorkflows((prev) =>
-        prev.map((wf) => (wf._id === id ? { ...wf, ...editData } : wf))
+        prev.map((wf) => (wf._id === id ? { ...wf, ...saved } : wf))
       );
       setEditingId(null);
       setOriginalEditData(null);
@@ -323,7 +333,7 @@ const HomePage: React.FC = () => {
           : await api.post("/workflows", {
               name:
                 choice.template.id === "empty"
-                  ? "Untitled Workflow"
+                  ? UNTITLED_WORKFLOW
                   : choice.template.name,
               nodes: choice.template.nodes,
               edges: choice.template.edges,
@@ -596,6 +606,8 @@ const HomePage: React.FC = () => {
               <textarea
                 ref={nameTextareaRef}
                 value={editData.name}
+                placeholder={UNTITLED_WORKFLOW}
+                aria-label="Workflow name"
                 onChange={(e) => handleInputChange(e, "name")}
                 onKeyDown={handleInputKeyDown}
                 onClick={(e) => {
@@ -730,6 +742,13 @@ const HomePage: React.FC = () => {
                 <Upload size={16} />
                 <span>Import Workflow</span>
               </button>
+              <Link
+                to="/settings"
+                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+              >
+                <Settings size={16} aria-hidden />
+                <span>Global Settings</span>
+              </Link>
             </div>
           </div>
           {isHomeTutorialActive && (
