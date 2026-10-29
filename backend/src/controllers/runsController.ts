@@ -13,9 +13,12 @@ import {
   listRuns,
   realFileInRun,
 } from "../runs/runIndex";
+import { findRunReports, isReportKind, parseTrace } from "../runs/runReports";
 import { findTaskWorkDir, listTaskOutputs, readRunTasks } from "../runs/taskEvents";
 import {
+  clearAllCaches,
   clearWorkflowCache,
+  measureAllCaches,
   measureWorkflowCache,
   WorkflowCacheInUseError,
 } from "../runs/workflowCache";
@@ -122,6 +125,51 @@ export const getRunResultFile = (req: Request, res: Response): void => {
   sendSandboxed(res, real);
 };
 
+/** `{ report, timeline, trace }`: which of Nextflow's reports the run has. */
+export const listRunReports = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  if (!dir) {
+    res.status(404).json({ message: `Unknown run ${id}` });
+    return;
+  }
+  const found = findRunReports(dir, id);
+  res.json({ report: Boolean(found.report), timeline: Boolean(found.timeline), trace: Boolean(found.trace) });
+};
+
+/** One of the run's reports: the execution report or timeline (HTML), or the trace. */
+export const getRunReport = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const kind = String(req.params.kind ?? "");
+  const dir = findRunDir(id);
+  const file = dir && isReportKind(kind) ? findRunReports(dir, id)[kind] : undefined;
+  const real = dir && file ? realFileInRun(dir, file) : null;
+  if (!real) {
+    res.status(404).json({ message: "This run has no such report" });
+    return;
+  }
+  if (kind === "trace") {
+    res.type("text/plain").sendFile(real);
+    return;
+  }
+  sendSandboxed(res, real);
+};
+
+/** `{ tasks }`: each task's times and resource use, from the run's trace. */
+export const getRunTrace = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  const file = dir ? findRunReports(dir, id).trace : undefined;
+  if (!file) {
+    res.status(404).json({ message: "This run has no trace" });
+    return;
+  }
+  res.json({ id, tasks: parseTrace(fs.readFileSync(file, "utf8")) });
+};
+
 /** `{ tasks }`: what each task of a run is doing, from Nextflow's log. */
 export const listRunTasks = (req: Request, res: Response): void => {
   const id = parseRunId(req, res);
@@ -191,6 +239,21 @@ const parseWorkflowId = (req: Request, res: Response): string | null => {
 export const getWorkflowCache = async (req: Request, res: Response): Promise<void> => {
   const workflowId = parseWorkflowId(req, res);
   if (workflowId) res.json(await measureWorkflowCache(workflowId));
+};
+
+/** The run cache of all workflows together. */
+export const getAllCaches = async (_req: Request, res: Response): Promise<void> => {
+  res.json(await measureAllCaches());
+};
+
+/** Delete the run cache of all workflows, except folders a run still uses. */
+export const deleteAllCaches = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const skipped = await clearAllCaches(isRunLive);
+    res.json({ ...(await measureAllCaches()), skipped });
+  } catch (error: unknown) {
+    res.status(500).json({ message: getErrorMessage(error) });
+  }
 };
 
 /** Delete a workflow's run cache; 409 while one of its runs is going. */

@@ -54,6 +54,18 @@ describe("parseTaskEvents", () => {
     ]);
   });
 
+  it("marks a failed task whose error Nextflow ignores", () => {
+    // Nextflow 25.04, errorStrategy 'ignore'.
+    const log = [
+      "Oct-27 12:26:11.300 [Task submitter] INFO  nextflow.Session - [9b/db7f5a] Submitted process > BAD (1)",
+      "Oct-27 12:26:11.420 [Task monitor] DEBUG n.processor.TaskPollingMonitor - Task completed > TaskHandler[id: 2; name: BAD (1); status: COMPLETED; exit: 255; error: -; workDir: /app/results/run/nextflow/work/9b/db7f5ace1d0b92dabf4ae16ffca003]",
+      "Oct-27 12:26:11.436 [TaskFinalizer-2] INFO  nextflow.processor.TaskProcessor - [9b/db7f5a] NOTE: Process `BAD (1)` terminated with an error exit status (255) -- Error is ignored",
+    ].join("\n");
+    expect(parseTaskEvents(log)).toEqual([
+      { hash: "9b/db7f5a", name: "BAD (1)", process: "BAD", status: "ignored", exitCode: 255 },
+    ]);
+  });
+
   it("reads tasks that ran as SLURM jobs", () => {
     const log = [
       "Oct-21 14:53:31.816 [Task submitter] INFO  nextflow.Session - [de/1e049a] Submitted process > STEP_A (1)",

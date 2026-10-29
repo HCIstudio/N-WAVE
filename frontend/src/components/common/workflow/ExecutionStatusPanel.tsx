@@ -3,6 +3,7 @@ import {
   Pause,
   CheckCircle,
   XCircle,
+  AlertTriangle,
   X,
   Clock,
   Hourglass,
@@ -16,6 +17,8 @@ import {
   History,
 } from "lucide-react";
 import { useState } from "react";
+import { nodeIdForProcess } from "../../../execution/nodeRuns";
+import RunPerformance, { RunReportButtons } from "./RunPerformance";
 import RunResultsList from "./RunResultsList";
 import RunHistory, { RunLog } from "./RunHistory";
 import FailureExplanationCard from "./FailureExplanationCard";
@@ -102,6 +105,8 @@ export interface RunStep {
   total: number;
   /** Tasks reused from the cache. */
   cached?: number;
+  /** Tasks that failed but whose error Nextflow ignores. */
+  ignored?: number;
   /** Tasks going now. */
   running?: number;
   /** The processes of a step that runs several (a subworkflow, a pipeline). */
@@ -115,18 +120,32 @@ const STEP_ICON: Record<RunStep["status"], React.ReactNode> = {
   cached: <RotateCcw className="h-4 w-4 text-sky-600" />,
 };
 
-/** How many of a step's tasks are done, as the steps list shows it. */
-const stepCount = (step: RunStep): string =>
-  step.status === "cached"
-    ? "reused from cache"
-    : step.cached
-      ? `${step.done} of ${step.total}, ${step.cached} reused`
-      : `${step.done} of ${step.total}`;
+/** A step that went on past an ignored error gets a warning sign. */
+const stepIcon = (step: RunStep): React.ReactNode =>
+  step.ignored && step.status !== "failed" && step.status !== "running" ? (
+    <AlertTriangle className="h-4 w-4 text-amber-500" />
+  ) : (
+    STEP_ICON[step.status]
+  );
 
-export type RunPanelTab = "steps" | "log" | "history";
+/** How many of a step's tasks are done, as the steps list shows it. */
+const stepCount = (step: RunStep): string => {
+  const count =
+    step.status === "cached"
+      ? "reused from cache"
+      : step.cached
+        ? `${step.done} of ${step.total}, ${step.cached} reused`
+        : `${step.done} of ${step.total}`;
+  return step.ignored
+    ? `${count}, ${step.ignored} error${step.ignored === 1 ? "" : "s"} ignored`
+    : count;
+};
+
+export type RunPanelTab = "steps" | "performance" | "log" | "history";
 
 const TABS: { id: RunPanelTab; label: string }[] = [
   { id: "steps", label: "Steps" },
+  { id: "performance", label: "Performance" },
   { id: "log", label: "Log" },
   { id: "history", label: "History" },
 ];
@@ -138,6 +157,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   onClose,
   isVisible,
   runId,
+  nodes,
   output = "",
   workflowId,
   tab = "steps",
@@ -151,6 +171,12 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
 }) => {
   const [maximized, setMaximized] = useState(false);
   if (!isVisible) return null;
+  // Steps in the Performance tab are named as their nodes on the canvas.
+  const canvasLabelFor = (process: string): string | undefined => {
+    const id = nodeIdForProcess(process, nodes);
+    const label = nodes.find((node) => node.id === id)?.data.label;
+    return typeof label === "string" && label ? label : undefined;
+  };
   // Opened before any run in this session: only the history has content.
   const hasRun = Boolean(status.startTime) || status.isRunning;
   const isCancelled = status.currentStage === "Workflow cancelled";
@@ -415,7 +441,21 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             <RunHistory
               workflowId={workflowId}
               refreshKey={`${runId ?? ""}:${status.isRunning}`}
+              labelFor={canvasLabelFor}
             />
+          </div>
+        )}
+        {tab === "performance" && (
+          <div role="tabpanel" aria-label="Performance" className="min-h-0 flex-1 overflow-y-auto">
+            {runId && !status.isRunning ? (
+              <RunPerformance runId={runId} labelFor={canvasLabelFor} />
+            ) : (
+              <p className="p-4 text-sm text-gray-700">
+                {status.isRunning
+                  ? "When the run has ended, its execution report, timeline and how long each step took show here."
+                  : "Run the workflow to see its execution report, timeline and how long each step took. Earlier runs have them under History."}
+              </p>
+            )}
           </div>
         )}
         {tab === "steps" && !hasRun && (
@@ -542,6 +582,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                   className="mt-3 space-y-1 border-t border-gray-300 pt-2 text-gray-800"
                 >
                   <h4 className="text-sm font-semibold">Results</h4>
+                  <RunReportButtons runId={runId} />
                   <RunResultsList runId={runId} label="Run reports" />
                 </section>
               )}
@@ -564,7 +605,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                   >
                     <div className="flex items-center justify-between p-3">
                       <span className="flex items-center gap-2 text-sm font-medium text-gray-800">
-                        {STEP_ICON[step.status]}
+                        {stepIcon(step)}
                         {step.label}
                       </span>
                       <span className="text-xs text-gray-700">
@@ -583,7 +624,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                           >
                             <span className="flex min-w-0 items-center gap-1.5 text-xs text-gray-800">
                               <span className="shrink-0 [&>svg]:h-3.5 [&>svg]:w-3.5">
-                                {STEP_ICON[substep.status]}
+                                {stepIcon(substep)}
                               </span>
                               <span className="truncate font-mono" title={substep.id}>
                                 {substep.label}

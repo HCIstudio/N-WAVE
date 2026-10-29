@@ -19,6 +19,8 @@ import {
   getResponseStatus,
 } from "../../utils/errors";
 import { createLineReader, parseRunId } from "../../utils/streamLines";
+import { explainFailure } from "../../execution/failureExplanations";
+import { type EndedRun, notifyRunEnded } from "../../notifications/runNotifications";
 import {
   buildRunRequest,
   findRunProblem,
@@ -66,8 +68,6 @@ interface Options {
   workflowName: string;
   rawSource: string | null;
   sourceFormat: "visual" | "nextflow";
-  /** Keeps the settings a run used as the workflow's settings. */
-  setExecutionSettings: (settings: ExecutionSettings) => void;
   updateNodeData: (nodeId: string, data: Partial<NodeData>) => void;
   showToast: (message: string, type: ToastType) => void;
 }
@@ -79,7 +79,6 @@ export const useWorkflowRun = ({
   workflowName,
   rawSource,
   sourceFormat,
-  setExecutionSettings,
   updateNodeData,
   showToast,
 }: Options) => {
@@ -105,7 +104,31 @@ export const useWorkflowRun = ({
   });
   // The run this page follows through its log, if any; set `stopped` to end it.
   const following = useRef<{ stopped: boolean } | null>(null);
-  const latest = useLatestRef({ nodes, edges, isRunning, executionStatus });
+  const latest = useLatestRef({
+    nodes,
+    edges,
+    isRunning,
+    executionStatus,
+    workflowId,
+    workflowName,
+  });
+  // When the run this page started began, for how long it took (unknown for
+  // a run started elsewhere).
+  const runStartedAt = useRef<number | null>(null);
+
+  /** Tell the person in another tab that the run ended (if they want that). */
+  const notifyEnded = (runId: string | null, outcome: EndedRun["outcome"], reason?: string) => {
+    const startedAt = runStartedAt.current;
+    runStartedAt.current = null;
+    notifyRunEnded({
+      runId,
+      workflowId: latest.current.workflowId,
+      workflowName: latest.current.workflowName,
+      outcome,
+      ...(startedAt === null ? {} : { durationMs: Date.now() - startedAt }),
+      ...(reason ? { reason } : {}),
+    });
+  };
 
   // The Run button (while running), Show runs and Show full log all bring
   // the run panel back, expanded.
@@ -151,6 +174,15 @@ export const useWorkflowRun = ({
         },
       });
     }
+    notifyEnded(
+      runId ?? null,
+      outcome.kind,
+      outcome.kind === "failed"
+        ? outcome.resourceProblem
+          ? "It hit its resource limits"
+          : (outcome.reason ?? explainFailure(text)?.title)
+        : undefined,
+    );
     if (outcome.kind === "cancelled") return;
 
     const failed = outcome.kind === "failed";
@@ -187,6 +219,7 @@ export const useWorkflowRun = ({
           );
     const failureOutput = String(data?.stdout || data?.stderr || "");
     if (typeof data?.runId === "string") setLastRunId(data.runId);
+    notifyEnded(typeof data?.runId === "string" ? data.runId : null, "failed", message);
     pendingOutput.current = null;
     // Keep what streamed before the failure and add why it failed.
     setOutput((previous) =>
@@ -219,6 +252,7 @@ export const useWorkflowRun = ({
     setCurrentExecutionId(runId);
     setLastRunId(runId);
     if (fresh) {
+      runStartedAt.current = null;
       latest.current.executionStatus.startExecution();
       setOutput("");
       setPanelMinimized(false);
@@ -296,7 +330,7 @@ export const useWorkflowRun = ({
     // Set when the stream broke and the run is followed through its log.
     let handedOver = false;
     setIsRunning(true);
-    setExecutionSettings(settings);
+    runStartedAt.current = Date.now();
     executionStatus.startExecution();
     setPanelMinimized(false);
     try {

@@ -12,6 +12,7 @@ vi.mock("../../../api", () => ({
 const { default: ExecutionSettingsComponent } = await import(
   "./ExecutionSettings"
 );
+const { resetRunDefaults } = await import("../../../settings/useRunDefaults");
 
 type Responses = Record<string, unknown>;
 
@@ -35,7 +36,22 @@ const allAvailable: Responses = {
     maxMemory: "64.GB",
     defaultTimeoutMinutes: 60,
   },
+  "/settings": {
+    runDefaults: {
+      maxCpus: 6,
+      maxMemory: "12.GB",
+      timeoutMinutes: 0,
+      resume: "after-failure",
+      runProfiles: [
+        { name: "cluster", executor: "slurm", containerEngine: "apptainer", queue: "short" },
+      ],
+      runProfile: "cluster",
+    },
+  },
 };
+
+/** Settings with limits of the workflow's own. */
+const ownLimits = { useDefaults: false } as const;
 
 const show = (settings: ExecutionSettings = defaultExecutionSettings) => {
   const onSettingsChange = vi.fn();
@@ -70,6 +86,7 @@ const openTab = async (name: string) => {
 describe("ExecutionSettings", () => {
   beforeEach(() => {
     get.mockReset();
+    resetRunDefaults();
     serve(allAvailable);
   });
 
@@ -378,17 +395,51 @@ describe("ExecutionSettings", () => {
   });
 
   describe("Resources tab", () => {
-    it("shows the server limits and default timeout", async () => {
-      show();
+    it("uses the global limits until the workflow sets its own", async () => {
+      const onChange = show();
       await openTab("Resources");
-      const note = await screen.findByRole("note", { name: "Server limits" });
-      expect(note.textContent).toContain(
-        "This server allows up to 16 CPU cores and 64 GB of memory per run",
-      );
-      expect(screen.getByText(/0 uses\s+the server default \(60 minutes\)/)).toBeTruthy();
+      const toggle = screen.getByLabelText("Use the global limits") as HTMLInputElement;
+      expect(toggle.checked).toBe(true);
       expect(
-        (screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max,
-      ).toBe("16");
+        await screen.findByText(/Runs get 6 CPU cores, 12 GB of memory and the server's time limit, as set in Global Settings/),
+      ).toBeTruthy();
+      expect(screen.queryByLabelText("Maximum CPU Cores")).toBeNull();
+      expect(
+        screen.getByRole("link", { name: "Change them in Global Settings" }).getAttribute("href"),
+      ).toBe("/settings");
+
+      fireEvent.click(toggle);
+      expect(onChange).toHaveBeenLastCalledWith({
+        resources: {
+          ...defaultExecutionSettings.resources,
+          useDefaults: false,
+          maxCpus: 6,
+          maxMemory: "12.GB",
+          maxTime: "",
+        },
+      });
+    });
+
+    it("says how far a workflow's own limits can go", async () => {
+      show(withSettings({ resources: ownLimits }));
+      await openTab("Resources");
+      const note = await screen.findByRole("note", { name: "Global limits" });
+      await waitFor(() =>
+        expect(note.textContent).toContain(
+          "This workflow can use at most 6 CPU cores, 12 GB of memory and 60 minutes, the server's limit, as set in Global Settings",
+        ),
+      );
+      expect(screen.queryByRole("note", { name: "Server limits" })).toBeNull();
+      // The lower of the server's 16 and the global 6.
+      expect((screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max).toBe("6");
+      expect(screen.getByText(/0\s+uses the global limit/)).toBeTruthy();
+    });
+
+    it("warns about own limits above the global ones", async () => {
+      show(withSettings({ resources: { ...ownLimits, maxCpus: 8, maxMemory: "16.GB" } }));
+      await openTab("Resources");
+      expect(await screen.findByText("More than Global Settings allow: runs get 6 CPU cores.")).toBeTruthy();
+      expect(screen.getByText("More than Global Settings allow: runs get 12 GB.")).toBeTruthy();
     });
 
     it("says when the server has no timeout", async () => {
@@ -396,29 +447,23 @@ describe("ExecutionSettings", () => {
         ...allAvailable,
         "/execute/limits": { ...(allAvailable["/execute/limits"] as object), defaultTimeoutMinutes: 0 },
       });
-      show();
+      show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
-      expect(await screen.findByText(/\(no limit\)/)).toBeTruthy();
+      expect(await screen.findByText(/12 GB of memory and no time limit/)).toBeTruthy();
     });
 
     it("works without server limits", async () => {
       serve({ ...allAvailable, "/execute/limits": new Error("404") });
-      show(withSettings({ resources: { maxCpus: 48 } }));
+      show(withSettings({ resources: ownLimits }));
       await openTab("Resources");
-      expect(screen.queryByRole("note", { name: "Server limits" })).toBeNull();
-      expect(
-        screen.getByText(/24 hours unless NWAVE_EXECUTION_TIMEOUT says otherwise/),
-      ).toBeTruthy();
-      // The slider reaches the current value even above the usual 32.
-      expect(
-        (screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max,
-      ).toBe("48");
+      expect(await screen.findByText(/12 GB of memory and the server's time limit, as set/)).toBeTruthy();
+      expect((screen.getByLabelText("Maximum CPU Cores") as HTMLInputElement).max).toBe("6");
     });
 
     it("changes CPU, memory and timeout", async () => {
-      const onChange = show(withSettings({ resources: { maxTime: "PT2H" } }));
+      const onChange = show(withSettings({ resources: { ...ownLimits, maxTime: "PT2H" } }));
       await openTab("Resources");
-      const resources = { ...defaultExecutionSettings.resources, maxTime: "PT2H" };
+      const resources = { ...defaultExecutionSettings.resources, ...ownLimits, maxTime: "PT2H" };
 
       expect(
         (screen.getByLabelText("Execution Timeout (minutes)") as HTMLInputElement)
@@ -426,10 +471,17 @@ describe("ExecutionSettings", () => {
       ).toBe("120");
 
       fireEvent.change(screen.getByLabelText("Maximum CPU Cores"), {
-        target: { value: "8" },
+        target: { value: "5" },
       });
       expect(onChange).toHaveBeenLastCalledWith({
-        resources: { ...resources, maxCpus: 8 },
+        resources: { ...resources, maxCpus: 5 },
+      });
+      // No more than the global 6.
+      fireEvent.change(screen.getByLabelText("Maximum CPU Cores"), {
+        target: { value: "20" },
+      });
+      expect(onChange).toHaveBeenLastCalledWith({
+        resources: { ...resources, maxCpus: 6 },
       });
 
       fireEvent.change(screen.getByLabelText("Maximum Memory"), {
@@ -452,6 +504,61 @@ describe("ExecutionSettings", () => {
       expect(onChange).toHaveBeenLastCalledWith({
         resources: { ...resources, maxTime: "" },
       });
+    });
+  });
+
+  describe("Profiles tab", () => {
+    it("uses the global run profile, or one the workflow chooses", async () => {
+      const onChange = show();
+      await openTab("Profiles");
+      const toggle = screen.getByLabelText("Use the global run profile") as HTMLInputElement;
+      const select = screen.getByLabelText("Runs of this workflow use") as HTMLSelectElement;
+      expect(toggle.checked).toBe(true);
+      expect(select.disabled).toBe(true);
+      await waitFor(() => expect(select.value).toBe("cluster"));
+      expect(screen.getByText(/Runs use cluster, as set in Global Settings/)).toBeTruthy();
+      expect([...select.options].map((option) => option.text)).toEqual([
+        "This computer (Execution and Resources settings)",
+        "cluster: SLURM cluster",
+      ]);
+      // Turned off, it starts from the global choice.
+      fireEvent.click(toggle);
+      expect(onChange).toHaveBeenLastCalledWith({ runProfile: "cluster" });
+    });
+
+    it("lets a workflow run on this computer while the global profile is a cluster", async () => {
+      const onChange = show({ ...defaultExecutionSettings, runProfile: "cluster" });
+      await openTab("Profiles");
+      const select = screen.getByLabelText("Runs of this workflow use") as HTMLSelectElement;
+      await waitFor(() => expect(select.value).toBe("cluster"));
+      expect(select.disabled).toBe(false);
+      fireEvent.change(select, { target: { value: "" } });
+      expect(onChange).toHaveBeenLastCalledWith({ runProfile: "" });
+      fireEvent.click(screen.getByLabelText("Use the global run profile"));
+      expect(onChange).toHaveBeenLastCalledWith({ runProfile: undefined });
+    });
+
+    it("offers to move a workflow's own profiles to Global Settings", async () => {
+      const put = vi.fn(async (_url: string, body: unknown) => ({ data: body }));
+      const api = (await import("../../../api")).default as unknown as Record<string, unknown>;
+      api.put = put;
+      const onChange = show({
+        ...defaultExecutionSettings,
+        runProfiles: [{ name: "old", executor: "local", containerEngine: "docker" }],
+      });
+      await openTab("Profiles");
+      await screen.findByText(/keeps profiles of its own.*old/);
+      await userEvent.setup().click(screen.getByRole("button", { name: "Move to Global Settings" }));
+      await waitFor(() => expect(onChange).toHaveBeenCalledWith({ runProfiles: [] }));
+      expect(put).toHaveBeenCalledWith("/settings", {
+        runDefaults: expect.objectContaining({
+          runProfiles: [
+            expect.objectContaining({ name: "cluster" }),
+            { name: "old", executor: "local", containerEngine: "docker" },
+          ],
+        }),
+      });
+      Reflect.deleteProperty(api, "put");
     });
   });
 

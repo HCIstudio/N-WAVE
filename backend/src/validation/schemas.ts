@@ -74,7 +74,7 @@ const dockerImage = z
   .max(255)
   .regex(/^[A-Za-z0-9][A-Za-z0-9._/:@-]*$/, "must be a Docker image reference");
 
-const memoryAmount = z
+export const memoryAmount = z
   .string()
   .max(32)
   .regex(/^\d+(\.\d+)?\s*\.?\s*[KMGT]?B$/i, 'must look like "4 GB"');

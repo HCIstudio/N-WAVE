@@ -6,9 +6,7 @@ import type {
   WorkflowExecutionStatus,
   NodeExecutionStatus,
 } from "../../components/common/workflow/ExecutionStatusPanel";
-
-// Colours and styles in Nextflow's console output.
-const ANSI_CODES = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g");
+import { stripTerminalCodes } from "../../utils/terminalCodes";
 
 /**
  * A process in Nextflow's progress: "[-        ] NAME -" before its first
@@ -107,7 +105,8 @@ export const useExecutionStatus = ({
   const parseNextflowOutput = useCallback((output: string) => {
     const lines = output.split("\n");
 
-    for (const line of lines) {
+    for (const raw of lines) {
+      const line = stripTerminalCodes(raw);
       // Parse workflow launch
       if (line.includes("Launching") && line.includes("DSL2")) {
         const launchMatch = line.match(/Launching `([^`]+)`.*\[([^\]]+)\]/);
@@ -123,7 +122,7 @@ export const useExecutionStatus = ({
       // with tasks and, if the screen is short, counts the rest as "Plus N
       // more processes waiting for tasks…". The total doesn't shrink, and a
       // snapshot read halfway can only count fewer, so the highest is kept.
-      const plain = line.replace(ANSI_CODES, "").trim();
+      const plain = line.trim();
       if (/^executor >/.test(plain)) snapshot.current = newSnapshot();
       const listedMatch = plain.match(PROCESS_LINE);
       const plusMatch = plain.match(/^Plus\s+(\d+)\s+more processes waiting/);

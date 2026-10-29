@@ -12,7 +12,7 @@ cluster or a colleague's computer. Both buttons are in the bottom bar and work i
 ```
 <workflow>/
 ├─ main.nf                # the workflow
-├─ nextflow.config        # parameters, node settings and the run profiles
+├─ nextflow.config        # parameters, node settings, run profiles, and the execution report, timeline and trace
 ├─ modules/nf-core/       # the nf-core modules it uses, at N-WAVE's pinned version
 ├─ subworkflows/nf-core/  # the nf-core subworkflows it uses, if any
 ├─ inputs/                # the uploaded files and samplesheets

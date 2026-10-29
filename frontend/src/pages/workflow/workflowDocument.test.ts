@@ -1,12 +1,15 @@
 import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
+import type { ExecutionSettings } from "../../types/execution";
 import {
   DEFAULT_EXECUTION_SETTINGS,
+  EXECUTION_SETTINGS_VERSION,
   ensureStoredExecutionSettings,
   flattenExecutionSettings,
   migrateExecutionSettings,
   readStoredExecutionSettings,
+  THIS_COMPUTER,
 } from "./executionSettings";
 import {
   hydrateEdges,
@@ -268,7 +271,26 @@ describe("execution settings", () => {
   it("drops the old 30-minute default from settings saved before versions", () => {
     const migrated = migrateExecutionSettings(withTime("PT30M"));
     expect(migrated.resources.maxTime).toBe("");
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(EXECUTION_SETTINGS_VERSION);
+  });
+
+  it("keeps a workflow's own limits, and runs on this computer, from before the Settings page", () => {
+    const old = (resources: Partial<ExecutionSettings["resources"]>) =>
+      migrateExecutionSettings({
+        ...DEFAULT_EXECUTION_SETTINGS,
+        version: 2,
+        resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, ...resources },
+      });
+    expect(old({}).resources.useDefaults).toBe(true);
+    expect(old({ maxCpus: 8 }).resources.useDefaults).toBe(false);
+    expect(old({ maxTime: "PT2H" }).resources.useDefaults).toBe(false);
+    expect(old({}).runProfile).toBe(THIS_COMPUTER);
+    expect(
+      migrateExecutionSettings({ ...DEFAULT_EXECUTION_SETTINGS, version: 2, runProfile: "slurm" })
+        .runProfile,
+    ).toBe("slurm");
+    // Current settings stay as they are: no profile means the default one.
+    expect(migrateExecutionSettings(DEFAULT_EXECUTION_SETTINGS).runProfile).toBeUndefined();
   });
 
   it("keeps other limits, and 30 minutes chosen in current settings", () => {

@@ -48,7 +48,6 @@ describe("useWorkflowRun", () => {
     workflowName: "Run me",
     rawSource: "workflow { println 'hi' }",
     sourceFormat: "nextflow" as const,
-    setExecutionSettings: vi.fn(),
     updateNodeData: vi.fn(),
     showToast: vi.fn(),
   };
@@ -79,7 +78,6 @@ describe("useWorkflowRun", () => {
     expect(run.lastRunId).toBe("bee_1");
     expect(run.output).toContain("Done");
     expect(run.error).toBeNull();
-    expect(options.setExecutionSettings).toHaveBeenCalledWith(DEFAULT_EXECUTION_SETTINGS);
     expect(options.showToast).toHaveBeenCalledWith(
       expect.stringContaining("executed successfully"),
       "success",

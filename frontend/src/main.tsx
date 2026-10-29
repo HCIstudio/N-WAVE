@@ -37,6 +37,12 @@ const router = createBrowserRouter(
               }),
             },
             {
+              path: "settings",
+              lazy: async () => ({
+                Component: (await import("./pages/SettingsPage")).default,
+              }),
+            },
+            {
               // Its old name, for links and bookmarks from before.
               path: "glossary",
               lazy: async () => ({

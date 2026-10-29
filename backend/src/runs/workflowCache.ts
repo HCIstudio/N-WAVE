@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { isRunDirInUse, listWorkflowRunDirs } from "./runIndex";
+import { isRunDirInUse, listAllRunDirs, listWorkflowRunDirs } from "./runIndex";
 
 // A workflow's run cache: what Nextflow keeps in its runs' folders so a
 // resumed run can reuse the steps that haven't changed. That is each task's
@@ -32,11 +32,11 @@ export interface WorkflowCache {
   folders: number;
 }
 
-/** How much a workflow's run cache takes up. */
-export const measureWorkflowCache = async (workflowId: string): Promise<WorkflowCache> => {
+/** How much the cache in these run folders takes up. */
+const measureDirs = async (dirs: string[]): Promise<WorkflowCache> => {
   let bytes = 0;
   let folders = 0;
-  for (const dir of listWorkflowRunDirs(workflowId)) {
+  for (const dir of dirs) {
     const present = CACHE_PATHS.map((cache) => path.join(dir, cache)).filter((cache) =>
       fs.existsSync(cache)
     );
@@ -46,6 +46,14 @@ export const measureWorkflowCache = async (workflowId: string): Promise<Workflow
   }
   return { bytes, folders };
 };
+
+/** How much a workflow's run cache takes up. */
+export const measureWorkflowCache = (workflowId: string): Promise<WorkflowCache> =>
+  measureDirs(listWorkflowRunDirs(workflowId));
+
+/** The cache of every workflow's runs together (the Settings page). */
+export const measureAllCaches = (): Promise<WorkflowCache> =>
+  measureDirs(listAllRunDirs().map(({ dir }) => dir));
 
 // Workflows whose cache is being deleted: a run starting meanwhile mustn't
 // resume in a folder whose cache is about to go.
@@ -77,6 +85,29 @@ export const clearWorkflowCache = async (
   } finally {
     clearing.delete(workflowId);
   }
+};
+
+/**
+ * Delete the cache of every run that isn't going now; returns how many run
+ * folders were skipped because a run still uses them.
+ */
+export const clearAllCaches = async (isLive: (id: string) => boolean): Promise<number> => {
+  let skipped = 0;
+  for (const { dir, workflowId } of listAllRunDirs()) {
+    if (isRunDirInUse(dir, isLive)) {
+      skipped += 1;
+      continue;
+    }
+    if (workflowId) clearing.add(workflowId);
+    try {
+      for (const cache of CACHE_PATHS) {
+        await fs.promises.rm(path.join(dir, cache), { recursive: true, force: true });
+      }
+    } finally {
+      if (workflowId) clearing.delete(workflowId);
+    }
+  }
+  return skipped;
 };
 
 export class WorkflowCacheInUseError extends Error {

@@ -7,6 +7,10 @@ vi.mock("../../../api/runs", () => ({
   getRunLog: vi.fn(async () => ""),
   listRunResults: vi.fn(async () => []),
   runResultUrl: () => "",
+  listRunReports: vi.fn(async () => ({ report: false, timeline: false, trace: false })),
+  runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
+  getRunTrace: vi.fn(async () => []),
+  listRunTasks: vi.fn(async () => []),
 }));
 
 const { default: ExecutionStatusPanel } = await import(
@@ -110,16 +114,39 @@ describe("ExecutionStatusPanel", () => {
     expect(steps).toContain("MultiQC1 of 1");
   });
 
+  it("tells which steps went on past an ignored error", () => {
+    render({
+      status: { ...idle, startTime: new Date("2026-10-27T10:00:00Z"), endTime: new Date() },
+      steps: [
+        {
+          id: "p",
+          label: "nf-core/mag",
+          status: "succeeded",
+          done: 189,
+          total: 189,
+          ignored: 1,
+          substeps: [
+            { id: "MAXBIN2", label: "MAXBIN2", status: "succeeded", done: 2, total: 2, ignored: 1 },
+          ],
+        },
+      ],
+    });
+    const steps = container.querySelector('[aria-label="Steps of this run"]')?.textContent ?? "";
+    expect(steps).toContain("nf-core/mag189 of 189, 1 error ignored");
+    expect(steps).toContain("MAXBIN22 of 2, 1 error ignored");
+  });
+
     it("switches tabs and maximizes", () => {
     const onTabChange = vi.fn();
     render({ status: failed, onTabChange });
     const tabs = [...container.querySelectorAll('[role="tab"]')];
     expect(tabs.map((tab) => tab.textContent)).toEqual([
       "Steps",
+      "Performance",
       "Log",
       "History",
     ]);
-    act(() => (tabs[2] as HTMLButtonElement).click());
+    act(() => (tabs[3] as HTMLButtonElement).click());
     expect(onTabChange).toHaveBeenCalledWith("history");
 
     const panel = container.querySelector('[aria-label="Run panel"]');

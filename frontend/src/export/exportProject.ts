@@ -161,6 +161,26 @@ const inputFileLine = (file: ProjectInputFile): string =>
 const isSafeRelativePath = (filePath: string): boolean =>
   filePath.split("/").every(isPlainFileName);
 
+/** Nextflow's execution report, timeline and trace, as N-WAVE's own runs get them. */
+const REPORTS_CONFIG = [
+  "// Nextflow's execution report, timeline and trace for every run",
+  "report {",
+  "  enabled = true",
+  "  file = \"${params.outdir}/pipeline_info/execution_report.html\"",
+  "  overwrite = true",
+  "}",
+  "timeline {",
+  "  enabled = true",
+  "  file = \"${params.outdir}/pipeline_info/execution_timeline.html\"",
+  "  overwrite = true",
+  "}",
+  "trace {",
+  "  enabled = true",
+  "  file = \"${params.outdir}/pipeline_info/execution_trace.txt\"",
+  "  overwrite = true",
+  "}",
+].join("\n");
+
 export const buildNextflowConfig = (
   generatedConfig: string,
   profiles: RunProfile[] = [],
@@ -178,6 +198,8 @@ export const buildNextflowConfig = (
     ...(generatedConfig.trim()
       ? ["", "// Module settings from the N-WAVE nodes", generatedConfig.trim()]
       : []),
+    "",
+    REPORTS_CONFIG,
     "",
     buildProfilesBlock(profiles),
     "",
@@ -287,8 +309,8 @@ export const buildReadme = ({
     "",
     "- `main.nf`: the workflow",
     hasProfiles
-      ? "- `nextflow.config`: parameters, module settings and the run profiles"
-      : "- `nextflow.config`: parameters, module settings and the `docker` profile",
+      ? "- `nextflow.config`: parameters, module settings, the run profiles, and Nextflow's execution report, timeline and trace (written to `results/pipeline_info/`)"
+      : "- `nextflow.config`: parameters, module settings, the `docker` profile, and Nextflow's execution report, timeline and trace (written to `results/pipeline_info/`)",
     ...(modules.length > 0
       ? [
           "- `modules/nf-core/`: the nf-core modules the workflow uses:",

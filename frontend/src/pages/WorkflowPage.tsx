@@ -51,6 +51,8 @@ import {
 import { useWorkflowCheck } from "./workflow/useWorkflowCheck";
 import { useWorkflowRun } from "./workflow/useWorkflowRun";
 import { useRunResume } from "./workflow/useRunResume";
+import { applyRunDefaults } from "../settings/effectiveSettings";
+import { useRunDefaults } from "../settings/useRunDefaults";
 import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
 import {
@@ -110,6 +112,13 @@ const WorkflowPageContent: React.FC = () => {
     rename,
     changeExecutionSettings,
   } = workflow;
+  // What runs and exports use: the workflow's settings with the defaults of
+  // the Settings page filled in.
+  const runDefaults = useRunDefaults();
+  const runSettings = useMemo(
+    () => applyRunDefaults(executionSettings, runDefaults.defaults),
+    [executionSettings, runDefaults.defaults]
+  );
   // A fresh copy of an example says so once it's open.
   const location = useLocation();
   const navigate = useNavigate();
@@ -135,11 +144,18 @@ const WorkflowPageContent: React.FC = () => {
     workflowName: workflow.workflowName,
     rawSource: workflow.rawSource,
     sourceFormat: workflow.sourceFormat,
-    setExecutionSettings: workflow.setExecutionSettings,
     updateNodeData,
     showToast,
   });
   const { isRunning } = run;
+  // A notification about a run opens the workflow with its run panel.
+  const notifiedRun = new URLSearchParams(location.search).get("run");
+  useEffect(() => {
+    if (!notifiedRun) return;
+    run.setPanelTab(notifiedRun === run.lastRunId ? "steps" : "history");
+    run.openPanel();
+    navigate(location.pathname, { replace: true });
+  }, [notifiedRun, run.lastRunId, run.setPanelTab, run.openPanel, navigate, location.pathname]);
   // Closing or reloading the tab while a run goes asks first (the run goes
   // on, and opening the workflow again follows it).
   useEffect(() => {
@@ -177,7 +193,7 @@ const WorkflowPageContent: React.FC = () => {
   const check = useWorkflowCheck({
     nodes,
     edges,
-    settings: executionSettings,
+    settings: runSettings,
     missingNfCoreComponents,
   });
   // Connections whose ports don't fit; stable while a drag moves nodes.
@@ -229,7 +245,7 @@ const WorkflowPageContent: React.FC = () => {
         showToast(check.blockedReason, "info");
         return;
       }
-      void run.run(executionSettings);
+      void run.run(runSettings);
     },
     onFitView: () => void fitView({ duration: 200 }),
     onShowShortcuts: () => setShowShortcuts(true),
@@ -254,7 +270,12 @@ const WorkflowPageContent: React.FC = () => {
     showError,
   });
   const runTasks = useRunTasks(isDemoMode ? null : run.lastRunId, isRunning, nodes);
-  const resume = useRunResume({ workflowId, enabled: !isDemoMode, isRunning });
+  const resume = useRunResume({
+    workflowId,
+    enabled: !isDemoMode,
+    isRunning,
+    mode: runDefaults.defaults.resume,
+  });
   const [isExporting, setIsExporting] = useState(false);
 
   // Why the last run failed, and the step it failed in, if the log says.
@@ -342,7 +363,7 @@ const WorkflowPageContent: React.FC = () => {
     nodes,
     edges,
     workflowName: workflow.workflowName,
-    settings: executionSettings,
+    settings: runSettings,
     rawSource: workflow.rawSource,
     sourceFormat: workflow.sourceFormat,
   };
@@ -477,7 +498,7 @@ const WorkflowPageContent: React.FC = () => {
           onDownload={handleDownloadScript}
           onExportProject={handleExportProject}
           isExporting={isExporting}
-          onRun={(settings) => run.run(settings, { resume: resume.resume })}
+          onRun={() => run.run(runSettings, { resume: resume.resume })}
           isSaved={workflow.isSaved}
           isSaving={workflow.isSaving}
           isRunning={isRunning}
@@ -493,6 +514,7 @@ const WorkflowPageContent: React.FC = () => {
           }
           isLoading={workflow.isLoading}
           executionSettings={executionSettings}
+          runSettings={runSettings}
           onExecutionSettingsChange={handleExecutionSettingsChange}
           onShowRuns={run.openPanel}
           resume={
@@ -572,13 +594,13 @@ const WorkflowPageContent: React.FC = () => {
             onClose={run.dismissError}
             onRetry={() => {
               run.dismissError();
-              void run.run(executionSettings);
+              void run.run(runSettings);
             }}
             onResume={
               resume.available
                 ? () => {
                     run.dismissError();
-                    void run.run(executionSettings, { resume: true });
+                    void run.run(runSettings, { resume: true });
                   }
                 : undefined
             }
@@ -614,6 +636,7 @@ const WorkflowPageContent: React.FC = () => {
             done: nodeRun.done,
             total: nodeRun.total,
             cached: nodeRun.cached,
+            ignored: nodeRun.ignored,
             running: nodeRun.running,
             substeps: nodeRun.processes?.map((process) => ({
               id: process.process,
@@ -622,6 +645,7 @@ const WorkflowPageContent: React.FC = () => {
               done: process.done,
               total: process.total,
               cached: process.cached,
+              ignored: process.ignored,
               running: process.running,
             })),
           }))}

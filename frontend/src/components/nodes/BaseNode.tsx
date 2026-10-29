@@ -134,6 +134,8 @@ const BaseNode = ({
 
   // The last run's state for this node wins over a stored status.
   const { summary: run } = useNodeRun(id);
+  // Finished, but past errors Nextflow was told to ignore.
+  const ignoredErrors = run?.status === "succeeded" ? run.ignored : 0;
   const status = run
     ? ({ running: "running", succeeded: "success", cached: "success", failed: "error" } as const)[
         run.status
@@ -354,14 +356,18 @@ const BaseNode = ({
           title={
             run.status === "running"
               ? "This step is running"
-              : "Double-click to see what this step produced"
+              : ignoredErrors > 0
+                ? "Some tasks failed, but the pipeline is set to go on without them. Double-click to see which."
+                : "Double-click to see what this step produced"
           }
           className={clsx(
             "absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-sm",
             run.status === "running" &&
               "border-yellow-400 bg-yellow-100 text-yellow-900",
             run.status === "succeeded" &&
+              ignoredErrors === 0 &&
               "border-green-500 bg-green-100 text-green-900",
+            ignoredErrors > 0 && "border-amber-500 bg-amber-100 text-amber-900",
             run.status === "cached" &&
               "border-sky-500 bg-sky-100 text-sky-900",
             run.status === "failed" && "border-red-500 bg-red-100 text-red-900"
@@ -371,9 +377,11 @@ const BaseNode = ({
             ? `Running${run.total > 1 ? ` ${run.done}/${run.total}` : ""}`
             : run.status === "failed"
               ? `Failed${run.total > 1 ? ` ${run.failed}/${run.total}` : ""}`
-              : run.status === "cached"
-                ? "Reused from cache"
-                : "Results ready"}
+              : ignoredErrors > 0
+                ? `Results ready, ${ignoredErrors} error${ignoredErrors === 1 ? "" : "s"} ignored`
+                : run.status === "cached"
+                  ? "Reused from cache"
+                  : "Results ready"}
         </output>
       )}
 

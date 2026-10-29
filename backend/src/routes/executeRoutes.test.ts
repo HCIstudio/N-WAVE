@@ -166,6 +166,38 @@ describe("run results", () => {
         .expect(404);
     }
   });
+
+  it("lists and serves the run's execution report, timeline and trace", async () => {
+    await request(app).get("/api/execute/runs/rnaseq_1/trace").expect(404);
+    expect((await request(app).get("/api/execute/runs/rnaseq_1/reports").expect(200)).body).toEqual({
+      report: false,
+      timeline: false,
+      trace: false,
+    });
+
+    const reports = path.join(runDir, "nwave_reports", "rnaseq_1");
+    fs.mkdirSync(reports, { recursive: true });
+    fs.writeFileSync(path.join(reports, "execution_report.html"), "<html>execution report</html>");
+    fs.writeFileSync(
+      path.join(reports, "execution_trace.txt"),
+      "task_id\thash\tname\tprocess\tstatus\texit\tattempt\trealtime\tpeak_rss\tmemory\n1\tab/123456\tFASTQC (s1)\tFASTQC\tCOMPLETED\t0\t1\t4000\t1048576\t2097152\n"
+    );
+    expect((await request(app).get("/api/execute/runs/rnaseq_1/reports").expect(200)).body).toEqual({
+      report: true,
+      timeline: false,
+      trace: true,
+    });
+    const report = await request(app).get("/api/execute/runs/rnaseq_1/reports/report").expect(200);
+    expect(report.text).toBe("<html>execution report</html>");
+    expect(report.headers["content-security-policy"]).toContain("sandbox");
+    await request(app).get("/api/execute/runs/rnaseq_1/reports/timeline").expect(404);
+    await request(app).get("/api/execute/runs/rnaseq_1/reports/..%2Fsecret.txt").expect(404);
+
+    const trace = await request(app).get("/api/execute/runs/rnaseq_1/trace").expect(200);
+    expect(trace.body.tasks).toEqual([
+      expect.objectContaining({ name: "FASTQC (s1)", realtime: 4000, peakRss: 1048576, memory: 2097152 }),
+    ]);
+  });
 });
 
 describe("run history", () => {
@@ -259,6 +291,16 @@ describe("run history", () => {
     expect(cleared.body).toEqual({ bytes: 0, folders: 0 });
     expect(fs.existsSync(path.join(runDir, "nextflow/work"))).toBe(false);
     expect(fs.existsSync(path.join(runDir, RUN_LOG_FILE))).toBe(true);
+
+    // All workflows' caches together.
+    fs.mkdirSync(path.join(runDir, ".nextflow"), { recursive: true });
+    fs.writeFileSync(path.join(runDir, ".nextflow", "history"), "x");
+    expect((await request(app).get("/api/execute/caches").expect(200)).body.folders).toBe(1);
+    expect((await request(app).delete("/api/execute/caches").expect(200)).body).toEqual({
+      bytes: 0,
+      folders: 0,
+      skipped: 0,
+    });
   });
 });
 
