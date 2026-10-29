@@ -135,7 +135,7 @@ const fits = (names: string[], patterns: string[]): boolean => {
 };
 
 /** "FASTA sequences (*.fa, *.fasta)", from a pattern or file names. */
-const describe = (contents: PortContents): string => {
+const describeContents = (contents: PortContents): string => {
   if (contents.kind === "directory") return "a folder (such as an index)";
   if (contents.kind === "version") return "tool versions";
   const names = contents.fileNames ?? contents.patterns.flatMap(examples);
@@ -192,7 +192,7 @@ export const checkPortFit = (
   const targetLabel = String(target.data.label || target.type);
   const sourceLabel = String(source.data.label || source.type);
   return {
-    message: `“${targetLabel}” expects ${describe(expected)} on “${targetHandle}”, but “${sourceLabel}” gives ${describe(given)}.`,
+    message: `“${targetLabel}” expects ${describeContents(expected)} on “${targetHandle}”, but “${sourceLabel}” gives ${describeContents(given)}.`,
     fix: fixFor(expected, given),
   };
 };
