@@ -19,6 +19,7 @@ import {
   type OnConnectEnd,
   type OnConnectStart,
   type Connection,
+  type FinalConnectionState,
   type IsValidConnection,
   useEdgesState,
   useReactFlow,
@@ -29,6 +30,48 @@ import type { ToastType } from "../components/common";
 import { validateConnectionWithNodeDefinitions } from "../registry";
 import { connectionLimitMessage } from "../registry/portArity";
 import { cycleThroughConnection, describeCycle } from "../registry/workflowCycles";
+import { logActivity } from "../activity/activityLog";
+
+/** Why a connection can't be made (shown, and recorded in verbose mode), or null when it can. */
+export const connectionProblem = (
+  connection: Connection,
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+): string | null => {
+  const sourceNode = connection.source ? nodes.find((node) => node.id === connection.source) : undefined;
+  const targetNode = connection.target ? nodes.find((node) => node.id === connection.target) : undefined;
+  const validation = validateConnectionWithNodeDefinitions({ connection, sourceNode, targetNode, nodes, edges });
+  if (!validation.valid) return validation.message || "Invalid connection.";
+  // Channels flow one way: a connection back into its own path is a loop.
+  const loop = cycleThroughConnection(connection, edges);
+  if (loop) {
+    return `This connection would make a loop (${describeCycle(loop, nodes)}). A step's output can't come back to its own input; use a new node instead.`;
+  }
+  // Most inputs take one connection; a second would be left out of the run.
+  return connectionLimitMessage(connection, targetNode, edges);
+};
+
+/** What verbose mode records when a connection was dropped on an input that refused it. */
+export const rejectedConnection = (
+  state: Pick<FinalConnectionState, "isValid" | "fromHandle" | "toHandle">,
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+): Record<string, unknown> | null => {
+  if (state.isValid !== false || !state.fromHandle || !state.toHandle) return null;
+  // A drag can start from an input as well as from an output.
+  const [source, target] =
+    state.fromHandle.type === "source" ? [state.fromHandle, state.toHandle] : [state.toHandle, state.fromHandle];
+  const connection: Connection = {
+    source: source.nodeId,
+    sourceHandle: source.id ?? null,
+    target: target.nodeId,
+    targetHandle: target.id ?? null,
+  };
+  return {
+    ...connection,
+    reason: connectionProblem(connection, nodes, edges) ?? "Not a valid connection.",
+  };
+};
 
 interface ToastState {
   message: string;
@@ -115,43 +158,11 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
       };
       const currentNodes = getNodes();
       const currentEdges = getEdges();
-      const sourceNode = connection.source
-        ? currentNodes.find((node) => node.id === connection.source)
-        : undefined;
-      const targetNode = connection.target
-        ? currentNodes.find((node) => node.id === connection.target)
-        : undefined;
-
-      const validation = validateConnectionWithNodeDefinitions({
-        connection,
-        sourceNode,
-        targetNode,
-        nodes: currentNodes,
-        edges: currentEdges,
-      });
-
-      if (!validation.valid) {
-        showToast(validation.message || "Invalid connection.", "error");
+      const problem = connectionProblem(connection, currentNodes, currentEdges);
+      if (problem) {
+        showToast(problem, "error");
         return false;
       }
-
-      // Channels flow one way: a connection back into its own path is a loop.
-      const loop = cycleThroughConnection(connection, currentEdges);
-      if (loop) {
-        showToast(
-          `This connection would make a loop (${describeCycle(loop, currentNodes)}). A step's output can't come back to its own input; use a new node instead.`,
-          "error"
-        );
-        return false;
-      }
-
-      // Most inputs take one connection; a second would be left out of the run.
-      const limit = connectionLimitMessage(connection, targetNode, currentEdges);
-      if (limit) {
-        showToast(limit, "error");
-        return false;
-      }
-
       return true;
     },
     [getNodes, getEdges, showToast]
@@ -324,8 +335,10 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
     // as isValidConnection now handles the primary validation.
   };
 
-  const onConnectEnd = () => {
-    // This logic can also be reviewed.
+  // Verbose mode: a connection dropped on an input that refuses it.
+  const onConnectEnd: OnConnectEnd = (_event, connectionState) => {
+    const rejected = rejectedConnection(connectionState, getNodes(), getEdges());
+    if (rejected) logActivity("connection.rejected", rejected);
   };
 
   const closeToast = () => {

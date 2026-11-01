@@ -4,6 +4,9 @@ import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { HISTORY_LIMIT, HISTORY_SETTLE_MS, useCanvasHistory } from "./useCanvasHistory";
+import { recorded, startRecording, stopRecording } from "../../activity/activityTesting";
+
+vi.mock("../../api", () => ({ default: { post: vi.fn(async () => ({ data: {} })) }, isDemoMode: false }));
 
 const node = (id: string, x = 0, data: Partial<NodeData> = {}): Node<NodeData> => ({
   id,
@@ -328,5 +331,20 @@ describe("useCanvasHistory", () => {
     }
     expect(undone).toBe(HISTORY_LIMIT);
     expect(result.current.nodes[0].position.x).toBe(50);
+  });
+
+  it("records undo and redo in verbose mode, but not when there is nothing to undo", () => {
+    startRecording();
+    try {
+      const { result, change, settle } = setup();
+      act(() => result.current.history.undo());
+      change(({ setNodes }) => setNodes((nodes) => nodes.filter((n) => n.id !== "b")));
+      settle();
+      act(() => result.current.history.undo());
+      act(() => result.current.history.redo());
+      expect(recorded().map((event) => event.type)).toEqual(["undo", "redo"]);
+    } finally {
+      stopRecording();
+    }
   });
 });

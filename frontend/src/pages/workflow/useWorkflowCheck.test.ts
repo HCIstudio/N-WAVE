@@ -27,6 +27,7 @@ vi.mock("./workflowCheck", async (importOriginal) => {
 
 const { runBlockedReason, useWorkflowCheck } = await import("./useWorkflowCheck");
 const { resetFeatures } = await import("../../settings/useFeatures");
+const { recorded, startRecording, stopRecording } = await import("../../activity/activityTesting");
 
 const responses: Record<string, unknown> = {
   "/execute/docker-status": { dockerAvailable: false, error: "Docker not found" },
@@ -130,6 +131,38 @@ describe("useWorkflowCheck", () => {
       expect(off.result.current.problems.map((problem) => problem.id)).toContain("input:nofile");
       off.unmount();
     });
+  });
+});
+
+describe("useWorkflowCheck in verbose mode", () => {
+  beforeEach(() => {
+    get.mockReset();
+    get.mockImplementation(async (url: string) => {
+      if (url in responses) return { data: responses[url] };
+      throw new Error("not found");
+    });
+    startRecording();
+  });
+  afterEach(() => stopRecording());
+
+  it("records the check's result each time it changes, not on every render", async () => {
+    const props = { nodes: [input, output], edges, settings: defaultExecutionSettings, missingNfCoreComponents: [] };
+    const { rerender, unmount } = renderHook(useWorkflowCheck, { initialProps: props });
+    await flush();
+    rerender({ ...props });
+    await flush();
+    const results = recorded("check.result").map((event) => event.data);
+    expect(results[results.length - 1]).toEqual({
+      mode: "block",
+      problems: [
+        { id: "input:nofile", level: "error" },
+        { id: "docker", level: "error" },
+        { id: "cpus", level: "warning" },
+      ],
+    });
+    // Before the server answered, and after: two results, no repeats.
+    expect(new Set(results.map((data) => JSON.stringify(data))).size).toBe(results.length);
+    unmount();
   });
 });
 

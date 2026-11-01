@@ -48,7 +48,9 @@
       # NWAVE_EXECUTION_TIMEOUT: 1440
       # Feature switches fixed for this installation (see the wiki's Settings
       # page), e.g. for a course:
-      # NWAVE_FEATURES: connectionHints=off,workflowCheck=warn
+      # NWAVE_FEATURES: connectionHints=off,workflowCheck=warn,verbose=on
+      # Verbose mode records parameter values and file contents too:
+      # NWAVE_VERBOSE_VALUES: "on"
     # Ports are bound to 127.0.0.1: N-WAVE has no login and the backend can
     # start containers on the host's Docker. NWAVE_BIND_ADDRESS=0.0.0.0 opens
     # them to your network (trusted networks only).

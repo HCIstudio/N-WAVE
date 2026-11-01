@@ -8,6 +8,7 @@ import api, { isDemoMode } from "../../api";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import type { NodeProblem } from "../../execution/NodeProblemsContext";
 import { useFeature, useWorkflowCheckMode } from "../../settings/useFeatures";
+import { logActivity } from "../../activity/activityLog";
 import type { ExecutionSettings } from "../../types/execution";
 import {
   checkWorkflow,
@@ -81,6 +82,18 @@ export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponen
           ),
     [nodes, edges, missingNfCoreComponents, settings, server, mode, hintsOn],
   );
+
+  // Verbose mode: the check's result, each time it changes.
+  const resultKey = problems.map((problem) => `${problem.level}:${problem.id}`).join("\n");
+  useEffect(() => {
+    logActivity("check.result", {
+      mode,
+      problems: resultKey ? resultKey.split("\n").map((line) => {
+        const [level, ...id] = line.split(":");
+        return { id: id.join(":"), level };
+      }) : [],
+    });
+  }, [resultKey, mode]);
 
   // Nodes re-render when their problems change, not on every edit (a drag).
   const nodeProblemsKey = useMemo(() => {

@@ -26,11 +26,12 @@ describe("features", () => {
     vi.restoreAllMocks();
   });
 
-  it("has every feature on, and the workflow check blocking, by default", () => {
+  it("has every feature on, the workflow check blocking and verbose mode off, by default", () => {
     const { features, locked } = readFeatures();
     expect(locked).toEqual([]);
     expect(features.workflowCheck).toBe("block");
-    for (const id of FEATURE_IDS.filter((id) => id !== "workflowCheck")) {
+    expect(features.verbose).toBe(false);
+    for (const id of FEATURE_IDS.filter((id) => id !== "workflowCheck" && id !== "verbose")) {
       expect(features[id], id).toBe(true);
     }
   });

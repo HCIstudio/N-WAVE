@@ -3,6 +3,7 @@ import { useId, useState } from "react";
 import { Lock, ToggleRight } from "lucide-react";
 import type { FeatureId, Features, WorkflowCheckMode } from "../../api/settings";
 import { useFeatures } from "../../settings/useFeatures";
+import { logActivity } from "../../activity/activityLog";
 import { getApiErrorMessage } from "../../utils/errors";
 
 /** Each switch: its name and what turning it off changes. */
@@ -82,7 +83,8 @@ const FeatureSettings: React.FC = () => {
   const change = async (patch: Partial<Features>) => {
     setSaveError(null);
     try {
-      await save({ ...features, ...patch });
+      const saved = await save({ ...features, ...patch });
+      logActivity("features.changed", { features: saved.features });
     } catch (caught: unknown) {
       setSaveError(getApiErrorMessage(caught, "The feature switches could not be saved."));
     }

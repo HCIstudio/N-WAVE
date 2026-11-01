@@ -37,6 +37,7 @@ vi.mock("../utils/buildInfo", () => ({
 
 const { default: HomePage } = await import("./HomePage");
 const { resetFeatures } = await import("../settings/useFeatures");
+const { recorded, startRecording, stopRecording } = await import("../activity/activityTesting");
 
 const TUTORIAL_DONE = ["nwave.demoTutorial.completed", "custom-nodes-v3"] as const;
 
@@ -529,6 +530,24 @@ describe("HomePage", () => {
         }),
       );
       expect(await screen.findByText("Opened imported-1")).toBeTruthy();
+    });
+
+    it("records the import in verbose mode", async () => {
+      startRecording();
+      try {
+        post.mockResolvedValue({ data: { _id: "imported-1" } });
+        const { user } = await setup([]);
+        const dialog = await openImport(user);
+        await user.click(dialog.getByLabelText("Nextflow Source"));
+        await user.paste(helloSource);
+        await user.click(dialog.getByRole("button", { name: "Import" }));
+        expect(await screen.findByText("Opened imported-1")).toBeTruthy();
+        expect(recorded("workflow.imported").map((event) => event.data)).toEqual([
+          expect.objectContaining({ format: "nextflow", workflowId: "imported-1" }),
+        ]);
+      } finally {
+        stopRecording();
+      }
     });
 
     it("names the workflow after the chosen file", async () => {

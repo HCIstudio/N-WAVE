@@ -59,6 +59,8 @@ export interface Features {
   runProfiles: boolean;
   notifications: boolean;
   performance: boolean;
+  /** Verbose mode: record what happens (the activity log); off by default. */
+  verbose: boolean;
 }
 
 export type FeatureId = keyof Features;
@@ -75,23 +77,29 @@ export const DEFAULT_FEATURES: Features = {
   runProfiles: true,
   notifications: true,
   performance: true,
+  verbose: false,
 };
 
 export interface FeatureSettings {
   features: Features;
   /** Fixed by the installation (NWAVE_FEATURES): shown, but not changeable. */
   locked: FeatureId[];
+  /** Verbose mode records parameter values and file contents (NWAVE_VERBOSE_VALUES). */
+  recordsValues?: boolean;
 }
 
 /** The feature switches; all on from an N-WAVE without them. */
 export const getFeatures = async (): Promise<FeatureSettings> => {
   try {
-    const response = await api.get<{ features?: Partial<Features>; lockedFeatures?: FeatureId[] }>(
-      "/settings",
-    );
+    const response = await api.get<{
+      features?: Partial<Features>;
+      lockedFeatures?: FeatureId[];
+      recordsActivityValues?: boolean;
+    }>("/settings");
     return {
       features: { ...DEFAULT_FEATURES, ...response.data.features },
       locked: response.data.lockedFeatures ?? [],
+      recordsValues: response.data.recordsActivityValues === true,
     };
   } catch (caught: unknown) {
     if (getResponseStatus(caught) === 404) return { features: DEFAULT_FEATURES, locked: [] };

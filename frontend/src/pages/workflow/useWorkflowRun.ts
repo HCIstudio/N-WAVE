@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import api, { isDemoMode } from "../../api";
-import { listRuns, readRunLogFrom } from "../../api/runs";
+import { getRunTrace, listRunResults, listRuns, readRunLogFrom } from "../../api/runs";
 import type { ToastType } from "../../components/common";
 import type { RunPanelTab } from "../../components/common/workflow/ExecutionStatusPanel";
 import type { NodeData } from "../../components/nodes/BaseNode";
@@ -21,6 +21,7 @@ import {
 import { createLineReader, parseRunId } from "../../utils/streamLines";
 import { explainFailure } from "../../execution/failureExplanations";
 import { currentFeatures } from "../../settings/useFeatures";
+import { isRecording, logActivity, workflowSnapshot } from "../../activity/activityLog";
 import { type EndedRun, notifyRunEnded } from "../../notifications/runNotifications";
 import {
   buildRunRequest,
@@ -30,6 +31,23 @@ import {
   type RunOutcome,
   runIdFromOutput,
 } from "./runRequest";
+
+/** Verbose mode: a finished run's step times and result files (their paths). */
+export const logRunResults = async (runId: string): Promise<void> => {
+  const [tasks, files] = await Promise.all([
+    getRunTrace(runId).catch(() => []),
+    listRunResults(runId).catch(() => []),
+  ]);
+  logActivity("run.results", {
+    runId,
+    steps: tasks.map((task) => ({
+      name: task.name,
+      status: task.status,
+      durationMs: task.realtime ?? task.duration,
+    })),
+    files: files.map((file) => file.path),
+  });
+};
 
 /** The log updates at most this often while a run streams. */
 const LOG_REFRESH_MS = 250;
@@ -121,6 +139,13 @@ export const useWorkflowRun = ({
   const notifyEnded = (runId: string | null, outcome: EndedRun["outcome"], reason?: string) => {
     const startedAt = runStartedAt.current;
     runStartedAt.current = null;
+    logActivity("run.ended", {
+      runId,
+      outcome,
+      ...(startedAt === null ? {} : { durationMs: Date.now() - startedAt }),
+      ...(reason ? { reason } : {}),
+    });
+    if (runId && outcome !== "cancelled" && !isDemoMode && isRecording()) void logRunResults(runId);
     notifyRunEnded({
       runId,
       workflowId: latest.current.workflowId,
@@ -333,6 +358,10 @@ export const useWorkflowRun = ({
     let handedOver = false;
     setIsRunning(true);
     runStartedAt.current = Date.now();
+    logActivity("run.started", {
+      resume: options.resume === true,
+      snapshot: workflowSnapshot(nodes, edges),
+    });
     executionStatus.startExecution();
     setPanelMinimized(false);
     try {

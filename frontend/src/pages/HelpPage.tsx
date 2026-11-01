@@ -9,6 +9,7 @@ import { NODE_KIND_ORDER, NODE_KINDS } from "../workflows/nodeKinds";
 import { GLOSSARY, glossaryEntry } from "../glossary/glossary";
 import { README_URL, WIKI_PAGES, WIKI_URL, wikiUrl } from "../docs/links";
 import { useFeature } from "../settings/useFeatures";
+import { logActivity } from "../activity/activityLog";
 
 /** What a part of the canvas does, for the "On the canvas" list. */
 const CANVAS_PARTS: { name: string; what: string }[] = [
@@ -33,6 +34,11 @@ const HelpPage: React.FC = () => {
     : GLOSSARY;
 
   const glossaryOn = useFeature("glossary");
+
+  // Verbose mode: Help opened.
+  useEffect(() => {
+    if (glossaryOn) logActivity("help.opened");
+  }, [glossaryOn]);
 
   // The page is loaded on demand, after the browser looked for the anchor.
   useEffect(() => {

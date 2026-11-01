@@ -79,6 +79,9 @@ everyone using this N-WAVE and are saved as soon as you change one (no **Save** 
 | Notifications | `notifications` | No browser notifications, and their settings are hidden. |
 | Run performance and reports | `performance` | No **Performance** tab, execution report or timeline after a run. |
 
+[Verbose mode](#verbose-mode) is switched the same way (`verbose`, off by default) and can be
+fixed by the installation too.
+
 Every run records which features were on when it started (in the run history, `runs.json` in
 N-WAVE's data folder), so runs can be compared later.
 
@@ -96,3 +99,64 @@ fixed switch shows **Fixed by this installation** and can't be clicked. Set eith
 Where both name the same switch, `NWAVE_FEATURES` wins. Names or values N-WAVE doesn't know are
 skipped, with a warning in the backend's log. Switches that neither sets can still be changed
 in the app.
+
+## Verbose mode
+
+Verbose mode records what happens in N-WAVE, to debug problems people report and for short
+usability tests. It is **off** by default. Turn it on under **Verbose mode → Record what
+happens**, or fix it for an installation with `NWAVE_FEATURES="verbose=on"` (see
+[above](#fixing-switches-for-an-installation)). While it records, a marker at the top of every
+page says **Recording**.
+
+### What is recorded
+
+One event per line (JSON), each with an `id`, its `time` (ISO 8601), its `type`, the browser
+tab's `session`, the `participant` ID and marked `test` if set, the open `workflowId`, the page
+(`path`) and the event's `data`:
+
+| Type | When | `data` |
+| --- | --- | --- |
+| `session.started` | Recording begins in a browser tab | `features`: the switches in effect; `recordsValues` |
+| `features.changed` | A feature switch changed | `features` |
+| `ui.click` | A button, link, tab or menu entry was clicked | `element`, `name` (its label) |
+| `workflow.opened` | A workflow was opened | `nodes`, `edges` (counts) |
+| `node.added`, `node.removed` | A node was added or removed (also by paste, undo or a template) | `nodeId`, `nodeType`, `label` |
+| `node.moved` | Nodes were moved (once the drag ends) | `nodeIds` |
+| `node.configured` | A node's settings changed (once typing pauses) | `nodeId`, `nodeType`, `label`, `keys`: the settings changed |
+| `connection.made`, `connection.removed` | A connection was made or removed | `edgeId`, `source`, `sourceHandle`, `target`, `targetHandle`; `hint` when the ports don't fit |
+| `connection.rejected` | A connection was dropped on an input that refused it | the same, and the `reason` shown |
+| `check.result` | The workflow check's result changed | `mode`, `problems` (`id`, `level`) |
+| `run.started` | A run started | `resume`, and the workflow's nodes and connections (a snapshot) |
+| `run.ended` | A run finished, failed or was stopped | `runId`, `outcome`, `durationMs`, `reason` |
+| `run.results` | A finished run's results were read | `runId`, `steps` (`name`, `status`, `durationMs`), `files` (result paths) |
+| `failure.explained` | A failure explanation was shown | `kind`, `title`, `process` |
+| `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
+| `undo`, `redo` | Undo or redo | |
+| `workflow.imported`, `workflow.exported` | A workflow was imported (`format`) or exported (`kind`: script or project) | |
+| `test.started`, `test.ended` | A marked test began or ended | `label` |
+
+**Not recorded:** names, what is typed into fields, file contents and parameter values. An
+installation can record parameter values and file contents too with
+`NWAVE_VERBOSE_VALUES=on` (for debugging; the Settings page says when it does); then
+`node.configured` has the new `values` and the run snapshots have each node's settings.
+
+### Participant ID and marked tests
+
+**Participant ID** sets a pseudonymous code for this browser, e.g. `P07` (letters, digits, `-`
+and `_` only, never a name); every event from the browser carries it. For a short test with a
+participant, click **Start test** in the marker at the top (with an optional label) and **End
+test** when done: the events in between carry the test's id and can be exported on their own.
+
+### Export, bug reports and clearing
+
+- **Download ZIP** exports everything, the events between two dates, or one marked test:
+  `events.jsonl` (the events), `events.csv` (the same as a table, with `data` as JSON),
+  `snapshots/` (the workflow at each run; `run.started` names its file) and a README.
+- **Copy for bug report** copies the last 10 minutes as text to paste into a
+  [GitHub issue](https://github.com/HCIstudio/N-WAVE/issues).
+- **Keep events for** drops older events after 7, 30 or 90 days or a year; **Clear log…**
+  deletes them all.
+
+The events are kept by N-WAVE in `activity.jsonl` in its data folder, for the whole
+installation; in the browser demo, in this browser's local storage. While verbose mode is off,
+nothing is kept.

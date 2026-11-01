@@ -16,12 +16,17 @@ vi.mock("../../api", () => ({
 
 const listRuns = vi.fn(async (..._args: unknown[]): Promise<unknown[]> => []);
 const readRunLogFrom = vi.fn();
+const getRunTrace = vi.fn(async (_id: string): Promise<unknown[]> => []);
+const listRunResults = vi.fn(async (_id: string): Promise<unknown[]> => []);
 vi.mock("../../api/runs", () => ({
   listRuns: (...args: unknown[]) => listRuns(...args),
   readRunLogFrom: (...args: unknown[]) => readRunLogFrom(...args),
+  getRunTrace: (id: string) => getRunTrace(id),
+  listRunResults: (id: string) => listRunResults(id),
 }));
 
 const { useWorkflowRun } = await import("./useWorkflowRun");
+const { recorded, startRecording, stopRecording } = await import("../../activity/activityTesting");
 
 const unreachable = () => Object.assign(new Error("Network Error"), { isAxiosError: true });
 
@@ -225,5 +230,49 @@ describe("useWorkflowRun", () => {
     expect(hook.result.current.error?.message).toBe(
       'Add a file to "Reads" before running the workflow.',
     );
+  });
+
+  describe("in verbose mode", () => {
+    beforeEach(() => startRecording());
+    afterEach(() => stopRecording());
+
+    it("records the run's start with the workflow, its end, and its step times and result files", async () => {
+      getRunTrace.mockResolvedValueOnce([
+        { name: "FASTQC (1)", status: "COMPLETED", realtime: 1200, duration: 1500 },
+      ]);
+      listRunResults.mockResolvedValueOnce([{ path: "fastqc/a.html", size: 10 }]);
+      hook.rerender({ ...options, nodes: [fileInput] });
+      streamedRun("N-WAVE run: bee_1\nexecutor > local (1)\nDone\n");
+      await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS, { resume: true });
+      await flush();
+
+      expect(recorded("run.started").map((event) => event.data)).toEqual([
+        {
+          resume: true,
+          snapshot: {
+            nodes: [{ id: "in", type: "fileInput", label: "Reads", position: { x: 0, y: 0 } }],
+            edges: [],
+          },
+        },
+      ]);
+      const [ended] = recorded("run.ended");
+      expect(ended.data).toMatchObject({ runId: "bee_1", outcome: "succeeded" });
+      expect(typeof ended.data?.durationMs).toBe("number");
+      expect(recorded("run.results").map((event) => event.data)).toEqual([
+        {
+          runId: "bee_1",
+          steps: [{ name: "FASTQC (1)", status: "COMPLETED", durationMs: 1200 }],
+          files: ["fastqc/a.html"],
+        },
+      ]);
+    });
+
+    it("records how a failed run ended, and why", async () => {
+      streamedRun("N-WAVE run: bee_2\nERROR ~ boom\n");
+      await hook.result.current.run(DEFAULT_EXECUTION_SETTINGS);
+      await flush();
+      expect(recorded("run.ended").map((event) => event.data?.outcome)).toEqual(["failed"]);
+      expect(recorded("run.ended")).toHaveLength(1);
+    });
   });
 });
