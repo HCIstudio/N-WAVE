@@ -6,6 +6,7 @@ import {
   readFeatures,
   writeFeatures,
 } from "../settings/features";
+import { recordsValues } from "../activity/activityLog";
 import { readRunDefaults, runDefaultsSchema, writeRunDefaults } from "../settings/runDefaults";
 import { getErrorMessage } from "../utils/errors";
 import { parseBody } from "../validation/validate";
@@ -16,7 +17,12 @@ const featuresBodySchema = z.object({ features: featuresSchema });
 /** GET /api/settings: what every workflow's runs use by default, and which features are on. */
 export const getSettings = (_req: Request, res: Response): void => {
   const { features, locked } = readFeatures();
-  res.json({ runDefaults: readRunDefaults(), features, lockedFeatures: locked });
+  res.json({
+    runDefaults: readRunDefaults(),
+    features,
+    lockedFeatures: locked,
+    recordsActivityValues: recordsValues(),
+  });
 };
 
 /** PUT /api/settings: replace the run defaults. */

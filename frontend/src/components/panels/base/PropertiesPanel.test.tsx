@@ -32,6 +32,7 @@ vi.mock("../process/NfCoreModuleDocs", () => ({
 const { RunTasksContext } = await import("../../../execution/RunTasksContext");
 const { default: PropertiesPanel } = await import("./PropertiesPanel");
 const { resetFeatures } = await import("../../../settings/useFeatures");
+const { recorded, startRecording, stopRecording } = await import("../../../activity/activityTesting");
 // Loaded after the panel: loading the node definitions first goes through an
 // import cycle that leaves registry/index without their exports.
 const { nodeDefinitions } = await import("../../../registry/nodeDefinitions");
@@ -364,6 +365,17 @@ describe("PropertiesPanel", () => {
       expect(screen.getByRole("tab", { name: "Settings" }).getAttribute("aria-selected")).toBe("true");
     } finally {
       resetFeatures();
+    }
+  });
+
+  it("records the Code tab opened in verbose mode", async () => {
+    startRecording();
+    try {
+      show();
+      await userEvent.setup().click(screen.getByRole("tab", { name: "Code" }));
+      expect(recorded("code.opened").map((event) => event.data)).toEqual([{ nodeId: "node-note" }]);
+    } finally {
+      stopRecording();
     }
   });
 });

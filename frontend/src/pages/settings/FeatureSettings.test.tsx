@@ -16,6 +16,7 @@ vi.mock("../../api", () => ({
 const { default: FeatureSettings, FEATURE_SWITCHES } = await import("./FeatureSettings");
 const { resetFeatures, currentFeatures } = await import("../../settings/useFeatures");
 const { DEFAULT_FEATURES } = await import("../../api/settings");
+const { recorded, startRecording, stopRecording } = await import("../../activity/activityTesting");
 
 const serve = (features: Partial<Features>, lockedFeatures: string[] = []) =>
   get.mockResolvedValue({ data: { runDefaults: {}, features: { ...DEFAULT_FEATURES, ...features }, lockedFeatures } });
@@ -92,5 +93,22 @@ describe("FeatureSettings", () => {
     render(<FeatureSettings />);
     expect((await screen.findByRole("alert")).textContent).toBeTruthy();
     expect(currentFeatures()).toEqual(DEFAULT_FEATURES);
+  });
+
+  it("records the new switches in verbose mode", async () => {
+    startRecording();
+    put.mockImplementation(async (_url: string, body: { features: Features }) => ({
+      data: { features: body.features, lockedFeatures: [] },
+    }));
+    try {
+      render(<FeatureSettings />);
+      await userEvent.setup().click(screen.getByRole("checkbox", { name: /^Glossary and Help/ }));
+      await waitFor(() => expect(recorded("features.changed")).toHaveLength(1));
+      expect(recorded("features.changed")[0].data).toEqual({
+        features: { ...DEFAULT_FEATURES, verbose: true, glossary: false },
+      });
+    } finally {
+      stopRecording();
+    }
   });
 });

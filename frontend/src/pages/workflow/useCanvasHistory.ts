@@ -9,6 +9,7 @@
 import type { Edge, Node } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { NodeData } from "../../components/nodes/BaseNode";
+import { logActivity } from "../../activity/activityLog";
 
 /** How long the canvas stays still before its state becomes a step. */
 export const HISTORY_SETTLE_MS = 500;
@@ -234,6 +235,7 @@ export const useCanvasHistory = ({
           : [redoStack.current, undoStack.current];
       const target = from.pop();
       if (!target || !baseline.current) return;
+      logActivity(direction);
       to.push(baseline.current);
       baseline.current = target;
       absorbNext.current = true;

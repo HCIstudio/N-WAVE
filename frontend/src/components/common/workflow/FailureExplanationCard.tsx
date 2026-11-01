@@ -1,5 +1,7 @@
 import { ExternalLink, Lightbulb } from "lucide-react";
 import type React from "react";
+import { useEffect } from "react";
+import { logActivity } from "../../../activity/activityLog";
 import type { FailureExplanation } from "../../../execution/failureExplanations";
 import { useFeature } from "../../../settings/useFeatures";
 
@@ -12,6 +14,23 @@ interface FailureExplanationCardProps {
   tone?: "light" | "dark";
 }
 
+/** Shown in the run panel and the failure notice at once: recorded once. */
+const RECORDED_AGAIN_AFTER_MS = 10_000;
+let lastRecorded = { key: "", at: 0 };
+
+/** Verbose mode: an explanation shown (once, though it shows in two places). */
+const recordShown = (explanation: FailureExplanation) => {
+  const key = `${explanation.kind}\n${explanation.explanation}`;
+  const now = Date.now();
+  if (key === lastRecorded.key && now - lastRecorded.at < RECORDED_AGAIN_AFTER_MS) return;
+  lastRecorded = { key, at: now };
+  logActivity("failure.explained", {
+    kind: explanation.kind,
+    title: explanation.title,
+    ...(explanation.process ? { process: explanation.process } : {}),
+  });
+};
+
 /** Why a run failed, in plain language, and what to do about it. */
 const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
   explanation,
@@ -22,6 +41,10 @@ const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
   const dark = tone === "dark";
   // Global Settings → Features can switch explanations off everywhere.
   const explanationsOn = useFeature("failureExplanations");
+  // biome-ignore lint/correctness/useExhaustiveDependencies: recorded when what it says changes.
+  useEffect(() => {
+    if (explanationsOn) recordShown(explanation);
+  }, [explanationsOn, explanation.kind, explanation.explanation]);
   if (!explanationsOn) return null;
   return (
     <section

@@ -125,6 +125,7 @@ CLI is told the engine's minimum API version, since Docker Engine 29 refuses it 
 | `NWAVE_EXECUTION_TIMEOUT` | `1440` | Time limit in minutes for runs that set none; `0` for none. |
 | `NWAVE_FEATURES` | none | Feature switches fixed for this installation, e.g. `connectionHints=off,workflowCheck=warn` (see [Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings#features)). |
 | `NWAVE_FEATURES_FILE` | none | A JSON file with fixed feature switches, e.g. `{"glossary": false}`. |
+| `NWAVE_VERBOSE_VALUES` | `off` | `on` makes [verbose mode](https://github.com/HCIstudio/N-WAVE/wiki/Settings#verbose-mode) record parameter values and file contents too. |
 | `NWAVE_DATA_DIR` | `results/.nwave` | Installed nf-core components and the run history. |
 | `NWAVE_CUSTOM_NODE_DIR` | `results/.nwave/custom-nodes` in `latest.yml` | Where custom nodes and node packs are stored. |
 | `GITHUB_TOKEN` | none | A GitHub access token Nextflow downloads pipelines with, past GitHub's 60 downloads an hour without one. |

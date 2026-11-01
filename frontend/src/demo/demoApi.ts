@@ -8,6 +8,8 @@
 
 import { demoCustomNodes } from "./demoCustomNodes";
 import { demoStore, DemoStoreError, type WorkflowPayload } from "./demoStore";
+import { demoActivity } from "./demoActivity";
+import type { ActivityEvent } from "../activity/activityEvents";
 
 interface DemoResponse<T = unknown> {
   data: T;
@@ -104,6 +106,13 @@ const runAsync = <T>(fn: () => Promise<T>): Promise<DemoResponse<T>> =>
   );
 
 const DEMO_SETTINGS_KEY = "nwave-demo-run-defaults";
+
+/** The query of a URL, e.g. the activity log's filter. */
+const queryOf = (url: string): Record<string, string> =>
+  Object.fromEntries(new URLSearchParams(url.split("?")[1] ?? ""));
+
+const demoRecording = (): boolean =>
+  (readDemoFeatures() as { verbose?: unknown }).verbose === true;
 const DEMO_FEATURES_KEY = "nwave-demo-features";
 
 const readDemoFeatures = (): unknown => {
@@ -241,6 +250,13 @@ const demoApi = {
     if (path === "/health") {
       return ok({ ok: true } as T);
     }
+    // Verbose mode's activity log, kept in this browser.
+    if (path === "/activity") {
+      return runStore(() => ({ events: demoActivity.list(queryOf(url)) }) as T);
+    }
+    if (path === "/activity/summary") {
+      return runStore(() => demoActivity.summary(demoRecording()) as T);
+    }
 
     return fail(404, `No demo handler for GET ${path}`);
   },
@@ -285,6 +301,13 @@ const demoApi = {
     if (path === "/execute/execute") {
       return fail(501, EXECUTION_DISABLED_MESSAGE);
     }
+    if (path === "/activity") {
+      const events = (data as { events?: unknown } | undefined)?.events;
+      if (!Array.isArray(events)) return fail(400, "events is required");
+      return runStore(
+        () => ({ recorded: demoActivity.record(events as ActivityEvent[], demoRecording()) }) as T,
+      );
+    }
     // Cancelling a (non-existent) run is a harmless no-op.
     if (path === "/execute/cancel") {
       return ok({ message: "No active execution in demo mode" } as T);
@@ -316,6 +339,15 @@ const demoApi = {
         return { features, lockedFeatures: [] } as T;
       });
     }
+    if (path === "/activity/settings") {
+      const settings = (data as { activityLog?: { retentionDays?: number | null } } | undefined)
+        ?.activityLog;
+      if (!settings) return fail(400, "activityLog is required");
+      return runStore(() => {
+        demoActivity.saveSettings(settings.retentionDays ?? null);
+        return { activityLog: { retentionDays: settings.retentionDays ?? null } } as T;
+      });
+    }
     const workflowMatch = path.match(/^\/workflows\/([^/]+)$/);
     if (workflowMatch) {
       return runStore(
@@ -331,6 +363,12 @@ const demoApi = {
 
   delete<T = unknown>(url: string): Promise<DemoResponse<T>> {
     const path = normalize(url);
+    if (path === "/activity") {
+      return runStore(() => {
+        demoActivity.clear();
+        return { cleared: true } as T;
+      });
+    }
     const workflowMatch = path.match(/^\/workflows\/([^/]+)$/);
     if (workflowMatch) {
       return runStore(() => {

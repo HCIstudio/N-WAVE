@@ -11,6 +11,7 @@ import NodeRunResults from "./NodeRunResults";
 import NfCoreModuleDocs from "../process/NfCoreModuleDocs";
 import { useNodeRun } from "../../../execution/RunTasksContext";
 import { useFeature } from "../../../settings/useFeatures";
+import { logActivity } from "../../../activity/activityLog";
 
 type PanelTab = "settings" | "code" | "results";
 
@@ -65,6 +66,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const codeOn = useFeature("customCode");
   const tabs = PANEL_TABS.filter(([tab]) => codeOn || tab !== "code");
   const activeTab = chosenTab === "code" && !codeOn ? "settings" : chosenTab;
+  // Verbose mode: the Code tab opened.
+  useEffect(() => {
+    if (activeTab === "code") logActivity("code.opened", { nodeId: node.id });
+  }, [activeTab, node.id]);
   const hasRun = Boolean(useNodeRun(node.id).summary);
 
   const [position, setPosition] = useState({

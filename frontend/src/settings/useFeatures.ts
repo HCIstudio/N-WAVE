@@ -16,11 +16,19 @@ import { getApiErrorMessage } from "../utils/errors";
 interface FeaturesState {
   features: Features;
   locked: FeatureId[];
+  /** Verbose mode records parameter values and file contents (NWAVE_VERBOSE_VALUES). */
+  recordsValues: boolean;
   loaded: boolean;
   error: string | null;
 }
 
-const INITIAL: FeaturesState = { features: DEFAULT_FEATURES, locked: [], loaded: false, error: null };
+const INITIAL: FeaturesState = {
+  features: DEFAULT_FEATURES,
+  locked: [],
+  recordsValues: false,
+  loaded: false,
+  error: null,
+};
 
 let state: FeaturesState = INITIAL;
 let loading: Promise<void> | null = null;
@@ -34,7 +42,8 @@ const setState = (next: Partial<FeaturesState>) => {
 const load = (): Promise<void> => {
   loading ??= getFeatures()
     .then(
-      ({ features, locked }) => setState({ features, locked, loaded: true, error: null }),
+      ({ features, locked, recordsValues }) =>
+        setState({ features, locked, recordsValues: recordsValues ?? false, loaded: true, error: null }),
       (caught: unknown) =>
         setState({ error: getApiErrorMessage(caught, "The feature switches could not be read.") }),
     )
@@ -63,10 +72,17 @@ const ensureLoaded = () => {
 /** The features in effect right now, for code outside React (e.g. notifications). */
 export const currentFeatures = (): Features => state.features;
 
+/** Whether verbose mode records parameter values and file contents. */
+export const currentRecordsValues = (): boolean => state.recordsValues;
+
 /** Tests: forget what was read, or act as if the given switches were read. */
-export const resetFeatures = (features?: Partial<Features>, locked: FeatureId[] = []): void => {
+export const resetFeatures = (
+  features?: Partial<Features>,
+  locked: FeatureId[] = [],
+  recordsValues = false,
+): void => {
   state = features
-    ? { ...INITIAL, features: { ...DEFAULT_FEATURES, ...features }, locked, loaded: true }
+    ? { ...INITIAL, features: { ...DEFAULT_FEATURES, ...features }, locked, recordsValues, loaded: true }
     : INITIAL;
   loading = null;
   for (const listener of listeners) listener();
@@ -80,7 +96,7 @@ export const useFeatures = () => {
   /** Save new switches; throws with the reason when N-WAVE refuses them. */
   const save = useCallback(async (features: Features) => {
     const saved = await saveFeatures(features);
-    setState({ ...saved, loaded: true, error: null });
+    setState({ features: saved.features, locked: saved.locked, loaded: true, error: null });
     return saved;
   }, []);
 

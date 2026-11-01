@@ -30,6 +30,7 @@ import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
+import { logActivity } from "../activity/activityLog";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
 import RunsOverview from "./home/RunsOverview";
@@ -403,6 +404,12 @@ const HomePage: React.FC = () => {
         sourceKey: importFileName || undefined,
       });
       const response = await api.post("/workflows", draft);
+      logActivity("workflow.imported", {
+        format: "nextflow",
+        workflowId: response.data._id,
+        nodes: draft.nodes.length,
+        edges: draft.edges.length,
+      });
       setIsImportModalOpen(false);
       resetImportForm();
       navigate(`/workflow/${response.data._id}`);

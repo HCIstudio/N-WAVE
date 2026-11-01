@@ -5,6 +5,8 @@ import { isDemoMode } from "./api";
 import DemoBanner from "./demo/DemoBanner";
 import { setNotificationNavigator } from "./notifications/notifications";
 import { useBackendMonitor } from "./notifications/useBackendMonitor";
+import RecordingIndicator from "./activity/RecordingIndicator";
+import { useClickRecorder } from "./activity/useClickRecorder";
 
 const App: React.FC = () => {
   // A click on a notification opens its page here.
@@ -14,6 +16,8 @@ const App: React.FC = () => {
     return () => setNotificationNavigator(null);
   }, [navigate]);
   useBackendMonitor();
+  // Verbose mode: clicks, recorded while it's on.
+  useClickRecorder();
 
   useEffect(() => {
     // The canvas has no use for the browser's menu; everywhere else (logs,
@@ -34,6 +38,7 @@ const App: React.FC = () => {
   return (
     <>
       <Outlet />
+      <RecordingIndicator />
       {isDemoMode && <DemoBanner />}
     </>
   );

@@ -10,6 +10,7 @@ import {
 } from "../../registry/pipelines/launch";
 import type { ExecutionSettings } from "../../types/execution";
 import { usesImportedSource } from "./runRequest";
+import { logActivity } from "../../activity/activityLog";
 
 /** Save a blob as a file download. */
 export const downloadBlob = (blob: Blob, fileName: string) => {
@@ -73,6 +74,7 @@ export const scriptDownload = (
 export const downloadScript = (source: WorkflowSource) => {
   const { fileName, content } = scriptDownload(source);
   downloadBlob(textBlob(content), fileName);
+  logActivity("workflow.exported", { kind: "script" });
 };
 
 /** Download the workflow as a zipped, runnable project; returns its file name. */
@@ -92,6 +94,7 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
       ),
       fileName,
     );
+    logActivity("workflow.exported", { kind: "project" });
     return fileName;
   }
   const script = usesImportedSource(source)
@@ -112,5 +115,6 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
     profiles,
   });
   downloadBlob(blob, fileName);
+  logActivity("workflow.exported", { kind: "project" });
   return fileName;
 };

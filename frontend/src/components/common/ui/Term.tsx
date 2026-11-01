@@ -1,5 +1,6 @@
 import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { logActivity } from "../../../activity/activityLog";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { WIKI_PAGES, wikiUrl } from "../../../docs/links";
@@ -40,6 +41,12 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
   };
 
   useEffect(() => () => window.clearTimeout(closeTimer.current), []);
+
+  // Verbose mode: each time the explanation opens.
+  const isOpen = anchor !== null;
+  useEffect(() => {
+    if (isOpen) logActivity("glossary.opened", { term: id });
+  }, [isOpen, id]);
 
   useEffect(() => {
     if (!pinned) return;

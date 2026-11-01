@@ -51,6 +51,7 @@ import {
 import { useWorkflowCheck } from "./workflow/useWorkflowCheck";
 import { useWorkflowRun } from "./workflow/useWorkflowRun";
 import { useRunResume } from "./workflow/useRunResume";
+import { useCanvasActivity } from "./workflow/useCanvasActivity";
 import { applyRunDefaults } from "../settings/effectiveSettings";
 import { useRunDefaults } from "../settings/useRunDefaults";
 import { useFeature } from "../settings/useFeatures";
@@ -191,6 +192,8 @@ const WorkflowPageContent: React.FC = () => {
     documentKey: workflowId,
     isLoading: workflow.isLoading,
   });
+  // Verbose mode: what changes on the canvas.
+  useCanvasActivity({ workflowId, nodes, edges, isLoading: workflow.isLoading });
   const { missingNfCoreComponents, reloadInstalledNfCore } =
     useLibraryNodes(nodes);
   const check = useWorkflowCheck({
