@@ -14,6 +14,11 @@ export const FEATURE_SWITCHES: { id: Exclude<FeatureId, "workflowCheck">; label:
     off: "Inputs no longer light up while dragging, and connections that don't fit get no warning.",
   },
   {
+    id: "minimap",
+    label: "Minimap",
+    off: "No minimap of the whole workflow at the bottom left of the canvas.",
+  },
+  {
     id: "failureExplanations",
     label: "Failure explanations",
     off: "A failed run shows its log, without an explanation in plain language.",

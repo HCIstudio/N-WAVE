@@ -147,6 +147,7 @@ export const RELEASES: RoadmapRelease[] = [
     features: [
       { title: "Cleaner exported Nextflow", issue: 40 },
       { title: "Downloaded scripts import back into the same graph", issue: 171 },
+      { title: "Copy a subworkflow into a new, editable workflow", issue: 209 },
       { title: "Import whole Nextflow projects with BioFlow-Insight", issue: 19 },
       { title: "Export and import through the FONDA workflow metamodel", issue: 194 },
     ],

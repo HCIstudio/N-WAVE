@@ -69,6 +69,7 @@ everyone using this N-WAVE and are saved as soon as you change one (no **Save** 
 | --- | --- | --- |
 | Workflow check before running | `workflowCheck` | `block` (the default): problems keep Run disabled. `warn`: they're shown, but the workflow can run. `off`: no check (Nextflow reports the problems when the run fails). |
 | Connection hints | `connectionHints` | Inputs don't light up while dragging a connection, and connections that don't fit get no warning. |
+| Minimap | `minimap` | No minimap of the whole workflow at the bottom left of the canvas. |
 | Failure explanations | `failureExplanations` | A failed run shows its log, without an explanation in plain language. |
 | Glossary and Help | `glossary` | No ⓘ term explanations, and no Help button or page. |
 | Templates and built-in examples | `templates` | **New Workflow** starts an empty workflow, and the built-in demos and the tutorial are hidden. Their links still open. |
@@ -131,7 +132,6 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `run.results` | A finished run's results were read | `runId`, `steps` (`name`, `status`, `durationMs`), `files` (result paths) |
 | `failure.explained` | A failure explanation was shown | `kind`, `title`, `process` |
 | `nested.opened` | The steps inside a subworkflow or pipeline node were opened | `nodeId` (from the canvas) or `step` (from inside), `depth` |
-| `minimap.toggled` | The minimap was shown or hidden | `shown` |
 | `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
 | `undo`, `redo` | Undo or redo | |
 | `workflow.imported`, `workflow.exported` | A workflow was imported (`format`) or exported (`kind`: script or project) | |

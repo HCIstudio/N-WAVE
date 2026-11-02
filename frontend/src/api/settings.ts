@@ -49,6 +49,7 @@ export type WorkflowCheckMode = "block" | "warn" | "off";
 /** Which of N-WAVE's features are on (Global Settings → Features). */
 export interface Features {
   connectionHints: boolean;
+  minimap: boolean;
   workflowCheck: WorkflowCheckMode;
   failureExplanations: boolean;
   glossary: boolean;
@@ -67,6 +68,7 @@ export type FeatureId = keyof Features;
 
 export const DEFAULT_FEATURES: Features = {
   connectionHints: true,
+  minimap: true,
   workflowCheck: "block",
   failureExplanations: true,
   glossary: true,

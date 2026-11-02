@@ -19,6 +19,8 @@ export const WORKFLOW_CHECK_MODES = ["block", "warn", "off"] as const;
 export const featuresSchema = z.object({
   /** Mark fitting inputs while dragging, and warn on connections that don't fit. */
   connectionHints: z.boolean().default(true),
+  /** The minimap at the bottom left of the canvas. */
+  minimap: z.boolean().default(true),
   /** Before a run: block it on problems, only warn, or don't check. */
   workflowCheck: z.enum(WORKFLOW_CHECK_MODES).default("block"),
   /** Plain-language explanations next to a failed run's log. */
