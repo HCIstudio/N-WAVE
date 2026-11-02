@@ -12,7 +12,7 @@ import {
 } from "@xyflow/react";
 import clsx from "clsx";
 import { ArrowDownToDot, ChevronRight, Loader, X } from "lucide-react";
-import NodeStack from "../nodes/NodeStack";
+import NodeStack, { STACK_BORDER, type StackTone } from "../nodes/NodeStack";
 import type { RunTask } from "../../api/runs";
 import { logActivity } from "../../activity/activityLog";
 import { loadWorkflowGraph } from "../../workflows/nested/loadWorkflow";
@@ -72,41 +72,51 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
       </span>
     </>
   );
+  // Steps with steps inside are stacks: all their cards share the border.
+  const tone: StackTone =
+    run?.status === "failed"
+      ? "error"
+      : run?.status === "running"
+        ? "running"
+        : run?.status === "cached"
+          ? "cached"
+          : run?.status === "succeeded"
+            ? "success"
+            : nfCore
+              ? "nfcore"
+              : "default";
   const className = clsx(
     "h-full w-full rounded-md border-2 bg-white px-2 py-1.5 text-left",
     !onOpen && "shadow-sm",
     isEnd && "rounded-full border-dashed bg-gray-100 text-center",
-    !run && !isEnd && (nfCore ? "border-nextflow-green" : "border-gray-400"),
-    run?.status === "running" && "border-yellow-400 bg-yellow-50",
-    run?.status === "succeeded" && "border-green-600 bg-green-50",
-    run?.status === "failed" && "border-red-500 bg-red-50",
-    run?.status === "cached" && "border-sky-500 bg-sky-50",
+    // A stack's border is the same on all its cards; a single step's by its state.
+    onOpen
+      ? ["rounded-lg", STACK_BORDER[tone]]
+      : [
+          !run && !isEnd && (nfCore ? "border-nextflow-green" : "border-gray-400"),
+          run?.status === "running" && "border-yellow-400",
+          run?.status === "succeeded" && "border-green-600",
+          run?.status === "failed" && "border-red-500",
+          run?.status === "cached" && "border-sky-500",
+        ],
+    run?.status === "running" && "bg-yellow-50",
+    run?.status === "succeeded" && "bg-green-50",
+    run?.status === "failed" && "bg-red-50",
+    run?.status === "cached" && "bg-sky-50",
   );
   return (
     <>
       <Handle type="target" position={Position.Left} className="!opacity-0" isConnectable={false} />
       {onOpen ? (
         <div className="relative h-full w-full">
-          <NodeStack
-            tone={
-              run?.status === "failed"
-                ? "error"
-                : run?.status === "running"
-                  ? "running"
-                  : run?.status === "cached"
-                    ? "cached"
-                    : run?.status === "succeeded"
-                      ? "success"
-                      : "default"
-            }
-          />
+          <NodeStack tone={tone} />
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             onOpen();
           }}
-          className={clsx(className, "hover:border-nextflow-green")}
+          className={className}
           title={`Step in: show the steps inside ${label}`}
         >
           {content}

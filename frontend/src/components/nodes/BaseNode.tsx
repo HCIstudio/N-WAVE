@@ -17,7 +17,7 @@ import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
 import { acceptsManyConnections } from "../../registry/portArity";
 import { useFeature } from "../../settings/useFeatures";
 import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
-import NodeStack, { type StackTone } from "./NodeStack";
+import NodeStack, { STACK_BORDER, type StackTone } from "./NodeStack";
 import { useOpenNestedView } from "../../workflows/nested/NestedViewContext";
 import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
@@ -238,9 +238,19 @@ const BaseNode = ({
                 ? "selected"
                 : "default";
 
+  // A stacked node draws its state as the same 2px border its cards have
+  // (not as a ring outside it), so the edges are evenly spaced.
+  const cardClasses = hasStepsInside
+    ? [
+        ...nodeClasses.filter((name) => !/^(ring-|border-)/.test(name)),
+        "border-2",
+        STACK_BORDER[stackTone],
+      ]
+    : nodeClasses;
+
   return (
     <div
-      className={clsx(nodeClasses, {
+      className={clsx(cardClasses, {
         "shadow-lg shadow-nextflow-green/50": selected || data.isHighlight,
       })}
       style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
