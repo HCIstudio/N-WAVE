@@ -44,6 +44,13 @@ describe("roadmap", () => {
     expect(new Set(milestones).size).toBe(milestones.length);
   });
 
+  it("sums up every released version in one short line", () => {
+    for (const release of RELEASES.filter((entry) => entry.status === "released")) {
+      expect(release.summary, release.version).toBeTruthy();
+      expect((release.summary as string).length, release.version).toBeLessThanOrEqual(70);
+    }
+  });
+
   it("gives upcoming releases a reason, and no dates", () => {
     for (const release of RELEASES.filter((entry) => entry.status !== "released")) {
       expect(release.why, release.version).toBeTruthy();

@@ -29,6 +29,8 @@ export interface RoadmapRelease {
   milestone: number;
   /** What it does, in one sentence. */
   goal: string;
+  /** Once released: what it brought, in one short line (the roadmap shows released versions small). */
+  summary?: string;
   /** Why it matters to people using N-WAVE. */
   why?: string;
   features: RoadmapFeature[];
@@ -74,7 +76,7 @@ export const TODAY: TodayFeature[] = [
     wiki: "Troubleshooting",
   },
   {
-    title: "Make it yours, and study it",
+    title: "Run studies",
     text: "Switch N-WAVE's aids on and off, and record what happens for bug reports and usability tests.",
     wiki: "Settings",
   },
@@ -93,6 +95,7 @@ export const RELEASES: RoadmapRelease[] = [
     status: "released",
     milestone: 1,
     goal: "Easy setup on common systems, automatic deployment of the demo, and the documentation in the wiki.",
+    summary: "Easy setup, the demo online, and the wiki.",
     features: [],
   },
   {
@@ -101,6 +104,7 @@ export const RELEASES: RoadmapRelease[] = [
     status: "released",
     milestone: 2,
     goal: "A tutorial, a demo workflow and the user guide inside the app.",
+    summary: "A tutorial, a demo workflow and the user guide in the app.",
     features: [],
   },
   {
@@ -109,6 +113,7 @@ export const RELEASES: RoadmapRelease[] = [
     status: "released",
     milestone: 6,
     goal: "Tests, linting, accessibility, error handling and published Docker images.",
+    summary: "Tests, linting, accessibility and Docker images.",
     features: [],
   },
   {
@@ -117,6 +122,7 @@ export const RELEASES: RoadmapRelease[] = [
     status: "released",
     milestone: 3,
     goal: "nf-core modules, subworkflows and pipelines, custom nodes, node packs and project export.",
+    summary: "nf-core modules, subworkflows and pipelines, and your own nodes.",
     features: [],
   },
   {
@@ -125,6 +131,7 @@ export const RELEASES: RoadmapRelease[] = [
     status: "released",
     milestone: 7,
     goal: "Safe to run, easier to change and easier for newcomers: workflow checks, explained errors, resume and clusters.",
+    summary: "Workflow checks, explained errors, resume and clusters.",
     features: [],
   },
   {
@@ -133,6 +140,7 @@ export const RELEASES: RoadmapRelease[] = [
     status: "released",
     milestone: 8,
     goal: "Switch N-WAVE's help features on and off, record what happens for debugging and usability tests, keep an overview of large workflows, and see what each failure explanation is based on.",
+    summary: "Feature switches, verbose mode, nested views and failure evidence.",
     why: "So we can learn which of N-WAVE's aids actually help, and so large workflows stay readable.",
     features: [
       { title: "This roadmap page", issue: 203, status: "released" },
@@ -145,7 +153,7 @@ export const RELEASES: RoadmapRelease[] = [
   {
     version: "1.6",
     name: "Import/Export",
-    status: "planned",
+    status: "in-progress",
     milestone: 5,
     goal: "Bring existing Nextflow projects in, export without losing anything, and exchange workflows in a language-neutral format.",
     why: "Your existing work shouldn't have to be rebuilt by hand.",

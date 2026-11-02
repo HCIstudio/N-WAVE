@@ -21,19 +21,22 @@ describe("RoadmapPage", () => {
     expect(screen.getAllByRole("link", { name: /^Guide:/ })).toHaveLength(TODAY.length);
   });
 
-  it("shows the current version and every release ahead, in order, with their issues", () => {
+  it("shows every release in order: released ones small, then the one in progress and the planned ones", () => {
     setup();
     const timeline = screen.getByRole("list", { name: "Releases" });
     const titles = within(timeline)
       .getAllByRole("heading", { level: 3 })
       .map((heading) => heading.textContent);
+    expect(titles).toEqual(RELEASES.map((release) => `v${release.version} ${release.name}`));
+    // Released versions: their name (linking their milestone) and one line.
+    for (const release of RELEASES.filter((entry) => entry.status === "released")) {
+      const link = within(timeline).getByRole("link", { name: `v${release.version} ${release.name}` });
+      expect(link.getAttribute("href")).toBe(`https://github.com/HCIstudio/N-WAVE/milestone/${release.milestone}`);
+      expect(within(timeline).getByText(release.summary as string)).toBeTruthy();
+    }
+    expect(within(timeline).getAllByText("The current version")).toHaveLength(1);
+    expect(within(timeline).getByText("In progress")).toBeTruthy();
     const ahead = RELEASES.filter((release) => release.status !== "released");
-    expect(titles).toEqual(
-      [RELEASES.find((release) => release.version === ROADMAP_UPDATED_FOR), ...ahead].map(
-        (release) => `v${release?.version} ${release?.name}`,
-      ),
-    );
-    expect(within(timeline).getByText("The current version")).toBeTruthy();
     for (const release of ahead) {
       for (const feature of release.features) {
         if (feature.issue === undefined) continue;
@@ -44,10 +47,8 @@ describe("RoadmapPage", () => {
     }
   });
 
-  it("keeps earlier releases and ways to get involved", () => {
+  it("has ways to get involved", () => {
     setup();
-    expect(screen.getByText("Earlier releases")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "v1.3 The Node Update" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Report a bug or suggest a feature" })).toBeTruthy();
     expect(screen.getByText(new RegExp(`Last updated for v${ROADMAP_UPDATED_FOR.replace(".", "\\.")}`))).toBeTruthy();
   });
