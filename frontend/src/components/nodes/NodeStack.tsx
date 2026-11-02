@@ -34,7 +34,15 @@ const BACKGROUND: Record<StackTone, string> = {
  * node `border-2` and STACK_BORDER[tone]), so the three edges are evenly
  * spaced.
  */
-const NodeStack: React.FC<{ tone: StackTone }> = ({ tone }) => (
+const NodeStack: React.FC<{
+  tone: StackTone;
+  /**
+   * Placed inside an element with the 2px border (the canvas node): its
+   * children start inside that border, so the cards reach out by it to
+   * line up with the node's outer edge. Unset: inside a wrapper without one.
+   */
+  insideBorder?: boolean;
+}> = ({ tone, insideBorder = false }) => (
   <>
     {/* The deeper card first, so the nearer one is drawn over it. */}
     {[2, 1].map((depth) => (
@@ -44,7 +52,8 @@ const NodeStack: React.FC<{ tone: StackTone }> = ({ tone }) => (
         data-testid={depth === 1 ? "node-stack" : undefined}
         data-tone={depth === 1 ? tone : undefined}
         className={clsx(
-          "pointer-events-none absolute inset-0 -z-10 rounded-lg border-2",
+          "pointer-events-none absolute -z-10 rounded-lg border-2",
+          insideBorder ? "-inset-0.5" : "inset-0",
           depth === 1 ? "translate-x-1.5 translate-y-1.5" : "translate-x-3 translate-y-3 brightness-95",
           STACK_BORDER[tone],
           BACKGROUND[tone],

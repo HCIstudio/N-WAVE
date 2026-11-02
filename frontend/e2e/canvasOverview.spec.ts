@@ -40,6 +40,18 @@ test("opens the steps inside a subworkflow node, and the subworkflows inside it"
   await expect(subworkflow.getByTestId("node-stack")).toHaveCount(1);
   // Its components aren't installed: the cards behind are red like the node.
   await expect(subworkflow.getByTestId("node-stack")).toHaveAttribute("data-tone", "error");
+  // The cards' outer edges are evenly spaced: the node, then each card 6px further.
+  const edges = await subworkflow.evaluate((node) => {
+    const card = node.querySelector(":scope > div") as HTMLElement;
+    const layers = [...card.querySelectorAll(":scope > div[aria-hidden='true'].-z-10")].reverse();
+    return [card, ...layers].map((element) => {
+      const box = element.getBoundingClientRect();
+      return [box.right, box.bottom];
+    });
+  });
+  const gaps = [0, 1].flatMap((side) => [edges[1][side] - edges[0][side], edges[2][side] - edges[1][side]]);
+  for (const gap of gaps) expect(Math.abs(gap - gaps[0])).toBeLessThan(0.6);
+  expect(gaps[0]).toBeGreaterThan(2);
   // The node itself has the same border as the cards behind it.
   await expect(subworkflow.locator("> div").first()).toHaveClass(/border-2 .*border-red-500|border-red-500.*border-2/);
   await subworkflow.getByRole("button", { name: "Step in: show the steps inside “SAMtools sort, index, stats”" }).click();

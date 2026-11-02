@@ -255,7 +255,7 @@ const BaseNode = ({
       })}
       style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
     >
-      {hasStepsInside && <NodeStack tone={stackTone} />}
+      {hasStepsInside && <NodeStack tone={stackTone} insideBorder />}
       {/* What kind of node this is, in the colors of the workflow previews. */}
       {kind && (
         <div
