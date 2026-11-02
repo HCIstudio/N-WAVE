@@ -38,6 +38,8 @@ test("opens the steps inside a subworkflow node, and the subworkflows inside it"
   const subworkflow = page.locator('[data-id="bam_sort_stats"]');
   // Drawn as a stack: it holds several steps.
   await expect(subworkflow.getByTestId("node-stack")).toHaveCount(1);
+  // Its components aren't installed: the cards behind are red like the node.
+  await expect(subworkflow.getByTestId("node-stack")).toHaveAttribute("data-tone", "error");
   await subworkflow.getByRole("button", { name: "Step in: show the steps inside “SAMtools sort, index, stats”" }).click();
 
   const view = page.getByRole("dialog", { name: "SAMtools sort, index, stats" });

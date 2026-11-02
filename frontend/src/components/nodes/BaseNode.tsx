@@ -17,6 +17,7 @@ import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
 import { acceptsManyConnections } from "../../registry/portArity";
 import { useFeature } from "../../settings/useFeatures";
 import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
+import NodeStack, { type StackTone } from "./NodeStack";
 import { useOpenNestedView } from "../../workflows/nested/NestedViewContext";
 import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
@@ -152,7 +153,7 @@ const BaseNode = ({
   // Subworkflows and pipelines hold several steps: drawn as a stack, with a
   // Step in bar to see them.
   const hasStepsInside = nestedEntryOf({ type, data }, "") !== null;
-  const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32) + (hasStepsInside ? 24 : 0);
+  const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32) + (hasStepsInside ? 28 : 0);
   const dynamicMinWidth = Math.max(120, maxPortCount > 6 ? 152 : 120);
 
   // Base classes for the node
@@ -165,7 +166,8 @@ const BaseNode = ({
     "flex-col",
     "items-center",
     "justify-center",
-    "p-4", // Increased padding for better spacing
+    // The Step in bar takes the bottom of a stacked node: its content stays above it.
+    hasStepsInside ? "px-4 pt-4 pb-11" : "p-4",
     "relative",
     "transition-all",
     "duration-300", // Smoother transitions for status changes
@@ -220,6 +222,22 @@ const BaseNode = ({
     nodeClasses.push("opacity-60", "bg-gray-100");
   }
 
+  // The cards of the stack show the same state as the node.
+  const stackTone: StackTone =
+    problemLevel === "error" || status === "error" || run?.status === "failed"
+      ? "error"
+      : data._hasWarning
+        ? "warning"
+        : status === "running" || run?.status === "running"
+          ? "running"
+          : run?.status === "cached"
+            ? "cached"
+            : status === "success" || run?.status === "succeeded"
+              ? "success"
+              : selected || data.isHighlight
+                ? "selected"
+                : "default";
+
   return (
     <div
       className={clsx(nodeClasses, {
@@ -227,20 +245,7 @@ const BaseNode = ({
       })}
       style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
     >
-      {hasStepsInside && (
-        <>
-          {/* The stack: two cards peeking out behind this one. */}
-          <div
-            aria-hidden="true"
-            data-testid="node-stack"
-            className="pointer-events-none absolute inset-0 -z-10 translate-x-2 translate-y-2 rounded-lg border border-gray-500 bg-[#e5e5e5]"
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 -z-10 translate-x-1 translate-y-1 rounded-lg border border-gray-500 bg-[#f0f0f0]"
-          />
-        </>
-      )}
+      {hasStepsInside && <NodeStack tone={stackTone} />}
       {/* What kind of node this is, in the colors of the workflow previews. */}
       {kind && (
         <div
@@ -383,7 +388,9 @@ const BaseNode = ({
                 : "Double-click to see what this step produced"
           }
           className={clsx(
-            "absolute -bottom-3 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-sm",
+            "absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-sm",
+            // Below the stack of a node with steps inside.
+            hasStepsInside ? "-bottom-7" : "-bottom-3",
             run.status === "running" &&
               "border-yellow-400 bg-yellow-100 text-yellow-900",
             run.status === "succeeded" &&

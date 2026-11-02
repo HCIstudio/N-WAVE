@@ -12,6 +12,7 @@ import {
 } from "@xyflow/react";
 import clsx from "clsx";
 import { ArrowDownToDot, ChevronRight, Loader, X } from "lucide-react";
+import NodeStack from "../nodes/NodeStack";
 import type { RunTask } from "../../api/runs";
 import { logActivity } from "../../activity/activityLog";
 import { loadWorkflowGraph } from "../../workflows/nested/loadWorkflow";
@@ -85,21 +86,32 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
     <>
       <Handle type="target" position={Position.Left} className="!opacity-0" isConnectable={false} />
       {onOpen ? (
+        <div className="relative h-full w-full">
+          <NodeStack
+            tone={
+              run?.status === "failed"
+                ? "error"
+                : run?.status === "running"
+                  ? "running"
+                  : run?.status === "cached"
+                    ? "cached"
+                    : run?.status === "succeeded"
+                      ? "success"
+                      : "default"
+            }
+          />
         <button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
             onOpen();
           }}
-          // Stacked: it holds steps of its own.
-          className={clsx(
-            className,
-            "shadow-[4px_4px_0_-1px_#f0f0f0,4px_4px_0_0_#6b7280,8px_8px_0_-1px_#e5e5e5,8px_8px_0_0_#6b7280] hover:border-nextflow-green",
-          )}
+          className={clsx(className, "hover:border-nextflow-green")}
           title={`Step in: show the steps inside ${label}`}
         >
           {content}
         </button>
+        </div>
       ) : (
         <div className={className} data-status={run?.status ?? (status ? "waiting" : "none")}>
           {content}
