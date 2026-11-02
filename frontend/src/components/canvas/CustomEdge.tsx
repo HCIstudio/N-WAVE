@@ -4,6 +4,7 @@ import { getBezierPath, EdgeLabelRenderer, BaseEdge, useReactFlow } from "@xyflo
 import type { EdgeProps } from "@xyflow/react";
 import { AlertTriangle } from "lucide-react";
 import { useConnectionHint } from "../../execution/ConnectionHintsContext";
+import { EXPLAINED, howExplainedUrl } from "../../docs/links";
 
 const CustomEdge: React.FC<EdgeProps> = ({
   id,
@@ -71,6 +72,14 @@ const CustomEdge: React.FC<EdgeProps> = ({
               >
                 <p>{hint.message}</p>
                 <p className="mt-1 font-medium">{hint.fix}</p>
+                <a
+                  href={howExplainedUrl(EXPLAINED.connections)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-1 inline-block underline-offset-2 hover:underline"
+                >
+                  How N-WAVE knows (it can be wrong)
+                </a>
               </div>
             )}
             <button

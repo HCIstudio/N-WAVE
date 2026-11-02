@@ -654,6 +654,7 @@ const WorkflowPageContent: React.FC = () => {
             explanation={failure}
             stepLabel={failedStepLabel}
             onShowStep={showFailedStep}
+            onShowEvidence={run.showLogLine}
           />
         )}
         <ExecutionStatusPanel
@@ -673,6 +674,8 @@ const WorkflowPageContent: React.FC = () => {
           failure={failure}
           failedStepLabel={failedStepLabel}
           onShowFailedStep={showFailedStep}
+          logHighlight={run.logHighlight}
+          onShowLogLine={run.showLogLine}
           stages={
             run.lastRunId || isRunning
               ? runStages({

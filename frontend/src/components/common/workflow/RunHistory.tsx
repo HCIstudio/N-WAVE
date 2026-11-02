@@ -15,10 +15,17 @@ import { useFeature } from "../../../settings/useFeatures";
 const ERROR_LINE =
   /\b(ERROR|error|Error|Exception|failed|FAILED|Caused by|not found|No such file|denied)\b/;
 
+/** A line of the log to show, e.g. a failure explanation's evidence (a new object each time). */
+export interface LogHighlight {
+  /** Counted from 0. */
+  line: number;
+}
+
 /** A run's output, with error lines marked, scrolled to the end. */
-export const RunLog: React.FC<{ text: string; label?: string }> = ({
+export const RunLog: React.FC<{ text: string; label?: string; highlight?: LogHighlight | null }> = ({
   text: raw,
   label = "Run log",
+  highlight,
 }) => {
   const text = stripTerminalCodes(raw);
   const ref = useRef<HTMLPreElement>(null);
@@ -29,6 +36,14 @@ export const RunLog: React.FC<{ text: string; label?: string }> = ({
     const element = ref.current;
     if (element && atBottom.current) element.scrollTop = element.scrollHeight;
   }, [text]);
+  // Scroll to the line asked for, and stop following the end.
+  useEffect(() => {
+    if (!highlight) return;
+    const line = ref.current?.querySelector<HTMLElement>(`[data-line="${highlight.line}"]`);
+    if (!line) return;
+    atBottom.current = false;
+    line.scrollIntoView?.({ block: "center" });
+  }, [highlight]);
 
   const [copied, setCopied] = useState(false);
   const copy = async () => {
@@ -80,7 +95,15 @@ export const RunLog: React.FC<{ text: string; label?: string }> = ({
           <span
             // biome-ignore lint/suspicious/noArrayIndexKey: log lines have no other identity.
             key={index}
-            className={ERROR_LINE.test(line) ? "text-red-300" : undefined}
+            data-line={index}
+            aria-current={highlight?.line === index ? "true" : undefined}
+            className={
+              highlight?.line === index
+                ? "-mx-1 rounded bg-yellow-300/30 px-1 text-yellow-100 ring-1 ring-yellow-300/70"
+                : ERROR_LINE.test(line)
+                  ? "text-red-300"
+                  : undefined
+            }
           >
             {line}
             {"\n"}
@@ -160,6 +183,9 @@ const RunDetails: React.FC<{
   const explanationsOn = useFeature("failureExplanations");
   const performanceOn = useFeature("performance");
   const failure = log && explanationsOn ? explainFailure(log) : null;
+  const [highlight, setHighlight] = useState<LogHighlight | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new run starts unhighlighted.
+  useEffect(() => setHighlight(null), [run.id]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
@@ -190,7 +216,10 @@ const RunDetails: React.FC<{
         </p>
       )}
       {run.status === "failed" && failure && (
-        <FailureExplanationCard explanation={failure} />
+        <FailureExplanationCard
+          explanation={failure}
+          onShowEvidence={(line) => setHighlight({ line })}
+        />
       )}
       {run.status !== "running" && <RunReportButtons runId={run.id} />}
       {run.status === "succeeded" && (
@@ -212,7 +241,7 @@ const RunDetails: React.FC<{
         ) : log === null ? (
           <p className="text-xs text-gray-700">Loading the log…</p>
         ) : (
-          <RunLog text={log} label={`Log of run ${run.id}`} />
+          <RunLog text={log} label={`Log of run ${run.id}`} highlight={highlight} />
         )}
       </div>
     </div>

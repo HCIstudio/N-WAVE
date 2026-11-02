@@ -9,6 +9,7 @@ import api, { isDemoMode } from "../../api";
 import { getRunTrace, listRunResults, listRuns, readRunLogFrom } from "../../api/runs";
 import type { ToastType } from "../../components/common";
 import type { RunPanelTab } from "../../components/common/workflow/ExecutionStatusPanel";
+import type { LogHighlight } from "../../components/common/workflow/RunHistory";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { useExecutionStatus, useLatestRef } from "../../hooks";
 import { buildPipelineLaunch } from "../../registry/pipelines/launch";
@@ -116,6 +117,8 @@ export const useWorkflowRun = ({
   // or it is expanded.
   const [panelMinimized, setPanelMinimized] = useState(true);
   const [error, setError] = useState<RunError | null>(null);
+  // A line of the log a failure explanation pointed at.
+  const [logHighlight, setLogHighlight] = useState<LogHighlight | null>(null);
 
   const executionStatus = useExecutionStatus({
     nodes,
@@ -168,6 +171,15 @@ export const useWorkflowRun = ({
     setPanelTab("log");
     openPanel();
   }, [openPanel]);
+
+  /** The Log tab, scrolled to a line (counted from 0) that is marked. */
+  const showLogLine = useCallback(
+    (line: number) => {
+      setLogHighlight({ line });
+      showLog();
+    },
+    [showLog],
+  );
 
   /** Show the log as it streams, a few times a second at most. */
   const queueOutput = (text: string) => {
@@ -282,6 +294,7 @@ export const useWorkflowRun = ({
       runStartedAt.current = null;
       latest.current.executionStatus.startExecution();
       setOutput("");
+      setLogHighlight(null);
       setPanelMinimized(false);
     }
     const lineReader = createLineReader((line) =>
@@ -442,6 +455,8 @@ export const useWorkflowRun = ({
     setPanelMinimized,
     openPanel,
     showLog,
+    logHighlight,
+    showLogLine,
     error,
     dismissError: () => setError(null),
     run,

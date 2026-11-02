@@ -4,6 +4,7 @@
 import { AlertTriangle, CheckCircle2, Loader, RefreshCw, XCircle } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { EXPLAINED, howExplainedUrl } from "../../docs/links";
 
 export interface CheckProblem {
   id: string;
@@ -152,6 +153,14 @@ const WorkflowCheckButton: React.FC<WorkflowCheckButtonProps> = ({
                   </li>
                 ))}
               </ul>
+              <a
+                href={howExplainedUrl(EXPLAINED.check)}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-2 inline-block text-xs text-nextflow-green hover:underline"
+              >
+                How N-WAVE finds these problems
+              </a>
             </>
           )}
         </section>

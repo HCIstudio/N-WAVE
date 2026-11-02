@@ -7,7 +7,7 @@ import SearchInput from "../components/common/forms/SearchInput";
 import { NodeKindSwatch } from "../components/common/workflow/NodeKindLegend";
 import { NODE_KIND_ORDER, NODE_KINDS } from "../workflows/nodeKinds";
 import { GLOSSARY, glossaryEntry } from "../glossary/glossary";
-import { README_URL, WIKI_PAGES, WIKI_URL, wikiUrl } from "../docs/links";
+import { EXPLAINED, howExplainedUrl, README_URL, WIKI_PAGES, WIKI_URL, wikiUrl } from "../docs/links";
 import { useFeature } from "../settings/useFeatures";
 import { logActivity } from "../activity/activityLog";
 
@@ -167,6 +167,16 @@ const HelpPage: React.FC = () => {
         <p className="mt-1 text-sm text-text-light">
           The terms N-WAVE uses, from Nextflow, nf-core and sequencing, in a sentence or two. The{" "}
           <span className="whitespace-nowrap">ⓘ buttons</span> next to them in the app show the same explanations.
+          They are written by hand; the wiki says{" "}
+          <a
+            href={howExplainedUrl(EXPLAINED.glossary)}
+            target="_blank"
+            rel="noreferrer"
+            className="text-nextflow-green hover:underline"
+          >
+            how N-WAVE explains things
+          </a>{" "}
+          and where each explanation comes from.
         </p>
         <div className="mt-3 max-w-md">
           <SearchInput value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search terms..." />

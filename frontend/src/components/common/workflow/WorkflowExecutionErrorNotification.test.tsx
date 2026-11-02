@@ -18,8 +18,10 @@ const show = (props: Partial<Props> = {}) => {
 const suggestionsFor = (message: string) => {
   const { unmount } = show({ error: { message } });
   const heading = screen.getByText("Suggested Fixes");
-  const list = heading.closest("div")?.querySelectorAll("p") ?? [];
+  const list = heading.closest("div")?.querySelectorAll(".grid p") ?? [];
   const texts = Array.from(list, (p) => p.textContent);
+  // Marked as guesses, with where the wiki says so.
+  expect(screen.getByRole("link", { name: "How N-WAVE knows" }).getAttribute("href")).toMatch(/#suggested-fixes$/);
   unmount();
   return texts;
 };
@@ -43,12 +45,15 @@ describe("WorkflowExecutionErrorNotification", () => {
   fix: "Turn on Docker in the execution settings.",
   docs: "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#command-not-found",
   process: "NFCORE_FASTQC_QC",
+  certainty: "certain" as const,
+  alternatives: [],
+  evidence: [{ text: "bash: fastqc: command not found", line: 3 }],
 }, stepLabel: "FastQC", onShowStep });
     const card = screen.getByRole("region", { name: "Why the run failed" });
     expect(card.textContent).toContain("In “FastQC”: The step runs “fastqc”");
     expect(card.textContent).toContain("Turn on Docker");
     expect(screen.queryByText("Suggested Fixes")).toBeNull();
-    expect(screen.getByRole("link", { name: /More about this/ }).getAttribute("href")).toBe(
+    expect(screen.getByRole("link", { name: /What to do/ }).getAttribute("href")).toBe(
       "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#command-not-found",
     );
     fireEvent.click(screen.getByRole("button", { name: "Show “FastQC”" }));

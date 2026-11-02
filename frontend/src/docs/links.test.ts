@@ -2,7 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { GLOSSARY } from "../glossary/glossary";
-import { WIKI_PAGES, type WikiLink } from "./links";
+import { FAILURE_RULES } from "../execution/failureExplanations";
+import { EXPLAINED, WIKI_PAGES, type WikiLink } from "./links";
 
 const WIKI_DIR = join(__dirname, "../../../wiki");
 
@@ -33,5 +34,11 @@ describe("links from the app to the wiki", () => {
       const { page, anchor } = entry.docs as WikiLink;
       if (anchor) expect(anchorsOf(page), `${entry.id} → ${page}#${anchor}`).toContain(anchor);
     }
+  });
+
+  it("have a section on How N-WAVE explains things for every kind of explanation and failure rule", () => {
+    const anchors = anchorsOf("How-N-WAVE-Explains-Things");
+    for (const anchor of Object.values(EXPLAINED)) expect(anchors, anchor).toContain(anchor);
+    for (const rule of FAILURE_RULES) expect(anchors, rule.kind).toContain(rule.kind);
   });
 });

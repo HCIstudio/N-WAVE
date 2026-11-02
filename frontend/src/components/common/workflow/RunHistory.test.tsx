@@ -94,6 +94,24 @@ describe("RunHistory", () => {
     ).toContain("runs “fastqc”, which isn't installed");
   });
 
+  it("shows the line an explanation went by in the run's log", async () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    act(() => root.render(<RunHistory workflowId="wf1" />));
+    await flush();
+    act(() => (container.querySelector('[aria-label="Earlier runs"] button') as HTMLButtonElement).click());
+    await flush();
+    const card = container.querySelector('[aria-label="Why the run failed"]');
+    expect(card?.textContent).toContain("Cause");
+    expect(card?.querySelector('[aria-label="Evidence from the log"]')?.textContent).toContain(
+      ".command.sh: line 2: fastqc: command not found",
+    );
+    const show = card?.querySelector('[aria-label="Show line 4 in the log"]') as HTMLButtonElement;
+    act(() => show.click());
+    const marked = container.querySelector('[aria-label="Log of run bee_2"] [aria-current="true"]');
+    expect(marked?.textContent).toContain("fastqc: command not found");
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
+  });
+
   it("stops a run that goes on without this page", async () => {
     const running: RunSummary = {
       id: "bee_3",

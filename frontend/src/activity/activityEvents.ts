@@ -34,6 +34,8 @@ export const ACTIVITY_TYPES = {
   "run.results": "A finished run's step times and result files",
   /** `runId`, `kind`, `title`. */
   "failure.explained": "A failure explanation was shown",
+  /** `kind`, `certainty`, `helpful` (true or false). */
+  "failure.feedback": "Did this help? was answered for a failure explanation",
   "help.opened": "The Help page was opened",
   /** `term`. */
   "glossary.opened": "A glossary explanation was opened",

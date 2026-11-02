@@ -19,6 +19,7 @@ export const WIKI_PAGES = {
   "Run-Profiles": "Run profiles",
   "Exporting-Projects": "Exporting projects",
   Troubleshooting: "Troubleshooting",
+  "How-N-WAVE-Explains-Things": "How N-WAVE explains things",
 } as const;
 
 export type WikiPage = keyof typeof WIKI_PAGES;
@@ -32,3 +33,17 @@ export interface WikiLink {
 
 export const wikiUrl = ({ page, anchor }: WikiLink): string =>
   `${WIKI_URL}/${page}${anchor ? `#${anchor}` : ""}`;
+
+/** The sections of "How N-WAVE explains things", one per kind of explanation. */
+export const EXPLAINED = {
+  check: "workflow-check-problems",
+  connections: "connection-hints",
+  failures: "failure-explanations",
+  suggestedFixes: "suggested-fixes",
+  glossary: "glossary-and-help",
+  companion: "ai-companion",
+} as const;
+
+/** Where the wiki says what an explanation is based on, how sure it is and its limits. */
+export const howExplainedUrl = (anchor: string): string =>
+  wikiUrl({ page: "How-N-WAVE-Explains-Things", anchor });

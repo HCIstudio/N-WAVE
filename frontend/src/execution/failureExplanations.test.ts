@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { explainFailure, failedProcessOf } from "./failureExplanations";
+import { explainFailure, FAILURE_RULES, failedProcessOf } from "./failureExplanations";
 
 // Real Nextflow 25.10 output of runs that failed each way (paths shortened).
 const log = (name: string) =>
@@ -45,6 +45,73 @@ describe("explainFailure", () => {
     );
     expect(result?.kind).toBe("resource-limits");
     expect(result?.explanation).toContain("this run had 2 CPUs and 4 GB");
+  });
+
+  // Each rule says how sure it is and shows the lines it went by.
+  it.each([
+    ["oom", "likely", /exit status \(137\)/, "Command exit status: 137"],
+    ["timelimit", "certain", /exceeded running time limit/, "Command exit status: -"],
+    ["hasnt-exited", "likely", /process hasn't exited/, undefined],
+    ["cnf", "certain", /fastqc: command not found/, "Command exit status: 127"],
+    ["missing", "likely", /No such file or directory/, undefined],
+    ["pull", "likely", /failed to resolve reference/, "Command exit status: 125"],
+    ["nodocker", "certain", /failed to connect to the docker API/, "Command exit status: 1"],
+    ["nospace", "certain", /No space left on device/, "Command exit status: 1"],
+    ["url", "likely", /Can't stage file/, "Command exit status: -"],
+    ["missingout", "likely", /Missing output file/, "Command exit status: 0"],
+    ["pipeline-github", "certain", /Forbidden/, undefined],
+    ["plugins", "likely", /Conversion = '4'/, undefined],
+  ])("shows the evidence for %s, and is %s", (name, certainty, matched, status) => {
+    const text = log(name);
+    const lines = text.split("\n");
+    const result = explainFailure(text);
+    expect(result?.certainty).toBe(certainty);
+    const [first, ...rest] = result?.evidence ?? [];
+    expect(first.text).toMatch(matched);
+    // The line number points at that line of the log.
+    expect(lines[first.line].trim()).toBe(first.text);
+    expect(rest.map((evidence) => evidence.text)).toEqual(status ? [status] : []);
+    for (const evidence of rest) expect(lines[evidence.line].trim()).toBe(status?.split(": ")[1]);
+    // A likely cause names what else it could be; a certain one doesn't.
+    if (certainty === "likely") expect(result?.alternatives.length).toBeGreaterThan(0);
+    else expect(result?.alternatives).toEqual([]);
+  });
+
+  it("is sure of running out of memory when the program says so", () => {
+    const result = explainFailure("Caused by:\n  java.lang.OutOfMemoryError: Java heap space\n");
+    expect(result?.kind).toBe("out-of-memory");
+    expect(result?.certainty).toBe("certain");
+    expect(result?.alternatives).toEqual([]);
+  });
+
+  it("is only likely when exit status 127 is all it has", () => {
+    const result = explainFailure(
+      "ERROR ~ Error executing process > 'RUN (1)'\n\nCaused by:\n  Process `RUN (1)` terminated with an error exit status (127)\n\nCommand exit status:\n  127\n",
+    );
+    expect(result?.kind).toBe("command-not-found");
+    expect(result?.certainty).toBe("likely");
+    expect(result?.alternatives.length).toBeGreaterThan(0);
+    expect(result?.evidence).toEqual([
+      { text: "Process `RUN (1)` terminated with an error exit status (127)", line: 3 },
+      { text: "Command exit status: 127", line: 6 },
+    ]);
+  });
+
+  it("shows the evidence without the terminal's colour codes, on the line the log shows it", () => {
+    const coloured = log("nospace").replace("No space left on device", "\u001b[31mNo space left on device\u001b[0m");
+    const result = explainFailure(coloured);
+    expect(result?.evidence[0]).toEqual({
+      text: "dd: error writing '/scratch/genome.idx': No space left on device",
+      line: 20,
+    });
+  });
+
+  it("declares a certainty for every rule, and alternatives where it can be only likely", () => {
+    expect(new Set(FAILURE_RULES.map((rule) => rule.kind)).size).toBe(FAILURE_RULES.length);
+    for (const rule of FAILURE_RULES) {
+      expect(rule.certainties.length).toBeGreaterThan(0);
+      if (rule.certainties.includes("likely")) expect(rule.alternatives.length).toBeGreaterThan(0);
+    }
   });
 
   it("explains nothing it doesn't recognise", () => {

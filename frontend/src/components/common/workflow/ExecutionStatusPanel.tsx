@@ -23,7 +23,7 @@ import StageProgress from "./StageProgress";
 import type { RunStage } from "../../../execution/runStages";
 import { useFeature } from "../../../settings/useFeatures";
 import RunResultsList from "./RunResultsList";
-import RunHistory, { RunLog } from "./RunHistory";
+import RunHistory, { type LogHighlight, RunLog } from "./RunHistory";
 import FailureExplanationCard from "./FailureExplanationCard";
 import type { FailureExplanation } from "../../../execution/failureExplanations";
 import type { Node } from "@xyflow/react";
@@ -97,6 +97,9 @@ interface ExecutionStatusPanelProps {
   /** The canvas step that failed, and how to show it. */
   failedStepLabel?: string;
   onShowFailedStep?: () => void;
+  /** A line of the log to scroll to and mark, and how to ask for one. */
+  logHighlight?: LogHighlight | null;
+  onShowLogLine?: (line: number) => void;
   /** Every step of the run, done, running or waiting (the bar by step). */
   stages?: RunStage[];
 }
@@ -173,6 +176,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   failure,
   failedStepLabel,
   onShowFailedStep,
+  logHighlight,
+  onShowLogLine,
   stages = [],
 }) => {
   const [maximized, setMaximized] = useState(false);
@@ -256,6 +261,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
       explanation={failure}
       stepLabel={failedStepLabel}
       onShowStep={onShowFailedStep}
+      onShowEvidence={onShowLogLine}
     />
   );
 
@@ -442,7 +448,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
           <div role="tabpanel" aria-label="Log" className="flex min-h-0 flex-1 flex-col">
             {failureCard && <div className="shrink-0 p-2 pb-0">{failureCard}</div>}
             <div className="min-h-0 flex-1">
-              <RunLog text={output} />
+              <RunLog text={output} highlight={logHighlight} />
             </div>
           </div>
         )}
