@@ -5,22 +5,22 @@ import { expect, test } from "./fixtures";
 // pipeline nodes (read from GitHub, served here from the test fixtures).
 const fixture = (name: string) => readFileSync(new URL(`../src/test/fixtures/${name}`, import.meta.url), "utf8");
 
-test("the minimap can be shown and stays as chosen", async ({ page }) => {
+test("shows the minimap above the zoom buttons, unless it is switched off", async ({ page }) => {
   await page.goto("./workflow/builtin:demo-basic");
   await expect(page.locator(".react-flow__node").first()).toBeVisible();
-  const toggle = page.getByRole("button", { name: "Minimap" });
-  await expect(toggle).toHaveAttribute("aria-pressed", "false");
-  await expect(page.locator(".react-flow__minimap")).toHaveCount(0);
-
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-pressed", "true");
   const minimap = page.locator(".react-flow__minimap");
   await expect(minimap).toBeVisible();
   await expect(minimap.locator(".react-flow__minimap-node")).toHaveCount(6);
+  // Bottom left, just above the zoom buttons.
+  const map = await minimap.boundingBox();
+  const fit = await page.getByRole("button", { name: "Fit view" }).boundingBox();
+  expect(map && fit && map.x <= fit.x + 4 && map.y + map.height <= fit.y).toBe(true);
+  await expect(page.getByRole("button", { name: "Minimap" })).toHaveCount(0);
 
-  await page.reload();
-  await expect(page.locator(".react-flow__minimap")).toBeVisible();
-  await page.getByRole("button", { name: "Minimap" }).click();
+  await page.goto("./settings");
+  await page.getByRole("region", { name: "Features" }).getByRole("checkbox", { name: /^Minimap/ }).uncheck();
+  await page.goto("./workflow/builtin:demo-basic");
+  await expect(page.locator(".react-flow__node").first()).toBeVisible();
   await expect(page.locator(".react-flow__minimap")).toHaveCount(0);
 });
 
@@ -35,7 +35,10 @@ test("opens the steps inside a subworkflow node, and the subworkflows inside it"
     return route.fulfill({ contentType: "text/plain", body });
   });
   await page.goto("./workflow/builtin:rnaseq-star-salmon");
-  await page.getByRole("button", { name: "Show the steps inside “SAMtools sort, index, stats”" }).click();
+  const subworkflow = page.locator('[data-id="bam_sort_stats"]');
+  // Drawn as a stack: it holds several steps.
+  await expect(subworkflow.getByTestId("node-stack")).toHaveCount(1);
+  await subworkflow.getByRole("button", { name: "Step in: show the steps inside “SAMtools sort, index, stats”" }).click();
 
   const view = page.getByRole("dialog", { name: "SAMtools sort, index, stats" });
   await expect(view.getByText("SAMTOOLS_SORT", { exact: true })).toBeVisible();
@@ -64,7 +67,7 @@ test("opens the steps inside nf-core/rnaseq as a pipeline node", async ({ page }
     return route.continue();
   });
   await page.goto("./workflow/builtin:rnaseq-pipeline");
-  await page.getByRole("button", { name: /^Show the steps inside/ }).click();
+  await page.getByRole("button", { name: /^Step in: show the steps inside/ }).click();
 
   const view = page.getByRole("dialog");
   await expect(view.getByRole("button", { name: /^PREPARE_GENOME_INDICES/ })).toBeVisible();

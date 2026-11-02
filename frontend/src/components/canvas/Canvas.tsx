@@ -21,7 +21,7 @@ import type {
 
 import CustomControls, { type HistoryControls } from "./CustomControls";
 import CanvasMinimap from "./CanvasMinimap";
-import { logActivity } from "../../activity/activityLog";
+import { useFeature } from "../../settings/useFeatures";
 import CustomEdge from "./CustomEdge";
 import BaseNode from "../nodes/BaseNode";
 import NoteNode from "../nodes/note/NoteNode";
@@ -70,15 +70,6 @@ interface CanvasProps {
   onZoomToFailed?: () => void;
 }
 
-const MINIMAP_KEY = "nwave-canvas-minimap";
-const readMinimap = (): boolean => {
-  try {
-    return localStorage.getItem(MINIMAP_KEY) === "on";
-  } catch {
-    return false;
-  }
-};
-
 /**
  * Fits the view once the canvas's first nodes all have their size. React
  * Flow's own `fitView` fits on its first measurement, which can come before
@@ -114,18 +105,8 @@ const Canvas: FC<CanvasProps> = ({
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
-  // The minimap stays as chosen in this browser.
-  const [minimap, setMinimap] = React.useState(readMinimap);
-  const toggleMinimap = () => {
-    const shown = !minimap;
-    setMinimap(shown);
-    logActivity("minimap.toggled", { shown });
-    try {
-      localStorage.setItem(MINIMAP_KEY, shown ? "on" : "off");
-    } catch {
-      // Not kept; still toggled for now.
-    }
-  };
+  // Switched on or off for everyone in Global Settings → Features.
+  const minimapOn = useFeature("minimap");
 
   return (
     <div className="flex-grow h-full" ref={reactFlowWrapper}>
@@ -153,10 +134,9 @@ const Canvas: FC<CanvasProps> = ({
         <CustomControls
           history={history}
           onShowShortcuts={onShowShortcuts}
-          minimap={{ shown: minimap, toggle: toggleMinimap }}
           onZoomToFailed={onZoomToFailed}
         />
-        {minimap && <CanvasMinimap />}
+        {minimapOn && <CanvasMinimap />}
       </ReactFlow>
     </div>
   );

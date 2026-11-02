@@ -11,7 +11,7 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import clsx from "clsx";
-import { ChevronRight, Layers, Loader, X } from "lucide-react";
+import { ArrowDownToDot, ChevronRight, Loader, X } from "lucide-react";
 import type { RunTask } from "../../api/runs";
 import { logActivity } from "../../activity/activityLog";
 import { loadWorkflowGraph } from "../../workflows/nested/loadWorkflow";
@@ -56,9 +56,14 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
       : "";
   const content = (
     <>
-      <span className="flex items-center gap-1.5 truncate text-xs font-semibold text-gray-800">
-        {onOpen && <Layers className="h-3.5 w-3.5 shrink-0 text-gray-600" aria-hidden />}
+      <span className="flex items-center justify-between gap-1.5 text-xs font-semibold text-gray-800">
         <span className="truncate">{label}</span>
+        {onOpen && (
+          <span className="flex shrink-0 items-center gap-0.5 rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-700">
+            <ArrowDownToDot className="h-3 w-3" aria-hidden />
+            Step in
+          </span>
+        )}
       </span>
       <span className="block truncate text-[10px] text-gray-600">
         {isEnd ? "" : kind === "module" ? "process" : kind}
@@ -67,7 +72,8 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
     </>
   );
   const className = clsx(
-    "h-full w-full rounded-md border-2 bg-white px-2 py-1.5 text-left shadow-sm",
+    "h-full w-full rounded-md border-2 bg-white px-2 py-1.5 text-left",
+    !onOpen && "shadow-sm",
     isEnd && "rounded-full border-dashed bg-gray-100 text-center",
     !run && !isEnd && (nfCore ? "border-nextflow-green" : "border-gray-400"),
     run?.status === "running" && "border-yellow-400 bg-yellow-50",
@@ -85,8 +91,12 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
             event.stopPropagation();
             onOpen();
           }}
-          className={clsx(className, "hover:shadow-md")}
-          title={`Show the steps inside ${label}`}
+          // Stacked: it holds steps of its own.
+          className={clsx(
+            className,
+            "shadow-[4px_4px_0_-1px_#f0f0f0,4px_4px_0_0_#6b7280,8px_8px_0_-1px_#e5e5e5,8px_8px_0_0_#6b7280] hover:border-nextflow-green",
+          )}
+          title={`Step in: show the steps inside ${label}`}
         >
           {content}
         </button>
@@ -290,8 +300,11 @@ const NestedView: React.FC<NestedViewProps> = ({ title, entry, workflowName, tas
           )}
         </div>
         <footer className="border-t border-panel-border px-4 py-2 text-xs text-text-light">
-          Read-only, from the workflow&apos;s main.nf. Steps with <Layers className="inline h-3 w-3" aria-label="layers" /> have steps of their own:
-          click to see them. Colours show what the last run did in each.
+          Read-only, from the workflow&apos;s main.nf. Stacked steps have steps of their own: click{" "}
+          <span className="whitespace-nowrap">
+            <ArrowDownToDot className="inline h-3 w-3" aria-hidden /> Step in
+          </span>{" "}
+          to see them. Colors show what the last run did in each.
         </footer>
       </section>
     </div>

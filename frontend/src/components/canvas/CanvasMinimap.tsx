@@ -29,7 +29,7 @@ export const minimapColor = (
   return NODE_KINDS[kind].color;
 };
 
-/** The minimap of the canvas (bottom right, above the Runs bar). */
+/** The minimap of the canvas: bottom left, just above the zoom buttons. */
 const CanvasMinimap: React.FC = () => {
   const { runId, nodeRuns } = useContext(RunTasksContext);
   const showRun = Boolean(runId) && Object.keys(nodeRuns).length > 0;
@@ -40,8 +40,8 @@ const CanvasMinimap: React.FC = () => {
       nodeStrokeWidth={2}
       pannable
       zoomable
-      position="bottom-right"
-      className="!bottom-14 !bg-background !border !border-accent"
+      position="bottom-left"
+      className="!bottom-14 !left-0 !m-4 !mb-0 !bg-background !border !border-accent"
       maskColor="rgba(0, 0, 0, 0.35)"
     />
   );

@@ -10,7 +10,7 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
-import { AlertTriangle, Layers, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowDownToDot, XCircle } from "lucide-react";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
@@ -149,7 +149,10 @@ const BaseNode = ({
 
   const iconName = data.icon || "DefaultIcon";
   const maxPortCount = Math.max(data.inputs?.length ?? 0, data.outputs?.length ?? 0);
-  const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32);
+  // Subworkflows and pipelines hold several steps: drawn as a stack, with a
+  // Step in bar to see them.
+  const hasStepsInside = nestedEntryOf({ type, data }, "") !== null;
+  const dynamicMinHeight = Math.max(100, 56 + maxPortCount * 32) + (hasStepsInside ? 24 : 0);
   const dynamicMinWidth = Math.max(120, maxPortCount > 6 ? 152 : 120);
 
   // Base classes for the node
@@ -224,6 +227,20 @@ const BaseNode = ({
       })}
       style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
     >
+      {hasStepsInside && (
+        <>
+          {/* The stack: two cards peeking out behind this one. */}
+          <div
+            aria-hidden="true"
+            data-testid="node-stack"
+            className="pointer-events-none absolute inset-0 -z-10 translate-x-2 translate-y-2 rounded-lg border border-gray-500 bg-[#e5e5e5]"
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-0 -z-10 translate-x-1 translate-y-1 rounded-lg border border-gray-500 bg-[#f0f0f0]"
+          />
+        </>
+      )}
       {/* What kind of node this is, in the colors of the workflow previews. */}
       {kind && (
         <div
@@ -390,8 +407,8 @@ const BaseNode = ({
         </output>
       )}
 
-      {/* Subworkflows and pipelines: the steps inside. */}
-      {openNested && nestedEntryOf({ type, data }, "") && (
+      {/* Subworkflows and pipelines: step in, like a debugger, to the steps inside. */}
+      {openNested && hasStepsInside && (
         <button
           type="button"
           onClick={(event) => {
@@ -399,11 +416,12 @@ const BaseNode = ({
             openNested(id);
           }}
           onDoubleClick={(event) => event.stopPropagation()}
-          aria-label={`Show the steps inside “${data.label || type}”`}
-          title="Show the steps inside"
-          className="nodrag absolute bottom-1 right-1 rounded p-0.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+          aria-label={`Step in: show the steps inside “${data.label || type}”`}
+          title="Step in: show the steps inside"
+          className="nodrag absolute inset-x-0 bottom-0 flex h-7 items-start justify-center gap-1 rounded-b-lg border-t border-gray-300 bg-gray-100 pt-1 text-[10px] font-medium text-gray-700 hover:bg-nextflow-green hover:text-white"
         >
-          <Layers className="h-3.5 w-3.5" aria-hidden />
+          <ArrowDownToDot className="h-3.5 w-3.5" aria-hidden />
+          Step in
         </button>
       )}
 

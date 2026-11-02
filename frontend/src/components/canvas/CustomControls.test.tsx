@@ -11,19 +11,9 @@ const show = (props: React.ComponentProps<typeof CustomControls>) =>
   );
 
 describe("CustomControls", () => {
-  it("toggles the minimap and says whether it shows", () => {
-    const toggle = vi.fn();
-    const { rerender } = show({ minimap: { shown: false, toggle } });
-    const button = screen.getByRole("button", { name: "Minimap" });
-    expect(button.getAttribute("aria-pressed")).toBe("false");
-    fireEvent.click(button);
-    expect(toggle).toHaveBeenCalled();
-    rerender(
-      <ReactFlowProvider>
-        <CustomControls minimap={{ shown: true, toggle }} />
-      </ReactFlowProvider>,
-    );
-    expect(screen.getByRole("button", { name: "Minimap" }).getAttribute("aria-pressed")).toBe("true");
+  it("has no minimap button: Global Settings → Features switches the minimap", () => {
+    show({});
+    expect(screen.queryByRole("button", { name: "Minimap" })).toBeNull();
   });
 
   it("zooms to the failing step only when one failed", () => {
