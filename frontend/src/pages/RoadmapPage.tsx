@@ -59,8 +59,37 @@ const StatusChip: React.FC<{ status: RoadmapStatus }> = ({ status }) => (
   </span>
 );
 
+/** A released version on the timeline: its name and what it brought, in one line. */
+const ReleasedBox: React.FC<{ release: RoadmapRelease; current: boolean }> = ({ release, current }) => {
+  const headingId = useId();
+  return (
+    <li className="relative pb-3 pl-8">
+      <span
+        aria-hidden
+        className={`absolute left-0 top-3 h-3 w-3 -translate-x-1/2 rounded-full border-2 ${STATUS.released.dot}`}
+      />
+      <article
+        aria-labelledby={headingId}
+        className={`flex flex-wrap items-baseline gap-x-2 gap-y-0.5 rounded-md border bg-panel-background px-3 py-1.5 text-sm ${
+          current ? "border-nextflow-green" : "border-panel-border"
+        }`}
+      >
+        <h3 id={headingId} className="font-semibold text-text">
+          <External href={milestoneUrl(release.milestone)}>
+            <span className="font-mono">v{release.version}</span> {release.name}
+          </External>
+        </h3>
+        <p className="min-w-0 flex-1 truncate text-text-light" title={release.summary ?? release.goal}>
+          {release.summary ?? release.goal}
+        </p>
+        {current && <span className="text-xs text-text-light">The current version</span>}
+      </article>
+    </li>
+  );
+};
+
 /** One release on the timeline: what it does, why, and its features with their issues. */
-const ReleaseCard: React.FC<{ release: RoadmapRelease; current: boolean }> = ({ release, current }) => {
+const ReleaseCard: React.FC<{ release: RoadmapRelease }> = ({ release }) => {
   const headingId = useId();
   return (
     <li className="relative pb-8 pl-8 last:pb-0">
@@ -71,7 +100,7 @@ const ReleaseCard: React.FC<{ release: RoadmapRelease; current: boolean }> = ({ 
       <article
         aria-labelledby={headingId}
         className={`rounded-lg border bg-panel-background p-4 ${
-          current ? "border-nextflow-green" : "border-panel-border"
+          release.status === "in-progress" ? "border-warning/60" : "border-panel-border"
         }`}
       >
         <div className="flex flex-wrap items-center gap-2">
@@ -79,7 +108,6 @@ const ReleaseCard: React.FC<{ release: RoadmapRelease; current: boolean }> = ({ 
             <span className="font-mono text-text-light">v{release.version}</span> {release.name}
           </h3>
           <StatusChip status={release.status} />
-          {current && <span className="text-xs text-text-light">The current version</span>}
         </div>
         <p className="mt-2 text-sm text-text">{release.goal}</p>
         {release.why && <p className="mt-1 text-sm text-text-light">{release.why}</p>}
@@ -123,10 +151,9 @@ const ReleaseCard: React.FC<{ release: RoadmapRelease; current: boolean }> = ({ 
 /** Why N-WAVE exists, what it does today, and what the next releases bring. */
 const RoadmapPage: React.FC = () => {
   const headingId = useId();
-  const latestReleased = RELEASES.filter((release) => release.status === "released").pop();
-  const earlier = RELEASES.filter((release) => release.status === "released" && release !== latestReleased);
+  const released = RELEASES.filter((release) => release.status === "released");
+  const latestReleased = released[released.length - 1];
   const ahead = RELEASES.filter((release) => release.status !== "released");
-  const timeline = latestReleased ? [latestReleased, ...ahead] : ahead;
 
   return (
     <PageLayout>
@@ -179,10 +206,11 @@ const RoadmapPage: React.FC = () => {
 
         <section aria-labelledby="next" className="mt-10">
           <h2 id="next" className="text-xl font-semibold text-text">
-            What's next
+            Releases
           </h2>
           <p className="mt-1 text-sm text-text-light">
-            The releases in the order they are planned. Each feature links to the GitHub issue that describes it.
+            Every release in order: what is out, what is being built and what is planned. Each planned feature links
+            to the GitHub issue that describes it.
           </p>
           <ul aria-label="Status" className="mt-3 flex flex-wrap gap-4 text-xs text-text-light">
             {(Object.keys(STATUS) as RoadmapStatus[]).map((status) => (
@@ -193,25 +221,13 @@ const RoadmapPage: React.FC = () => {
             ))}
           </ul>
           <ol aria-label="Releases" className="ml-2 mt-5 border-l-2 border-panel-border">
-            {timeline.map((release) => (
-              <ReleaseCard key={release.version} release={release} current={release === latestReleased} />
+            {released.map((release) => (
+              <ReleasedBox key={release.version} release={release} current={release === latestReleased} />
+            ))}
+            {ahead.map((release) => (
+              <ReleaseCard key={release.version} release={release} />
             ))}
           </ol>
-          {earlier.length > 0 && (
-            <details className="mt-6 text-sm">
-              <summary className="cursor-pointer text-text-light hover:text-text">Earlier releases</summary>
-              <ul className="mt-2 space-y-1.5">
-                {[...earlier].reverse().map((release) => (
-                  <li key={release.version}>
-                    <External href={milestoneUrl(release.milestone)}>
-                      v{release.version} {release.name}
-                    </External>
-                    <span className="text-text-light">: {release.goal}</span>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
         </section>
 
         <section aria-labelledby="involved" className="mt-10 text-sm text-text">
