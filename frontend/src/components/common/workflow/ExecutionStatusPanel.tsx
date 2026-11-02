@@ -19,6 +19,8 @@ import {
 import { useState } from "react";
 import { nodeIdForProcess } from "../../../execution/nodeRuns";
 import RunPerformance, { RunReportButtons } from "./RunPerformance";
+import StageProgress from "./StageProgress";
+import type { RunStage } from "../../../execution/runStages";
 import { useFeature } from "../../../settings/useFeatures";
 import RunResultsList from "./RunResultsList";
 import RunHistory, { RunLog } from "./RunHistory";
@@ -95,6 +97,8 @@ interface ExecutionStatusPanelProps {
   /** The canvas step that failed, and how to show it. */
   failedStepLabel?: string;
   onShowFailedStep?: () => void;
+  /** Every step of the run, done, running or waiting (the bar by step). */
+  stages?: RunStage[];
 }
 
 export interface RunStep {
@@ -169,6 +173,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   failure,
   failedStepLabel,
   onShowFailedStep,
+  stages = [],
 }) => {
   const [maximized, setMaximized] = useState(false);
   // Global Settings → Features can switch the Performance tab off.
@@ -562,6 +567,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                   </p>
                 )}
               </div>
+
+              <StageProgress stages={stages} isRunning={status.isRunning} />
 
               {/* Time Information */}
               <div className="flex justify-between text-xs text-gray-800">

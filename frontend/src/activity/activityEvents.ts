@@ -39,6 +39,10 @@ export const ACTIVITY_TYPES = {
   "glossary.opened": "A glossary explanation was opened",
   /** `nodeId`. */
   "code.opened": "A node's Code tab was opened",
+  /** `nodeId` (a canvas node) or `step` (a step inside), `depth`. */
+  "nested.opened": "The steps inside a subworkflow or pipeline were opened",
+  /** `shown`. */
+  "minimap.toggled": "The minimap was shown or hidden",
   undo: "Undo",
   redo: "Redo",
   /** `format` (nextflow, json). */

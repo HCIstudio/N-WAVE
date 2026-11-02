@@ -20,6 +20,8 @@ import type {
 } from "@xyflow/react";
 
 import CustomControls, { type HistoryControls } from "./CustomControls";
+import CanvasMinimap from "./CanvasMinimap";
+import { logActivity } from "../../activity/activityLog";
 import CustomEdge from "./CustomEdge";
 import BaseNode from "../nodes/BaseNode";
 import NoteNode from "../nodes/note/NoteNode";
@@ -64,7 +66,18 @@ interface CanvasProps {
   history?: HistoryControls;
   /** Opens the keyboard shortcuts overview. */
   onShowShortcuts?: () => void;
+  /** Zooms to the step that failed in the last run; none: nothing failed. */
+  onZoomToFailed?: () => void;
 }
+
+const MINIMAP_KEY = "nwave-canvas-minimap";
+const readMinimap = (): boolean => {
+  try {
+    return localStorage.getItem(MINIMAP_KEY) === "on";
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Fits the view once the canvas's first nodes all have their size. React
@@ -97,9 +110,22 @@ const Canvas: FC<CanvasProps> = ({
   onConnectEnd,
   history,
   onShowShortcuts,
+  onZoomToFailed,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
+  // The minimap stays as chosen in this browser.
+  const [minimap, setMinimap] = React.useState(readMinimap);
+  const toggleMinimap = () => {
+    const shown = !minimap;
+    setMinimap(shown);
+    logActivity("minimap.toggled", { shown });
+    try {
+      localStorage.setItem(MINIMAP_KEY, shown ? "on" : "off");
+    } catch {
+      // Not kept; still toggled for now.
+    }
+  };
 
   return (
     <div className="flex-grow h-full" ref={reactFlowWrapper}>
@@ -124,7 +150,13 @@ const Canvas: FC<CanvasProps> = ({
         proOptions={{ hideAttribution: true }}
       >
         <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
-        <CustomControls history={history} onShowShortcuts={onShowShortcuts} />
+        <CustomControls
+          history={history}
+          onShowShortcuts={onShowShortcuts}
+          minimap={{ shown: minimap, toggle: toggleMinimap }}
+          onZoomToFailed={onZoomToFailed}
+        />
+        {minimap && <CanvasMinimap />}
       </ReactFlow>
     </div>
   );

@@ -10,12 +10,14 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
-import { AlertTriangle, XCircle } from "lucide-react";
+import { AlertTriangle, Layers, XCircle } from "lucide-react";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
 import { acceptsManyConnections } from "../../registry/portArity";
 import { useFeature } from "../../settings/useFeatures";
+import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
+import { useOpenNestedView } from "../../workflows/nested/NestedViewContext";
 import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
 import type { FileEncoding } from "../../utils/fileContent";
@@ -116,6 +118,7 @@ const BaseNode = ({
   );
   const { getNode } = useReactFlow();
   const hintsOn = useFeature("connectionHints");
+  const openNested = useOpenNestedView();
   const fitOf = (portName: string): { fits: boolean; message?: string } | null => {
     if (!dragFrom || !hintsOn) return null;
     const [fromId, fromHandle = ""] = dragFrom.split("\n");
@@ -385,6 +388,23 @@ const BaseNode = ({
                   ? "Reused from cache"
                   : "Results ready"}
         </output>
+      )}
+
+      {/* Subworkflows and pipelines: the steps inside. */}
+      {openNested && nestedEntryOf({ type, data }, "") && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            openNested(id);
+          }}
+          onDoubleClick={(event) => event.stopPropagation()}
+          aria-label={`Show the steps inside “${data.label || type}”`}
+          title="Show the steps inside"
+          className="nodrag absolute bottom-1 right-1 rounded p-0.5 text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+        >
+          <Layers className="h-3.5 w-3.5" aria-hidden />
+        </button>
       )}
 
       {/* Render children if they exist */}

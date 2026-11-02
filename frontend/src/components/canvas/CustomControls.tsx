@@ -2,7 +2,7 @@ import type React from "react";
 import { memo } from "react";
 import { useReactFlow } from "@xyflow/react";
 import { useFeature } from "../../settings/useFeatures";
-import { CircleHelp, Keyboard, Maximize, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { CircleHelp, Crosshair, Keyboard, Map as MapIcon, Maximize, Redo2, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 
 export interface HistoryControls {
   canUndo: boolean;
@@ -17,7 +17,11 @@ const buttonClass =
 const CustomControls: React.FC<{
   history?: HistoryControls;
   onShowShortcuts?: () => void;
-}> = ({ history, onShowShortcuts }) => {
+  /** The minimap's toggle. */
+  minimap?: { shown: boolean; toggle: () => void };
+  /** Zooms to the step that failed; none: nothing failed in the last run. */
+  onZoomToFailed?: () => void;
+}> = ({ history, onShowShortcuts, minimap, onZoomToFailed }) => {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const glossaryOn = useFeature("glossary");
 
@@ -30,7 +34,7 @@ const CustomControls: React.FC<{
         type="button"
         onClick={() => fitView()}
         aria-label="Fit view"
-        title="Fit view"
+        title="Zoom to fit the whole workflow"
         className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
       >
         <Maximize size={16} />
@@ -53,6 +57,29 @@ const CustomControls: React.FC<{
       >
         <ZoomIn size={16} />
       </button>
+      {minimap && (
+        <button
+          type="button"
+          onClick={minimap.toggle}
+          aria-label="Minimap"
+          aria-pressed={minimap.shown}
+          title={minimap.shown ? "Hide the minimap" : "Show the minimap"}
+          className={`${buttonClass} ${minimap.shown ? "!bg-accent" : ""}`}
+        >
+          <MapIcon size={16} />
+        </button>
+      )}
+      {onZoomToFailed && (
+        <button
+          type="button"
+          onClick={onZoomToFailed}
+          aria-label="Zoom to the failing step"
+          title="Zoom to the step that failed"
+          className={`${buttonClass} !border-red-400 !text-red-600`}
+        >
+          <Crosshair size={16} />
+        </button>
+      )}
       {history && (
         <>
           <button

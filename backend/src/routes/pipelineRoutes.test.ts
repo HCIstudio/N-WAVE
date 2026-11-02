@@ -112,6 +112,37 @@ describe("GET /api/pipelines/schema", () => {
   });
 });
 
+describe("GET /api/pipelines/workflow-file", () => {
+  it("reads a workflow file of a release once and caches it", async () => {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const response = await request(app)
+        .get("/api/pipelines/workflow-file")
+        .query({ name: "rnaseq", version: "3.27.0", path: "workflows/rnaseq/main.nf" })
+        .expect(200);
+      expect(response.body).toMatchObject({ name: "rnaseq", path: "workflows/rnaseq/main.nf" });
+      expect(typeof response.body.source).toBe("string");
+    }
+    expect(githubRequests).toEqual([
+      "https://raw.githubusercontent.com/nf-core/rnaseq/3.27.0/workflows/rnaseq/main.nf",
+    ]);
+  });
+
+  it("only reads the pipeline's own workflow files", async () => {
+    for (const file of ["nextflow.config", "../main.nf", "workflows/../../x.nf", "modules/local/x/main.nf", "/etc/passwd"]) {
+      await request(app)
+        .get("/api/pipelines/workflow-file")
+        .query({ name: "rnaseq", version: "3.27.0", path: file })
+        .expect(400);
+    }
+    const missing = await request(app)
+      .get("/api/pipelines/workflow-file")
+      .query({ name: "nope", version: "1.0.0", path: "main.nf" })
+      .expect(404);
+    expect(missing.body.message).toContain("nf-core/nope 1.0.0 has no main.nf");
+    expect(githubRequests).toHaveLength(1);
+  });
+});
+
 describe("GET /api/pipelines", () => {
   it("lists the pipelines with their releases, newest first", async () => {
     const response = await request(app).get("/api/pipelines").expect(200);

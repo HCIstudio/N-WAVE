@@ -130,6 +130,8 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `run.ended` | A run finished, failed or was stopped | `runId`, `outcome`, `durationMs`, `reason` |
 | `run.results` | A finished run's results were read | `runId`, `steps` (`name`, `status`, `durationMs`), `files` (result paths) |
 | `failure.explained` | A failure explanation was shown | `kind`, `title`, `process` |
+| `nested.opened` | The steps inside a subworkflow or pipeline node were opened | `nodeId` (from the canvas) or `step` (from inside), `depth` |
+| `minimap.toggled` | The minimap was shown or hidden | `shown` |
 | `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
 | `undo`, `redo` | Undo or redo | |
 | `workflow.imported`, `workflow.exported` | A workflow was imported (`format`) or exported (`kind`: script or project) | |

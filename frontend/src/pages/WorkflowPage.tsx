@@ -52,6 +52,12 @@ import { useWorkflowCheck } from "./workflow/useWorkflowCheck";
 import { useWorkflowRun } from "./workflow/useWorkflowRun";
 import { useRunResume } from "./workflow/useRunResume";
 import { useCanvasActivity } from "./workflow/useCanvasActivity";
+import { logActivity } from "../activity/activityLog";
+import NestedView from "../components/canvas/NestedView";
+import { nestedEntryOf } from "../workflows/nested/nestedEntry";
+import { NestedViewContext } from "../workflows/nested/NestedViewContext";
+import { getProcessNameForNode } from "../generators/core/generateNextflowScript";
+import { runStages } from "../execution/runStages";
 import { applyRunDefaults } from "../settings/effectiveSettings";
 import { useRunDefaults } from "../settings/useRunDefaults";
 import { useFeature } from "../settings/useFeatures";
@@ -226,6 +232,13 @@ const WorkflowPageContent: React.FC = () => {
     [setNodes, fitView]
   );
   const [showShortcuts, setShowShortcuts] = useState(false);
+  // The node whose steps inside are open (a subworkflow or pipeline).
+  const [nestedNodeId, setNestedNodeId] = useState<string | null>(null);
+  const openNested = useCallback((nodeId: string) => {
+    logActivity("nested.opened", { nodeId, depth: 0 });
+    setNestedNodeId(nodeId);
+  }, []);
+  const closeNested = useCallback(() => setNestedNodeId(null), []);
   // The save conflict dialog can be closed to keep looking; saving opens it
   // again, since nothing is saved until a version is picked.
   const [conflictDismissed, setConflictDismissed] = useState(false);
@@ -302,6 +315,12 @@ const WorkflowPageContent: React.FC = () => {
       )
     : undefined;
   const failedStepLabel = failedNodeId ? nodeLabels[failedNodeId] : undefined;
+  // Zoom to the failing step: the one the log names, else the first that failed.
+  const failingNodeId =
+    failedNodeId ??
+    (isRunning ? undefined : Object.entries(runTasks.nodeRuns).find(([, nodeRun]) => nodeRun.status === "failed")?.[0]);
+  const nestedNode = nestedNodeId ? nodes.find((node) => node.id === nestedNodeId) : undefined;
+  const nestedEntry = nestedNode ? nestedEntryOf(nestedNode, getProcessNameForNode(nestedNode)) : null;
   const showFailedStep = failedNodeId ? () => showNode(failedNodeId) : undefined;
 
   const handleProcessSelect = useCallback(
@@ -436,6 +455,7 @@ const WorkflowPageContent: React.FC = () => {
 
   return (
     <RunTasksContext.Provider value={runTasks}>
+      <NestedViewContext.Provider value={openNested}>
       <NodeProblemsContext.Provider value={check.nodeProblems}>
       <ConnectionHintsContext.Provider value={edgeHints}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
@@ -472,9 +492,20 @@ const WorkflowPageContent: React.FC = () => {
               onConnectEnd={onConnectEnd}
               history={history}
               onShowShortcuts={() => setShowShortcuts(true)}
+              onZoomToFailed={failingNodeId ? () => showNode(failingNodeId) : undefined}
             />
           </ErrorBoundary>
           <WorkflowTutorial tutorial={tutorial} />
+          {nestedNode && nestedEntry && (
+            <NestedView
+              title={String(nestedNode.data.label || nestedNode.type)}
+              entry={nestedEntry}
+              workflowName={workflowName}
+              tasks={runTasks.nodeRuns[nestedNode.id]?.tasks ?? []}
+              isRunning={isRunning}
+              onClose={closeNested}
+            />
+          )}
           <CanvasNotices
             isRunning={isRunning}
             missingNfCoreComponents={missingNfCoreComponents}
@@ -642,6 +673,16 @@ const WorkflowPageContent: React.FC = () => {
           failure={failure}
           failedStepLabel={failedStepLabel}
           onShowFailedStep={showFailedStep}
+          stages={
+            run.lastRunId || isRunning
+              ? runStages({
+                  nodes,
+                  edges,
+                  nodeRuns: runTasks.nodeRuns,
+                  consoleProcesses: run.executionStatus.status.totalProcesses,
+                })
+              : []
+          }
           // In the order their first task started.
           steps={Object.entries(runTasks.nodeRuns).map(([id, nodeRun]) => ({
             id,
@@ -667,6 +708,7 @@ const WorkflowPageContent: React.FC = () => {
       </div>
       </ConnectionHintsContext.Provider>
       </NodeProblemsContext.Provider>
+      </NestedViewContext.Provider>
     </RunTasksContext.Provider>
   );
 };

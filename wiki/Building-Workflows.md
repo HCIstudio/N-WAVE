@@ -32,6 +32,25 @@ Node colors show their kind: **inputs** light blue, **nf-core steps** green, **o
 grey (the legend is on the home page and on the Help page, which the canvas's **?** button
 opens).
 
+## Finding your way on a large canvas
+
+- **Fit view** (the first button at the bottom left) zooms to fit the whole workflow; the
+  buttons next to it zoom in and out.
+- **Minimap** shows a small map of the whole canvas at the bottom right, colored like the
+  legend (inputs, nf-core steps, other steps). During and after a run it colors the steps by
+  what they did: running, done, failed, reused from the cache, or not run yet. Drag the map or
+  click it to move the canvas. It stays on or off in this browser.
+- **Steps inside**: an nf-core subworkflow node and a Pipeline node have a small
+  **layers** button at their bottom right. It opens the steps inside as a read-only
+  graph, read from the workflow's `main.nf` (in nf-core/modules for a subworkflow, in the
+  pipeline's repository at its version for a pipeline). Steps that are subworkflows themselves
+  open in turn; the breadcrumb at the top leads back out, **Escape** closes it. During and after
+  a run, each step shows what it did and how many of its tasks are done. Connections follow the
+  channels the workflow passes from one step to the next; ones N-WAVE can't follow (built in a
+  function, for example) are left out.
+- **Zoom to the failing step** appears next to them after a run failed and goes to the step
+  that failed.
+
 ## Connecting
 
 Drag from an output (the dots on a node's right) to an input (on the left).
