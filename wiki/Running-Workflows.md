@@ -15,7 +15,10 @@ how the run ended, instead of starting it again.
   each step by its name on the canvas, and the run's key results (such as the MultiQC report)
   when it ends. A whole pipeline or a subworkflow lists its own steps under it. The bar counts
   finished steps, not time: steps differ a lot in how long they take, and until Nextflow says
-  how many steps there are, the bar only shows that the run is going.
+  how many steps there are, the bar only shows that the run is going. Below it, **Steps** shows
+  one segment per step: done, running, failed, reused or still waiting (hover a segment for its
+  name and how many of its tasks finished). For a pipeline, its processes, with as many waiting
+  as Nextflow lists.
 - **Performance**: once the run has ended (also when it failed), **Execution report** and
   **Timeline** open Nextflow's own reports in a new tab. Below them: how long the run took, its
   CPU hours, and how many tasks were cached, retried or failed. A table lists the steps, slowest

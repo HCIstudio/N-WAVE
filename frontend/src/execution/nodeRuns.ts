@@ -31,8 +31,8 @@ export interface ProcessRunSummary
   label: string;
 }
 
-/** Counts and the overall status of a set of tasks. */
-const summarizeTasks = (tasks: RunTask[]) => {
+/** Counts and the overall status of a set of tasks (also of a nested step). */
+export const summarizeTasks = (tasks: RunTask[]) => {
   const failed = tasks.filter((task) => task.status === "failed").length;
   const ignored = tasks.filter((task) => task.status === "ignored").length;
   const running = tasks.filter((task) => task.status === "running").length;

@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { NfCoreLibraryError } from "../nfcore/library";
 import { getPipelineCatalog } from "../pipelines/catalog";
 import { getPipelineSchema } from "../pipelines/schema";
+import { getPipelineWorkflowFile } from "../pipelines/workflowFiles";
 import { getErrorMessage } from "../utils/errors";
 
 /** `{ name, version, schema }`: a pipeline's nextflow_schema.json. */
@@ -23,6 +24,21 @@ export const getPipelineSchemaHandler = async (
       message: "Failed to load the pipeline schema",
       error: getErrorMessage(error),
     });
+  }
+};
+
+/** `{ name, version, path, source }`: a workflow file of a pipeline (main.nf, workflows/, subworkflows/). */
+export const getPipelineWorkflowFileHandler = async (req: Request, res: Response): Promise<void> => {
+  const query = (key: string) => (typeof req.query[key] === "string" ? (req.query[key] as string) : "");
+  const [name, version, file] = [query("name"), query("version"), query("path")];
+  try {
+    res.json({ name, version, path: file, source: await getPipelineWorkflowFile(name, version, file) });
+  } catch (error: unknown) {
+    if (error instanceof NfCoreLibraryError) {
+      res.status(error.status).json({ message: error.message });
+      return;
+    }
+    res.status(502).json({ message: "Failed to load the pipeline's workflow", error: getErrorMessage(error) });
   }
 };
 

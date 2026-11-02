@@ -41,6 +41,7 @@ in `src/validation/schemas.ts`; invalid requests get `400` with `{ message, erro
 | `GET /nfcore/modules/source?id=`, `/nfcore/modules/files?id=` | A component's `main.nf`, or all its files (installed copy, else GitHub at the catalog commit). |
 | `GET/POST /custom-nodes`, `DELETE /custom-nodes/:id` | Custom nodes and node packs. |
 | `GET /pipelines/schema` | An nf-core pipeline's parameter schema. |
+| `GET /pipelines/workflow-file?name=&version=&path=` | A pipeline's `main.nf`, or a file under `workflows/` or `subworkflows/`, for the steps inside a Pipeline node (cached per release). |
 | `GET/POST/DELETE /activity`, `GET /activity/summary`, `PUT /activity/settings` | Verbose mode's activity log: record events (only while it's on), read them by time (`from`, `to`) or marked test (`test`), clear it, and how long to keep them. |
 | `GET/PUT /settings`, `PUT /settings/features` | Global Settings: the run defaults, and the feature switches with the ones the installation fixes (`NWAVE_FEATURES`, `NWAVE_FEATURES_FILE`; changing those gets `409`). |
 

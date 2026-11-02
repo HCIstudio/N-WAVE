@@ -92,7 +92,8 @@ describe("VerboseSettings", () => {
   it("shows what is recorded and keeps events for the chosen time", async () => {
     const user = userEvent.setup();
     render(<VerboseSettings />);
-    expect((await screen.findByTestId("activity-summary")).textContent).toMatch(/^5 events \(2\.0 KB\), from /);
+    // The summary shows "Reading…" until N-WAVE answers.
+    expect(await screen.findByText(/^5 events \(2\.0 KB\), from /)).toBe(screen.getByTestId("activity-summary"));
     expect(screen.getByText(/File contents and parameter values are\s+not recorded/)).toBeTruthy();
     await user.selectOptions(screen.getByLabelText("Keep events for"), "30");
     expect(put).toHaveBeenCalledWith("/activity/settings", { activityLog: { retentionDays: 30 } });

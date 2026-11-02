@@ -90,6 +90,22 @@ const fetchPipelineSchema = async (
   return response.json();
 };
 
+/** A pipeline's workflow file (main.nf, workflows/, subworkflows/) from GitHub. */
+const fetchPipelineWorkflowFile = async (name: string, version: string, file: string): Promise<string> => {
+  if (
+    !/^[a-z0-9][a-z0-9_-]*$/.test(name) ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(version) ||
+    !/^(main\.nf|(workflows|subworkflows)\/[A-Za-z0-9_][A-Za-z0-9_./-]*\.nf)$/.test(file) ||
+    file.split("/").includes("..")
+  ) {
+    throw new DemoStoreError(400, "Invalid pipeline file");
+  }
+  const response = await fetch(`https://raw.githubusercontent.com/nf-core/${name}/${version}/${file}`);
+  if (response.status === 404) throw new DemoStoreError(404, `nf-core/${name} ${version} has no ${file}.`);
+  if (!response.ok) throw new Error(`Could not load the pipeline's workflow (HTTP ${response.status}).`);
+  return response.text();
+};
+
 /** runStore for async handlers: store errors become axios-shaped errors. */
 const runAsync = <T>(fn: () => Promise<T>): Promise<DemoResponse<T>> =>
   fn().then(
@@ -190,6 +206,20 @@ const demoApi = {
         }
         return { pipelines: parsePipelinesJson(await response.json()) } as T;
       });
+    }
+    if (path === "/pipelines/workflow-file") {
+      const query = new URL(url, "http://demo").searchParams;
+      return runAsync(
+        async () =>
+          ({
+            path: query.get("path"),
+            source: await fetchPipelineWorkflowFile(
+              query.get("name") ?? "",
+              query.get("version") ?? "",
+              query.get("path") ?? "",
+            ),
+          }) as T,
+      );
     }
     if (path === "/pipelines/schema") {
       const query = new URL(url, "http://demo").searchParams;
