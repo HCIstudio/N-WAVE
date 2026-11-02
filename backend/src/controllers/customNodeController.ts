@@ -264,7 +264,15 @@ const loadRegistry = (): CustomNodeRegistry => {
     .readdirSync(nodeDirectory, { withFileTypes: true })
     .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
     .map((entry) => path.join(nodeDirectory, entry.name))
-    .map((nodePath): unknown => JSON.parse(fs.readFileSync(nodePath, "utf8")))
+    // One damaged file (cut short, edited by hand) mustn't hide every other node.
+    .map((nodePath): unknown => {
+      try {
+        return JSON.parse(fs.readFileSync(nodePath, "utf8"));
+      } catch (error: unknown) {
+        console.warn(`Skipping custom node ${nodePath}: ${getErrorMessage(error)}`);
+        return undefined;
+      }
+    })
     .filter((node): node is JsonObject => asObject(node) !== undefined)
     .sort((a, b) =>
       String(a.label ?? a.id ?? "").localeCompare(String(b.label ?? b.id ?? ""))

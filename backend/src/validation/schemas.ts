@@ -129,14 +129,8 @@ export type PipelineRunRequest = z.infer<typeof pipelineRunSchema>;
 
 export const executeRequestSchema = z
   .object({
-    script: z.string().max(MAX_SCRIPT_LENGTH).optional(),
     nextflowScript: z.string().max(MAX_SCRIPT_LENGTH).optional(),
     pipeline: pipelineRunSchema.optional(),
-    inputs: z
-      .array(z.object({ name: z.string().min(1).max(255), value: z.unknown() }))
-      .max(1_000)
-      .optional(),
-    nodeId: z.string().max(255).optional(),
     useDocker: z.boolean().optional(),
     containerImage: dockerImage.or(z.literal("")).optional(),
     outputDirectory: z.string().max(4_096).optional(),
@@ -157,8 +151,8 @@ export const executeRequestSchema = z
     fileEncoding: z.record(inputFileName, z.literal("base64")).optional(),
     executionSettings: executionSettingsSchema.optional(),
   })
-  .refine((body) => Boolean(body.script || body.nextflowScript || body.pipeline), {
-    message: "Script, nextflowScript or pipeline is required",
+  .refine((body) => Boolean(body.nextflowScript || body.pipeline), {
+    message: "nextflowScript or pipeline is required",
   });
 export type ExecuteRequestBody = z.infer<typeof executeRequestSchema>;
 

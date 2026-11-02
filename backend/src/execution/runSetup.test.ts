@@ -17,7 +17,6 @@ import {
   writeInputFiles,
 } from "./runDirectory";
 import { describeRunExit } from "./runExit";
-import { fillPlaceholders, rememberInputs } from "./singleProcess";
 
 const limits = { cpus: 2, memory: "4.GB" } as never;
 
@@ -202,19 +201,6 @@ describe("Nextflow launcher", () => {
     expect(hasLocal).not.toHaveBeenCalled();
     expect(await shouldUseLocalNextflow("auto", hasLocal)).toBe(true);
     expect(await shouldUseLocalNextflow("auto", async () => false)).toBe(false);
-  });
-});
-
-describe("single process placeholders", () => {
-  it("fills in a node's inputs, quoted", () => {
-    rememberInputs("n1", [
-      { name: "name", value: "O'Brien" },
-      { name: "count", value: 3 },
-    ]);
-    expect(fillPlaceholders("echo $name $count $other", "n1")).toBe(
-      "echo 'O'\\''Brien' '3' $other"
-    );
-    expect(fillPlaceholders("echo $name", "unknown")).toBe("echo $name");
   });
 });
 

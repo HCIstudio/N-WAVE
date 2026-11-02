@@ -17,6 +17,7 @@ export const WIKI_PAGES = {
   "Node-Packs": "Node packs",
   "Running-Workflows": "Running workflows",
   "Run-Profiles": "Run profiles",
+  Settings: "Global Settings",
   "Exporting-Projects": "Exporting projects",
   Troubleshooting: "Troubleshooting",
   "How-N-WAVE-Explains-Things": "How N-WAVE explains things",

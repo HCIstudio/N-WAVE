@@ -11,7 +11,6 @@ import {
 } from "../execution/resources";
 import { getLiveRun } from "../execution/runRegistry";
 import { runNextflowWorkflow } from "../execution/runWorkflow";
-import { executeSingleProcess, rememberInputs } from "../execution/singleProcess";
 import type { ExecutionSettings } from "../execution/types";
 import { getErrorMessage } from "../utils/errors";
 import { cancelExecutionSchema, executeRequestSchema } from "../validation/schemas";
@@ -35,9 +34,6 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
   if (!body) return;
 
   const {
-    script,
-    inputs,
-    nodeId,
     useDocker = false,
     containerImage = "ubuntu:22.04",
     outputDirectory = "results",
@@ -52,7 +48,6 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
   } = body;
 
   console.log("Execute request received:", {
-    hasScript: !!script,
     hasNextflowScript: !!nextflowScript,
     useDocker,
     containerImage,
@@ -116,11 +111,6 @@ export const executeProcess = async (req: Request, res: Response): Promise<void>
     );
     return;
   }
-
-  // Otherwise a single process (legacy). The schema guarantees `script` is
-  // present when `nextflowScript` is not.
-  if (inputs && inputs.length > 0 && nodeId) rememberInputs(nodeId, inputs);
-  executeSingleProcess(script ?? "", nodeId ?? "", useDocker, containerImage, res);
 };
 
 export const cancelExecution = (req: Request, res: Response): void => {

@@ -37,8 +37,13 @@ each step produced.
   [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)).
 - **Export** a runnable Nextflow project that works without N-WAVE
   ([Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects)).
-- **Understand failures**: common errors are explained in plain language
-  ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting)).
+- **Understand failures**: common errors are explained in plain language, with the log lines
+  they are based on and how sure they are
+  ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting),
+  [How N-WAVE explains things](https://github.com/HCIstudio/N-WAVE/wiki/How-N-WAVE-Explains-Things)).
+- **Make it yours**: switch N-WAVE's aids on and off, and record what happens for bug reports
+  and usability tests in verbose mode
+  ([Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)).
 
 ## Running N-WAVE
 

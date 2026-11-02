@@ -41,7 +41,7 @@ export interface TodayFeature {
 }
 
 /** The minor version this file was last brought up to date for. */
-export const ROADMAP_UPDATED_FOR = "1.4";
+export const ROADMAP_UPDATED_FOR = "1.5";
 
 /** The issue that plans the releases below, with their order and dependencies. */
 export const ROADMAP_ISSUE = 189;
@@ -65,13 +65,18 @@ export const TODAY: TodayFeature[] = [
   },
   {
     title: "Run and follow every step",
-    text: "Run with Docker or on a SLURM cluster, follow each step live, and resume failed runs.",
+    text: "Run with Docker or on a SLURM cluster, follow each step live (inside subworkflows and pipelines too), and resume failed runs.",
     wiki: "Running-Workflows",
   },
   {
     title: "Understand failures",
-    text: "Common errors are explained in plain language, next to the log and the failing step.",
+    text: "Common errors are explained in plain language, next to the log and the failing step, with the log lines they are based on and how sure they are.",
     wiki: "Troubleshooting",
+  },
+  {
+    title: "Make it yours, and study it",
+    text: "Switch N-WAVE's aids on and off, and record what happens for bug reports and usability tests.",
+    wiki: "Settings",
   },
   {
     title: "Take it anywhere",
@@ -125,7 +130,7 @@ export const RELEASES: RoadmapRelease[] = [
   {
     version: "1.5",
     name: "Study Ready",
-    status: "in-progress",
+    status: "released",
     milestone: 8,
     goal: "Switch N-WAVE's help features on and off, record what happens for debugging and usability tests, keep an overview of large workflows, and see what each failure explanation is based on.",
     why: "So we can learn which of N-WAVE's aids actually help, and so large workflows stay readable.",

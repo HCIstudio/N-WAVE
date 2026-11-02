@@ -19,6 +19,8 @@ const FLUSH_MS = 2_000;
 const FLUSH_COUNT = 50;
 /** Events kept while N-WAVE can't be reached. */
 const MAX_QUEUED = 2_000;
+/** Events per request: the backend takes at most 1,000 at once. */
+const MAX_BATCH = 500;
 
 const randomId = (): string =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -143,17 +145,20 @@ export const flushActivity = async (): Promise<void> => {
     clearTimeout(timer);
     timer = null;
   }
-  if (queue.length === 0) return;
-  const batch = queue;
-  queue = [];
-  try {
-    await recordActivity(batch);
-  } catch {
-    queue = [...batch, ...queue].slice(-MAX_QUEUED);
-    timer ??= setTimeout(() => {
-      timer = null;
-      void flushActivity();
-    }, FLUSH_MS * 5);
+  // In batches the backend accepts: after a long outage the queue is longer than one.
+  while (queue.length > 0) {
+    const batch = queue.slice(0, MAX_BATCH);
+    queue = queue.slice(MAX_BATCH);
+    try {
+      await recordActivity(batch);
+    } catch {
+      queue = [...batch, ...queue].slice(-MAX_QUEUED);
+      timer ??= setTimeout(() => {
+        timer = null;
+        void flushActivity();
+      }, FLUSH_MS * 5);
+      return;
+    }
   }
 };
 
@@ -203,11 +208,16 @@ if (typeof window !== "undefined") {
       return;
     }
     const base = import.meta.env.VITE_API_BASE_URL || "/api";
-    const sent = navigator.sendBeacon(
-      `${base}/activity`,
-      new Blob([JSON.stringify({ events: queue })], { type: "application/json" }),
-    );
-    if (sent) queue = [];
+    while (queue.length > 0) {
+      const batch = queue.slice(0, MAX_BATCH);
+      const sent = navigator.sendBeacon(
+        `${base}/activity`,
+        new Blob([JSON.stringify({ events: batch })], { type: "application/json" }),
+      );
+      // Too much for a beacon: the rest stays for the next visit's flush.
+      if (!sent) break;
+      queue = queue.slice(MAX_BATCH);
+    }
   });
 }
 

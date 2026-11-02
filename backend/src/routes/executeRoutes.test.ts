@@ -10,12 +10,18 @@ import { finishRun, recordRun, RUN_LOG_FILE } from "../runs/runIndex";
 const app = createApp();
 
 describe("POST /api/execute/execute validation", () => {
-  it("requires a script", async () => {
+  it("requires a Nextflow script or a pipeline", async () => {
     const response = await request(app)
       .post("/api/execute/execute")
       .send({ workflowName: "x" })
       .expect(400);
-    expect(response.body.error).toBe("Script, nextflowScript or pipeline is required");
+    expect(response.body.error).toBe("nextflowScript or pipeline is required");
+    // The old single-shell-script run is gone.
+    const legacy = await request(app)
+      .post("/api/execute/execute")
+      .send({ script: "echo hi", useDocker: true })
+      .expect(400);
+    expect(legacy.body.error).toBe("nextflowScript or pipeline is required");
   });
 
   it.each(["../escape.txt", "dir/file.txt", "..", "a\\b.txt"])(
