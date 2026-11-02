@@ -82,13 +82,16 @@ describe("ExecutionStatusPanel", () => {
 
   it("explains a failed run above its steps and its log", () => {
     const failure = {
-  kind: "command-not-found" as const,
-  title: "A program the step needs isn't installed",
-  explanation: "The step runs “fastqc”, which isn't installed where it ran (exit status 127).",
-  fix: "Turn on Docker in the execution settings.",
-  docs: "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#command-not-found",
-  process: "NFCORE_FASTQC_QC",
-};
+      kind: "command-not-found" as const,
+      title: "A program the step needs isn't installed",
+      explanation: "The step runs “fastqc”, which isn't installed where it ran (exit status 127).",
+      fix: "Turn on Docker in the execution settings.",
+      docs: "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#command-not-found",
+      process: "NFCORE_FASTQC_QC",
+      certainty: "certain" as const,
+      alternatives: [],
+      evidence: [{ text: "bash: fastqc: command not found", line: 3 }],
+    };
     for (const tab of ["steps", "log"] as const) {
       render({ status: failed, tab, output: "ERROR ~ boom", failure, failedStepLabel: "FastQC" });
       const card = container.querySelector('[aria-label="Why the run failed"]');
@@ -107,6 +110,37 @@ describe("ExecutionStatusPanel", () => {
     } finally {
       resetFeatures();
     }
+  });
+
+  it("says how sure an explanation is, what it went by, and opens the log at that line", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    const failure = {
+      kind: "missing-input" as const,
+      title: "An input file is missing",
+      explanation: "“reads.fq” isn't where the workflow looks for it.",
+      fix: "Upload it again.",
+      docs: "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#missing-input",
+      certainty: "likely" as const,
+      alternatives: ["The path is relative to another folder."],
+      evidence: [{ text: "ERROR ~ No such file or directory: reads.fq", line: 1 }],
+    };
+    const onShowLogLine = vi.fn();
+    const output = "N E X T F L O W\nERROR ~ No such file or directory: reads.fq\n";
+    render({ status: failed, tab: "steps", output, failure, onShowLogLine });
+    const card = container.querySelector('[aria-label="Why the run failed"]') as HTMLElement;
+    expect(card.textContent).toContain("Likely cause");
+    expect(card.querySelector('[aria-label="Other possible causes"]')?.textContent).toContain(
+      "The path is relative to another folder.",
+    );
+    expect(card.querySelector('a[href$="How-N-WAVE-Explains-Things#missing-input"]')).not.toBeNull();
+    act(() => (card.querySelector('[aria-label="Show line 2 in the log"]') as HTMLButtonElement).click());
+    expect(onShowLogLine).toHaveBeenCalledWith(1);
+
+    render({ status: failed, tab: "log", output, failure, logHighlight: { line: 1 } });
+    expect(container.querySelector('[role="log"] [aria-current="true"]')?.textContent).toContain(
+      "No such file or directory",
+    );
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled();
   });
 
   it("tells which steps were reused from the cache", () => {

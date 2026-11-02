@@ -130,7 +130,8 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `run.started` | A run started | `resume`, and the workflow's nodes and connections (a snapshot) |
 | `run.ended` | A run finished, failed or was stopped | `runId`, `outcome`, `durationMs`, `reason` |
 | `run.results` | A finished run's results were read | `runId`, `steps` (`name`, `status`, `durationMs`), `files` (result paths) |
-| `failure.explained` | A failure explanation was shown | `kind`, `title`, `process` |
+| `failure.explained` | A failure explanation was shown | `kind`, `title`, `certainty`, `process` |
+| `failure.feedback` | *Did this help?* was answered under a failure explanation | `kind`, `certainty`, `helpful` (`true` or `false`) |
 | `nested.opened` | The steps inside a subworkflow or pipeline node were opened | `nodeId` (from the canvas) or `step` (from inside), `depth` |
 | `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
 | `undo`, `redo` | Undo or redo | |

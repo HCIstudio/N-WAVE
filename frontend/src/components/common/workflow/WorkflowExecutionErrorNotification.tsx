@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import type { FailureExplanation } from "../../../execution/failureExplanations";
 import FailureExplanationCard from "./FailureExplanationCard";
+import { EXPLAINED, howExplainedUrl } from "../../../docs/links";
 
 interface ExecutionError {
   message: string;
@@ -37,6 +38,8 @@ interface WorkflowExecutionErrorNotificationProps {
   /** The canvas step that failed, and how to show it. */
   stepLabel?: string;
   onShowStep?: () => void;
+  /** Open the full log at a line the explanation went by. */
+  onShowEvidence?: (line: number) => void;
 }
 
 const WorkflowExecutionErrorNotification: React.FC<
@@ -51,6 +54,7 @@ const WorkflowExecutionErrorNotification: React.FC<
   explanation,
   stepLabel,
   onShowStep,
+  onShowEvidence,
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isSlideIn, setIsSlideIn] = useState(false);
@@ -232,6 +236,7 @@ const WorkflowExecutionErrorNotification: React.FC<
                   explanation={explanation}
                   stepLabel={stepLabel}
                   onShowStep={onShowStep}
+                  onShowEvidence={onShowEvidence}
                   tone="dark"
                 />
               )}
@@ -243,6 +248,17 @@ const WorkflowExecutionErrorNotification: React.FC<
                     <Lightbulb className="w-3 h-3 text-nextflow-green" />
                     <span>Suggested Fixes</span>
                   </h4>
+                  <p className="text-xs text-text-light">
+                    Guesses from words in the error message.{" "}
+                    <a
+                      href={howExplainedUrl(EXPLAINED.suggestedFixes)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-nextflow-green hover:underline"
+                    >
+                      How N-WAVE knows
+                    </a>
+                  </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {suggestions.slice(0, 4).map((suggestion) => (
                       <div

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -114,13 +114,13 @@ describe("VerboseSettings", () => {
   });
 
   it("copies the last minutes for a bug report", async () => {
-    const user = userEvent.setup();
-    // After setup, which puts in its own clipboard.
+    // A clipboard of its own (user-event would put in another), clicked once the page has loaded.
     const writeText = vi.fn(async (_text: string) => {});
     Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
     render(<VerboseSettings />);
-    await user.click(screen.getByRole("button", { name: "Copy for bug report" }));
-    await waitFor(() => expect(writeText).toHaveBeenCalled());
+    await screen.findByText(/^5 events/);
+    fireEvent.click(screen.getByRole("button", { name: "Copy for bug report" }));
+    expect(await screen.findByText(/Copied the last 10 minutes/, undefined, { timeout: 5000 })).toBeTruthy();
     expect(get).toHaveBeenCalledWith(expect.stringMatching(/^\/activity\?from=/));
     expect(writeText.mock.calls[0][0]).toContain("N-WAVE activity, last 10 minutes");
   });

@@ -45,6 +45,9 @@ const failure = {
   fix: "Turn on Docker in the execution settings.",
   docs: "https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting#command-not-found",
   process: "NFCORE_FASTQC_QC",
+  certainty: "certain" as const,
+  alternatives: [],
+  evidence: [{ text: "bash: fastqc: command not found", line: 3 }],
 };
 
 describe("recorded events", () => {
@@ -126,8 +129,17 @@ describe("recorded events", () => {
       </>,
     );
     expect(recorded("failure.explained").map((event) => event.data)).toEqual([
-      { kind: "command-not-found", title: failure.title, process: "NFCORE_FASTQC_QC" },
+      { kind: "command-not-found", title: failure.title, certainty: "certain", process: "NFCORE_FASTQC_QC" },
     ]);
+  });
+
+  it("failure.feedback: the answer to Did this help?", () => {
+    render(<FailureExplanationCard explanation={failure} />);
+    fireEvent.click(screen.getByRole("button", { name: "No" }));
+    expect(recorded("failure.feedback").map((event) => event.data)).toEqual([
+      { kind: "command-not-found", certainty: "certain", helpful: false },
+    ]);
+    expect(screen.getByRole("status").textContent).toContain("recorded");
   });
 
   it("workflow.exported: the script", () => {

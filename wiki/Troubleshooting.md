@@ -10,6 +10,11 @@ N-WAVE (home page → Help).
 
 ## Run failures
 
+When N-WAVE recognises why a run failed, it says so above the run's log, with the log lines it
+went by and how sure it is
+([how N-WAVE explains things](https://github.com/HCIstudio/N-WAVE/wiki/How-N-WAVE-Explains-Things#failure-explanations)).
+The sections below say what to do.
+
 ### Out of memory
 
 The step used more memory than it was given and was killed (exit status 137). Raise

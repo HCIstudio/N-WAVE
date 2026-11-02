@@ -134,7 +134,7 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "Feature switches in Global Settings", issue: 190, status: "released" },
       { title: "Verbose mode: log and export what happens in N-WAVE", issue: 191, status: "released" },
       { title: "Minimap, nested views and run progress by stage", issue: 192, status: "released" },
-      { title: "Failure explanations show their evidence and certainty", issue: 193 },
+      { title: "Failure explanations show their evidence and certainty", issue: 193, status: "released" },
     ],
   },
   {

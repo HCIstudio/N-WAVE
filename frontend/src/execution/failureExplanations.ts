@@ -1,9 +1,13 @@
 // Common reasons a run fails, recognised in its log and explained in plain
 // language with a fix and a link to the troubleshooting docs. The patterns
 // are matched against what Nextflow prints (and the backend's own notes),
-// first match wins, so more specific ones come first.
+// first match wins, so more specific ones come first. Each explanation says
+// what it is based on (the log lines it matched), how certain it is, and
+// for a likely one what else can cause the same (see the wiki's "How N-WAVE
+// explains things").
 
 import { wikiUrl } from "../docs/links";
+import { stripTerminalCodes } from "../utils/terminalCodes";
 export type FailureKind =
   | "resource-limits"
   | "out-of-memory"
@@ -18,17 +22,34 @@ export type FailureKind =
   | "missing-input"
   | "missing-output";
 
+/**
+ * "certain": the evidence means one thing (an exit status like 137, a
+ * message only this failure prints). "likely": a pattern other failures
+ * can print too; the explanation lists them.
+ */
+export type Certainty = "certain" | "likely";
+
+/** A line of the log an explanation is based on. */
+export interface Evidence {
+  text: string;
+  /** Its line in the log, from 0. */
+  line: number;
+}
+
 export interface FailureExplanation {
   kind: FailureKind;
   title: string;
   explanation: string;
   fix: string;
+  certainty: Certainty;
+  /** What else can cause the same (likely explanations). */
+  alternatives: string[];
   /** The troubleshooting section for it. */
   docs: string;
   /** The Nextflow process that failed, e.g. "NFCORE_FASTQC_QC". */
   process?: string;
-  /** The log line it was recognised by. */
-  evidence?: string;
+  /** The log lines it was recognised by: the match, and the task's exit status. */
+  evidence: Evidence[];
 }
 
 /** The wiki's troubleshooting page, where each kind of failure has a section. */
@@ -40,6 +61,10 @@ interface Pattern {
   docs: string;
   /** The line (or match) that shows this failure, or null. */
   find: (log: string) => string | null;
+  /** How certain the match makes it (some patterns are certain only in one of their forms). */
+  certainty: Certainty | ((evidence: string) => Certainty);
+  /** For a likely match: what else prints the same. */
+  alternatives?: string[];
   explain: (evidence: string, log: string) => { explanation: string; fix: string };
 }
 
@@ -50,6 +75,8 @@ const PATTERNS: Pattern[] = [
     kind: "resource-limits",
     title: "The run hit its resource limits",
     docs: "the-run-hit-its-resource-limits",
+    // N-WAVE's own diagnosis from the limits it gave the run.
+    certainty: "certain",
     // The backend's diagnosis, with the limits the run had.
     find: (log) => log.match(/^N-WAVE resource problem: (.+)$/m)?.[1]?.trim() ?? null,
     explain: (evidence) => ({
@@ -61,6 +88,11 @@ const PATTERNS: Pattern[] = [
     kind: "task-time-limit",
     title: "A step ran longer than its time limit",
     docs: "a-step-ran-longer-than-its-time-limit",
+    certainty: (evidence) => (/time limit/.test(evidence) ? "certain" : "likely"),
+    alternatives: [
+      "Docker was slow to stop or clean up the step's container, so Nextflow couldn't read how it ended.",
+      "The computer was under so much load that the step's container stopped answering.",
+    ],
     // Nextflow 26.04 can report the stopped task as "process hasn't exited"
     // (it asks for the exit code before the task is gone).
     find: (log) =>
@@ -80,6 +112,11 @@ const PATTERNS: Pattern[] = [
     kind: "out-of-memory",
     title: "A step ran out of memory",
     docs: "out-of-memory",
+    // Exit status 137 is a kill: almost always for memory, but not only.
+    certainty: (evidence) => (/137/.test(evidence) ? "likely" : "certain"),
+    alternatives: [
+      "Something else stopped the step: it was cancelled, or a cluster or Docker ended it for running too long.",
+    ],
     find: (log) =>
       firstMatch(log, /terminated with an error exit status \(137\)/) ??
       firstMatch(log, /java\.lang\.OutOfMemoryError[^\n]*|std::bad_alloc|\bOOMKilled\b/),
@@ -93,6 +130,7 @@ const PATTERNS: Pattern[] = [
     kind: "docker-unavailable",
     title: "Docker isn't reachable",
     docs: "docker-isnt-reachable",
+    certainty: "certain",
     find: (log) =>
       firstMatch(log, /[^\n]*(?:Cannot connect to the Docker daemon|failed to connect to the docker API)[^\n]*/i),
     explain: () => ({
@@ -105,6 +143,10 @@ const PATTERNS: Pattern[] = [
     kind: "container-pull",
     title: "The step's container image couldn't be downloaded",
     docs: "container-image-cant-be-pulled",
+    certainty: (evidence) => (/pull access denied|manifest unknown|Failed to pull/i.test(evidence) ? "certain" : "likely"),
+    alternatives: [
+      "Docker couldn't start the container for another reason (a mount, a port or a platform it doesn't support); the full message is in the log.",
+    ],
     // "Unable to find image … locally" only starts a download, which usually
     // works ("Status: Downloaded newer image"): only Docker's errors count.
     find: (log) =>
@@ -120,6 +162,11 @@ const PATTERNS: Pattern[] = [
     kind: "command-not-found",
     title: "A program the step needs isn't installed",
     docs: "command-not-found",
+    certainty: (evidence) => (/command not found/.test(evidence) ? "certain" : "likely"),
+    alternatives: [
+      "The step's script calls another script or tool by a path that doesn't exist.",
+      "The script starts with an interpreter (#!) that isn't in the container.",
+    ],
     find: (log) =>
       firstMatch(log, /[^\n]*: command not found/) ?? firstMatch(log, /terminated with an error exit status \(127\)/),
     explain: (evidence, log) => {
@@ -140,6 +187,7 @@ const PATTERNS: Pattern[] = [
     kind: "no-space",
     title: "The disk is full",
     docs: "no-space-left-on-device",
+    certainty: "certain",
     find: (log) => firstMatch(log, /[^\n]*No space left on device[^\n]*/i),
     explain: () => ({
       explanation: "A step couldn't write its files because there's no space left on the disk.",
@@ -150,6 +198,8 @@ const PATTERNS: Pattern[] = [
     kind: "pipeline-download",
     title: "The pipeline couldn't be downloaded",
     docs: "the-pipeline-cant-be-downloaded",
+    certainty: (evidence) => (/Forbidden|rate limit/.test(evidence) ? "certain" : "likely"),
+    alternatives: ["The pipeline's name or version is misspelled, or that version doesn't exist."],
     find: (log) =>
       firstMatch(log, /[^\n]*Forbidden -- Provide your GitHub user name[^\n]*/) ??
       firstMatch(log, /[^\n]*(?:API rate limit exceeded|Cannot find `nf-core\/)[^\n]*/),
@@ -163,6 +213,12 @@ const PATTERNS: Pattern[] = [
     kind: "plugin-download",
     title: "Nextflow couldn't download its plugins",
     docs: "nextflow-cant-download-its-plugins",
+    // Nextflow's message for an unreachable registry is cryptic.
+    certainty: "likely",
+    alternatives: [
+      "The pipeline asks for a plugin version that doesn't exist, or one this Nextflow version can't use.",
+      "A proxy answers in place of the registry and returns something else.",
+    ],
     // Nextflow 25.10 reports a plugin registry it can't reach this way.
     find: (log) =>
       firstMatch(log, /ERROR ~ Conversion = '[^\n]*/) ??
@@ -177,6 +233,11 @@ const PATTERNS: Pattern[] = [
     kind: "unreachable-url",
     title: "A file on the internet couldn't be downloaded",
     docs: "url-cant-be-reached",
+    certainty: "likely",
+    alternatives: [
+      "The file needs a login, or the link has expired.",
+      "The server was down for a moment: running again may work.",
+    ],
     find: (log) =>
       firstMatch(log, /Can't stage file (?:https?|ftp|s3):\/\/[^\n]*/) ??
       firstMatch(log, /[^\n]*(?:UnknownHostException|Could not resolve host|Connection refused|Server returned HTTP response code: \d+)[^\n]*/),
@@ -192,6 +253,11 @@ const PATTERNS: Pattern[] = [
     kind: "missing-input",
     title: "An input file wasn't found",
     docs: "input-file-not-found",
+    certainty: "likely",
+    alternatives: [
+      "A path in the samplesheet or parameters is relative to another folder than the one the run starts in.",
+      "An earlier step was meant to make the file but didn't run.",
+    ],
     find: (log) =>
       firstMatch(log, /ERROR ~ No such file or directory:[^\n]*/) ??
       firstMatch(log, /[^\n]*(?:No files match pattern|Not a valid path value|Path value cannot be null)[^\n]*/),
@@ -208,6 +274,11 @@ const PATTERNS: Pattern[] = [
     kind: "missing-output",
     title: "A step didn't produce the files it should",
     docs: "missing-output-files",
+    certainty: "likely",
+    alternatives: [
+      "The step's command failed without an error exit status, so it wrote nothing.",
+      "The tool writes its file under a different name or into a subfolder (check its version).",
+    ],
     find: (log) => firstMatch(log, /Missing output file\(s\)[^\n]*/),
     explain: (evidence) => {
       const file = evidence.match(/`([^`]+)` expected/)?.[1];
@@ -223,18 +294,47 @@ const PATTERNS: Pattern[] = [
 export const failedProcessOf = (log: string): string | undefined =>
   log.match(/Error executing process > '([^'\s]+)/)?.[1];
 
+/** The log lines a match is in: the first line holding its start. */
+const evidenceLines = (log: string, match: string): Evidence[] => {
+  const lines = log.split("\n");
+  const first = match.split("\n")[0].trim();
+  const line = lines.findIndex((text) => text.includes(first));
+  if (line === -1) return [{ text: match, line: -1 }];
+  const found: Evidence[] = [{ text: lines[line].trim(), line }];
+  // Nextflow prints the task's exit status two lines below "Command exit status:".
+  const status = lines.findIndex((text) => /^Command exit status:\s*$/.test(text.trim()));
+  if (status !== -1 && lines[status + 1]?.trim() && status + 1 !== line) {
+    found.push({ text: `Command exit status: ${lines[status + 1].trim()}`, line: status + 1 });
+  }
+  return found;
+};
+
+/** Every explanation N-WAVE can give for a failed run (for the docs and tests). */
+export const FAILURE_RULES = PATTERNS.map((pattern) => ({
+  kind: pattern.kind,
+  title: pattern.title,
+  docs: `${DOCS}${pattern.docs}`,
+  certainties: typeof pattern.certainty === "string" ? [pattern.certainty] : (["certain", "likely"] as Certainty[]),
+  alternatives: pattern.alternatives ?? [],
+}));
+
 /** Why the run failed, if it's one of the common reasons, or null. */
-export const explainFailure = (log: string): FailureExplanation | null => {
+export const explainFailure = (raw: string): FailureExplanation | null => {
+  // As the log is shown: colour codes don't change its lines.
+  const log = stripTerminalCodes(raw);
   for (const pattern of PATTERNS) {
     const evidence = pattern.find(log);
     if (!evidence) continue;
+    const certainty = typeof pattern.certainty === "string" ? pattern.certainty : pattern.certainty(evidence);
     return {
       kind: pattern.kind,
       title: pattern.title,
       ...pattern.explain(evidence, log),
+      certainty,
+      alternatives: certainty === "likely" ? (pattern.alternatives ?? []) : [],
       docs: `${DOCS}${pattern.docs}`,
       process: failedProcessOf(log),
-      evidence,
+      evidence: evidenceLines(log, evidence),
     };
   }
   return null;

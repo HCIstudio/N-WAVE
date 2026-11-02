@@ -3,7 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { logActivity } from "../../../activity/activityLog";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
-import { WIKI_PAGES, wikiUrl } from "../../../docs/links";
+import { EXPLAINED, howExplainedUrl, WIKI_PAGES, wikiUrl } from "../../../docs/links";
 import { Info } from "lucide-react";
 import { glossaryEntry, type GlossaryId } from "../../../glossary/glossary";
 import { useFeature } from "../../../settings/useFeatures";
@@ -135,8 +135,6 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
                 to={`/help#${entry.id}`}
                 target="_blank"
                 rel="noreferrer"
-                // The card closes when focus leaves its last link.
-                onBlur={entry.docs ? undefined : hideSoon}
                 className="text-nextflow-green underline-offset-2 hover:underline"
               >
                 All terms in the glossary (Help)
@@ -146,12 +144,21 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
                   href={wikiUrl(entry.docs)}
                   target="_blank"
                   rel="noreferrer"
-                  onBlur={hideSoon}
                   className="text-nextflow-green underline-offset-2 hover:underline"
                 >
                   Guide: {WIKI_PAGES[entry.docs.page]}
                 </a>
               )}
+              <a
+                href={howExplainedUrl(EXPLAINED.glossary)}
+                target="_blank"
+                rel="noreferrer"
+                // The card closes when focus leaves its last link.
+                onBlur={hideSoon}
+                className="text-nextflow-green underline-offset-2 hover:underline"
+              >
+                Where this comes from
+              </a>
             </p>
           </div>,
           document.body,
