@@ -48,14 +48,16 @@ const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
   const muted = dark ? "text-text-light" : "text-gray-700";
   // Verbose mode: asks whether it helped, and records the answer.
   const recording = useFeature("verbose");
-  const [answered, setAnswered] = useState<{ kind: string; helpful: boolean } | null>(null);
+  // Asked again for another explanation (the next failure).
+  const shown = `${explanation.kind}\n${explanation.explanation}\n${explanation.evidence.map((evidence) => evidence.line).join(",")}`;
+  const [answered, setAnswered] = useState<string | null>(null);
   const answer = (helpful: boolean) => {
     logActivity("failure.feedback", {
       kind: explanation.kind,
       certainty: explanation.certainty,
       helpful,
     });
-    setAnswered({ kind: explanation.kind, helpful });
+    setAnswered(shown);
   };
   const likely = explanation.certainty === "likely";
   // Global Settings → Features can switch explanations off everywhere.
@@ -171,7 +173,7 @@ const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
       </div>
       {recording && (
         <div className={`mt-2 flex flex-wrap items-center gap-2 text-xs ${muted}`}>
-          {answered?.kind === explanation.kind ? (
+          {answered === shown ? (
             <span role="status">Thanks, your answer was recorded.</span>
           ) : (
             <>

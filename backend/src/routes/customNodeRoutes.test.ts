@@ -111,6 +111,13 @@ describe("/api/custom-nodes", () => {
     expect(empty.body.nodes).toEqual([]);
   });
 
+  it("lists the other nodes when one node's file is damaged", async () => {
+    await request(app).post("/api/custom-nodes").send({ node: packNode }).expect(201);
+    fs.writeFileSync(path.join(nodeDirectory, "broken.json"), '{"id": "broken", "label": ');
+    const listed = await request(app).get("/api/custom-nodes").expect(200);
+    expect(listed.body.nodes).toEqual([packNode]);
+  });
+
   const save = (node: Record<string, unknown>) =>
     request(app).post("/api/custom-nodes").send({ node });
 

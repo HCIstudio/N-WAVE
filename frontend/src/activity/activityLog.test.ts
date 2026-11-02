@@ -105,6 +105,21 @@ describe("activity log", () => {
     expect(post).toHaveBeenCalledTimes(3);
   });
 
+  it("catches up after a long outage in batches the backend accepts", async () => {
+    vi.useFakeTimers();
+    post.mockRejectedValue(new Error("Network Error"));
+    for (let index = 0; index < 1_200; index += 1) log.logActivity("undo");
+    await log.flushActivity();
+    expect(log.pendingActivity().length).toBeGreaterThan(1_000);
+    post.mockReset();
+    post.mockResolvedValue({ data: { recorded: 1 } });
+    await log.flushActivity();
+    expect(log.pendingActivity()).toEqual([]);
+    const sizes = post.mock.calls.map((call) => (call[1] as { events: unknown[] }).events.length);
+    expect(Math.max(...sizes)).toBeLessThanOrEqual(1_000);
+    expect(sizes.reduce((sum, size) => sum + size, 0)).toBeGreaterThan(1_000);
+  });
+
   it("sends at once when many events wait", () => {
     for (let index = 0; index < 50; index += 1) log.logActivity("undo");
     expect(post).toHaveBeenCalledTimes(1);
