@@ -7,12 +7,17 @@
 /**
  * The text with the contents of comments and strings blanked (spaces), so
  * brackets, keywords and names found in it are code. Same length and lines.
- * Quotes stay; `${...}` in double-quoted strings is blanked too.
+ * Quotes stay; `${...}` in double-quoted strings is blanked too, unless
+ * `keepInterpolations` is set (for finding the names code reads).
  */
-export const maskSource = (text: string): string => {
+export const maskSource = (text: string, { keepInterpolations = false } = {}): string => {
   const out = text.split("");
-  const blank = (from: number, to: number) => {
-    for (let index = from; index < to; index += 1) if (out[index] !== "\n") out[index] = " ";
+  /** Code inside strings (`${x}`, `$x`), shown again when keepInterpolations is set. */
+  const interpolations: Array<[number, number]> = [];
+  // Comments keep their line breaks; strings don't, so a multi-line string
+  // never looks like the end of a statement.
+  const blank = (from: number, to: number, keepLines = true) => {
+    for (let index = from; index < to; index += 1) if (!keepLines || out[index] !== "\n") out[index] = " ";
   };
   let index = 0;
   // The last code character before index (for telling `/` apart).
@@ -36,7 +41,15 @@ export const maskSource = (text: string): string => {
       }
       if (!triple && quote !== "/" && char === "\n") return position; // unterminated: stop at line end
       if (interpolates && char === "$" && text[position + 1] === "{") {
-        position = scanCode(position + 2, "}");
+        const end = scanCode(position + 2, "}");
+        interpolations.push([position + 2, end - 1]);
+        position = end;
+        continue;
+      }
+      if (interpolates && quote !== "/" && char === "$" && /[A-Za-z_]/.test(text[position + 1] ?? "")) {
+        const name = text.slice(position + 1).match(/^[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*/)?.[0] ?? "";
+        interpolations.push([position + 1, position + 1 + name.length]);
+        position += 1 + name.length;
         continue;
       }
       if (text.startsWith(close, position)) return position + close.length;
@@ -118,7 +131,7 @@ export const maskSource = (text: string): string => {
     if (char === "'" || char === '"') {
       const end = scanString(index, char);
       const quoteLength = text.startsWith(char.repeat(3), index) ? 3 : 1;
-      blank(index + quoteLength, Math.max(index + quoteLength, end - quoteLength));
+      blank(index + quoteLength, Math.max(index + quoteLength, end - quoteLength), false);
       index = end;
       previous = char;
       continue;
@@ -126,14 +139,14 @@ export const maskSource = (text: string): string => {
     if (char === "$" && next === "/") {
       const close = text.indexOf("/$", index + 2);
       const end = close === -1 ? text.length : close + 2;
-      blank(index + 2, Math.max(index + 2, end - 2));
+      blank(index + 2, Math.max(index + 2, end - 2), false);
       index = end;
       previous = "/";
       continue;
     }
     if (char === "/" && /^$|[(,=~!&|[{:?;+\-*%<>^\n]$/.test(previous) && next !== " " && next !== "=") {
       const end = scanString(index, "/");
-      blank(index + 1, Math.max(index + 1, end - 1));
+      blank(index + 1, Math.max(index + 1, end - 1), false);
       index = end;
       previous = "/";
       continue;
@@ -141,6 +154,12 @@ export const maskSource = (text: string): string => {
     if (!/\s/.test(char)) previous = /\w/.test(char) ? (isKeywordEnd(text, index) ? "=" : "a") : char;
     else if (char === "\n") previous = previous === "" ? "" : "\n";
     index += 1;
+  }
+  if (keepInterpolations) {
+    for (const [from, to] of interpolations) {
+      const code = maskSource(text.slice(from, to), { keepInterpolations });
+      for (let position = from; position < to; position += 1) out[position] = code[position - from];
+    }
   }
   return out.join("");
 };
@@ -312,24 +331,33 @@ export interface WorkflowSections {
   main: string;
   emit: string;
   publish: string;
+  onComplete: string;
+  onError: string;
 }
 
-/** take:, main:, emit: and publish: of a workflow block's body (main: is all when there are none). */
+/** take:, main:, emit:, publish:, onComplete: and onError: of a workflow block's body (main: is all when there are none). */
 export const workflowSections = (body: string): WorkflowSections => {
   const masked = maskSource(body);
-  const label = /(^|\n)[ \t]*(take|main|emit|publish)\s*:/g;
+  const label = /(^|\n)[ \t]*(take|main|emit|publish|onComplete|onError)\s*:/g;
   const marks = [...masked.matchAll(label)].map((match) => ({
     name: match[2],
     start: (match.index ?? 0) + match[0].length,
     at: match.index ?? 0,
   }));
-  if (marks.length === 0) return { take: "", main: body, emit: "", publish: "" };
+  if (marks.length === 0) return { take: "", main: body, emit: "", publish: "", onComplete: "", onError: "" };
   const part = (name: string) => {
     const index = marks.findIndex((mark) => mark.name === name);
     if (index === -1) return "";
     return body.slice(marks[index].start, marks[index + 1]?.at ?? body.length);
   };
-  return { take: part("take"), main: part("main"), emit: part("emit"), publish: part("publish") };
+  return {
+    take: part("take"),
+    main: part("main"),
+    emit: part("emit"),
+    publish: part("publish"),
+    onComplete: part("onComplete"),
+    onError: part("onError"),
+  };
 };
 
 /** The body of a `name { … }` block (process, workflow), without the braces. */
@@ -433,7 +461,7 @@ export const usedNames = (
   statement: string,
   known: Set<string>,
 ): { variables: string[]; outputs: Array<{ step: string; emit: string | null; text: string }> } => {
-  const masked = maskSource(statement);
+  const masked = maskSource(statement, { keepInterpolations: true });
   const variables = new Set<string>();
   const outputs: Array<{ step: string; emit: string | null; text: string }> = [];
   for (const match of masked.matchAll(/(?<![.\w])([A-Za-z_][A-Za-z0-9_]*)\.out(?:\.([A-Za-z_][A-Za-z0-9_]*)|\[(\d+)\])?(?!\w)/g)) {

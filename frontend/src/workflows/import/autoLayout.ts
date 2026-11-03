@@ -21,6 +21,7 @@ export const autoLayout = (nodes: Node[], edges: Edge[], placed: Set<string> = n
     return value;
   };
   const rows = new Map<number, number>();
+  const taken = new Set(nodes.filter((node) => placed.has(node.id)).map((node) => `${node.position.x},${node.position.y}`));
   let notes = 0;
   for (const node of nodes) {
     if (placed.has(node.id)) continue;
@@ -30,7 +31,9 @@ export const autoLayout = (nodes: Node[], edges: Edge[], placed: Set<string> = n
       continue;
     }
     const x = depth(node.id, new Set());
-    const y = rows.get(x) ?? 0;
+    // The next free row in its column: not on a node that has its place.
+    let y = rows.get(x) ?? 0;
+    while (taken.has(`${x * COLUMN},${y * ROW}`)) y += 1;
     rows.set(x, y + 1);
     node.position = { x: x * COLUMN, y: y * ROW };
   }

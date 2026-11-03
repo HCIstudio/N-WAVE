@@ -3,6 +3,8 @@ import type { FileObject, NodeData } from "../../components/nodes/BaseNode";
 import { sortIncomingEdges } from "../../utils/workflowConnections";
 import { getNodeDefinitionForNode } from "../../registry/nodeDefinitions";
 import { helperFunctionsFor } from "./helpers";
+import { CODE_PLACEMENTS, type CodePlacement, placementOf } from "./placement";
+import { closingBracket, maskSource, topLevelItems } from "../../workflows/import/nextflowSource";
 import {
   generateParameterDeclarations,
   getNodeParameters,
@@ -170,13 +172,17 @@ export const generateNextflowScript = (
       const kept = (node.data.channelNames ?? {}) as Record<string, string>;
       for (const [index, output] of outputs.entries()) {
         const wanted = kept[output.name];
-        const channelName =
-          wanted && /^[A-Za-z_][A-Za-z0-9_]*$/.test(wanted) && !takenChannels.has(wanted)
-            ? (takenChannels.add(wanted), wanted)
-            : uniqueName(outputs.length === 1 ? base : `${base}_${lowerSnake(output.name) || "out"}`, takenChannels);
+        // The script's own name when it's free (uniqueName then keeps it as is).
+        const keep = Boolean(wanted) && /^[A-Za-z_][A-Za-z0-9_]*$/.test(wanted) && !takenChannels.has(wanted);
+        const channelName = uniqueName(
+          keep ? wanted : outputs.length === 1 ? base : `${base}_${lowerSnake(output.name) || "out"}`,
+          takenChannels,
+        );
         channelNameMap.set(`${node.id}.${output.name}`, channelName);
         if (index === 0) layoutNames.set(node.id, channelName);
       }
+      // Code without outputs (`ch.view()`) is named after its label in the layout line.
+      if (outputs.length === 0 && !placementOf(node.data)) layoutNames.set(node.id, uniqueName(lowerSnake(String(node.data.label || "")) || "channels", takenChannels));
     } else if (node.type === "operator" || node.type === "filter") {
       // Filter, Map and Merge have one output: STEP.out.
       const reference = `${processNames.get(node.id)}.out`;
@@ -207,13 +213,45 @@ export const generateNextflowScript = (
   const outputStatements: string[] = [];
   let outputDisplayCounter = 1;
 
+  /** Steps whose call the script assigned to a variable (put back after naturalize). */
+  const assignedCalls = new Map<string, string>();
+    /** Code kept as written, by where it goes. */
+  const placed = new Map<CodePlacement, string[]>();
+
+  /**
+   * A process or workflow imported from a script, written even when the
+   * canvas can't call it (code calls it: `ch | FOO`, inside an `if`).
+   */
+  const keepImportedDefinition = (node: Node<NodeData>, processName: string) => {
+    const stored = node.data.customNodeDefinition as { id?: string; source?: string; processName?: string; kind?: string } | undefined;
+    if (!stored?.source || !String(stored.id ?? "").startsWith("local-")) return;
+    const keyword = stored.kind === "workflow" ? "workflow" : "process";
+    processScripts.push(
+      stored.processName && stored.processName !== processName
+        ? stored.source.replace(new RegExp(`\\b${keyword}\\s+${stored.processName}\\b`), `${keyword} ${processName}`)
+        : stored.source,
+    );
+  };
+
   for (const node of order) {
     if (!STEP_TYPES.has(String(node.type))) continue;
+    const placement = node.type === "channelOperator" ? placementOf(node.data) : null;
+    if (placement) {
+      layoutNames.set(node.id, uniqueName(CODE_PLACEMENTS[placement].key, takenChannels));
+      const code = String(node.data.channelOperatorCode ?? "").replace(/\s+$/, "");
+      if (code.trim()) placed.set(placement, [...(placed.get(placement) ?? []), code]);
+      continue;
+    }
     const processName = processNames.get(node.id) ?? "STEP";
     const incomingEdges = sortIncomingEdges(edges.filter((edge) => edge.target === node.id));
-    // Channel code that reads nothing (`channel.fromPath(…)`) runs on its own.
-    const standalone = node.type === "channelOperator" && (node.data.inputs ?? []).length === 0;
-    if (incomingEdges.length === 0 && !standalone) continue;
+    // Steps that read no channel (`channel.fromPath(…)`, `sayHello()`) run on their own.
+    const standalone =
+      (node.data.inputs ?? []).length === 0 &&
+      (node.type === "channelOperator" || (getNodeDefinitionForNode(node)?.inputs ?? []).length === 0);
+    if (incomingEdges.length === 0 && (!standalone || node.data.definitionOnly === true)) {
+      keepImportedDefinition(node, processName);
+      continue;
+    }
 
     // Every connection into the (first) input, mixed: a one-connection
     // input has a single one, unless the workflow check flags it.
@@ -224,7 +262,10 @@ export const generateNextflowScript = (
     const upstreamNames = upstreamEdges
       .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
       .filter((name): name is string => Boolean(name));
-    if (upstreamNames.length === 0 && !standalone) continue;
+    if (upstreamNames.length === 0 && !standalone) {
+      keepImportedDefinition(node, processName);
+      continue;
+    }
     const upstreamChannelName = buildMixedChannelExpression(upstreamNames);
     const upstreamIsFiles = incomingEdges.every((edge) =>
       FILE_OUTPUT_TYPES.has(String(nodes.find((candidate) => candidate.id === edge.source)?.type)),
@@ -232,10 +273,13 @@ export const generateNextflowScript = (
 
     // Output display nodes don't have outputs, so skip this check for them
     let outputChannelName = null;
-    // Display Output and channel code like `.view()` have no outputs.
-    if (node.type !== "outputDisplay" && !(node.type === "channelOperator" && (node.data.outputs ?? []).length === 0)) {
+    // Display Output, channel code like `.view()` and some processes have no outputs.
+    if (node.type !== "outputDisplay" && (node.data.outputs ?? []).length > 0) {
       outputChannelName = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
-      if (!outputChannelName) continue;
+      if (!outputChannelName) {
+      keepImportedDefinition(node, processName);
+      continue;
+    }
     }
 
     const nodeDefinition = getNodeDefinitionForNode(node);
@@ -259,7 +303,10 @@ export const generateNextflowScript = (
       shapeOf: (edge: Edge) => itemShape(edge, nodes),
     });
 
-    if (!generationResult) continue;
+    if (!generationResult) {
+      keepImportedDefinition(node, processName);
+      continue;
+    }
 
     if (generationResult.processScript.trim()) processScripts.push(generationResult.processScript);
     includeStatements.push(...(generationResult.includeStatements ?? []));
@@ -277,8 +324,17 @@ export const generateNextflowScript = (
     if (node.type === "channelOperator" && statements.length > 0) {
       const label = String(node.data.label || "").replace(/\n/g, " ").trim();
       const firstOutput = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
-      if (label && label !== firstOutput) statements.unshift(`    // ${label}\n`);
+      // Not when it only repeats the node's name (`ch_channels_1`).
+      if (label && label !== firstOutput && label !== layoutNames.get(node.id)) statements.unshift(`    // ${label}\n`);
       statements.unshift("\n");
+    }
+    // `samples_ch = RNASEQ(…)`: the variable the script gave the call's result.
+    const assigned = String(node.data.scriptAssigned ?? "");
+    if (node.type !== "channelOperator" && /^[A-Za-z_]\w*$/.test(assigned)) assignedCalls.set(processName, assigned);
+    // Comments written above a step's call.
+    const comments = Array.isArray(node.data.scriptComments) ? (node.data.scriptComments as unknown[]).map(String) : [];
+    if (node.type !== "channelOperator" && comments.length > 0 && statements.length > 0) {
+      statements.splice(statements.length - 1, 0, `\n${indent(comments.join("\n"))}\n`);
     }
     (node.type === "outputDisplay" ? outputStatements : stepStatements).push(statements.join(""));
     outputDisplayCounter += generationResult.outputDisplayCounterIncrement ?? 0;
@@ -286,7 +342,15 @@ export const generateNextflowScript = (
 
   // Final Script Assembly
   let finalScript = `// ${workflowName.replace(/\n/g, " ")}\n${GENERATED_HEADER}\n\n`;
-  finalScript += `${paramsScript}\n`;
+  const placedCode = (placement: CodePlacement) => (placed.get(placement) ?? []).join("\n\n");
+  // A script with a `params { }` block can't also set `params.x = …`: N-WAVE's go into the block.
+  const scriptCode = placedCode("script");
+  const merged = mergeIntoParamsBlock(scriptCode, paramsScript);
+  if (merged) {
+    placed.set("script", [merged]);
+    paramsScript = "";
+  }
+  if (paramsScript) finalScript += `${paramsScript}\n`;
   if (nextflowConfigBlocks.length > 0 || paramConfigLines.length > 0) {
     let config = "";
     if (paramConfigLines.length > 0) {
@@ -312,6 +376,7 @@ export const generateNextflowScript = (
   if (uniqueIncludeStatements.length > 0) {
     finalScript += `${uniqueIncludeStatements.join("\n")}\n\n`;
   }
+  if (placedCode("script")) finalScript += `${placedCode("script")}\n\n`;
 
   // Notes: comments before the workflow, so they come back on import.
   let noteCount = 0;
@@ -323,9 +388,12 @@ export const generateNextflowScript = (
     noteComments.push(`/* Note: ${String(node.data.label || "Note").replace(/\n/g, " ").replace(/\*\//g, "* /")}\n${text}\n*/`);
   }
 
-  const workflowBody = naturalize(
-    [inputScript.trimEnd() ? `${indent(inputScript.trimEnd())}\n\n` : "", ...stepStatements, ...outputStatements].join(""),
-    new Set(processNames.values()),
+  const workflowBody = [...assignedCalls].reduce(
+    (body, [processName, variable]) => body.replace(new RegExp(`^( *)${processName}\\(`, "m"), `$1${variable} = ${processName}(`),
+    naturalize(
+      [inputScript.trimEnd() ? `${indent(inputScript.trimEnd())}\n\n` : "", ...stepStatements, ...outputStatements].join(""),
+      new Set(processNames.values()),
+    ),
   );
 
   // Helper functions the generated code calls (top-level, strict syntax).
@@ -334,14 +402,36 @@ export const generateNextflowScript = (
     finalScript += `${helperFunctions.join("\n\n")}\n\n`;
   }
 
-  const uniqueProcessScripts = Array.from(new Set(processScripts));
+  // Steps can bring the same definitions (a shared helper workflow or function): each once.
+  // Functions of the same name from different files: one script can hold one.
+  // Functions first, as an imported script's own functions are.
+  const functionNames = new Set<string>();
+  const functionName = (definition: string) =>
+    stripLeadingComments(definition).match(/^def\s+(?:[\w<>,[\]]+\s+)?([A-Za-z_]\w*)\s*\(/)?.[1];
+  const definitions = Array.from(new Set(processScripts.flatMap(definitionsOf))).filter((definition) => {
+    const name = functionName(definition);
+    if (!name) return true;
+    if (functionNames.has(name)) return false;
+    functionNames.add(name);
+    return true;
+  });
+  const uniqueProcessScripts = [
+    ...definitions.filter((definition) => functionName(definition)),
+    ...definitions.filter((definition) => !functionName(definition)),
+  ];
   if (uniqueProcessScripts.length > 0) {
     finalScript += `${uniqueProcessScripts.map(tidyBlock).join("\n\n")}\n\n`;
   }
 
   if (noteComments.length > 0) finalScript += `${noteComments.join("\n\n")}\n\n`;
 
-  finalScript += `workflow {\n${workflowBody.replace(/\n+$/, "")}\n}\n`;
+  // Sections after main: (publish:, onComplete:, onError:) need main: written.
+  const sections = (["publish", "onComplete", "onError"] as const).filter((placement) => placedCode(placement));
+  const main = workflowBody.replace(/^\n+/, "").replace(/\n+$/, "");
+  finalScript += `workflow {\n${sections.length > 0 ? `    main:\n${main}` : main}\n`;
+  for (const section of sections) finalScript += `\n    ${section}:\n${indent(placedCode(section))}\n`;
+  finalScript += "}\n";
+  if (placedCode("end")) finalScript += `\n${placedCode("end")}\n`;
 
   if (options.layout !== false && nodes.length > 0) {
     // In the order of the code (inputs, steps), notes last: the same after an import.
@@ -350,6 +440,39 @@ export const generateNextflowScript = (
   }
 
   return finalScript.replace(/\n{3,}/g, "\n\n");
+};
+
+const stripLeadingComments = (text: string): string =>
+  text.replace(/^(?:\s*(?:\/\/[^\n]*|\/\*[\s\S]*?\*\/))*\s*/, "");
+
+/** A step's code split into its top-level definitions (with their comments). */
+const definitionsOf = (code: string): string[] => {
+  const items = topLevelItems(code);
+  if (items.length <= 1) return [code];
+  return items.map((item) => [...item.comments, item.text].join("\n"));
+};
+
+/**
+ * Code with a `params { }` block, with the `params.x = …` lines added to it
+ * (those it doesn't declare already); null when there is no block.
+ */
+const mergeIntoParamsBlock = (code: string, paramLines: string): string | null => {
+  const masked = maskSource(code);
+  const start = masked.search(/^params\s*\{/m);
+  if (start === -1) return null;
+  const open = masked.indexOf("{", start);
+  const close = closingBracket(masked, open);
+  if (close === -1) return null;
+  const body = code.slice(open + 1, close);
+  const indentation = body.match(/\n([ \t]+)\S/)?.[1] ?? "    ";
+  const declared = new Set([...body.matchAll(/^\s*([A-Za-z_]\w*)\s*[:=]/gm)].map((match) => match[1]));
+  const entries = paramLines
+    .split("\n")
+    .map((line) => line.match(/^params\.([A-Za-z_]\w*) = (.*)$/))
+    .filter((match): match is RegExpMatchArray => match !== null && !declared.has(match[1]))
+    .map((match) => `${indentation}${match[1]} = ${match[2]}`);
+  if (entries.length === 0) return code;
+  return `${code.slice(0, open + 1)}\n${entries.join("\n")}${body.startsWith("\n") ? "" : "\n"}${body}${code.slice(close)}`;
 };
 
 /** What the items coming over a connection look like. */
@@ -429,14 +552,14 @@ export const naturalize = (body: string, processNames: Set<string>): string => {
   const kept: string[] = [];
   for (const line of body.split("\n")) {
     // `x = STEP(args)` → `STEP(args)`, x is STEP.out
-    const call = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Z][A-Z0-9_]*)\((.*)\)\s*$/);
+    const call = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\((.*)\)\s*$/);
     if (call && processNames.has(call[3]) && balanced(call[4])) {
       aliases.set(call[2], `${call[3]}.out`);
       kept.push(`${call[1]}${call[3]}(${call[4]})`);
       continue;
     }
     // `(a, b) = STEP(args)` → `STEP(args)`, a is STEP.out[0]
-    const tuple = line.match(/^(\s*)\(([^)]*)\)\s*=\s*([A-Z][A-Z0-9_]*)\((.*)\)\s*$/);
+    const tuple = line.match(/^(\s*)\(([^)]*)\)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\((.*)\)\s*$/);
     if (tuple && processNames.has(tuple[3]) && balanced(tuple[4])) {
       tuple[2]
         .split(",")
@@ -448,7 +571,7 @@ export const naturalize = (body: string, processNames: Set<string>): string => {
       continue;
     }
     // `x = STEP.out.reads` → (dropped), x is STEP.out.reads
-    const output = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Z][A-Z0-9_]*\.out(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])?)\s*$/);
+    const output = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*\.out(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])?)\s*$/);
     if (output && processNames.has(output[2].split(".")[0])) {
       aliases.set(output[1], output[2]);
       continue;

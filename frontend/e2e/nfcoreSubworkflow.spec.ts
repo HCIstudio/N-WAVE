@@ -112,7 +112,7 @@ test.describe("nf-core subworkflow nodes", () => {
       "subworkflows/nf-core/bam_stats_samtools/main.nf",
     ]);
     expect(strFromU8(files[`${project}/main.nf`])).toMatch(
-      /include \{ BAM_SORT_STATS_SAMTOOLS as \w+ \} from '\.\/subworkflows\/nf-core\/bam_sort_stats_samtools\/main'/
+      /include \{ BAM_SORT_STATS_SAMTOOLS(?: as \w+)? \} from '\.\/subworkflows\/nf-core\/bam_sort_stats_samtools\/main'/
     );
 
     // Convert it to an editable custom node: same ports, workflow inline.
@@ -128,7 +128,7 @@ test.describe("nf-core subworkflow nodes", () => {
     await page.getByRole("tab", { name: "Code" }).click();
     await expect(
       page.getByLabel("Process code", { exact: true })
-    ).toContainText(/workflow custom_bam_sort_stats_samtools_\w+ \{/);
+    ).toContainText(/workflow BAM_SORT_STATS_SAMTOOLS\w* \{/);
     await expect(
       page.getByLabel("Include statements", { exact: true })
     ).toContainText(

@@ -159,6 +159,141 @@ describe("importing a script written by hand", () => {
   });
 });
 
+// Code the canvas has no steps for: kept as written, in its place.
+const WITH_EXTRAS = `#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+nextflow.preview.output = true
+
+params.input = "\${projectDir}/data/*.txt"
+params.skip = null
+params.lines = 5
+
+include { validateParameters } from 'plugin/nf-schema'
+
+def banner(name) {
+  return "== \${name} =="
+}
+
+process COUNT {
+  input:
+  path text
+  output:
+  path 'n.txt', emit: n
+  script:
+  """
+  wc -l \${text} > n.txt
+  """
+}
+
+workflow {
+  main:
+  ch_text = channel.fromPath(params.input)
+
+  // Count the lines of each file.
+  COUNT(ch_text)
+  counts = COUNT.out.n.collect()
+
+  publish:
+  counts = counts
+}
+
+output {
+  counts {
+    path 'counts'
+  }
+}
+
+workflow.onComplete {
+  log.info banner('done')
+}
+`;
+
+describe("importing code the canvas has no steps for", () => {
+  const codeOf = (nodes: Node<NodeData>[], placement: string) =>
+    nodes.find((node) => node.data.placement === placement)?.data.channelOperatorCode;
+
+  it("keeps it as written in code nodes that say where it goes", async () => {
+    const draft = await importNextflowWorkflow({ rawSource: WITH_EXTRAS });
+    expect(codeOf(draft.nodes, "script")).toBe(
+      [
+        "nextflow.preview.output = true",
+        'params.input = "${projectDir}/data/*.txt"\nparams.skip = null',
+        "include { validateParameters } from 'plugin/nf-schema'",
+        'def banner(name) {\n  return "== ${name} =="\n}',
+      ].join("\n\n"),
+    );
+    expect(codeOf(draft.nodes, "publish")).toBe("counts = counts");
+    expect(codeOf(draft.nodes, "end")).toBe("output {\n  counts {\n    path 'counts'\n  }\n}\n\nworkflow.onComplete {\n  log.info banner('done')\n}");
+    // Only plain values are parameters.
+    expect(draft.nodes.find((node) => node.type === "parameters")?.data.parameters).toEqual([{ name: "lines", type: "number", value: "5" }]);
+    // The channel publish: reads stays a named output.
+    const counts = draft.nodes.find((node) => node.data.channelOperatorCode === "output.counts = input.count_n.collect()");
+    expect(counts?.data.outputs?.map((port) => port.name)).toEqual(["counts"]);
+    expect(draft.importWarnings).toEqual([]);
+  });
+
+  it("writes it back in place, with the comments above steps", async () => {
+    const draft = await importNextflowWorkflow({ rawSource: WITH_EXTRAS });
+    const script = generateNextflowScript(draft.nodes, draft.edges, draft.name, "results", "{workflow_name}");
+    expect(script).not.toContain("#!/usr/bin/env nextflow");
+    expect(script).not.toContain("enable.dsl");
+    const at = (text: string) => {
+      const index = script.indexOf(text);
+      expect(index, text).toBeGreaterThan(-1);
+      return index;
+    };
+    expect(at("include { validateParameters }")).toBeLessThan(at("process COUNT"));
+    expect(at("def banner(name)")).toBeLessThan(at("workflow {"));
+    expect(script).toContain("workflow {\n    main:\n");
+    expect(script).toContain("    // Count the lines of each file.\n    COUNT(ch_text)\n");
+    expect(script).toContain("\n    publish:\n    counts = counts\n}\n");
+    expect(at("output {")).toBeGreaterThan(at("publish:"));
+    expect(at("workflow.onComplete {")).toBeGreaterThan(at("output {"));
+
+    // And the same again after another round.
+    const again = await importNextflowWorkflow({ rawSource: script });
+    expect(generateNextflowScript(again.nodes, again.edges, again.name, "results", "{workflow_name}")).toBe(script);
+  });
+
+  it("keeps steps without inputs or outputs, and unnamed outputs by position", async () => {
+    const draft = await importNextflowWorkflow({
+      rawSource: [
+        "process HELLO {",
+        "  output: path 'a.txt'",
+        "  stdout",
+        "  script:",
+        "  'echo hi > a.txt'",
+        "}",
+        "process BYE {",
+        "  input: val word",
+        "  script:",
+        "  \"echo $word\"",
+        "}",
+        "workflow {",
+        "  HELLO()",
+        "  HELLO.out[1].view()",
+        "  BYE('bye')",
+        "}",
+      ].join("\n"),
+    });
+    const script = generateNextflowScript(draft.nodes, draft.edges, draft.name, "results", "{workflow_name}");
+    expect(script).toContain("    HELLO()\n");
+    expect(script).toContain("    HELLO.out[1].view()\n");
+    expect(script).toContain("    BYE('bye')\n");
+  });
+
+  it("keeps calls to what it can't read as code, with the include", async () => {
+    const draft = await importNextflowWorkflow({
+      rawSource: "include { TOOL as T } from './modules/local/tool'\nworkflow {\n  T(channel.of(1))\n}",
+    });
+    expect(codeOf(draft.nodes, "script")).toBe("include { TOOL as T } from './modules/local/tool'");
+    expect(draft.nodes.some((node) => node.data.channelOperatorCode === "T(channel.of(1))")).toBe(true);
+    const script = generateNextflowScript(draft.nodes, draft.edges, draft.name, "results", "{workflow_name}");
+    expect(script).toContain("include { TOOL as T } from './modules/local/tool'");
+    expect(script).toContain("    T(channel.of(1))");
+  });
+});
+
 describe("importing a script N-WAVE wrote", () => {
   it("keeps each File Input's files", async () => {
     const input = (id: string, label: string, names: string[]) =>

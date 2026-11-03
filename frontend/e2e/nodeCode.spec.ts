@@ -37,7 +37,7 @@ test.describe("node code view", () => {
     await expect(
       page.getByRole("button", { name: "Edit custom node" })
     ).toBeVisible();
-    await expect(processCode).toContainText(/process custom_filter_\w+ \{/);
+    await expect(processCode).toContainText(/process FILTER\w* \{/);
 
     await page.getByRole("button", { name: "Edit custom node" }).click();
     await expect(

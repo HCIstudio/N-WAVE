@@ -181,4 +181,13 @@ describe("ChannelOperatorPanel", () => {
     expect(screen.getByLabelText("Channel code")).toHaveProperty("value", "");
     expect(screen.getByText("Warning: It has no output, so other steps can't read its channels.")).toBeTruthy();
   });
+
+  it("edits code kept from an imported script as plain code, saying where it goes", async () => {
+    const { onSave, user } = setup({ placement: "end", channelOperatorCode: "output {\n}", inputs: [], outputs: [] });
+    expect(screen.getByText(/It goes after the workflow block\./)).toBeTruthy();
+    expect(screen.queryByLabelText("Template")).toBeNull();
+    expect(problems()).toBeUndefined();
+    await user.type(screen.getByLabelText("Code"), "x");
+    expect(onSave).toHaveBeenLastCalledWith(id, { channelOperatorCode: "output {\n}x" });
+  });
 });

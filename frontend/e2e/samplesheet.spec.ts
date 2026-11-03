@@ -63,7 +63,7 @@ test.describe("samplesheet node", () => {
       "c,https://example.org/c.fastq.gz,,auto"
     );
     expect(files[`${project}/main.nf`]).toMatch(
-      /params\.samplesheet_\w+ = "\$\{params\.inputdir\}\/samplesheet\.csv"/
+      /params\.samplesheet\w* = "\$\{params\.inputdir\}\/samplesheet\.csv"/
     );
     expect(files[`${project}/main.nf`]).toContain(".splitCsv(header: true, strip: true, quote: '\"')");
   });

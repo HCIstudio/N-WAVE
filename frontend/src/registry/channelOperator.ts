@@ -5,6 +5,7 @@
 
 import type { NodeGenerator } from "./nodeGeneration";
 import { buildMixedChannelExpression } from "../generators/core/mixChannels";
+import { maskSource } from "../workflows/import/nextflowSource";
 
 export interface ChannelOperatorTemplate {
   id: string;
@@ -91,7 +92,31 @@ export const CHANNEL_OPERATOR_TEMPLATES: ChannelOperatorTemplate[] = [
   },
 ];
 
-const REFERENCE = /\b(input|output|local)\.([A-Za-z_][A-Za-z0-9_]*)\b/g;
+// Not after a dot (`params.input`), and only in code, not strings or comments.
+const REFERENCE = /(?<![.\w$])(input|output|local)\.([A-Za-z_][A-Za-z0-9_]*)\b/g;
+
+/** Whether code assigns an output: `output.x = …`, `(output.x, output.y) = …` or `.set { output.x }`. */
+const assigns = (masked: string, output: string): boolean => {
+  const port = `output\\.${output}(?![\\w])`;
+  return (
+    new RegExp(`(?<![.\\w$])${port}\\s*=(?!=)`).test(masked) ||
+    new RegExp(`(?<![.\\w$])\\(\\s*(?:[\\w.]+\\s*,\\s*)*${port}\\s*(?:,\\s*[\\w.]+\\s*)*\\)\\s*=(?!=)`).test(masked) ||
+    new RegExp(`\\.set\\s*\\{\\s*${port}\\s*\\}`).test(masked)
+  );
+};
+
+const references = (code: string) => Array.from(maskSource(code, { keepInterpolations: true }).matchAll(REFERENCE));
+
+const replaceReferences = (code: string, replace: (kind: string, name: string) => string): string => {
+  let result = "";
+  let last = 0;
+  for (const match of references(code)) {
+    const start = match.index ?? 0;
+    result += code.slice(last, start) + replace(match[1], match[2]);
+    last = start + match[0].length;
+  }
+  return result + code.slice(last);
+};
 
 export interface ChannelOperatorIssue {
   level: "error" | "warning";
@@ -133,7 +158,7 @@ export const validateChannelOperator = ({
   }
 
   const used = { input: new Set<string>(), output: new Set<string>() };
-  for (const match of code.matchAll(REFERENCE)) {
+  for (const match of references(code)) {
     const [, kind, port] = match;
     if (kind === "input") {
       used.input.add(port);
@@ -154,7 +179,7 @@ export const validateChannelOperator = ({
     }
   }
   for (const output of outputs) {
-    if (!new RegExp(`\\boutput\\.${output}\\s*=(?!=)`).test(code)) {
+    if (!assigns(maskSource(code), output)) {
       issues.push({
         level: "error",
         message: `output.${output} is never assigned (write "output.${output} = ...").`,
@@ -230,7 +255,9 @@ export const generateChannelOperatorNode: NodeGenerator = ({
     sanitizeVarName(`${node.id}_${output}`);
   // Helper variables named after the node ("branch_branched"), unique in the script.
   const locals = new Map<string, string>();
-  const base = String(node.data.label || "channels").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "channels";
+  // Not `ch_…`: that reads as a channel other steps use.
+  const base =
+    String(node.data.label || "channels").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "").replace(/^ch_/, "") || "channels";
   const localName = (name: string) => {
     if (!locals.has(name)) {
       // Imported code already has the prefix.
@@ -241,9 +268,9 @@ export const generateChannelOperatorNode: NodeGenerator = ({
   };
 
   const defines = new Set<string>();
-  const statement = code.replace(
-    REFERENCE,
-    (_match, kind: string, name: string) => {
+  const statement = replaceReferences(
+    code,
+    (kind: string, name: string) => {
       if (kind === "input") return upstream.get(name) ?? "Channel.empty()";
       const variable =
         kind === "output" ? outputChannel(name) : localName(name);

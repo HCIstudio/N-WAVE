@@ -8,6 +8,7 @@ import {
 } from "../../../registry/channelOperator";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
 import Term from "../../common/ui/Term";
+import { CODE_PLACEMENTS, placementOf } from "../../../generators/core/placement";
 
 interface ChannelOperatorPanelProps {
   node: Node<NodeData>;
@@ -87,6 +88,37 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
       subtitle: template.label,
     });
   };
+
+  const placement = placementOf(node.data);
+  if (placement) {
+    // Code from an imported script that isn't channel code between steps.
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-text-light">
+          Code from the imported script, kept as written. It goes{" "}
+          {CODE_PLACEMENTS[placement].where}.
+        </p>
+        <div>
+          <label
+            htmlFor={`${fieldId}-code`}
+            className="mb-1 block text-xs font-medium text-text-light"
+          >
+            Code
+          </label>
+          <textarea
+            id={`${fieldId}-code`}
+            value={code}
+            onChange={(event) =>
+              onSave(node.id, { channelOperatorCode: event.target.value })
+            }
+            rows={12}
+            spellCheck={false}
+            className={`${fieldClassName} font-mono text-xs`}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">

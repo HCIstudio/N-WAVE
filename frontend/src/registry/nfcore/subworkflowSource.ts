@@ -95,9 +95,12 @@ const splitComment = (line: string): { code: string; comment: string } => {
 /** The name, takes and emits of the first named workflow in `source`. */
 export const parseWorkflowSignature = (source: string): WorkflowSignature => {
   const lines = source.split(/\r?\n/);
-  const start = lines.findIndex((line) =>
-    /^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(line),
+  // The last named workflow: code that brings the workflows it calls along
+  // has them first.
+  const starts = lines.flatMap((line, index) =>
+    /^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(line) ? [index] : [],
   );
+  const start = starts.length > 0 ? starts[starts.length - 1] : -1;
   if (start === -1) return { name: "", takes: [], emits: [] };
 
   const name =

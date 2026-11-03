@@ -13,7 +13,10 @@
 //   plain connection);
 // - any other channel code becomes channel operator nodes, with the
 //   variable names the script used;
-// - params become a Parameters node, notes (`/* Note: … */`) notes.
+// - params become a Parameters node, notes (`/* Note: … */`) notes;
+// - anything else (functions, plugin includes, params set from code, the
+//   output block, a workflow's publish: section, ...) is kept as written in
+//   a code node that says where in the script it goes.
 // Positions come from the `// N-WAVE layout:` line when there is one,
 // otherwise the steps are laid out left to right by dependency.
 
@@ -57,6 +60,8 @@ import {
   type TopLevelItem,
 } from "./nextflowSource";
 import { autoLayout } from "./autoLayout";
+import { lowerSnake, processNamesFor, uniqueName } from "../../generators/core/naming";
+import { CODE_PLACEMENTS, type CodePlacement } from "../../generators/core/placement";
 
 export interface ImportedCanvas {
   /** From the script's first comment line, when it has one. */
@@ -292,7 +297,7 @@ const comparable = (code: string): string => normalize(stripComments(code));
 const libraryWorkflowFor = (name: string, workflowText: string): StoredCustomNode | null => {
   for (const definition of nodeDefinitions) {
     const stored = definition.defaults?.customNodeDefinition as StoredCustomNode | undefined;
-    if (!stored || stored.kind !== "workflow") continue;
+    if (stored?.kind !== "workflow") continue;
     const body = extractRootIncludes(stored.source).source.replace(
       new RegExp(`(\\bworkflow\\s+)${stored.processName}\\b`),
       `$1${name}`,
@@ -303,9 +308,31 @@ const libraryWorkflowFor = (name: string, workflowText: string): StoredCustomNod
 };
 
 /** The step a script's own process becomes: one of N-WAVE's, a library node or a custom process. */
+/** A local workflow's takes as the call passes them: channels are ports, anything else a value written as given. */
+const takesByCall = (parsed: ReturnType<typeof parseCustomNodeSource>, channels: Set<number>) => ({
+  ...parsed,
+  arguments: parsed.arguments.map((argument, index) => {
+    const kind = channels.has(index) ? ("path" as const) : ("val" as const);
+    return { ...argument, kind, fields: argument.fields.map((field) => ({ ...field, kind })) };
+  }),
+  inputs: parsed.inputs.map((input, index) =>
+    channels.has(index)
+      ? { name: input.name, kind: "path" as const, label: input.label }
+      : { name: input.name, kind: "val" as const, label: input.label, settingType: input.settingType ?? ("text" as const), defaultValue: input.defaultValue ?? "" },
+  ),
+});
+
+/** N-WAVE's samplesheet channel (rows to `[meta, reads]`), not any CSV read by hand. */
+const isNwaveSamplesheet = (text: string): boolean =>
+  /\.collect \{ path -> nwaveInputFile\(path\) \}/.test(text) && /tuple\(meta, reads\)/.test(text);
+
 const stepForProcess = (
   name: string,
   processText: string,
+  /** Positions of `val` inputs the call feeds a channel: ports, not settings. */
+  channelArguments: Set<number> = new Set(),
+  /** Positions of tuple inputs given a whole channel: one port, not one per file. */
+  wholeTuples: Set<number> = new Set(),
 ): { type: string; data: Partial<NodeData>; ports?: { inputs: PortData[]; outputs: PortData[] } } => {
   const operator = recognizeOperator(name, processText);
   if (operator) {
@@ -319,7 +346,7 @@ const stepForProcess = (
     return { type: "process", data: JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(library).defaults)) };
   }
   // A process only this workflow has: it keeps the script's code.
-  const parsed = parseCustomNodeSource(processText);
+  const parsed = channelInputs(parseCustomNodeSource(processText), channelArguments, wholeTuples);
   const stored = createStoredCustomNode(
     { label: name, description: "Imported from a Nextflow script.", icon: "Code", source: processText },
     parsed,
@@ -327,6 +354,34 @@ const stepForProcess = (
   );
   const local: StoredCustomNode = { ...stored, id: `local-${name.toLowerCase()}`, processType: `local_${name.toLowerCase()}` };
   return { type: "process", data: JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(local).defaults)) };
+};
+
+/** `val` inputs that receive channels in the script become ports (they take a channel like any other). */
+const channelInputs = (
+  parsed: ReturnType<typeof parseCustomNodeSource>,
+  positions: Set<number>,
+  /** Positions of tuple inputs the call gives a whole channel of tuples. */
+  wholeTuples: Set<number> = new Set(),
+) => {
+  if (positions.size === 0) return parsed;
+  const names = new Set(
+    parsed.arguments
+      .filter((argument, index) => positions.has(index) && (argument.kind === "val" || (argument.kind === "tuple" && wholeTuples.has(index))))
+      .map((argument) => argument.name),
+  );
+  return {
+    ...parsed,
+    arguments: parsed.arguments.map((argument) =>
+      names.has(argument.name)
+        ? { ...argument, kind: "path" as const, fields: argument.fields.map((field) => ({ ...field, kind: "path" as const })) }
+        : argument,
+    ),
+    inputs: parsed.inputs.map((input) =>
+      names.has(input.name)
+        ? { name: input.name, kind: "path" as const, label: input.label }
+        : input,
+    ),
+  };
 };
 
 /** The catalog definition of an nf-core module or subworkflow, by the path a script includes it from. */
@@ -356,6 +411,18 @@ const settingValue = (literal: string): string | number | boolean => {
   if (gstring !== undefined) return gstring.replace(/\\([\\"$])/g, "$1");
   return text;
 };
+
+/** A param value a Parameters node can hold: a number, a boolean or a plain string. */
+const isLiteral = (value: string): boolean => {
+  const text = value.trim();
+  return /^(true|false|-?\d+(\.\d+)?)$/.test(text) || (unquote(text) !== null && !(text.startsWith('"') && text.includes("$")));
+};
+
+/** Comments N-WAVE writes itself (header, layout, config, notes): not kept as code. */
+const isNwaveComment = (comment: string): boolean =>
+  /^\/\/ (Written by N-WAVE|N-WAVE layout:)/.test(comment) || /^\/\* (N-WAVE_NEXTFLOW_CONFIG|Note:)/.test(comment);
+
+const isNfCorePath = (path: string): boolean => /\b(modules|subworkflows)\/nf-core\//.test(path);
 
 /**
  * The channels an argument reads once N-WAVE's own adapting code is taken
@@ -477,10 +544,43 @@ const tupleGlueParts = (expression: string): string[] | null => {
     .map((part) => stripGlue(part.replace(/\.map \{ item -> \[item\] \}$/, "")));
 };
 
-export const importNextflowScript = (
-  source: string,
-  options: { catalog?: NfCoreCatalogForImport | null } = {},
-): ImportedCanvas => {
+export interface ImportOptions {
+  catalog?: NfCoreCatalogForImport | null;
+  /**
+   * The project's other files by path (`modules/local/fastqc.nf`), so local
+   * includes can be read; `path` is the script's own path among them.
+   */
+  files?: Record<string, string>;
+  path?: string;
+}
+
+/** `a/b/../c` → `a/c`; no leading `./`. */
+const normalizePath = (path: string): string => {
+  const parts: string[] = [];
+  for (const part of path.split("/")) {
+    if (part === "" || part === ".") continue;
+    if (part === "..") parts.pop();
+    else parts.push(part);
+  }
+  return parts.join("/");
+};
+/** The names code calls: `FOO(…)`, `helper(…)`. */
+const namesCalledIn = (text: string): Set<string> =>
+  new Set([...maskSource(text, { keepInterpolations: true }).matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)].map((match) => match[1]));
+
+/** `target` (from the files' root) as seen from the folder `base`: `./modules/x`, `../lib/y`. */
+const relativePath = (base: string, target: string): string => {
+  const from = base ? base.split("/") : [];
+  const to = target.split("/");
+  let shared = 0;
+  while (shared < from.length && shared < to.length - 1 && from[shared] === to[shared]) shared += 1;
+  const up = from.length - shared;
+  const rest = to.slice(shared).join("/");
+  return up === 0 ? `./${rest}` : `${"../".repeat(up)}${rest}`;
+};
+const directoryOf = (path: string): string => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
+
+export const importNextflowScript = (source: string, options: ImportOptions = {}): ImportedCanvas => {
   modules = options.catalog?.modules ?? [];
   subworkflows = options.catalog?.subworkflows ?? [];
   const warnings: string[] = [];
@@ -490,6 +590,55 @@ export const importNextflowScript = (
   const settingsFor = configBlocks(config);
   const headerName = source.match(/^\s*\/\/\s*(.+)\n\/\/ Written by N-WAVE/)?.[1]?.trim() ?? null;
 
+  const files = options.files ?? {};
+  const scriptPath = normalizePath(options.path ?? "main.nf");
+  /** An include's path from the project root (`./modules/nf-core/fastqc/main`). */
+  const rootPath = (from: string, path: string): string =>
+    path.startsWith(".") ? relativePath(directoryOf(scriptPath), normalizePath(`${directoryOf(from)}/${path}`)) : path;
+  /** The file an include reads, among the project's files. */
+  const fileFor = (from: string, path: string): string | null => {
+    if (!path.startsWith(".")) return null;
+    const base = normalizePath(`${directoryOf(from)}/${path}`);
+    return [base, `${base}.nf`, `${base}/main.nf`].find((candidate) => candidate in files) ?? null;
+  };
+  /** A process or workflow a local include brings in, from the project's files. */
+  const readLocalInclude = (
+    from: string,
+    path: string,
+    name: string,
+  ):
+    | { kind: "process"; text: string }
+    | { kind: "workflow"; item: TopLevelItem; file: string }
+    | { kind: "function"; text: string }
+    | null => {
+    const file = fileFor(from, path);
+    if (!file) return null;
+    const item = topLevelItems(files[file]).find(
+      (candidate) => candidate.name === name && ["process", "workflow", "function"].includes(candidate.kind),
+    );
+    if (!item) return null;
+    if (item.kind === "function") return { kind: "function", text: functionsCalled(file, [name]).join("\n\n") };
+    return item.kind === "process" ? { kind: "process", text: item.text } : { kind: "workflow", item, file };
+  };
+  /** The functions of a file that code calling `names` needs (those they call too), as written. */
+  const functionsCalled = (file: string, names: Iterable<string>): string[] => {
+    const functions = topLevelItems(files[file] ?? "").filter((other) => other.kind === "function");
+    const needed = new Set<string>();
+    let reached = [...names];
+    while (reached.length > 0) {
+      const next: string[] = [];
+      for (const name of reached) {
+        const fn = functions.find((other) => other.name === name);
+        if (!fn || needed.has(name)) continue;
+        needed.add(name);
+        next.push(...namesCalledIn(fn.text));
+      }
+      reached = next;
+    }
+    return functions.filter((fn) => needed.has(fn.name)).map((fn) => [...fn.comments, fn.text].join("\n"));
+  };
+  /** Which file each included named workflow comes from. */
+  const workflowFiles = new Map<string, string>();
   const params = new Map<string, string>();
   const includes = new Map<string, { name: string; path: string }>();
   const processes = new Map<string, string>();
@@ -502,15 +651,53 @@ export const importNextflowScript = (
     if (maskedSource.slice(note.index ?? 0, (note.index ?? 0) + 2) !== "/*") continue;
     notes.push({ label: note[1].trim(), text: note[2].replace(/\* \//g, "*/") });
   }
+  /** Code kept as written, with where it goes and where it was. */
+  const kept: Array<{ placement: CodePlacement; start: number; text: string }> = [];
+  const paramItems = new Map<string, TopLevelItem>();
+  // Comments above code that is left out (a shebang, `nextflow.enable.dsl`) move to the next kept code.
+  let carried: string[] = [];
+  const keep = (item: TopLevelItem, text = item.text, placement: CodePlacement = entry ? "end" : "script") => {
+    const comments = [...carried, ...item.comments].filter((comment) => !isNwaveComment(comment));
+    carried = [];
+    kept.push({ placement, start: item.start, text: [...comments, text].join("\n") });
+  };
   for (const item of items) {
-    if (item.kind === "params") params.set(item.name, item.text.replace(/^params\.[\w.]+\s*=\s*/, "").trim());
-    else if (item.kind === "include") {
-      for (const include of readIncludeItem(item.text)) includes.set(include.alias, { name: include.name, path: include.path });
+    if (item.kind === "params") {
+      params.set(item.name, item.text.replace(/^params\.[\w.]+\s*=\s*/, "").trim());
+      paramItems.set(item.name, item);
+    } else if (item.kind === "include") {
+      const unread: Array<{ name: string; alias: string }> = [];
+      const included = readIncludeItem(item.text);
+      for (const include of included) {
+        const local = readLocalInclude(scriptPath, include.path, include.name);
+        if (local?.kind === "process") processes.set(include.alias, local.text);
+        else if (local?.kind === "function") kept.push({ placement: "script", start: item.start, text: local.text });
+        else if (local?.kind === "workflow") {
+          namedWorkflows.set(include.alias, local.item);
+          workflowFiles.set(include.alias, local.file);
+        } else if (isNfCorePath(include.path)) includes.set(include.alias, { name: include.name, path: rootPath(scriptPath, include.path) });
+        else unread.push(include);
+      }
+      // Plugins and files that weren't imported with the script: the include stays, calls stay code.
+      if (unread.length > 0) {
+        const path = included[0].path;
+        const names = unread.map((include) => (include.alias === include.name ? include.name : `${include.name} as ${include.alias}`));
+        keep(item, unread.length === included.length ? item.text : `include { ${names.join("; ")} } from '${path}'`, "script");
+        if (!path.startsWith("plugin/")) {
+          warnings.push(`${names.join(", ")} ${unread.length === 1 ? "is" : "are"} included from ${path}, which wasn't imported with the script; ${unread.length === 1 ? "its call stays" : "their calls stay"} as code.`);
+        }
+      }
     } else if (item.kind === "process") processes.set(item.name, item.text);
     else if (item.kind === "workflow") {
       if (item.name) namedWorkflows.set(item.name, item);
       else entry = item;
-    }
+    } else if (item.kind === "config") {
+      // N-WAVE's settings comment: read as settings.
+    } else if (/^#!/.test(item.text) || /^nextflow\.enable\.dsl\b/.test(item.text)) {
+      carried.push(...item.comments);
+    } else if (item.kind === "function" && /^nwave[A-Z]/.test(item.name)) {
+      // N-WAVE's helper functions: the export writes them when the code calls them.
+    } else keep(item, item.text, item.kind === "output" ? "end" : undefined);
   }
   if (!entry && namedWorkflows.size > 0) {
     warnings.push("The script has no entry workflow (`workflow { … }`), so it has no steps to connect: it may be a module or subworkflow file meant to be included.");
@@ -550,16 +737,25 @@ export const importNextflowScript = (
     });
   };
 
-  const statements: Statement[] = entry ? splitWorkflowStatements(workflowSections(blockBody(entry.text)).main) : [];
+  const sections = entry ? workflowSections(blockBody(entry.text)) : null;
+  const statements: Statement[] = sections ? splitWorkflowStatements(sections.main) : [];
+  for (const placement of ["publish", "onComplete", "onError"] as const) {
+    const code = dedent(sections?.[placement] ?? "").trim();
+    if (code) kept.push({ placement, start: entry?.start ?? 0, text: code });
+  }
 
   // Which variables later statements read, and how (as a whole call argument or otherwise).
   const knownVariables = new Set(statements.flatMap((statement) => definedNames(statement.text)));
   const readsOf = statements.map((statement) => usedNames(statement.text, knownVariables));
+  // What the workflow's other sections read (publish:, ...): channels the main code must keep.
+  const sectionReads = usedNames(
+    kept.filter((code) => code.placement !== "script").map((code) => code.text).join("\n"),
+    knownVariables,
+  );
 
   // Processes and includes that only named workflows call belong to those workflows.
   const mainText = entry ? blockBody(entry.text) : "";
-  const calledIn = (text: string) =>
-    new Set([...maskSource(text).matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)].map((match) => match[1]));
+  const calledIn = namesCalledIn;
   const calledInMain = calledIn(mainText);
   const ownedByWorkflows = new Set<string>();
   const workflowCalls = new Map<string, Set<string>>();
@@ -568,14 +764,56 @@ export const importNextflowScript = (
     workflowCalls.set(name, calls);
     for (const called of calls) if (!calledInMain.has(called)) ownedByWorkflows.add(called);
   }
+  /**
+   * A workflow from one of the project's files, with what it uses from its
+   * file's includes: local processes and workflows written in, nf-core
+   * includes with paths from the project root.
+   */
+  const fileWorkflowSource = (file: string, item: TopLevelItem, seen = new Set<string>()): string => {
+    const calls = calledIn(blockBody(item.text));
+    const parts: string[] = [];
+    const items = topLevelItems(files[file] ?? "");
+    for (const other of items) {
+      if (other.kind === "include") {
+        for (const include of readIncludeItem(other.text)) {
+          if (!calls.has(include.alias)) continue;
+          const local = readLocalInclude(file, include.path, include.name);
+          if (local?.kind === "process") parts.push(include.alias === include.name ? local.text : local.text.replace(/^process\s+\w+/, `process ${include.alias}`));
+          else if (local?.kind === "function") parts.push(local.text);
+          else if (local?.kind === "workflow" && !seen.has(local.file + local.item.name)) {
+            seen.add(local.file + local.item.name);
+            parts.push(fileWorkflowSource(local.file, local.item, seen));
+          } else if (!local) {
+            parts.unshift(`include { ${include.name}${include.alias === include.name ? "" : ` as ${include.alias}`} } from '${rootPath(file, include.path)}'`);
+          }
+        }
+      } else if (other.kind === "process" && calls.has(other.name)) parts.push(other.text);
+      else if (other.kind === "workflow" && other.name && other !== item && calls.has(other.name) && !seen.has(file + other.name)) {
+        seen.add(file + other.name);
+        parts.push(fileWorkflowSource(file, other, seen));
+      }
+    }
+    // Functions the workflow calls (and those they call), from its file.
+    parts.push(...functionsCalled(file, calls));
+    return [...parts, [...item.comments, item.text].join("\n")].join("\n\n");
+  };
+
   const localWorkflowSource = (name: string): string => {
     const item = namedWorkflows.get(name) as TopLevelItem;
+    const file = workflowFiles.get(name);
+    if (file) {
+      const source = fileWorkflowSource(file, item);
+      // Included under another name: the workflow is called that.
+      return item.name === name ? source : source.replace(new RegExp(`(\\bworkflow\\s+)${item.name}\\b`), `$1${name}`);
+    }
     const calls = workflowCalls.get(name) ?? new Set<string>();
     const usedIncludes = [...includes.entries()]
       .filter(([alias]) => calls.has(alias))
       .map(([alias, include]) => `include { ${include.name}${alias === include.name ? "" : ` as ${alias}`} } from '${include.path}'`);
     const usedProcesses = [...processes.entries()].filter(([process]) => calls.has(process)).map(([, text]) => text);
-    return [usedIncludes.join("\n"), ...usedProcesses, [...item.comments, item.text].join("\n")].filter(Boolean).join("\n\n");
+    // Workflows it calls (from other files or this one), with what they need.
+    const usedWorkflows = [...namedWorkflows.keys()].filter((other) => other !== name && calls.has(other)).map(localWorkflowSource);
+    return [usedIncludes.join("\n"), ...usedProcesses, ...usedWorkflows, [...item.comments, item.text].join("\n")].filter(Boolean).join("\n\n");
   };
 
   /** The node port a reference (`ch_x`, `STEP.out.reads`) reads, if known. */
@@ -618,9 +856,9 @@ export const importNextflowScript = (
   };
 
   // Channel operator nodes, one per group of statements.
-  let operatorCount = 0;
+  const outputlessKeys = new Set<string>();
+  let unlabeled = 0;
   const operatorFor = (group: Statement[], label: string | null, later: Array<{ variables: string[] }>) => {
-    operatorCount += 1;
     const defines = new Set(group.flatMap((statement) => definedNames(statement.text)));
     const readLater = new Set(later.flatMap((reads) => reads.variables));
     const inputs = new Map<string, Source>();
@@ -632,7 +870,8 @@ export const importNextflowScript = (
       .map((statement) => [...statement.comments.slice(label && statement === group[0] ? 1 : 0), outdent(statement.text, statement.column)].join("\n"))
       .join("\n");
     // Inputs: channels from outside the group; outputs: what later code reads.
-    const masked = () => maskSource(code);
+    // Names inside `"${x}"` are code too.
+    const masked = () => maskSource(code, { keepInterpolations: true });
     const replaceAll = (pattern: RegExp, replace: (match: RegExpExecArray) => string | null) => {
       const current = masked();
       const pieces: Array<[number, number, string]> = [];
@@ -662,7 +901,9 @@ export const importNextflowScript = (
       return `input.${name}`;
     });
     const outputs = [...defines].filter(isOutput);
-    const key = outputs[0] ?? `ch_channels_${operatorCount}`;
+    // Named like the export names it in the layout line: its first output, else its label.
+    if (outputs.length === 0 && label === null) unlabeled += 1;
+    const key = outputs[0] ?? uniqueName(lowerSnake(label ?? `ch_channels_${unlabeled}`) || "channels", outputlessKeys);
     const node = addNode(
       key,
       "channelOperator",
@@ -694,6 +935,14 @@ export const importNextflowScript = (
     return [sources.get(variable) as Source];
   };
 
+  /** Whether an argument is a channel (a channel variable, a step's output, channel code). */
+  const readsChannel = (argument: string): boolean => {
+    if (resolveArgument(argument)) return true;
+    if (/(?<![.\w])[Cc]hannel\./.test(maskSource(argument))) return true;
+    const reads = usedNames(argument, new Set([...sources.keys(), ...glue.keys()]));
+    return reads.variables.length > 0 || reads.outputs.some((output) => steps.has(output.step));
+  };
+
   // The values params are declared with, as settings.
   const paramValue = (name: string): string | undefined => params.get(name);
 
@@ -709,7 +958,8 @@ export const importNextflowScript = (
       } else {
         // A workflow only this script has: its code, with the processes and includes only it uses.
         const source = localWorkflowSource(name);
-        const parsed = parseCustomNodeSource(source);
+        const channels = new Set(args.flatMap((argument, index) => (readsChannel(argument) ? [index] : [])));
+        const parsed = takesByCall(parseCustomNodeSource(source), channels);
         const stored = createStoredCustomNode(
           { label: name, description: "Imported from a Nextflow script.", icon: "Workflow", source },
           parsed,
@@ -719,12 +969,23 @@ export const importNextflowScript = (
         node = addNode(name, "process", JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(workflow).defaults)), name);
       }
     } else if (local) {
-      const made = stepForProcess(name, local);
+      const channels = new Set(args.flatMap((argument, index) => (readsChannel(argument) ? [index] : [])));
+      // N-WAVE builds a tuple from its files (glue code); hand-written code passes the tuples.
+      const isTupleGlue = (argument: string) => tupleGlueParts(glue.get(argument.trim()) ?? argument) !== null;
+      const wholeTuples = new Set([...channels].filter((index) => !isTupleGlue(args[index])));
+      const made = stepForProcess(name, local, channels, wholeTuples);
       node = addNode(name, made.type, made.data, name);
     } else if (include) {
       const definition = nfCoreDefinitionFor(include.path);
       if (!definition) {
-        warnings.push(`${name} is included from ${include.path}, which N-WAVE can't read yet; it isn't on the canvas.`);
+        // Not in the catalog: the include stays, and the call stays code.
+        warnings.push(`${name} is included from ${include.path}, which isn't in N-WAVE's nf-core catalog; its call stays as code.`);
+        kept.push({
+          placement: "script",
+          start: 0,
+          text: `include { ${include.name === name ? name : `${include.name} as ${name}`} } from '${include.path}'`,
+        });
+        includes.delete(name);
         return false;
       }
       if (!definitions.some((known) => known.id === definition.id)) definitions.push(definition);
@@ -887,7 +1148,7 @@ export const importNextflowScript = (
       sources.set(variable, { nodeId: node.id, port: "out" });
       return true;
     }
-    const sheet = text.match(/^(ch_\w+) = channel\.fromPath\(params\.(\w+), checkIfExists: true\)\s*\.splitCsv\(/);
+    const sheet = isNwaveSamplesheet(text) ? text.match(/^(ch_\w+) = channel\.fromPath\(params\.(\w+), checkIfExists: true\)\s*\.splitCsv\(/) : null;
     if (sheet) {
       const reads = [...(text.match(/def reads = \[(.*?)\]\.findAll/)?.[1] ?? "").matchAll(/row\['([^']*)'\]/g)].map((match) => match[1]);
       const id = text.match(/\[id: row\['([^']*)'\]/)?.[1] ?? "sample";
@@ -942,6 +1203,12 @@ export const importNextflowScript = (
     for (const [name, value] of params) {
       if (usedParams.has(name) || name.includes(".")) continue;
       const file = fileParams.has(name);
+      const item = paramItems.get(name);
+      if (!file && item && !isLiteral(value)) {
+        // Set from code (`"${projectDir}/data"`, `null`, a list): kept as written.
+        keep(item, item.text, "script");
+        continue;
+      }
       const setting = settingValue(value);
       parameters.push({
         name,
@@ -959,7 +1226,7 @@ export const importNextflowScript = (
   const flush = () => {
     if (group.length === 0) return;
     // What every statement after the group reads (glue included).
-    operatorFor(group, groupLabel, readsOf.slice(groupEnd + 1));
+    operatorFor(group, groupLabel, [...readsOf.slice(groupEnd + 1), sectionReads]);
     group = [];
     groupLabel = null;
   };
@@ -1004,7 +1271,12 @@ export const importNextflowScript = (
             node.data = { ...node.data, selectedFilterFiles: names.map((name) => ({ name, size: 0, content: "" })) };
           }
         }
-        if (call.assigned) sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
+        if (call.assigned) {
+          sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
+          // `samples_ch = RNASEQ(…)`: written back so, for code that reads the name.
+          node.data = { ...node.data, scriptAssigned: call.assigned };
+        }
+        if (statement.comments.length > 0) node.data = { ...node.data, scriptComments: statement.comments };
         return;
       }
     }
@@ -1024,12 +1296,47 @@ export const importNextflowScript = (
   for (const [name, text] of processes) {
     if (steps.has(name) || ownedByWorkflows.has(name)) continue;
     const made = stepForProcess(name, text);
-    steps.set(name, addNode(name, made.type, made.data, name));
+    // Code calls it (`ch | FOO`, inside an `if`) or nothing does: export writes its definition, not a call.
+    steps.set(name, addNode(name, made.type, { ...made.data, definitionOnly: true }, name));
+  }
+
+  // Code kept as written: one node for each place it goes.
+  for (const placement of Object.keys(CODE_PLACEMENTS) as CodePlacement[]) {
+    // Blocks apart by a blank line, one-line params together.
+    const oneLineParam = (text: string) => /^params\.[\w.]+\s*=[^\n]*$/.test(text);
+    const code = kept
+      .filter((entry) => entry.placement === placement)
+      .sort((a, b) => a.start - b.start)
+      .map((entry) => entry.text)
+      .reduce((all, text, index, texts) => {
+        if (index === 0) return text;
+        return `${all}${oneLineParam(text) && oneLineParam(texts[index - 1]) ? "\n" : "\n\n"}${text}`;
+      }, "");
+    if (!code) continue;
+    addNode(
+      CODE_PLACEMENTS[placement].key,
+      "channelOperator",
+      {
+        subtitle: "Code kept as written",
+        channelOperatorTemplate: "custom",
+        channelOperatorCode: code,
+        inputs: [],
+        outputs: [],
+        placement,
+      },
+      CODE_PLACEMENTS[placement].label,
+    );
   }
 
   notes.forEach((note, index) => {
     addNode(`note_${index + 1}`, "note", { ...definitionDefaults("note"), noteText: note.text }, note.label);
   });
+
+  // Steps keep the names the script gave them when their label wouldn't give the same.
+  const derived = processNamesFor(nodes);
+  for (const [name, node] of steps) {
+    if (derived.get(node.id) !== name) node.data = { ...node.data, scriptName: name };
+  }
 
   if (layout.size === 0 || nodes.some((node) => !layout.has(keyOf(node)))) {
     autoLayout(nodes, edges, new Set(nodes.filter((node) => layout.has(keyOf(node))).map((node) => node.id)));
@@ -1047,7 +1354,7 @@ export const importNextflowScript = (
     return (
       /^(ch_\w+) = channel\.fromList\(params\.(\w+)\)\s*\.map \{ name -> file\(/.test(trimmed) ||
       (/^(ch_\w+) = channel\.empty\(\)$/.test(trimmed) && stringList(paramValue(trimmed.slice(3, trimmed.indexOf(" "))) ?? "") !== null) ||
-      /^(ch_\w+) = channel\.fromPath\(params\.(\w+), checkIfExists: true\)\s*\.splitCsv\(/.test(trimmed) ||
+      (isNwaveSamplesheet(trimmed) && /^(ch_\w+) = channel\.fromPath\(params\.(\w+), checkIfExists: true\)\s*\.splitCsv\(/.test(trimmed)) ||
       (/^(ch_\w+) = channel\.of\(nwaveInputFile\(params\.(\w+)\)\)$/.test(trimmed) &&
         params.has(trimmed.match(/params\.(\w+)/)?.[1] ?? ""))
     );

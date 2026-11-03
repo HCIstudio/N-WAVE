@@ -53,7 +53,16 @@ export const processNamesFor = (nodes: Node[]): Map<string, string> => {
   const ordered = [...nodes].sort((left, right) =>
     left.id < right.id ? -1 : left.id > right.id ? 1 : 0,
   );
+  // Names a script gave its steps (kept on import) come first, as they are.
   for (const node of ordered) {
+    const kept = (node.data as { scriptName?: unknown }).scriptName;
+    if (typeof kept === "string" && /^[A-Za-z_][A-Za-z0-9_]*$/.test(kept) && !taken.has(kept)) {
+      taken.add(kept);
+      names.set(node.id, kept);
+    }
+  }
+  for (const node of ordered) {
+    if (names.has(node.id)) continue;
     const base = baseProcessName(node);
     let name = base;
     for (let count = 2; taken.has(name); count += 1) name = `${base}_${count}`;

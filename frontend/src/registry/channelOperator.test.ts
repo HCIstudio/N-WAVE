@@ -178,6 +178,32 @@ describe("validateChannelOperator", () => {
     });
   });
 
+  it("leaves params.input, strings and comments alone", () => {
+    expect(
+      validateChannelOperator({
+        inputs: [],
+        outputs: ["files"],
+        code: "// input.none\noutput.files = channel.fromPath(params.input).map { f -> 'output.txt' }",
+      }),
+    ).toEqual([]);
+  });
+
+  it("reads ports inside string interpolations", () => {
+    expect(
+      validateChannelOperator({ inputs: ["in"], outputs: [], code: 'println "got ${input.in}"' }).filter((issue) => issue.level === "error"),
+    ).toEqual([]);
+  });
+
+  it("counts outputs assigned together or with .set", () => {
+    expect(
+      validateChannelOperator({
+        inputs: ["in"],
+        outputs: ["a", "b", "c"],
+        code: "(output.a, output.b) = params.skip ? [input.in, channel.empty()] : [channel.empty(), input.in]\ninput.in.set { output.c }",
+      }),
+    ).toEqual([]);
+  });
+
   it("doesn't generate code with errors", () => {
     expect(
       generate(

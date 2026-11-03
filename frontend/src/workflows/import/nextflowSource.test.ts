@@ -10,7 +10,7 @@ import {
 } from "./nextflowSource";
 
 describe("maskSource", () => {
-  it("blanks strings and comments, keeping lines and brackets in code", () => {
+  it("blanks strings and comments, keeping brackets in code and comments' lines", () => {
     const text = [
       'def x = "a { b ${ y ? "}" : \'{\' } c"   // a } comment',
       "/* { */ def r = ~/\\d+{2}/ ; def s = '''",
@@ -19,7 +19,8 @@ describe("maskSource", () => {
     ].join("\n");
     const masked = maskSource(text);
     expect(masked).toHaveLength(text.length);
-    expect(masked.split("\n")).toHaveLength(4);
+    // A multi-line string is one line: it never ends a statement.
+    expect(masked.split("\n")).toHaveLength(2);
     expect(masked.replace(/[^{}]/g, "")).toBe("");
   });
 
@@ -33,6 +34,22 @@ describe("maskSource", () => {
     const text = 'process A { script: """ echo "}" """ }';
     const masked = maskSource(text);
     expect(closingBracket(masked, text.indexOf("{"))).toBe(text.length - 1);
+  });
+});
+
+describe("maskSource with interpolations kept", () => {
+  it("shows the code inside double-quoted strings and nothing else", () => {
+    const text = `println "\${myFile} is \${myFile.class} ($name)" + 'x\${hidden}' // \${comment}`;
+    const masked = maskSource(text, { keepInterpolations: true });
+    expect(masked.length).toBe(text.length);
+    expect(masked).toContain("myFile");
+    expect(masked).toContain("myFile.class");
+    expect(masked).toContain("name");
+    expect(masked).not.toContain("hidden");
+    expect(masked).not.toContain("comment");
+    expect(masked).not.toContain(" is ");
+    // Strings inside the code are still blanked.
+    expect(maskSource(`"\${x ? 'a' : 'b'}"`, { keepInterpolations: true })).toBe(`"  x ? ' ' : ' ' "`);
   });
 });
 

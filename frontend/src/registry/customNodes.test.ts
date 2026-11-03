@@ -95,3 +95,23 @@ describe("custom node settings", () => {
   });
 });
 
+
+describe("reading a process's inputs and outputs", () => {
+  it("reads sections written on one line with their label", () => {
+    const parsed = parseCustomNodeSource("process FOO {\n  input: path x\n  output: path 'y.txt'\n  script:\n  'touch y.txt'\n}");
+    expect(parsed.inputs.map((input) => input.name)).toEqual(["x"]);
+    expect(parsed.outputs.map((output) => output.name)).toEqual(["out"]);
+  });
+
+  it("keeps every unnamed output, read by position, and makes none up", () => {
+    const parsed = parseCustomNodeSource(
+      "process TWO {\n  input:\n  each n\n  env TOKEN\n  output:\n  path 'a'\n  stdout\n  script:\n  'touch a'\n}",
+    );
+    expect(parsed.outputs.map((output) => output.name)).toEqual(["out", "out_1"]);
+    expect(parsed.arguments.map((argument) => [argument.name, argument.kind])).toEqual([
+      ["n", "path"],
+      ["TOKEN", "val"],
+    ]);
+    expect(parseCustomNodeSource("process NONE {\n  script:\n  'echo hi'\n}").outputs).toEqual([]);
+  });
+});

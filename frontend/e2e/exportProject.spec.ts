@@ -146,7 +146,7 @@ test.describe("export project", () => {
       `${project}/nextflow.config`,
     ]);
     expect(files[`${project}/main.nf`]).toMatch(
-      /include \{ FASTQC as \w+ \} from '\.\/modules\/nf-core\/fastqc\/main'/
+      /include \{ FASTQC(?: as \w+)? \} from '\.\/modules\/nf-core\/fastqc\/main'/
     );
     expect(files[`${project}/modules/nf-core/fastqc/main.nf`]).toContain(
       "process FASTQC"

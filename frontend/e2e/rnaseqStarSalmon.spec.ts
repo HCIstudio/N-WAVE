@@ -113,8 +113,8 @@ test.describe("RNA-seq (STAR + Salmon) example", () => {
     ]) {
       expect(Object.keys(files), path).toContain(path);
     }
-    expect(files["main.nf"]).toContain("include { STAR_ALIGN as ");
-    expect(files["main.nf"]).toContain("qc_reports_reports = fastqc_raw_zip.mix(");
+    expect(files["main.nf"]).toContain("include { STAR_ALIGN as STAR_ALIGNMENT }");
+    expect(files["main.nf"]).toContain("ch_collect_qc_reports = FASTQC_RAW_READS.out.zip.mix(");
     expect(files["nextflow.config"]).toContain(
       "--quantTranscriptomeSAMoutput BanSingleEnd"
     );
