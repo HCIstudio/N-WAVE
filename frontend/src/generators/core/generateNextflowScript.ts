@@ -79,7 +79,7 @@ export const generateNextflowScript = (
     : "";
 
   const processNames = processNamesFor(nodes);
-  const order = stepOrder(nodes, edges);
+  const order = stepOrder(nodes, edges, processNames);
   // Lower-case names for channels: unique, apart from the processes' upper-case ones.
   const takenChannels = new Set<string>();
 
@@ -101,18 +101,24 @@ export const generateNextflowScript = (
   // `name = value` lines for the exported config's params { } block.
   const paramConfigLines: string[] = [];
 
+  // Parameters keep their names (`params.fasta`, `ch_fasta`): other inputs
+  // are named around them.
+  for (const node of nodes) {
+    if (node.type !== "parameters") continue;
+    for (const parameter of getNodeParameters(node.data)) {
+      if (parameter.type === "file") takenChannels.add(`ch_${lowerSnake(parameter.name)}`);
+    }
+  }
+  takenChannels.delete("ch_");
+  /** The name each node has in the layout line: what the code calls it. */
+  const layoutNames = new Map(processNames);
+
   // Input nodes: params at the top, channels at the start of the workflow.
   for (const node of order) {
     if (node.type === "parameters") {
       const parameters = getNodeParameters(node.data);
-      const channelNames = new Map<string, string>();
-      const channelNameFor = (parameter: WorkflowParameter) => {
-        const existing = channelNames.get(parameter.name);
-        if (existing) return existing;
-        const name = uniqueName(`ch_${lowerSnake(parameter.name) || "param"}`, takenChannels);
-        channelNames.set(parameter.name, name);
-        return name;
-      };
+      const channelNameFor = (parameter: WorkflowParameter) => `ch_${lowerSnake(parameter.name) || "param"}`;
+      layoutNames.set(node.id, uniqueName("params", takenChannels));
       const declarations = generateParameterDeclarations(parameters, channelNameFor);
       for (const parameter of parameters.filter((entry) => entry.type === "file")) {
         channelNameMap.set(`${node.id}.${parameter.name}`, channelNameFor(parameter));
@@ -124,6 +130,7 @@ export const generateNextflowScript = (
     } else if (node.type === "samplesheet") {
       const base = lowerSnake(String(node.data.label || "")) || "samplesheet";
       const channelName = uniqueName(`ch_${base}`, takenChannels);
+      layoutNames.set(node.id, channelName);
       channelNameMap.set(`${node.id}.samples`, channelName);
       channelNameMap.set(`${node.id}.out`, channelName);
 
@@ -141,6 +148,7 @@ export const generateNextflowScript = (
       const label = String(node.data.label || "");
       const base = !label || label === "File Input" ? "files" : lowerSnake(label) || "files";
       const channelName = uniqueName(`ch_${base}`, takenChannels);
+      layoutNames.set(node.id, channelName);
       const param = `params.${channelName.replace(/^ch_/, "")}`;
       channelNameMap.set(`${node.id}.ch_files_out`, channelName);
       channelNameMap.set(`${node.id}.out`, channelName);
@@ -155,15 +163,19 @@ export const generateNextflowScript = (
           ? `${channelName} = channel.fromList(${param})\n    .map { name -> file("\${params.inputdir}/\${name}", checkIfExists: true) }\n\n`
           : `${channelName} = channel.empty()\n\n`;
     } else if (node.type === "channelOperator") {
-      // Channels named after the node: `ch_<label>` (`ch_<label>_<output>` for several).
+      // Channels named after the node: `ch_<label>` (`ch_<label>_<output>` for
+      // several), or as an imported script named them.
       const base = `ch_${lowerSnake(String(node.data.label || "")) || "channels"}`;
       const outputs = node.data.outputs ?? [];
-      for (const output of outputs) {
-        const channelName = uniqueName(
-          outputs.length === 1 ? base : `${base}_${lowerSnake(output.name) || "out"}`,
-          takenChannels,
-        );
+      const kept = (node.data.channelNames ?? {}) as Record<string, string>;
+      for (const [index, output] of outputs.entries()) {
+        const wanted = kept[output.name];
+        const channelName =
+          wanted && /^[A-Za-z_][A-Za-z0-9_]*$/.test(wanted) && !takenChannels.has(wanted)
+            ? (takenChannels.add(wanted), wanted)
+            : uniqueName(outputs.length === 1 ? base : `${base}_${lowerSnake(output.name) || "out"}`, takenChannels);
         channelNameMap.set(`${node.id}.${output.name}`, channelName);
+        if (index === 0) layoutNames.set(node.id, channelName);
       }
     } else if (node.type === "operator" || node.type === "filter") {
       // Filter, Map and Merge have one output: STEP.out.
@@ -187,6 +199,7 @@ export const generateNextflowScript = (
   }
 
   const processScripts: string[] = [];
+  const noteComments: string[] = [];
   const includeStatements: string[] = [];
   const nextflowConfigBlocks: string[] = [];
   /** Each step's statements, in order; Display Output steps go last. */
@@ -198,7 +211,9 @@ export const generateNextflowScript = (
     if (!STEP_TYPES.has(String(node.type))) continue;
     const processName = processNames.get(node.id) ?? "STEP";
     const incomingEdges = sortIncomingEdges(edges.filter((edge) => edge.target === node.id));
-    if (incomingEdges.length === 0) continue;
+    // Channel code that reads nothing (`channel.fromPath(…)`) runs on its own.
+    const standalone = node.type === "channelOperator" && (node.data.inputs ?? []).length === 0;
+    if (incomingEdges.length === 0 && !standalone) continue;
 
     // Every connection into the (first) input, mixed: a one-connection
     // input has a single one, unless the workflow check flags it.
@@ -209,7 +224,7 @@ export const generateNextflowScript = (
     const upstreamNames = upstreamEdges
       .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
       .filter((name): name is string => Boolean(name));
-    if (upstreamNames.length === 0) continue;
+    if (upstreamNames.length === 0 && !standalone) continue;
     const upstreamChannelName = buildMixedChannelExpression(upstreamNames);
     const upstreamIsFiles = incomingEdges.every((edge) =>
       FILE_OUTPUT_TYPES.has(String(nodes.find((candidate) => candidate.id === edge.source)?.type)),
@@ -217,7 +232,8 @@ export const generateNextflowScript = (
 
     // Output display nodes don't have outputs, so skip this check for them
     let outputChannelName = null;
-    if (node.type !== "outputDisplay") {
+    // Display Output and channel code like `.view()` have no outputs.
+    if (node.type !== "outputDisplay" && !(node.type === "channelOperator" && (node.data.outputs ?? []).length === 0)) {
       outputChannelName = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
       if (!outputChannelName) continue;
     }
@@ -255,10 +271,14 @@ export const generateNextflowScript = (
     ]
       .filter((statement) => statement.trim() !== "")
       .map((statement) => statement.replace(/\n*$/, "\n"));
-    // A channel operator's code is grouped under its label, so it reads (and
+    // A channel operator's code is one block, after a blank line, under its
+    // label when that says more than its channel's name; so it reads (and
     // imports) as one step.
     if (node.type === "channelOperator" && statements.length > 0) {
-      statements.unshift(`    // ${String(node.data.label || "Channel operator").replace(/\n/g, " ")}\n`);
+      const label = String(node.data.label || "").replace(/\n/g, " ").trim();
+      const firstOutput = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
+      if (label && label !== firstOutput) statements.unshift(`    // ${label}\n`);
+      statements.unshift("\n");
     }
     (node.type === "outputDisplay" ? outputStatements : stepStatements).push(statements.join(""));
     outputDisplayCounter += generationResult.outputDisplayCounterIncrement ?? 0;
@@ -293,6 +313,16 @@ export const generateNextflowScript = (
     finalScript += `${uniqueIncludeStatements.join("\n")}\n\n`;
   }
 
+  // Notes: comments before the workflow, so they come back on import.
+  let noteCount = 0;
+  for (const node of nodes) {
+    if (node.type !== "note") continue;
+    noteCount += 1;
+    layoutNames.set(node.id, `note_${noteCount}`);
+    const text = String(node.data.noteText ?? "").replace(/\*\//g, "* /").trimEnd();
+    noteComments.push(`/* Note: ${String(node.data.label || "Note").replace(/\n/g, " ").replace(/\*\//g, "* /")}\n${text}\n*/`);
+  }
+
   const workflowBody = naturalize(
     [inputScript.trimEnd() ? `${indent(inputScript.trimEnd())}\n\n` : "", ...stepStatements, ...outputStatements].join(""),
     new Set(processNames.values()),
@@ -309,10 +339,14 @@ export const generateNextflowScript = (
     finalScript += `${uniqueProcessScripts.map(tidyBlock).join("\n\n")}\n\n`;
   }
 
+  if (noteComments.length > 0) finalScript += `${noteComments.join("\n\n")}\n\n`;
+
   finalScript += `workflow {\n${workflowBody.replace(/\n+$/, "")}\n}\n`;
 
   if (options.layout !== false && nodes.length > 0) {
-    finalScript += `\n${formatLayoutComment(nodes, processNames)}\n`;
+    // In the order of the code (inputs, steps), notes last: the same after an import.
+    const placed = [...order.filter((node) => node.type !== "note"), ...nodes.filter((node) => node.type === "note")];
+    finalScript += `\n${formatLayoutComment(placed, layoutNames)}\n`;
   }
 
   return finalScript.replace(/\n{3,}/g, "\n\n");
@@ -346,7 +380,11 @@ const tidyBlock = (block: string): string => block.trim().replace(/\n[ \t]+\}$/,
  * The nodes in the order their code is written: every node after the ones it
  * reads from; among nodes that are ready, left to right, then top to bottom.
  */
-export const stepOrder = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData>[] => {
+export const stepOrder = (
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+  names: Map<string, string> = processNamesFor(nodes),
+): Node<NodeData>[] => {
   const ids = new Set(nodes.map((node) => node.id));
   const indegree = new Map(nodes.map((node) => [node.id, 0]));
   for (const edge of edges) {
@@ -355,8 +393,12 @@ export const stepOrder = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData
     }
   }
   const position = (node: Node) => node.position ?? { x: 0, y: 0 };
+  // Ties (same place) by name, which an import keeps, unlike ids.
+  const name = (node: Node) => names.get(node.id) ?? node.id;
   const before = (left: Node, right: Node) =>
-    position(left).x - position(right).x || position(left).y - position(right).y || (left.id < right.id ? -1 : 1);
+    position(left).x - position(right).x ||
+    position(left).y - position(right).y ||
+    (name(left) < name(right) ? -1 : name(left) > name(right) ? 1 : 0);
   const ready = nodes.filter((node) => indegree.get(node.id) === 0);
   const ordered: Node<NodeData>[] = [];
   while (ready.length > 0) {

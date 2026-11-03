@@ -7,6 +7,7 @@ import ParametersPanel from "../components/panels/input/ParametersPanel";
 import PipelinePanel from "../components/panels/process/PipelinePanel";
 import ChannelOperatorPanel from "../components/panels/operator/ChannelOperatorPanel";
 import { generateChannelOperatorNode } from "./channelOperator";
+import { embeddedDefinitionFor } from "./embeddedDefinition";
 import SamplesheetPanel from "../components/panels/input/SamplesheetPanel";
 import {
   DEFAULT_SAMPLESHEET_FILE_NAME,
@@ -391,7 +392,8 @@ export const getNodeDefinitionForNode = (
   }
 
   if (node.type === "process" && node.data.processType) {
-    return getNodeDefinitionByProcessType(node.data.processType);
+    // A process imported from a script carries its definition.
+    return getNodeDefinitionByProcessType(node.data.processType) ?? embeddedDefinitionFor(node);
   }
 
   return nodeDefinitions.find((definition) => definition.type === node.type);

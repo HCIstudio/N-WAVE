@@ -397,7 +397,7 @@ const HomePage: React.FC = () => {
       setIsImporting(true);
       // Parse the Nextflow source into a visual graph in the browser, then save
       // it through the normal create endpoint (no dedicated import endpoint).
-      const draft = importNextflowWorkflow({
+      const draft = await importNextflowWorkflow({
         name: importName.trim() || undefined,
         description: importDescription.trim() || undefined,
         rawSource: importSource,

@@ -149,7 +149,7 @@ describe("ChannelOperatorPanel", () => {
     ]);
   });
 
-  it("requires an output", async () => {
+  it("warns when there's no output", async () => {
     const { onSave, user } = setup();
     await user.clear(screen.getByLabelText("Outputs (comma-separated)"));
     await user.tab();
@@ -158,7 +158,7 @@ describe("ChannelOperatorPanel", () => {
       outputs: [],
     });
     expect(Array.from(problems() ?? []).map((item) => item.textContent)).toEqual([
-      "Error: Add at least one output.",
+      "Warning: It has no output, so other steps can't read its channels.",
       "Error: output.joined isn't an output of this node.",
     ]);
   });
@@ -179,6 +179,6 @@ describe("ChannelOperatorPanel", () => {
     });
     expect(screen.getByLabelText("Template")).toHaveProperty("value", "");
     expect(screen.getByLabelText("Channel code")).toHaveProperty("value", "");
-    expect(screen.getByText("Error: Add at least one output.")).toBeTruthy();
+    expect(screen.getByText("Warning: It has no output, so other steps can't read its channels.")).toBeTruthy();
   });
 });

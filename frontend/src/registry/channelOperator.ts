@@ -128,7 +128,8 @@ export const validateChannelOperator = ({
     });
   }
   if (outputs.length === 0) {
-    issues.push({ level: "error", message: "Add at least one output." });
+    // Fine for code like `.view()`; other steps can't connect to it.
+    issues.push({ level: "warning", message: "It has no output, so other steps can't read its channels." });
   }
 
   const used = { input: new Set<string>(), output: new Set<string>() };
@@ -191,6 +192,7 @@ export const generateChannelOperatorNode: NodeGenerator = ({
   channelNameMap,
   resolveChannelNameForEdge,
   sanitizeVarName,
+  channelNameFor,
 }) => {
   const inputs = portNames(node.data.inputs);
   const outputs = portNames(node.data.outputs);
@@ -220,12 +222,23 @@ export const generateChannelOperatorNode: NodeGenerator = ({
       upstream.set(input, buildMixedChannelExpression(channels));
     }
   }
-  if (upstream.size === 0) return null;
+  // Code with inputs waits for a connection; code without runs on its own.
+  if (upstream.size === 0 && inputs.length > 0) return null;
 
   const outputChannel = (output: string) =>
     channelNameMap.get(`${node.id}.${output}`) ??
     sanitizeVarName(`${node.id}_${output}`);
-  const localName = (name: string) => sanitizeVarName(`${node.id}_${name}`);
+  // Helper variables named after the node ("branch_branched"), unique in the script.
+  const locals = new Map<string, string>();
+  const base = String(node.data.label || "channels").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "channels";
+  const localName = (name: string) => {
+    if (!locals.has(name)) {
+      // Imported code already has the prefix.
+      const wanted = name.startsWith(`${base}_`) ? name : `${base}_${name}`;
+      locals.set(name, channelNameFor ? channelNameFor(wanted) : sanitizeVarName(`${node.id}_${name}`));
+    }
+    return locals.get(name) as string;
+  };
 
   const defines = new Set<string>();
   const statement = code.replace(

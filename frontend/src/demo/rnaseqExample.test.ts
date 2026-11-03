@@ -100,10 +100,10 @@ describe("the nf-core/rnaseq example", () => {
       expect(getNodeCode(note)).toBeNull();
     }
     expect(edges.every((edge) => !edge.source.includes("note"))).toBe(true);
-    // Only the layout line says where they are.
-    expect(withoutLayoutComment(generateNextflowScript(notes, [], "notes", "results"))).toBe(
-      generateNextflowScript([], [], "notes", "results"),
-    );
+    // Notes are comments (so they come back on import), with their place in the layout line.
+    const script = withoutLayoutComment(generateNextflowScript(notes, [], "notes", "results"));
+    expect(script.replace(/\/\* Note: [\s\S]*?\*\/\n\n/g, "")).toBe(generateNextflowScript([], [], "notes", "results"));
+    expect(script).toContain(`/* Note: ${notes[0].data.label}\n`);
   });
 
   it("is a read-only built-in in the demo, with its resource limits", () => {

@@ -2,6 +2,7 @@ import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import CustomNodePanel from "../components/panels/process/CustomNodePanel";
 import type { NodeDefinition } from "./nodeDefinitions";
+import { setEmbeddedDefinitionResolver } from "./embeddedDefinition";
 import {
   registerDynamicNodeDefinitions,
   unregisterDynamicNodeDefinitions,
@@ -169,10 +170,9 @@ const parseWorkflowSource = (source: string): ParsedCustomNodeSource => {
 export const parseCustomNodeSource = (
   source: string
 ): ParsedCustomNodeSource => {
-  if (
-    !/\bprocess\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(source) &&
-    /^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/m.test(source)
-  ) {
+  // A named workflow (with the processes it calls, when it was imported
+  // from a script): its takes and emits are the node's ports.
+  if (/^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/m.test(source)) {
     return parseWorkflowSource(source);
   }
   const processName =
@@ -529,7 +529,7 @@ const buildArgumentChannels = ({
     if (upstreams.some((upstream) => !upstream)) return null;
 
     const channelName = sanitizeVarName(
-      `ch_${processName}_${argument.name}_custom_tuple`
+      `ch_${processName.toLowerCase()}_${argument.name}`
     );
     channels.push({
       name: channelName,
@@ -827,3 +827,17 @@ const slugify = (value: string): string =>
 
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// A process imported from a script lives only in its workflow: the node
+// carries its definition (customNodeDefinition) and is generated from it.
+const embeddedDefinitions = new WeakMap<object, NodeDefinition>();
+setEmbeddedDefinitionResolver((node) => {
+  const stored = node.data.customNodeDefinition as StoredCustomNode | undefined;
+  if (!stored || typeof stored !== "object" || typeof stored.source !== "string") return undefined;
+  let definition = embeddedDefinitions.get(stored);
+  if (!definition) {
+    definition = createNodeDefinitionFromCustomNode(stored);
+    embeddedDefinitions.set(stored, definition);
+  }
+  return definition;
+});

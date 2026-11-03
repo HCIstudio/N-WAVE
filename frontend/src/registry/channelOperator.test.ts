@@ -172,8 +172,9 @@ describe("validateChannelOperator", () => {
     expect(
       validateChannelOperator({ inputs: ["a"], outputs: [], code: "" }),
     ).toContainEqual({
-      level: "error",
-      message: "Add at least one output.",
+      // Code like `.view()` needs none.
+      level: "warning",
+      message: "It has no output, so other steps can't read its channels.",
     });
   });
 
