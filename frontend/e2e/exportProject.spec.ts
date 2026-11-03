@@ -33,8 +33,13 @@ test.describe("export project", () => {
       "Demo_1_-_Text_basics/README.md",
       "Demo_1_-_Text_basics/inputs/sample.txt",
       "Demo_1_-_Text_basics/main.nf",
+      "Demo_1_-_Text_basics/modules/local/display_output/main.nf",
+      "Demo_1_-_Text_basics/modules/local/merge/main.nf",
       "Demo_1_-_Text_basics/nextflow.config",
     ]);
+    // Processes in their own files, included where they're used.
+    expect(files["Demo_1_-_Text_basics/main.nf"]).toContain("include { MERGE } from './modules/local/merge'");
+    expect(files["Demo_1_-_Text_basics/modules/local/merge/main.nf"]).toMatch(/^process MERGE \{/);
     expect(files["Demo_1_-_Text_basics/main.nf"]).toContain("workflow {");
     expect(files["Demo_1_-_Text_basics/main.nf"]).not.toContain(
       "N-WAVE_NEXTFLOW_CONFIG"
@@ -46,6 +51,29 @@ test.describe("export project", () => {
       "nextflow run main.nf -profile docker"
     );
     expect(files["Demo_1_-_Text_basics/inputs/sample.txt"]).toContain("Barry");
+  });
+
+  test("imports an exported project zip as the workflow it came from", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
+    await expect(page.locator(".react-flow__node")).toHaveCount(6);
+    const labels = await page.locator(".react-flow__node").allInnerTexts();
+    const download = await exportProject(page);
+
+    await page.goto("./");
+    await page.getByRole("button", { name: "Import Workflow" }).click();
+    await page.getByLabel("Nextflow File, Project Zip or Folder").setInputFiles(await download.path());
+    await expect(page.getByText(/\(main\.nf, 3 Nextflow files\)/)).toBeVisible();
+    await expect(page.getByLabel("Nextflow Source")).toHaveValue(/workflow \{/);
+    await page.getByRole("button", { name: "Import", exact: true }).click();
+
+    await expect(page.locator(".react-flow__node")).toHaveCount(6);
+    // The same steps, Merge and Display Output read back from modules/local,
+    // and the File Input has its file back from inputs/ (its own subtitle isn't in the code).
+    const withoutFileInput = (texts: string[]) => texts.filter((text) => !text.startsWith("File Input")).sort();
+    const imported = await page.locator(".react-flow__node").allInnerTexts();
+    expect(withoutFileInput(imported)).toEqual(withoutFileInput(labels));
+    expect(imported.find((text) => text.startsWith("File Input"))).toMatch(/Total size: 0\.\d+ KB/);
   });
 
   test("exports the run profiles of the Settings page for -profile", async ({ page }) => {

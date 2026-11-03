@@ -17,6 +17,8 @@ import {
 } from "../execution/runProfiles";
 
 /** Pinned Nextflow version the generated scripts are tested with. */
+import { splitProject } from "./splitProject";
+
 export const DEFAULT_NEXTFLOW_VERSION = "25.04.4";
 
 export interface ProjectInputFile {
@@ -347,8 +349,11 @@ export const buildProjectFiles = (
   }
   const nextflowVersion = input.nextflowVersion || DEFAULT_NEXTFLOW_VERSION;
 
+  // Processes and named workflows in their own files, as Nextflow projects have them.
+  const split = splitProject(script);
   const files: Record<string, ProjectFileContent> = {
-    "main.nf": script,
+    ...split.files,
+    "main.nf": split.main,
     "nextflow.config": buildNextflowConfig(config, input.profiles),
     "README.md": buildReadme({
       projectName,

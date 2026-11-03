@@ -1,5 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { strToU8, zipSync } from "fflate";
 import { MemoryRouter, Route, Routes, useParams } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { WorkflowDescriptor } from "../types/backend";
@@ -532,6 +533,41 @@ describe("HomePage", () => {
       expect(await screen.findByText("Opened imported-1")).toBeTruthy();
     });
 
+    it("imports a project zip with its modules and input files", async () => {
+      post.mockResolvedValue({ data: { _id: "imported-3" } });
+      const { user } = await setup([]);
+      const dialog = await openImport(user);
+      const zip = zipSync({
+        "Hello/main.nf": strToU8("include { HELLO } from './modules/local/hello'\n\nworkflow {\n  HELLO()\n}\n"),
+        "Hello/modules/local/hello/main.nf": strToU8(helloSource.split("\n\n")[0]),
+        "Hello/nextflow.config": strToU8("docker.enabled = true"),
+        "Hello/README.md": strToU8("# Hello"),
+      });
+      await user.upload(
+        dialog.getByLabelText("Nextflow File, Project Zip or Folder"),
+        new File([zip], "Hello.zip", { type: "application/zip" }),
+      );
+      expect(await dialog.findByText("Hello.zip (main.nf, 2 Nextflow files)")).toBeTruthy();
+      expect((dialog.getByLabelText("Name") as HTMLInputElement).value).toBe("Hello");
+      await user.click(dialog.getByRole("button", { name: "Import" }));
+      // HELLO comes from modules/local, as a step that keeps its code.
+      const draft = post.mock.calls[0][1] as { nodes: Array<{ data: { label?: string; customNodeDefinition?: { source?: string } } }> };
+      const hello = draft.nodes.find((node) => node.data.label === "HELLO");
+      expect(hello?.data.customNodeDefinition?.source).toContain('"echo hi"');
+    });
+
+    it("imports a chosen project folder", async () => {
+      post.mockResolvedValue({ data: { _id: "imported-4" } });
+      const { user } = await setup([]);
+      const dialog = await openImport(user);
+      const file = new File([helloSource], "main.nf");
+      Object.defineProperty(file, "webkitRelativePath", { value: "hello-project/main.nf" });
+      await user.upload(dialog.getByLabelText("Nextflow project folder"), [file]);
+      expect(await dialog.findByText("hello-project (main.nf, 1 Nextflow file)")).toBeTruthy();
+      expect((dialog.getByLabelText("Nextflow Source") as HTMLTextAreaElement).value).toBe(helloSource);
+      expect((dialog.getByLabelText("Name") as HTMLInputElement).value).toBe("hello-project");
+    });
+
     it("records the import in verbose mode", async () => {
       startRecording();
       try {
@@ -555,7 +591,7 @@ describe("HomePage", () => {
       const { user } = await setup([]);
       const dialog = await openImport(user);
       await user.upload(
-        dialog.getByLabelText("Nextflow File"),
+        dialog.getByLabelText("Nextflow File, Project Zip or Folder"),
         new File([helloSource], "hello.nf", { type: "text/plain" }),
       );
 
@@ -576,7 +612,7 @@ describe("HomePage", () => {
       const dialog = await openImport(user);
       await user.type(dialog.getByLabelText("Name"), "Mine");
       await user.upload(
-        dialog.getByLabelText("Nextflow File"),
+        dialog.getByLabelText("Nextflow File, Project Zip or Folder"),
         new File([helloSource], "hello.nf"),
       );
       expect(await dialog.findByText("hello.nf")).toBeTruthy();

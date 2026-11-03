@@ -158,8 +158,8 @@ export const RELEASES: RoadmapRelease[] = [
     goal: "Bring existing Nextflow projects in, export without losing anything, and exchange workflows in a language-neutral format.",
     why: "Your existing work shouldn't have to be rebuilt by hand.",
     features: [
-      { title: "Cleaner exported Nextflow", issue: 40 },
-      { title: "Downloaded scripts import back into the same graph", issue: 171 },
+      { title: "Cleaner exported Nextflow", issue: 40, status: "in-progress" },
+      { title: "Downloaded scripts import back into the same graph", issue: 171, status: "in-progress" },
       { title: "Copy a subworkflow into a new, editable workflow", issue: 209 },
       { title: "Import whole Nextflow projects with BioFlow-Insight", issue: 19 },
       { title: "Export and import through the FONDA workflow metamodel", issue: 194 },

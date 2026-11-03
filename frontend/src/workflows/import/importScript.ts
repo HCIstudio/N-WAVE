@@ -60,6 +60,7 @@ import {
   type TopLevelItem,
 } from "./nextflowSource";
 import { autoLayout } from "./autoLayout";
+import { fileByteLength, type FileContent } from "../../utils/fileContent";
 import { lowerSnake, processNamesFor, uniqueName } from "../../generators/core/naming";
 import { CODE_PLACEMENTS, type CodePlacement } from "../../generators/core/placement";
 
@@ -552,6 +553,10 @@ export interface ImportOptions {
    */
   files?: Record<string, string>;
   path?: string;
+  /** The project's nextflow.config: step settings (ext.args, …) and params. */
+  config?: string;
+  /** The project's input files (its inputs/ folder) by name: File Input and Samplesheet nodes get them back. */
+  inputs?: Record<string, FileContent>;
 }
 
 /** `a/b/../c` → `a/c`; no leading `./`. */
@@ -586,11 +591,32 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
   const warnings: string[] = [];
   const items = topLevelItems(source);
   const layout = parseLayoutComment(source);
-  const config = embeddedConfig(source);
+  const config = [embeddedConfig(source), options.config ?? ""].filter(Boolean).join("\n");
   const settingsFor = configBlocks(config);
   const headerName = source.match(/^\s*\/\/\s*(.+)\n\/\/ Written by N-WAVE/)?.[1]?.trim() ?? null;
 
   const files = options.files ?? {};
+  const inputs = options.inputs ?? {};
+  /** A File Input's files: from the project when it has them, else names to upload again. */
+  const inputFilesFor = (names: string[]): Partial<NodeData> => {
+    const found = names.every((name) => inputs[name]);
+    const list = names.map((name) => {
+      const input = inputs[name];
+      const fileType = name.split(".").pop() || "txt";
+      if (!input) return { name, size: 0, content: "", fileType };
+      return { name, size: fileByteLength(input), content: input.content, ...(input.encoding ? { encoding: input.encoding } : {}), fileType };
+    });
+    const size = list.reduce((total, file) => total + file.size, 0);
+    return {
+      files: list,
+      subtitle:
+        names.length === 0
+          ? "No files yet"
+          : found
+            ? `Total size: ${(size / 1024).toFixed(2)} KB`
+            : `${names.length} file${names.length === 1 ? "" : "s"} (upload again)`,
+    };
+  };
   const scriptPath = normalizePath(options.path ?? "main.nf");
   /** An include's path from the project root (`./modules/nf-core/fastqc/main`). */
   const rootPath = (from: string, path: string): string =>
@@ -669,6 +695,11 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
       const unread: Array<{ name: string; alias: string }> = [];
       const included = readIncludeItem(item.text);
       for (const include of included) {
+        // nf-core modules and subworkflows the catalog knows are nf-core nodes, even with their files in the project.
+        if (isNfCorePath(include.path) && nfCoreDefinitionFor(rootPath(scriptPath, include.path))) {
+          includes.set(include.alias, { name: include.name, path: rootPath(scriptPath, include.path) });
+          continue;
+        }
         const local = readLocalInclude(scriptPath, include.path, include.name);
         if (local?.kind === "process") processes.set(include.alias, local.text);
         else if (local?.kind === "function") kept.push({ placement: "script", start: item.start, text: local.text });
@@ -1140,8 +1171,7 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
         "fileInput",
         {
           ...definitionDefaults("fileInput"),
-          subtitle: files.length ? `${files.length} file${files.length === 1 ? "" : "s"} (upload again)` : "No files yet",
-          files: files.map((name) => ({ name, size: 0, content: "", fileType: name.split(".").pop() || "txt" })),
+          ...inputFilesFor(files),
         },
         param === "files" ? "File Input" : param,
       );
@@ -1159,8 +1189,8 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
         "samplesheet",
         {
           ...definitionDefaults("samplesheet"),
-          samplesheet: "",
-          subtitle: "Upload the samplesheet again",
+          samplesheet: inputs[fileName] && !inputs[fileName].encoding ? inputs[fileName].content : "",
+          subtitle: inputs[fileName] ? "Samplesheet from the project" : "Upload the samplesheet again",
           samplesheetFileName: fileName,
           samplesheetMapping: { idColumn: id, read1Column: reads[0] ?? "fastq_1", read2Column: reads[1] ?? "" },
         },

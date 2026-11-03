@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { generateNextflowScript } from "../../generators/core/generateNextflowScript";
+import { buildProjectFiles } from "../../export/exportProject";
 import { importNextflowScript } from "./importScript";
 import { blockBody, maskSource, topLevelItems } from "./nextflowSource";
 
@@ -44,5 +45,16 @@ describe.each(Object.entries(scripts))("the hand-written script %s", (_path, sou
   it("comes back the same after a second round", () => {
     const { script } = roundTrip(source);
     expect(roundTrip(script).script).toBe(script);
+  });
+
+  it("comes back the same from an exported project (processes in modules/local)", () => {
+    const { script } = roundTrip(source);
+    const files = Object.fromEntries(
+      Object.entries(buildProjectFiles({ workflowName: "wf", script, inputFiles: [], moduleFiles: {} })).map(([path, content]) => [path, String(content)]),
+    );
+    expect(Object.keys(files).some((path) => path.startsWith("modules/local/"))).toBe(true);
+    const imported = importNextflowScript(files["main.nf"], { files, path: "main.nf", config: files["nextflow.config"] });
+    expect(imported.warnings).toEqual([]);
+    expect(generateNextflowScript(imported.nodes, imported.edges, "wf", "results")).toBe(script);
   });
 });

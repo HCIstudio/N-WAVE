@@ -6,6 +6,21 @@ import { generateNextflowScript } from "../../generators/core/generateNextflowSc
 import { registerDynamicNodeDefinitions } from "../../registry/nodeDefinitions";
 import catalog from "../../registry/nfcore/catalog.json";
 import { importNextflowScript, type NfCoreCatalogForImport } from "./importScript";
+import {
+  buildProjectFiles,
+  extractNextflowConfig,
+  getReferencedNfCoreModules,
+  getReferencedNfCoreSubworkflows,
+} from "../../export/exportProject";
+
+/** Stand-ins for the nf-core files a project brings along (import reads nf-core steps from the catalog). */
+const nfCoreFilesFor = (script: string) => {
+  const body = extractNextflowConfig(script).script;
+  return {
+    moduleFiles: Object.fromEntries(getReferencedNfCoreModules(body).map((module) => [module, { "main.nf": "// nf-core module" }])),
+    subworkflowFiles: Object.fromEntries(getReferencedNfCoreSubworkflows(body).map((name) => [name, { "main.nf": "// nf-core subworkflow" }])),
+  };
+};
 
 // Export → import → export gives the same script and the same canvas, for
 // every built-in example and every node combination the lint fixtures cover.
@@ -47,6 +62,29 @@ describe("export, import, export", () => {
       const again = importNextflowScript(second, { catalog: catalog as unknown as NfCoreCatalogForImport });
       expect(shapeOf(again.nodes, again.edges)).toEqual(shapeOf(imported.nodes, imported.edges));
       expect(again.nodes.map((node) => node.data)).toEqual(imported.nodes.map((node) => node.data));
+    });
+  }
+});
+
+describe("export project, import project, export", () => {
+  // Every file as text, the way a project folder or zip comes back.
+  const asText = (files: Record<string, string | Uint8Array>) =>
+    Object.fromEntries(Object.entries(files).map(([path, content]) => [path, typeof content === "string" ? content : new TextDecoder().decode(content)]));
+
+  for (const fixture of buildLintFixtures()) {
+    it(`gives ${fixture.name} back from its project files`, () => {
+      const first = generate(fixture.nodes, fixture.edges, fixture.description);
+      const files = asText(buildProjectFiles({ workflowName: fixture.description, script: first, inputFiles: [], ...nfCoreFilesFor(first) }));
+      const imported = importNextflowScript(files["main.nf"], {
+        catalog: catalog as unknown as NfCoreCatalogForImport,
+        files,
+        path: "main.nf",
+        config: files["nextflow.config"],
+      });
+      registerDynamicNodeDefinitions(imported.definitions);
+      expect(imported.warnings).toEqual([]);
+      const second = generate(imported.nodes, imported.edges, imported.name ?? fixture.description);
+      expect(second).toBe(first);
     });
   }
 });

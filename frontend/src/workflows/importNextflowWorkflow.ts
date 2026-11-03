@@ -13,6 +13,7 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import { getNfCoreCatalog } from "../api/nfcore";
 import { registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
 import type { ExecutionSettings } from "../types/execution";
+import type { FileContent } from "../utils/fileContent";
 import { defaultExecutionSettings } from "./defaultExecutionSettings";
 import { importNextflowScript, type NfCoreCatalogForImport } from "./import/importScript";
 
@@ -23,6 +24,12 @@ interface ImportNextflowWorkflowInput {
   sourceKey?: string | null;
   /** The nf-core catalog; loaded when the script includes nf-core components and none is given. */
   catalog?: NfCoreCatalogForImport | null;
+  /** For a project: its .nf files by path, the script's path among them, and its nextflow.config. */
+  files?: Record<string, string>;
+  path?: string;
+  config?: string;
+  /** For a project: its input files by name. */
+  inputs?: Record<string, FileContent>;
 }
 
 export interface ImportedWorkflowDraft {
@@ -55,6 +62,10 @@ export const importNextflowWorkflow = async ({
   rawSource,
   sourceKey,
   catalog,
+  files,
+  path,
+  config,
+  inputs,
 }: ImportNextflowWorkflowInput): Promise<ImportedWorkflowDraft> => {
   const normalizedSource = rawSource.trim();
   if (!normalizedSource) {
@@ -63,7 +74,7 @@ export const importNextflowWorkflow = async ({
 
   let nfCoreCatalog = catalog ?? null;
   const warnings: string[] = [];
-  if (!nfCoreCatalog && usesNfCore(normalizedSource)) {
+  if (!nfCoreCatalog && [normalizedSource, ...Object.values(files ?? {})].some(usesNfCore)) {
     try {
       nfCoreCatalog = await getNfCoreCatalog();
     } catch {
@@ -71,7 +82,7 @@ export const importNextflowWorkflow = async ({
     }
   }
 
-  const imported = importNextflowScript(normalizedSource, { catalog: nfCoreCatalog });
+  const imported = importNextflowScript(normalizedSource, { catalog: nfCoreCatalog, files, path, config, inputs });
   // The nf-core components the canvas uses, so it can show and generate them
   // (the workflow page asks to install those that aren't).
   registerDynamicNodeDefinitions(imported.definitions);
