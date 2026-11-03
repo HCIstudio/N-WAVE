@@ -1,3 +1,4 @@
+import { withoutLayoutComment } from "../generators/core/layoutComment";
 import fs from "node:fs";
 import path from "node:path";
 import type { Edge, Node } from "@xyflow/react";
@@ -99,7 +100,8 @@ describe("the nf-core/rnaseq example", () => {
       expect(getNodeCode(note)).toBeNull();
     }
     expect(edges.every((edge) => !edge.source.includes("note"))).toBe(true);
-    expect(generateNextflowScript(notes, [], "notes", "results")).toBe(
+    // Only the layout line says where they are.
+    expect(withoutLayoutComment(generateNextflowScript(notes, [], "notes", "results"))).toBe(
       generateNextflowScript([], [], "notes", "results"),
     );
   });

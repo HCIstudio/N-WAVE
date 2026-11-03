@@ -346,3 +346,19 @@ export function defaultValueFor(type, description) {
       return documented ?? "[]";
   }
 }
+
+/**
+ * The emits whose items are `[meta, files]`: an output declared exactly as
+ * `tuple val(meta), path(...)`. Steps can pass those on as they are.
+ */
+export function getMetaEmits(mainNf) {
+  const output = mainNf.match(/\n\s*output:\s*\n([\s\S]*?)\n\s*(?:when|script|shell|exec|stub|topic)\s*:/)?.[1] ?? "";
+  const emits = [];
+  for (const line of output.split("\n")) {
+    const emit = line.match(/\bemit:\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
+    if (!emit) continue;
+    const declaration = line.replace(/,\s*(emit|optional|topic)\s*:.*$/, "").trim();
+    if (/^tuple\s+val\(\s*meta\s*\)\s*,\s*path\((?:[^()]|\([^()]*\))*\)$/.test(declaration)) emits.push(emit);
+  }
+  return emits;
+}

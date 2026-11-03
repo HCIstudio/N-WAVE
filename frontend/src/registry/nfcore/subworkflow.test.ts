@@ -1,3 +1,4 @@
+import { getProcessNameForNode } from "../../generators/core/generateNextflowScript";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { publishDirLines, resultsFolderFor } from "./publish";
 import type { Edge, Node } from "@xyflow/react";
@@ -278,14 +279,14 @@ describe("subworkflow nodes in a workflow", () => {
       "results",
       "{workflow_name}",
     );
+    // Named after its label; the include says which subworkflow that is.
+    const name = getProcessNameForNode(nodes[1], nodes);
     expect(script).toContain(
-      "include { BAM_STATS_SAMTOOLS as NFCORE_SUBWORKFLOW_BAM_STATS_SAMTOOLS_STATS } from './subworkflows/nf-core/bam_stats_samtools/main'",
+      `include { BAM_STATS_SAMTOOLS${name === "BAM_STATS_SAMTOOLS" ? "" : ` as ${name}`} } from './subworkflows/nf-core/bam_stats_samtools/main'`,
     );
     const workflow = script.slice(script.indexOf("workflow {"));
-    const call = workflow.indexOf(
-      "NFCORE_SUBWORKFLOW_BAM_STATS_SAMTOOLS_STATS(",
-    );
-    const consumer = workflow.search(/outputDisplay_show\(\w*flagstat/);
+    const call = workflow.indexOf(`${name}(`);
+    const consumer = workflow.indexOf(`${name}.out.flagstat`);
     expect(call).toBeGreaterThan(-1);
     expect(consumer).toBeGreaterThan(call);
   });

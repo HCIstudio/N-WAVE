@@ -125,7 +125,8 @@
             "label": "Gunzip",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.*"
+            "filePattern": "*.*",
+            "metaTuple": true
           },
           {
             "name": "versions_gunzip",
@@ -188,7 +189,8 @@
             "label": "Gtf",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.{gtf}"
+            "filePattern": "*.{gtf}",
+            "metaTuple": true
           },
           {
             "name": "versions",
@@ -261,28 +263,32 @@
             "label": "Gtf",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.{gtf}"
+            "filePattern": "*.{gtf}",
+            "metaTuple": true
           },
           {
             "name": "gffread_gff",
             "label": "Gffread Gff",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.gff3"
+            "filePattern": "*.gff3",
+            "metaTuple": true
           },
           {
             "name": "gffread_fasta",
             "label": "Gffread Fasta",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.fasta"
+            "filePattern": "*.fasta",
+            "metaTuple": true
           },
           {
             "name": "bed",
             "label": "Bed",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.bed"
+            "filePattern": "*.bed",
+            "metaTuple": true
           },
           {
             "name": "versions_gffread",
@@ -343,7 +349,8 @@
             "name": "index",
             "label": "Index",
             "isConnectable": true,
-            "kind": "directory"
+            "kind": "directory",
+            "metaTuple": true
           },
           {
             "name": "versions_star",
@@ -416,7 +423,8 @@
             "name": "index",
             "label": "Index",
             "isConnectable": true,
-            "kind": "directory"
+            "kind": "directory",
+            "metaTuple": true
           },
           {
             "name": "versions_salmon",
@@ -475,14 +483,16 @@
             "label": "Html",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_{fastqc.html}"
+            "filePattern": "*_{fastqc.html}",
+            "metaTuple": true
           },
           {
             "name": "zip",
             "label": "Zip",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_{fastqc.zip}"
+            "filePattern": "*_{fastqc.zip}",
+            "metaTuple": true
           },
           {
             "name": "versions_fastqc",
@@ -541,42 +551,48 @@
             "label": "Reads",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*{3prime,5prime,trimmed,val}{,_1,_2}.fq.gz"
+            "filePattern": "*{3prime,5prime,trimmed,val}{,_1,_2}.fq.gz",
+            "metaTuple": true
           },
           {
             "name": "log",
             "label": "Log",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*report.txt"
+            "filePattern": "*report.txt",
+            "metaTuple": true
           },
           {
             "name": "json",
             "label": "Json",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*report.json"
+            "filePattern": "*report.json",
+            "metaTuple": true
           },
           {
             "name": "unpaired",
             "label": "Unpaired",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*unpaired*.fq.gz"
+            "filePattern": "*unpaired*.fq.gz",
+            "metaTuple": true
           },
           {
             "name": "html",
             "label": "Html",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_fastqc.html"
+            "filePattern": "*_fastqc.html",
+            "metaTuple": true
           },
           {
             "name": "zip",
             "label": "Zip",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_fastqc.zip"
+            "filePattern": "*_fastqc.zip",
+            "metaTuple": true
           },
           {
             "name": "versions_trimgalore",
@@ -653,21 +669,24 @@
             "label": "Log Final",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*Log.final.out"
+            "filePattern": "*Log.final.out",
+            "metaTuple": true
           },
           {
             "name": "log_out",
             "label": "Log Out",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*Log.out"
+            "filePattern": "*Log.out",
+            "metaTuple": true
           },
           {
             "name": "log_progress",
             "label": "Log Progress",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*Log.progress.out"
+            "filePattern": "*Log.progress.out",
+            "metaTuple": true
           },
           {
             "name": "versions_star",
@@ -692,91 +711,104 @@
             "label": "Bam",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.{bam}"
+            "filePattern": "*.{bam}",
+            "metaTuple": true
           },
           {
             "name": "bam_sorted",
             "label": "Bam Sorted",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*sortedByCoord.out.bam"
+            "filePattern": "*sortedByCoord.out.bam",
+            "metaTuple": true
           },
           {
             "name": "bam_sorted_aligned",
             "label": "Bam Sorted Aligned",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.Aligned.sortedByCoord.out.bam"
+            "filePattern": "*.Aligned.sortedByCoord.out.bam",
+            "metaTuple": true
           },
           {
             "name": "bam_transcript",
             "label": "Bam Transcript",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*toTranscriptome.out.bam"
+            "filePattern": "*toTranscriptome.out.bam",
+            "metaTuple": true
           },
           {
             "name": "bam_unsorted",
             "label": "Bam Unsorted",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*Aligned.unsort.out.bam"
+            "filePattern": "*Aligned.unsort.out.bam",
+            "metaTuple": true
           },
           {
             "name": "fastq",
             "label": "Fastq",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*fastq.gz"
+            "filePattern": "*fastq.gz",
+            "metaTuple": true
           },
           {
             "name": "tab",
             "label": "Tab",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.tab"
+            "filePattern": "*.tab",
+            "metaTuple": true
           },
           {
             "name": "spl_junc_tab",
             "label": "Spl Junc Tab",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.SJ.out.tab"
+            "filePattern": "*.SJ.out.tab",
+            "metaTuple": true
           },
           {
             "name": "read_per_gene_tab",
             "label": "Read Per Gene Tab",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.ReadsPerGene.out.tab"
+            "filePattern": "*.ReadsPerGene.out.tab",
+            "metaTuple": true
           },
           {
             "name": "junction",
             "label": "Junction",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.out.junction"
+            "filePattern": "*.out.junction",
+            "metaTuple": true
           },
           {
             "name": "sam",
             "label": "Sam",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.out.sam"
+            "filePattern": "*.out.sam",
+            "metaTuple": true
           },
           {
             "name": "wig",
             "label": "Wig",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.wig"
+            "filePattern": "*.wig",
+            "metaTuple": true
           },
           {
             "name": "bedgraph",
             "label": "Bedgraph",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*.bg"
+            "filePattern": "*.bg",
+            "metaTuple": true
           }
         ],
         "nwaveNfCoreNeedsReview": false,
@@ -843,21 +875,24 @@
             "name": "results",
             "label": "Results",
             "isConnectable": true,
-            "kind": "directory"
+            "kind": "directory",
+            "metaTuple": true
           },
           {
             "name": "json_info",
             "label": "Json Info",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*info.json"
+            "filePattern": "*info.json",
+            "metaTuple": true
           },
           {
             "name": "lib_format_counts",
             "label": "Lib Format Counts",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*lib_format_counts.json"
+            "filePattern": "*lib_format_counts.json",
+            "metaTuple": true
           },
           {
             "name": "versions_salmon",
@@ -1091,20 +1126,23 @@
             "label": "Report",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": ".html"
+            "filePattern": ".html",
+            "metaTuple": true
           },
           {
             "name": "data",
             "label": "Data",
             "isConnectable": true,
-            "kind": "directory"
+            "kind": "directory",
+            "metaTuple": true
           },
           {
             "name": "plots",
             "label": "Plots",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_plots"
+            "filePattern": "*_plots",
+            "metaTuple": true
           },
           {
             "name": "versions",

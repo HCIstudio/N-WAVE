@@ -176,14 +176,14 @@ describe("generateSamplesheetChannel", () => {
       'params.samplesheet_sheet = "${params.inputdir}/samplesheet.csv"\n',
     );
     expect(channel).toContain(
-      "sheet_samples = Channel.fromPath(params.samplesheet_sheet, checkIfExists: true)",
+      "sheet_samples = channel.fromPath(params.samplesheet_sheet, checkIfExists: true)",
     );
     expect(channel).toContain(".splitCsv(header: true, strip: true, quote: '\"')");
     expect(channel).toContain(
-      "def reads = [row['fastq_1'], row['fastq_2']].findAll { it }.collect { nwaveInputFile(it) }",
+      "def reads = [row['fastq_1'], row['fastq_2']].findAll { path -> path }.collect { path -> nwaveInputFile(path) }",
     );
     expect(channel).toContain(
-      "def meta = row.findAll { key, value -> !(key in ['sample', 'fastq_1', 'fastq_2']) } + [id: row['sample'], single_end: reads.size() == 1]",
+      "def meta = row.findAll { key, _value -> !(key in ['sample', 'fastq_1', 'fastq_2']) } + [id: row['sample'], single_end: reads.size() == 1]",
     );
   });
 });
@@ -230,11 +230,11 @@ describe("Samplesheet node in a workflow", () => {
     );
     expect(script.match(/params\.inputdir = /g)).toHaveLength(1);
     expect(script).toContain(
-      'params.samplesheet_sheet = "${params.inputdir}/samplesheet.csv"',
+      'params.samplesheet = "${params.inputdir}/samplesheet.csv"',
     );
-    expect(script).toContain("sheet_samples = Channel.fromPath(");
-    expect(script).toMatch(/ch_\w+_reads_nfcore = sheet_samples\s+\.map/);
-    expect(script).toMatch(/NFCORE_FASTQC_QC\(ch_\w+_reads_nfcore\)/);
+    expect(script).toContain("ch_samplesheet = channel.fromPath(params.samplesheet");
+    // Samplesheet rows are [meta, reads], as FastQC takes them.
+    expect(script).toMatch(/\bFASTQC\(ch_samplesheet\)/);
   });
 
   it("puts the samplesheet into the input files", () => {

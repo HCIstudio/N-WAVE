@@ -12,6 +12,8 @@ export interface NodeGenerationContext {
   processName: string;
   incomingEdges: Edge[];
   upstreamChannelName: string;
+  /** Every upstream step gives plain files (no `[meta, files]` tuples). */
+  upstreamIsFiles?: boolean;
   outputChannelName: string | null;
   channelNameMap: Map<string, string>;
   outputDisplayCounter: number;
@@ -25,7 +27,14 @@ export interface NodeGenerationContext {
   ) => string | null;
   buildMixedChannelExpression: (channelNames: string[]) => string;
   sanitizeVarName: (name: string) => string;
+  /** A unique lower-case channel name, e.g. "ch_star_align_reads". */
+  channelNameFor?: (base: string) => string;
+  /** What the items coming over a connection look like, when known. */
+  shapeOf?: (edge: Edge) => ItemShape;
 }
+
+/** Plain files, `[meta, files]` tuples, or not known. */
+export type ItemShape = "file" | "meta" | "unknown";
 
 export interface NodeGenerationResult {
   processScript: string;
@@ -54,23 +63,20 @@ const getResourceSettings = (node: Node<NodeData>) => ({
 });
 
 /**
- * One file per emission: `[meta, files...]` items (Samplesheet rows, nf-core
- * outputs such as paired-end FastQC reports) contribute all their files, for
- * steps that take plain files.
+ * One file per item, for steps that take plain files. Files pass as they
+ * are; `[meta, files]` items (Samplesheet rows, nf-core outputs such as
+ * paired-end reads) give each of their files.
  */
-const filesOf = (channelExpr: string): string =>
-  `${channelExpr}.flatMap { item ->
-        def value = item instanceof List && item.size() > 1 ? (item[0] instanceof Map ? item[1..-1] : item[-1]) : item
-        (value instanceof List ? value.flatten() : [value]).collect { entry ->
-            file(entry instanceof String ? "\${params.inputdir}/\${entry}" : entry, glob: false)
-        }
-    }`;
+const filesOf = (channelExpr: string, plainFiles = false): string =>
+  plainFiles ? channelExpr : `${channelExpr}.flatten().filter { item -> item instanceof Path }`;
 
 export const generateFilterNode: NodeGenerator = ({
   node,
   processName,
   upstreamChannelName,
+  upstreamIsFiles,
   outputChannelName,
+  channelNameFor,
 }) => {
   if (!outputChannelName) return null;
 
@@ -94,7 +100,7 @@ export const generateFilterNode: NodeGenerator = ({
     return {
       processScript,
       processInvocations: [
-        `    ${outputChannelName} = ${processName}(${filesOf(upstreamChannelName)})\n`,
+        `    ${processName}(${filesOf(upstreamChannelName, upstreamIsFiles)})\n`,
       ],
     };
   }
@@ -104,17 +110,13 @@ export const generateFilterNode: NodeGenerator = ({
     .map((name: string) => `file.name == ${singleQuoted(name)}`)
     .join(" || ");
 
+  const selected = channelNameFor?.(`ch_${processName}_selected`) ?? `${outputChannelName}_selected`;
   return {
     processScript,
     channelDefinitions: [
-      `    // Filter to only process selected files: ${selectedFileNames.join(
-        ", "
-      )}\n`,
-      `    ${outputChannelName}_selected = ${filesOf(upstreamChannelName)}.filter { file -> ${fileNameFilter} }\n`,
+      `    ${selected} = ${filesOf(upstreamChannelName, upstreamIsFiles)}.filter { file -> ${fileNameFilter} }\n`,
     ],
-    processInvocations: [
-      `    ${outputChannelName} = ${processName}(${outputChannelName}_selected)\n`,
-    ],
+    processInvocations: [`    ${processName}(${selected})\n`],
   };
 };
 
@@ -122,6 +124,7 @@ export const generateMapNode: NodeGenerator = ({
   node,
   processName,
   upstreamChannelName,
+  upstreamIsFiles,
   outputChannelName,
 }) => {
   if (!outputChannelName) return null;
@@ -139,15 +142,14 @@ export const generateMapNode: NodeGenerator = ({
       mapReplaceFind: node.data.mapReplaceFind,
       mapReplaceWith: node.data.mapReplaceWith,
     }),
-    processInvocations: [
-      `    ${outputChannelName} = ${processName}(${filesOf(upstreamChannelName)})\n`,
-    ],
+    processInvocations: [`    ${processName}(${filesOf(upstreamChannelName, upstreamIsFiles)})\n`],
   };
 };
 
 export const generateMergeNode: NodeGenerator = ({
   node,
   processName,
+  upstreamIsFiles,
   outputChannelName,
   incomingEdges,
   channelNameMap,
@@ -166,8 +168,6 @@ export const generateMergeNode: NodeGenerator = ({
 
   if (upstreamChannelNames.length === 0) return null;
 
-  const mergeInputChannelName = `${outputChannelName}_merge_inputs`;
-
   return {
     processScript: generateOperatorCode("merge", {
       processName,
@@ -178,10 +178,7 @@ export const generateMergeNode: NodeGenerator = ({
       joinType: node.data.joinType || "txt",
     }),
     processInvocations: [
-      `    ${mergeInputChannelName} = ${buildMixedChannelExpression(
-        upstreamChannelNames
-      )}\n`,
-      `    ${outputChannelName} = ${processName}(${filesOf(mergeInputChannelName)}.collect())\n`,
+      `    ${processName}(${filesOf(buildMixedChannelExpression(upstreamChannelNames), upstreamIsFiles)}.collect())\n`,
     ],
   };
 };
@@ -214,6 +211,7 @@ export const generateOutputDisplayNode: NodeGenerator = ({
   node,
   processName,
   upstreamChannelName,
+  upstreamIsFiles,
   outputDisplayCounter,
   outputNamingPattern,
   workflowName,
@@ -229,8 +227,8 @@ export const generateOutputDisplayNode: NodeGenerator = ({
 
   const outputInvocationArg =
     selectedFileName === "all"
-      ? `${filesOf(upstreamChannelName)}.collect()`
-      : filesOf(upstreamChannelName);
+      ? `${filesOf(upstreamChannelName, upstreamIsFiles)}.collect()`
+      : filesOf(upstreamChannelName, upstreamIsFiles);
 
   return {
     processScript: generateOutputCode({
@@ -247,10 +245,7 @@ export const generateOutputDisplayNode: NodeGenerator = ({
       timestamp,
       date,
     }),
-    processInvocations: [
-      `    // Save output from: ${node.data.label || "Output"}\n`,
-      `    ${processName}(${outputInvocationArg})\n`,
-    ],
+    processInvocations: [`    ${processName}(${outputInvocationArg})\n`],
     outputDisplayCounterIncrement: 1,
   };
 };

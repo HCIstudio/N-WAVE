@@ -79,14 +79,16 @@
             "label": "Html",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_{fastqc.html}"
+            "filePattern": "*_{fastqc.html}",
+            "metaTuple": true
           },
           {
             "name": "zip",
             "label": "Zip",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_{fastqc.zip}"
+            "filePattern": "*_{fastqc.zip}",
+            "metaTuple": true
           },
           {
             "name": "versions_fastqc",
@@ -174,20 +176,23 @@
             "label": "Report",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": ".html"
+            "filePattern": ".html",
+            "metaTuple": true
           },
           {
             "name": "data",
             "label": "Data",
             "isConnectable": true,
-            "kind": "directory"
+            "kind": "directory",
+            "metaTuple": true
           },
           {
             "name": "plots",
             "label": "Plots",
             "isConnectable": true,
             "kind": "file",
-            "filePattern": "*_plots"
+            "filePattern": "*_plots",
+            "metaTuple": true
           },
           {
             "name": "versions",

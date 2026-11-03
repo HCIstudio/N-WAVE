@@ -5,11 +5,11 @@ import { getNodeCode } from "./nodeCode";
 describe("getNodeCode", () => {
   it("returns the inline process of a Filter node", () => {
     const code = getNodeCode(makeNode("filter", { filterText: "hello" }));
-    expect(code?.processName).toBe("filter_node_filter");
-    expect(code?.processSource).toMatch(/^process filter_node_filter \{/);
+    expect(code?.processName).toBe("FILTER");
+    expect(code?.processSource).toMatch(/^process FILTER \{/);
     expect(code?.processSource).toContain("grep  'hello'");
     expect(code?.nfCoreModule).toBeUndefined();
-    expect(code?.workflowSnippet).toContain("filter_node_filter(in_ch.flatMap");
+    expect(code?.workflowSnippet).toContain("FILTER(in_ch.flatten()");
   });
 
   it.each(["map", "merge", "outputDisplay"])(
@@ -31,11 +31,11 @@ describe("getNodeCode", () => {
       processName: "FASTQC",
       modulePath: "./modules/nf-core/fastqc/main",
     });
-    expect(code?.includeStatements[0]).toMatch(/^include \{ FASTQC as /);
+    expect(code?.includeStatements[0]).toBe("include { FASTQC } from './modules/nf-core/fastqc/main'");
     expect(code?.configBlocks.join("\n")).toContain(
       "ext.args = '--nogroup --kmers 7'",
     );
-    expect(code?.workflowSnippet).toMatch(/_reads_nfcore = reads_ch\s+\.map/);
+    expect(code?.workflowSnippet).toMatch(/ch_fastqc_reads = reads_ch\s+\.map/);
   });
 
   it("returns null for nodes that don't generate a process", () => {

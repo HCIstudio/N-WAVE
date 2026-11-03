@@ -320,7 +320,7 @@ const WorkflowPageContent: React.FC = () => {
     failedNodeId ??
     (isRunning ? undefined : Object.entries(runTasks.nodeRuns).find(([, nodeRun]) => nodeRun.status === "failed")?.[0]);
   const nestedNode = nestedNodeId ? nodes.find((node) => node.id === nestedNodeId) : undefined;
-  const nestedEntry = nestedNode ? nestedEntryOf(nestedNode, getProcessNameForNode(nestedNode)) : null;
+  const nestedEntry = nestedNode ? nestedEntryOf(nestedNode, getProcessNameForNode(nestedNode, nodes)) : null;
   const showFailedStep = failedNodeId ? () => showNode(failedNodeId) : undefined;
 
   const handleProcessSelect = useCallback(

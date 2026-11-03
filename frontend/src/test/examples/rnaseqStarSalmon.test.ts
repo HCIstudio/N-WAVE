@@ -116,8 +116,9 @@ describe("the RNA-seq (STAR + Salmon) example", () => {
       expect(script).toContain(`from './${folder}/main'`);
     }
     // The mixed QC reports are defined before MultiQC reads them.
-    expect(script.indexOf("qc_reports_reports = ")).toBeLessThan(
-      script.indexOf("= qc_reports_reports"),
+    expect(script.indexOf("ch_collect_qc_reports = ")).toBeGreaterThan(-1);
+    expect(script.indexOf("ch_collect_qc_reports = ")).toBeLessThan(
+      script.indexOf("= ch_collect_qc_reports"),
     );
     // Paired-end outputs are flattened before MultiQC collects them.
     expect(script).toContain(".flatten().collect()");
@@ -127,7 +128,7 @@ describe("the RNA-seq (STAR + Salmon) example", () => {
       `path: { "\${params.outdir}/salmon_quantification" }`,
     );
     expect(config).toContain(
-      "withName: 'NFCORE_SUBWORKFLOW_BAM_SORT_STATS_SAMTOOLS_BAM_SORT_STATS:.*' {",
+      "withName: 'SAMTOOLS_SORT_INDEX_STATS:.*' {",
     );
   });
 });

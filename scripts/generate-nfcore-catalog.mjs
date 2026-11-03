@@ -8,6 +8,7 @@ import { fileURLToPath } from "node:url";
 import {
   getInputDeclarations,
   getInputGroups,
+  getMetaEmits,
   getMetaInputs,
   getValueInputs,
 } from "./nfcoreModuleParser.mjs";
@@ -391,6 +392,8 @@ function buildCatalog() {
       valueInputs: getValueInputs(inputGroups, getMetaInputs(metaYaml)),
       outputs,
       emits,
+      // Emits whose items are [meta, files], as nf-core inputs take them.
+      metaEmits: getMetaEmits(mainNf),
       // What each input and output carries (file pattern, directory, ...).
       portTypes: getPortTypes(parseMeta(metaYaml)),
       containers: getContainerNames(metaYaml),

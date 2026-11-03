@@ -9,6 +9,7 @@ import NfCoreSubworkflowPanel from "../../components/panels/process/NfCoreSubwor
 import type { NodeDefinition } from "../nodeDefinitions";
 import type { NodeGenerator } from "../nodeGeneration";
 import type { NfCoreAdapterManifest } from "../nfcoreModuleAdapters";
+import { includeFor } from "./include";
 import { type NfCoreValueType, valueLiteral } from "./inputChannels";
 
 export interface NfCoreSubworkflowTake {
@@ -86,7 +87,7 @@ export const buildNfCoreSubworkflowManifest = (
  * the placeholder isn't such a tuple.
  */
 export const metaTupleSize = (defaultValue: unknown): number | null => {
-  const inner = String(defaultValue).match(/^Channel\.value\(\[\s*\[:\]\s*((?:,\s*\[\]\s*)*)\]\)$/);
+  const inner = String(defaultValue).match(/^[Cc]hannel\.value\(\[\s*\[:\]\s*((?:,\s*\[\]\s*)*)\]\)$/);
   return inner ? 1 + (inner[1].match(/\[\]/g) ?? []).length : null;
 };
 
@@ -180,7 +181,7 @@ export const generateNfCoreSubworkflowNode =
     return {
       processScript: "",
       includeStatements: [
-        `include { ${manifest.processName} as ${alias} } from '${manifest.modulePath}'`,
+        includeFor(manifest.processName, alias, manifest.modulePath),
       ],
       // Raw selectors from the settings; inner processes are named
       // "<alias>:<PROCESS>", so `withName: '.*:SALMON_QUANT'` matches.

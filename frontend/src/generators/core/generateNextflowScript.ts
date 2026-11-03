@@ -17,18 +17,36 @@ import {
 import { edgesIntoPort } from "../../registry/portArity";
 import { buildMixedChannelExpression } from "./mixChannels";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
+import { lowerSnake, processNamesFor, uniqueName } from "./naming";
+import { formatLayoutComment } from "./layoutComment";
+import type { ItemShape } from "../../registry/nodeGeneration";
+
+// Writes a workflow on the canvas as a Nextflow script, the way a person
+// would write it: each step a process (or an nf-core module) named after its
+// label, called in the order the steps depend on each other, its outputs
+// read as `STEP.out.<name>`. Input nodes become channels at the top of the
+// workflow. The last line records where each node sits on the canvas, so
+// importing the script gives the same canvas back (see layoutComment.ts).
+//
+// Each node type writes its own code (its definition's generateNextflow);
+// this file names things, orders the steps and tidies the result.
+
+/** The first line of every script N-WAVE writes (the backend looks for it). */
+export const GENERATED_HEADER = "// Written by N-WAVE: https://github.com/HCIstudio/N-WAVE";
+
+/** Node types that are steps in the workflow (called, in dependency order). */
+const STEP_TYPES = new Set(["operator", "filter", "process", "channelOperator", "outputDisplay"]);
+
+/** Nodes whose output is plain files (never `[meta, files]` tuples). */
+const FILE_OUTPUT_TYPES = new Set(["fileInput", "operator", "filter"]);
+
+export interface GenerateOptions {
+  /** Write the layout comment (default true). */
+  layout?: boolean;
+}
 
 /**
  * Generates a Nextflow script from the current workflow nodes.
- *
- * This function has been refactored to use the template system for clean,
- * error-free script generation. Complex inline string building has been
- * replaced with calls to specialized template functions:
- *
- * - Process nodes (nf-core modules, custom nodes) → their definitions
- * - Operator nodes (Filter, Map, Merge) → generateOperatorCode()
- * - Output nodes → generateOutputCode()
- * - File inputs remain inline (simple, no escaping issues)
  *
  * @param nodes An array of nodes from the React Flow instance.
  * @param edges An array of edges from the React Flow instance.
@@ -37,21 +55,13 @@ import { describeCycle, findCycle } from "../../registry/workflowCycles";
  * @param outputNamingPattern The output naming pattern for the workflow.
  * @returns A string containing the generated Nextflow script.
  */
-/**
- * True when an invocation holds only comments or blank lines. Code that
- * starts with a comment (channel operator code, say) still counts as code.
- */
-const isCommentOnly = (invocation: string): boolean =>
-  invocation
-    .split("\n")
-    .every((line) => line.trim() === "" || line.trim().startsWith("//"));
-
 export const generateNextflowScript = (
   nodes: Node<NodeData>[],
   edges: Edge[],
   workflowName: string,
   outputDirectory: string,
-  outputNamingPattern: string
+  outputNamingPattern = "{workflow_name}",
+  options: GenerateOptions = {},
 ): string => {
   // A loop has no order to write its channels in (the workflow check and the
   // canvas say so first; downloads and exports show this message).
@@ -62,141 +72,113 @@ export const generateNextflowScript = (
     );
   }
 
-  // Add timestamp to ensure unique process names
-  const timestamp = Date.now();
-  const now = new Date();
-  const dateStr = now.toISOString().split("T")[0]; // YYYY-MM-DD
+  // Only a naming pattern that asks for them puts the time or date in names.
+  const timestamp = outputNamingPattern.includes("{timestamp}") ? Date.now() : 0;
+  const dateStr = outputNamingPattern.includes("{date}")
+    ? new Date().toISOString().split("T")[0]
+    : "";
+
+  const processNames = processNamesFor(nodes);
+  const order = stepOrder(nodes, edges);
+  // Lower-case names for channels: unique, apart from the processes' upper-case ones.
+  const takenChannels = new Set<string>();
 
   // Convert outputDirectory to use forward slashes for Nextflow compatibility
   const nfOutputDirectory = outputDirectory.replace(/\\/g, "/");
 
-  let paramsScript = `params.outdir = ${singleQuoted(nfOutputDirectory)}\n\n`;
-  let firstPassScript = "";
-  const processScripts: { [key: string]: string } = {};
-  const executionOrder: string[] = [];
+  let paramsScript = `params.outdir = ${singleQuoted(nfOutputDirectory)}\n`;
+  let inputScript = "";
   const channelNameMap = new Map<string, string>();
-
-  // Counter for output display nodes to ensure unique filenames
-  let outputDisplayCounter = 1;
-  const channelDefinitions: string[] = [];
-  const processInvocations: string[] = [];
-  // Display Output calls, which go last.
-  const outputDisplayInvocations = new Set<string>();
-  const includeStatements: string[] = [];
-  const nextflowConfigBlocks: string[] = [];
-  // Top-level input channels defined by file-input nodes (e.g. "ch_files").
-  // These are legitimate workflow inputs, not process outputs, so they must be
-  // recognised as "resolved" during dependency validation.
-  const definedInputChannels = new Set<string>();
-  // Declared dependencies of invocations (see NodeGenerationResult).
-  const declaredDependencies = new Map<
-    string,
-    { definitions: string[]; usages: string[] }
-  >();
-  const dependenciesOf = (invocation: string) =>
-    declaredDependencies.get(invocation) ?? parseInvocation(invocation);
 
   // Input nodes read from the input directory; declare it once.
   let inputDirDeclared = false;
   const declareInputDir = () => {
     if (inputDirDeclared) return;
     inputDirDeclared = true;
-    paramsScript += `params.inputdir = "./inputs"\n`;
+    paramsScript += `params.inputdir = 'inputs'\n`;
   };
 
-  // First pass: Define file inputs and map all node outputs to channel names
   // `name = value` lines for the exported config's params { } block.
   const paramConfigLines: string[] = [];
-  const hasSeveralFileInputs =
-    nodes.filter((node) => node.type === "fileInput").length > 1;
 
-  for (const node of nodes) {
+  // Input nodes: params at the top, channels at the start of the workflow.
+  for (const node of order) {
     if (node.type === "parameters") {
       const parameters = getNodeParameters(node.data);
-      const channelNameFor = (parameter: WorkflowParameter) =>
-        sanitizeVarName(`${node.id}_${parameter.name}`);
-      const declarations = generateParameterDeclarations(
-        parameters,
-        channelNameFor
-      );
+      const channelNames = new Map<string, string>();
+      const channelNameFor = (parameter: WorkflowParameter) => {
+        const existing = channelNames.get(parameter.name);
+        if (existing) return existing;
+        const name = uniqueName(`ch_${lowerSnake(parameter.name) || "param"}`, takenChannels);
+        channelNames.set(parameter.name, name);
+        return name;
+      };
+      const declarations = generateParameterDeclarations(parameters, channelNameFor);
       for (const parameter of parameters.filter((entry) => entry.type === "file")) {
-        const channelName = channelNameFor(parameter);
-        channelNameMap.set(`${node.id}.${parameter.name}`, channelName);
-        definedInputChannels.add(channelName);
+        channelNameMap.set(`${node.id}.${parameter.name}`, channelNameFor(parameter));
       }
       if (declarations.channels) declareInputDir();
       paramsScript += declarations.script;
       paramConfigLines.push(...declarations.config);
-      if (declarations.channels) firstPassScript += `${declarations.channels}\n`;
+      if (declarations.channels) inputScript += `${declarations.channels}\n`;
     } else if (node.type === "samplesheet") {
-      const channelName = sanitizeVarName(`${node.id}_samples`);
+      const base = lowerSnake(String(node.data.label || "")) || "samplesheet";
+      const channelName = uniqueName(`ch_${base}`, takenChannels);
       channelNameMap.set(`${node.id}.samples`, channelName);
       channelNameMap.set(`${node.id}.out`, channelName);
-      definedInputChannels.add(channelName);
 
       declareInputDir();
       const { params, channel } = generateSamplesheetChannel({
         channelName,
-        paramName: sanitizeVarName(`samplesheet_${node.id}`),
+        paramName: channelName.replace(/^ch_/, ""),
         fileName: getSamplesheetFileName(node.data),
         mapping: getSamplesheetMapping(node.data),
       });
       paramsScript += params;
-      firstPassScript += `${channel}\n`;
+      inputScript += `${channel}\n`;
     } else if (node.type === "fileInput") {
-      // A lone File Input keeps the historical names; with several, each
-      // gets its own param and channel (the first `params.x =` wins).
-      const suffix = hasSeveralFileInputs ? `_${sanitizeVarName(node.id)}` : "";
-      const channelName = `ch_files${suffix}`;
-      const selectedFilesParam = `params.selected_files${suffix}`;
-      const legacyFileOutputChannelName = sanitizeVarName(
-        `${node.id}_ch_files_out`
-      );
+      // "File Input" (the default label) reads `params.files` into `ch_files`.
+      const label = String(node.data.label || "");
+      const base = !label || label === "File Input" ? "files" : lowerSnake(label) || "files";
+      const channelName = uniqueName(`ch_${base}`, takenChannels);
+      const param = `params.${channelName.replace(/^ch_/, "")}`;
       channelNameMap.set(`${node.id}.ch_files_out`, channelName);
       channelNameMap.set(`${node.id}.out`, channelName);
-      definedInputChannels.add(channelName);
 
-      // Extract selected filenames from the node data
-      const selectedFiles = node.data.files || [];
-      const filenames = selectedFiles.map(
+      const filenames = (node.data.files || []).map(
         (file: FileObject) => file.name || file.originalName || "unknown_file"
       );
-
-      if (filenames.length > 0) {
-        // Add parameters for input directory and selected files
-        declareInputDir();
-        paramsScript += `${selectedFilesParam} = [${filenames
-          .map(singleQuoted)
-          .join(", ")}]\n\n`;
-
-        // Create channel from file list with proper file staging
-        firstPassScript += `${channelName} = Channel.fromList(${selectedFilesParam})\n`;
-        firstPassScript += `    .map { filename -> file("\${params.inputdir}/\${filename}", glob: false) }\n\n`;
-        firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
-      } else {
-        // Fallback if no files
-        declareInputDir();
-        paramsScript += `${selectedFilesParam} = []\n\n`;
-        firstPassScript += `${channelName} = Channel.empty()\n\n`;
-        firstPassScript += `${legacyFileOutputChannelName} = ${channelName}\n\n`;
+      declareInputDir();
+      paramsScript += `${param} = [${filenames.map(singleQuoted).join(", ")}]\n`;
+      inputScript +=
+        filenames.length > 0
+          ? `${channelName} = channel.fromList(${param})\n    .map { name -> file("\${params.inputdir}/\${name}", checkIfExists: true) }\n\n`
+          : `${channelName} = channel.empty()\n\n`;
+    } else if (node.type === "channelOperator") {
+      // Channels named after the node: `ch_<label>` (`ch_<label>_<output>` for several).
+      const base = `ch_${lowerSnake(String(node.data.label || "")) || "channels"}`;
+      const outputs = node.data.outputs ?? [];
+      for (const output of outputs) {
+        const channelName = uniqueName(
+          outputs.length === 1 ? base : `${base}_${lowerSnake(output.name) || "out"}`,
+          takenChannels,
+        );
+        channelNameMap.set(`${node.id}.${output.name}`, channelName);
       }
+    } else if (node.type === "operator" || node.type === "filter") {
+      // Filter, Map and Merge have one output: STEP.out.
+      const reference = `${processNames.get(node.id)}.out`;
+      for (const output of node.data.outputs ?? []) channelNameMap.set(`${node.id}.${output.name}`, reference);
+      channelNameMap.set(`${node.id}.out`, reference);
     } else {
+      // A step's outputs: named here, read as STEP.out.<name> once it's called.
       for (const output of node.data.outputs ?? []) {
-        // Named after the output, so nodes with several outputs keep them apart
         const channelName = `${node.id.replace(/[\s-]+/g, "_")}_${output.name}`;
         channelNameMap.set(`${node.id}.${output.name}`, channelName);
       }
-
-      // Also create a fallback mapping for generic output handles that might use different naming
-      if (node.data.outputs && node.data.outputs.length > 0) {
-        // Map common output handle patterns
-        const firstOutputName = node.data.outputs[0].name;
-        const fallbackChannelName = `${node.id.replace(
-          /[\s-]+/g,
-          "_"
-        )}_${firstOutputName}`;
-
-        // Add mappings for common handle naming patterns
+      const firstOutputName = node.data.outputs?.[0]?.name;
+      if (firstOutputName) {
+        const fallbackChannelName = `${node.id.replace(/[\s-]+/g, "_")}_${firstOutputName}`;
         channelNameMap.set(`${node.id}.out`, fallbackChannelName);
         channelNameMap.set(`${node.id}_out`, fallbackChannelName);
         channelNameMap.set(`${node.id}.output`, fallbackChannelName);
@@ -204,117 +186,87 @@ export const generateNextflowScript = (
     }
   }
 
-  // Track which process nodes have already been invoked
-  const invokedNodes = new Set<string>();
+  const processScripts: string[] = [];
+  const includeStatements: string[] = [];
+  const nextflowConfigBlocks: string[] = [];
+  /** Each step's statements, in order; Display Output steps go last. */
+  const stepStatements: string[] = [];
+  const outputStatements: string[] = [];
+  let outputDisplayCounter = 1;
 
-  // Second pass: Build operator chains and process blocks
-  const processedNodes = new Set<string>();
-  for (const node of nodes) {
-    if (processedNodes.has(node.id)) continue;
-    processedNodes.add(node.id);
+  for (const node of order) {
+    if (!STEP_TYPES.has(String(node.type))) continue;
+    const processName = processNames.get(node.id) ?? "STEP";
+    const incomingEdges = sortIncomingEdges(edges.filter((edge) => edge.target === node.id));
+    if (incomingEdges.length === 0) continue;
 
-    if (
-      node.type === "operator" ||
-      node.type === "filter" ||
-      node.type === "process" ||
-      node.type === "channelOperator" ||
-      node.type === "outputDisplay"
-    ) {
-      if (invokedNodes.has(node.id)) continue;
-      invokedNodes.add(node.id);
-      const processName = getProcessNameForNode(node);
-      const incomingEdges = sortIncomingEdges(
-        edges.filter((edge) => edge.target === node.id)
-      );
-      if (incomingEdges.length === 0) continue;
+    // Every connection into the (first) input, mixed: a one-connection
+    // input has a single one, unless the workflow check flags it.
+    const firstInput =
+      getNodeDefinitionForNode(node)?.inputs?.[0]?.name ?? node.data.inputs?.[0]?.name;
+    const firstInputEdges = firstInput ? edgesIntoPort(node, incomingEdges, firstInput) : [];
+    const upstreamEdges = firstInputEdges.length > 0 ? firstInputEdges : incomingEdges.slice(0, 1);
+    const upstreamNames = upstreamEdges
+      .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
+      .filter((name): name is string => Boolean(name));
+    if (upstreamNames.length === 0) continue;
+    const upstreamChannelName = buildMixedChannelExpression(upstreamNames);
+    const upstreamIsFiles = incomingEdges.every((edge) =>
+      FILE_OUTPUT_TYPES.has(String(nodes.find((candidate) => candidate.id === edge.source)?.type)),
+    );
 
-      // Every connection into the (first) input, mixed: a one-connection
-      // input has a single one, unless the workflow check flags it.
-      const firstInput =
-        getNodeDefinitionForNode(node)?.inputs?.[0]?.name ??
-        node.data.inputs?.[0]?.name;
-      const firstInputEdges = firstInput
-        ? edgesIntoPort(node, incomingEdges, firstInput)
-        : [];
-      const upstreamNames = (
-        firstInputEdges.length > 0 ? firstInputEdges : incomingEdges.slice(0, 1)
-      )
-        .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
-        .filter((name): name is string => Boolean(name));
-      if (upstreamNames.length === 0) continue;
-      const upstreamChannelName = buildMixedChannelExpression(upstreamNames);
-
-      // Output display nodes don't have outputs, so skip this check for them
-      let outputChannelName = null;
-      if (node.type !== "outputDisplay") {
-        outputChannelName = channelNameMap.get(
-          `${node.id}.${node.data.outputs?.[0]?.name}`
-        );
-        if (!outputChannelName) continue;
-      }
-
-      const nodeDefinition = getNodeDefinitionForNode(node);
-      const generationResult = nodeDefinition?.generateNextflow?.({
-        node,
-        processName,
-        incomingEdges,
-        upstreamChannelName,
-        outputChannelName,
-        channelNameMap,
-        outputDisplayCounter,
-        outputNamingPattern,
-        workflowName,
-        timestamp,
-        date: dateStr,
-        resolveChannelNameForEdge,
-        buildMixedChannelExpression,
-        sanitizeVarName,
-      });
-
-      if (!generationResult) continue;
-
-      processScripts[node.id] = generationResult.processScript;
-
-      if (generationResult.includeInExecutionOrder !== false) {
-        executionOrder.push(node.id);
-      }
-
-      if (generationResult.channelDefinitions) {
-        channelDefinitions.push(...generationResult.channelDefinitions);
-      }
-
-      if (generationResult.includeStatements) {
-        includeStatements.push(...generationResult.includeStatements);
-      }
-
-      if (generationResult.nextflowConfigBlocks) {
-        nextflowConfigBlocks.push(...generationResult.nextflowConfigBlocks);
-      }
-
-      processInvocations.push(...generationResult.processInvocations);
-      if (node.type === "outputDisplay") {
-        for (const invocation of generationResult.processInvocations) {
-          outputDisplayInvocations.add(invocation);
-        }
-      }
-      if (generationResult.dependencies) {
-        for (const invocation of generationResult.processInvocations) {
-          declaredDependencies.set(invocation, {
-            definitions: generationResult.dependencies.defines,
-            usages: generationResult.dependencies.uses,
-          });
-        }
-      }
-      outputDisplayCounter +=
-        generationResult.outputDisplayCounterIncrement ?? 0;
+    // Output display nodes don't have outputs, so skip this check for them
+    let outputChannelName = null;
+    if (node.type !== "outputDisplay") {
+      outputChannelName = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
+      if (!outputChannelName) continue;
     }
+
+    const nodeDefinition = getNodeDefinitionForNode(node);
+    const generationResult = nodeDefinition?.generateNextflow?.({
+      node,
+      processName,
+      incomingEdges,
+      upstreamChannelName,
+      upstreamIsFiles,
+      outputChannelName,
+      channelNameMap,
+      outputDisplayCounter,
+      outputNamingPattern,
+      workflowName,
+      timestamp,
+      date: dateStr,
+      resolveChannelNameForEdge,
+      buildMixedChannelExpression,
+      sanitizeVarName,
+      channelNameFor: (base: string) => uniqueName(lowerSnake(base) || "ch", takenChannels),
+      shapeOf: (edge: Edge) => itemShape(edge, nodes),
+    });
+
+    if (!generationResult) continue;
+
+    if (generationResult.processScript.trim()) processScripts.push(generationResult.processScript);
+    includeStatements.push(...(generationResult.includeStatements ?? []));
+    nextflowConfigBlocks.push(...(generationResult.nextflowConfigBlocks ?? []));
+
+    const statements = [
+      ...(generationResult.channelDefinitions ?? []),
+      ...generationResult.processInvocations,
+    ]
+      .filter((statement) => statement.trim() !== "")
+      .map((statement) => statement.replace(/\n*$/, "\n"));
+    // A channel operator's code is grouped under its label, so it reads (and
+    // imports) as one step.
+    if (node.type === "channelOperator" && statements.length > 0) {
+      statements.unshift(`    // ${String(node.data.label || "Channel operator").replace(/\n/g, " ")}\n`);
+    }
+    (node.type === "outputDisplay" ? outputStatements : stepStatements).push(statements.join(""));
+    outputDisplayCounter += generationResult.outputDisplayCounterIncrement ?? 0;
   }
 
   // Final Script Assembly
-  let finalScript = `// Workflow Script for ${workflowName}\n`;
-  finalScript += "// N-WAVE generator: registry-nfcore-v1\n\n";
-  finalScript += "nextflow.enable.dsl = 2\n\n";
-  finalScript += paramsScript;
+  let finalScript = `// ${workflowName.replace(/\n/g, " ")}\n${GENERATED_HEADER}\n\n`;
+  finalScript += `${paramsScript}\n`;
   if (nextflowConfigBlocks.length > 0 || paramConfigLines.length > 0) {
     let config = "";
     if (paramConfigLines.length > 0) {
@@ -332,313 +284,201 @@ export const generateNextflowScript = (
         .join("\n\n");
       config += "\n}";
     }
-    // `*/` in a value would end the comment; the extractors undo this.
+    // Settings for nextflow.config (runs and "Export project" move them
+    // there). `*/` in a value would end the comment; the extractors undo this.
     finalScript += `/* N-WAVE_NEXTFLOW_CONFIG\n${config.replace(/\*\//g, "*\\/")}\n*/\n\n`;
   }
   const uniqueIncludeStatements = Array.from(new Set(includeStatements));
   if (uniqueIncludeStatements.length > 0) {
-    finalScript += uniqueIncludeStatements.join("\n");
-    finalScript += "\n\n";
+    finalScript += `${uniqueIncludeStatements.join("\n")}\n\n`;
   }
-  // Helper functions the generated code calls (top-level, strict syntax).
-  const helperFunctions = helperFunctionsFor(
-    [
-      firstPassScript,
-      ...channelDefinitions,
-      ...processInvocations,
-      ...Object.values(processScripts),
-    ].join("\n")
+
+  const workflowBody = naturalize(
+    [inputScript.trimEnd() ? `${indent(inputScript.trimEnd())}\n\n` : "", ...stepStatements, ...outputStatements].join(""),
+    new Set(processNames.values()),
   );
+
+  // Helper functions the generated code calls (top-level, strict syntax).
+  const helperFunctions = helperFunctionsFor([workflowBody, ...processScripts].join("\n"));
   if (helperFunctions.length > 0) {
     finalScript += `${helperFunctions.join("\n\n")}\n\n`;
   }
 
-  // Deduplicate executionOrder to prevent duplicate process definitions
-  const uniqueExecutionOrder = [...new Set(executionOrder)];
-
-  // Create a map to ensure each process script is only included once
-  const uniqueProcessScripts = new Map<string, string>();
-  for (const id of uniqueExecutionOrder) {
-    if (processScripts[id] && !uniqueProcessScripts.has(id)) {
-      uniqueProcessScripts.set(id, processScripts[id]);
-    }
+  const uniqueProcessScripts = Array.from(new Set(processScripts));
+  if (uniqueProcessScripts.length > 0) {
+    finalScript += `${uniqueProcessScripts.map(tidyBlock).join("\n\n")}\n\n`;
   }
 
-  const orderedProcessScripts = executionOrder
-    .filter((id, idx) => executionOrder.indexOf(id) === idx)
-    .map((id) => processScripts[id])
-    .filter(Boolean);
-  if (orderedProcessScripts.length > 0) {
-    finalScript += `\n${orderedProcessScripts.join("\n\n")}\n`;
+  finalScript += `workflow {\n${workflowBody.replace(/\n+$/, "")}\n}\n`;
+
+  if (options.layout !== false && nodes.length > 0) {
+    finalScript += `\n${formatLayoutComment(nodes, processNames)}\n`;
   }
 
-  finalScript += "\nworkflow {\n";
-  // Input channels (File Input, Samplesheet, Parameters) are statements, so
-  // they belong in the workflow block.
-  if (firstPassScript.trim()) {
-    finalScript += `${firstPassScript
-      .trimEnd()
-      .split("\n")
-      .map((line) => (line ? `    ${line}` : line))
-      .join("\n")}\n\n`;
-  }
-  // Channel definitions are ordered with the process calls below: one built
-  // from another node's output must come after the call that defines it.
-
-  // FIXED: Sort process invocations to ensure variables are defined before they're used
-  const sortedInvocations: string[] = [];
-  const outputInvocations: string[] = [];
-
-  // Build a map of which variables are defined by which invocations
-  const variableDefinitions = new Map<string, string>();
-  const variableUsages = new Map<string, string[]>();
-
-  for (const definition of channelDefinitions) {
-    const { definitions } = dependenciesOf(definition);
-
-    for (const varName of definitions) {
-      variableDefinitions.set(varName, definition);
-    }
-  }
-
-  for (const invocation of processInvocations) {
-    // Skip comments and empty lines
-    if (isCommentOnly(invocation)) {
-      continue;
-    }
-
-    const { definitions, usages } = dependenciesOf(invocation);
-
-    for (const varName of definitions) {
-      variableDefinitions.set(varName, invocation);
-    }
-
-    for (const usedVar of usages) {
-      if (!variableUsages.has(usedVar)) {
-        variableUsages.set(usedVar, []);
-      }
-      variableUsages.get(usedVar)?.push(invocation);
-    }
-  }
-
-  // Add invocations in dependency order - variables must be defined before used
-  const processed = new Set<string>();
-  const processing = new Set<string>(); // Track currently processing to detect cycles
-  const channelDefinitionSet = new Set(channelDefinitions);
-
-  function addInvocation(invocation: string): void {
-    if (processed.has(invocation)) return;
-
-    // Prevent infinite recursion by detecting cycles
-    if (processing.has(invocation)) {
-      console.warn(
-        `Circular dependency detected for invocation: ${invocation}`
-      );
-      return;
-    }
-
-    processing.add(invocation);
-
-    for (const usedVar of dependenciesOf(invocation).usages) {
-      const definingInvocation = variableDefinitions.get(usedVar);
-      // If this invocation uses a variable, make sure that variable is defined first
-      if (definingInvocation && !processed.has(definingInvocation)) {
-        addInvocation(definingInvocation);
-      }
-    }
-
-    processing.delete(invocation);
-
-    if (channelDefinitionSet.has(invocation)) {
-      if (!sortedInvocations.includes(invocation)) {
-        sortedInvocations.push(invocation);
-      }
-      processed.add(invocation);
-      return;
-    }
-
-    // Now add this invocation
-    if (outputDisplayInvocations.has(invocation)) {
-      if (!outputInvocations.includes(invocation)) {
-        outputInvocations.push(invocation);
-      }
-    } else {
-      if (!sortedInvocations.includes(invocation)) {
-        sortedInvocations.push(invocation);
-      }
-    }
-    processed.add(invocation);
-  }
-
-  // Process all invocations, then any channel definition nothing uses
-  for (const invocation of [...processInvocations, ...channelDefinitions]) {
-    if (!isCommentOnly(invocation)) {
-      addInvocation(invocation);
-    }
-  }
-
-  // Fail fast when an invocation uses an unresolved variable
-  for (const [usedVar, dependentInvocations] of variableUsages) {
-    if (!variableDefinitions.has(usedVar)) {
-      // Input channels from file-input nodes are defined at the top of the
-      // workflow rather than produced by a process invocation — they're
-      // resolved, not missing.
-      if (definedInputChannels.has(usedVar)) {
-        continue;
-      }
-
-      // A channel nothing defines: a step whose input comes from a step that
-      // wasn't generated (unconnected, or removed). The script would fail
-      // with "not defined", so it isn't written.
-      if (usedVar.startsWith("ch_") || usedVar.startsWith("node_")) {
-        throw new Error(
-          `A step uses the output of a step that isn't part of the workflow (${usedVar}); connect that step's inputs or remove the connection.`
-        );
-      }
-
-      throw new Error(
-        `Unable to resolve dependency "${usedVar}" in generated workflow. ` +
-          `Used in invocation(s): ${dependentInvocations.join(" | ")}`
-      );
-    }
-  }
-
-  // Add comment lines as-is
-  for (const invocation of processInvocations) {
-    if (isCommentOnly(invocation)) {
-      if (
-        !sortedInvocations.includes(invocation) &&
-        !outputInvocations.includes(invocation)
-      ) {
-        if (outputDisplayInvocations.has(invocation)) {
-          outputInvocations.push(invocation);
-        } else {
-          sortedInvocations.push(invocation);
-        }
-      }
-    }
-  }
-
-  finalScript += sortedInvocations.join(""); // Process calls in dependency order
-  finalScript += outputInvocations.join(""); // Output processes last
-  finalScript += "\n}\n";
-
-  return finalScript;
+  return finalScript.replace(/\n{3,}/g, "\n\n");
 };
 
-function parseInvocation(invocation: string): {
-  definitions: string[];
-  usages: string[];
-} {
-  const definitions: string[] = [];
-  const usages: string[] = [];
+/** What the items coming over a connection look like. */
+export const itemShape = (edge: Edge, nodes: Node<NodeData>[]): ItemShape => {
+  const source = nodes.find((node) => node.id === edge.source);
+  if (!source) return "unknown";
+  if (FILE_OUTPUT_TYPES.has(String(source.type)) || source.type === "parameters") return "file";
+  if (source.type === "samplesheet") return "meta";
+  // nf-core outputs, as the module declares them (older saved nodes lack it).
+  const port = [
+    ...(getNodeDefinitionForNode(source)?.outputs ?? []),
+    ...(source.data.outputs ?? []),
+  ].find((output) => output.name === edge.sourceHandle);
+  return port?.metaTuple ? "meta" : "unknown";
+};
 
-  const trimmed = invocation.trim();
-  if (isCommentOnly(trimmed)) {
-    return { definitions, usages };
+/** Every line indented by four spaces. */
+const indent = (text: string): string =>
+  text
+    .split("\n")
+    .map((line) => (line ? `    ${line}` : line))
+    .join("\n");
+
+/** A process block with its closing brace back at the start of the line. */
+const tidyBlock = (block: string): string => block.trim().replace(/\n[ \t]+\}$/, "\n}");
+
+/**
+ * The nodes in the order their code is written: every node after the ones it
+ * reads from; among nodes that are ready, left to right, then top to bottom.
+ */
+export const stepOrder = (nodes: Node<NodeData>[], edges: Edge[]): Node<NodeData>[] => {
+  const ids = new Set(nodes.map((node) => node.id));
+  const indegree = new Map(nodes.map((node) => [node.id, 0]));
+  for (const edge of edges) {
+    if (ids.has(edge.source) && ids.has(edge.target) && edge.source !== edge.target) {
+      indegree.set(edge.target, (indegree.get(edge.target) ?? 0) + 1);
+    }
   }
+  const position = (node: Node) => node.position ?? { x: 0, y: 0 };
+  const before = (left: Node, right: Node) =>
+    position(left).x - position(right).x || position(left).y - position(right).y || (left.id < right.id ? -1 : 1);
+  const ready = nodes.filter((node) => indegree.get(node.id) === 0);
+  const ordered: Node<NodeData>[] = [];
+  while (ready.length > 0) {
+    ready.sort(before);
+    const node = ready.shift() as Node<NodeData>;
+    ordered.push(node);
+    for (const edge of edges) {
+      if (edge.source !== node.id || !ids.has(edge.target) || edge.target === node.id) continue;
+      const remaining = (indegree.get(edge.target) ?? 0) - 1;
+      indegree.set(edge.target, remaining);
+      if (remaining === 0) ready.push(nodes.find((candidate) => candidate.id === edge.target) as Node<NodeData>);
+    }
+  }
+  // Nodes in a loop (the check above refuses those) keep their place.
+  for (const node of nodes) if (!ordered.includes(node)) ordered.push(node);
+  return ordered;
+};
 
-  for (const line of trimmed.split(/\r?\n/)) {
-    const lineTrimmed = line.trim();
-    if (!lineTrimmed || lineTrimmed.startsWith("//")) continue;
+const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/;
 
-    // Tuple assignment: `(a, b) = process(...)`
-    const tupleDefinitionMatch = lineTrimmed.match(
-      /^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/
-    );
-    if (tupleDefinitionMatch) {
-      const tupleNames = tupleDefinitionMatch[1]
-        .split(",")
-        .map((name) => sanitizeVarName(name.trim()))
-        .filter(
-          (name) =>
-            name.includes("_") ||
-            name.startsWith("ch_") ||
-            name.startsWith("node_")
-        );
-      for (const name of tupleNames) {
-        if (!definitions.includes(name)) definitions.push(name);
-      }
+/**
+ * Write the workflow body the way a person would: `STEP(...)` instead of
+ * `x = STEP(...)`, and `STEP.out.reads` instead of a variable that only
+ * renames it.
+ */
+export const naturalize = (body: string, processNames: Set<string>): string => {
+  const aliases = new Map<string, string>();
+  const kept: string[] = [];
+  for (const line of body.split("\n")) {
+    // `x = STEP(args)` → `STEP(args)`, x is STEP.out
+    const call = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Z][A-Z0-9_]*)\((.*)\)\s*$/);
+    if (call && processNames.has(call[3]) && balanced(call[4])) {
+      aliases.set(call[2], `${call[3]}.out`);
+      kept.push(`${call[1]}${call[3]}(${call[4]})`);
       continue;
     }
-
-    // Single assignment: `var = process(...)`
-    const definitionMatch = lineTrimmed.match(
-      /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/
-    );
-    if (definitionMatch) {
-      const varName = sanitizeVarName(definitionMatch[1]);
-      if (
-        varName &&
-        (varName.includes("_") ||
-          varName.startsWith("ch_") ||
-          varName.startsWith("node_")) &&
-        !definitions.includes(varName)
-      ) {
-        definitions.push(varName);
-      }
+    // `(a, b) = STEP(args)` → `STEP(args)`, a is STEP.out[0]
+    const tuple = line.match(/^(\s*)\(([^)]*)\)\s*=\s*([A-Z][A-Z0-9_]*)\((.*)\)\s*$/);
+    if (tuple && processNames.has(tuple[3]) && balanced(tuple[4])) {
+      tuple[2]
+        .split(",")
+        .map((name) => name.trim())
+        .forEach((name, index) => {
+          if (IDENTIFIER.test(name)) aliases.set(name, `${tuple[3]}.out[${index}]`);
+        });
+      kept.push(`${tuple[1]}${tuple[3]}(${tuple[4]})`);
+      continue;
     }
+    // `x = STEP.out.reads` → (dropped), x is STEP.out.reads
+    const output = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Z][A-Z0-9_]*\.out(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])?)\s*$/);
+    if (output && processNames.has(output[2].split(".")[0])) {
+      aliases.set(output[1], output[2]);
+      continue;
+    }
+    kept.push(line);
   }
+  // `channel.of(...)`: Nextflow deprecates the upper-case `Channel`.
+  const modern = kept.map((line) =>
+    replaceOutsideStrings(line, /(?<![.\w])Channel\.(?=[a-zA-Z]+\()/g, () => "channel."),
+  );
+  kept.splice(0, kept.length, ...modern);
+  if (aliases.size === 0) return kept.join("\n");
+  const pattern = new RegExp(`(?<![.\\w])(${[...aliases.keys()].map(escapeRegExp).join("|")})(?!\\w)`, "g");
+  return kept.map((line) => replaceOutsideStrings(line, pattern, (name) => aliases.get(name) ?? name)).join("\n");
+};
 
-  for (const arg of getInvocationArguments(invocation)) {
-    if (!usages.includes(arg)) usages.push(arg);
+const balanced = (text: string): boolean => {
+  let depth = 0;
+  for (const char of text) {
+    if (char === "(" || char === "[" || char === "{") depth += 1;
+    if (char === ")" || char === "]" || char === "}") depth -= 1;
+    if (depth < 0) return false;
   }
-  for (const arg of getChainedChannelRoots(invocation)) {
-    if (!usages.includes(arg)) usages.push(arg);
-  }
+  return depth === 0;
+};
 
-  return { definitions, usages };
-}
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Replace matches of `pattern` in a line, but not inside '…' or "…" strings. */
+const replaceOutsideStrings = (
+  line: string,
+  pattern: RegExp,
+  replace: (match: string) => string,
+): string =>
+  line
+    .split(/('(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*")/)
+    .map((part, index) => (index % 2 === 1 ? part : part.replace(pattern, replace)))
+    .join("");
 
 function resolveChannelNameForEdge(
   edge: Edge,
   channelNameMap: Map<string, string>
 ): string | null {
-  const upstreamChannelName = channelNameMap.get(
-    `${edge.source}.${edge.sourceHandle}`
-  );
-
-  if (upstreamChannelName) {
-    return upstreamChannelName;
-  }
-
-  let alternativeChannelName = null;
+  const upstreamChannelName = channelNameMap.get(`${edge.source}.${edge.sourceHandle}`);
+  if (upstreamChannelName) return upstreamChannelName;
 
   if (edge.sourceHandle?.includes("_")) {
     const outputName = edge.sourceHandle.split("_").pop();
-    alternativeChannelName = channelNameMap.get(`${edge.source}.${outputName}`);
+    const alternative = channelNameMap.get(`${edge.source}.${outputName}`);
+    if (alternative) return alternative;
   }
-
-  if (!alternativeChannelName && edge.sourceHandle) {
-    alternativeChannelName = channelNameMap.get(
-      `${edge.source}.${edge.sourceHandle}`
-    );
+  for (const [key, value] of channelNameMap.entries()) {
+    if (key.startsWith(`${edge.source}.`)) return value;
   }
-
-  if (!alternativeChannelName) {
-    for (const [key, value] of channelNameMap.entries()) {
-      if (key.startsWith(`${edge.source}.`)) {
-        alternativeChannelName = value;
-        console.warn(`Using fallback channel mapping: ${key} -> ${value}`);
-        break;
-      }
-    }
-  }
-
-  if (alternativeChannelName) {
-    console.warn(
-      `Using alternative channel mapping for ${edge.source}.${edge.sourceHandle} -> ${alternativeChannelName}`
-    );
-    return alternativeChannelName;
-  }
-
-  console.warn(`No upstream channel found for ${edge.source}.${edge.sourceHandle}`);
-  console.warn("Available channel mappings:", Array.from(channelNameMap.entries()));
   return null;
 }
 
-/** Process name the generator uses for a node, e.g. "filter_node_123". */
-export function getProcessNameForNode(node: Node): string {
+/**
+ * The process (or nf-core alias) name a node runs as. With the workflow's
+ * nodes it is the name the script uses (named after the label, unique);
+ * without, the name scripts from before 1.6 used.
+ */
+export function getProcessNameForNode(node: Node, nodes?: Node[]): string {
+  if (nodes) {
+    const name = processNamesFor(nodes).get(node.id);
+    if (name) return name;
+  }
+  return legacyProcessNameForNode(node);
+}
+
+/** Process name scripts from before 1.6 used, e.g. "filter_node_123". */
+export function legacyProcessNameForNode(node: Node): string {
   let type = node.data.processType || node.data.operatorType || node.type;
   if (!type || typeof type !== "string" || type === "undefined") {
     type = "process";
@@ -649,125 +489,6 @@ export function getProcessNameForNode(node: Node): string {
 }
 
 export { buildMixedChannelExpression };
-
-function getInvocationArguments(invocation: string): string[] {
-  const trimmed = invocation.trim();
-  if (trimmed === "" || trimmed.startsWith("//")) {
-    return [];
-  }
-
-  // String literals ('gene_id', "${params.x}") hold no channel names.
-  const rhs = getInvocationExpression(trimmed).replace(
-    /'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g,
-    "''",
-  );
-  const candidatePattern = /\b[A-Za-z_][A-Za-z0-9_]*(?:_[A-Za-z0-9_]+)*\b/g;
-  const lhsDefinitions = new Set<string>();
-  const tupleDefinitionMatch = trimmed.match(/^\(\s*([^)]+?)\s*\)\s*=\s*\w+\(/);
-  if (tupleDefinitionMatch) {
-    for (const name of tupleDefinitionMatch[1].split(",")) {
-      const sanitized = sanitizeVarName(name.trim());
-      if (sanitized) lhsDefinitions.add(sanitized);
-    }
-  } else {
-    const definitionMatch = trimmed.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/);
-    if (definitionMatch) {
-      lhsDefinitions.add(sanitizeVarName(definitionMatch[1]));
-    }
-  }
-  const args: string[] = [];
-
-  for (
-    let match = candidatePattern.exec(rhs);
-    match !== null;
-    match = candidatePattern.exec(rhs)
-  ) {
-    const rawName = match[0];
-    const name = sanitizeVarName(rawName);
-    if (!name || lhsDefinitions.has(name)) {
-      continue;
-    }
-
-    const startIndex = match.index;
-    const endIndex = startIndex + rawName.length;
-    const previousChar = startIndex > 0 ? rhs.charAt(startIndex - 1) : "";
-    const nextNonWhitespaceChar =
-      rhs.slice(endIndex).match(/^\s*(.)/)?.[1] ?? "";
-
-    // Exclude method names like `.collect` or `.mix`.
-    if (previousChar === ".") {
-      continue;
-    }
-
-    // Exclude assignment targets inside multi-line invocation blocks.
-    if (nextNonWhitespaceChar === "=") {
-      continue;
-    }
-
-    // Exclude process aliases in module output references like `FASTQC_1.out.html`.
-    if (rhs.slice(endIndex).match(/^\s*\.out\./)) {
-      continue;
-    }
-
-    // Exclude the callee in direct function/process invocations like `foo(bar)`.
-    if (nextNonWhitespaceChar === "(") {
-      continue;
-    }
-
-    if (
-      (name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")) &&
-      !args.includes(name)
-    ) {
-      args.push(name);
-    }
-  }
-
-  return args;
-}
-
-function getChainedChannelRoots(invocation: string): string[] {
-  const trimmed = invocation.trim();
-  if (trimmed === "" || trimmed.startsWith("//")) {
-    return [];
-  }
-
-  const rhs = getInvocationExpression(trimmed);
-  const chainRootPattern =
-    /\b([A-Za-z_][A-Za-z0-9_]*)\s*\.\s*(?:map|filter|collect|concat|mix|flatten|view|set|first|combine|join|groupTuple|unique|toList)\b/g;
-  const roots: string[] = [];
-  let match = chainRootPattern.exec(rhs);
-  while (match !== null) {
-    const name = sanitizeVarName(match[1] ?? "");
-    if (
-      name &&
-      (name.includes("_") || name.startsWith("ch_") || name.startsWith("node_")) &&
-      !roots.includes(name)
-    ) {
-      roots.push(name);
-    }
-    match = chainRootPattern.exec(rhs);
-  }
-
-  return roots;
-}
-
-function getInvocationExpression(trimmedInvocation: string): string {
-  const tupleAssignmentMatch = trimmedInvocation.match(
-    /^\s*\([^)]+?\)\s*=/
-  );
-  if (tupleAssignmentMatch) {
-    return trimmedInvocation.substring(tupleAssignmentMatch[0].length);
-  }
-
-  const leadingAssignmentMatch = trimmedInvocation.match(
-    /^\s*[A-Za-z_][A-Za-z0-9_]*\s*=/
-  );
-  if (leadingAssignmentMatch) {
-    return trimmedInvocation.substring(leadingAssignmentMatch[0].length);
-  }
-
-  return trimmedInvocation;
-}
 
 export function sanitizeVarName(name: string): string {
   if (typeof name !== "string") return "";

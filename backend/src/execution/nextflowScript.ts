@@ -182,7 +182,11 @@ export const getReferencedNfCoreSubworkflows = (script: string): string[] => {
 };
 
 export const stabilizeWorkflowInvocations = (script: string): string => {
-  if (script.includes("N-WAVE generator: registry-nfcore-v1")) {
+  // Scripts N-WAVE writes are already in order (the first line since 1.6).
+  if (
+    script.includes("N-WAVE generator: registry-nfcore-v1") ||
+    script.includes("// Written by N-WAVE")
+  ) {
     return script;
   }
 

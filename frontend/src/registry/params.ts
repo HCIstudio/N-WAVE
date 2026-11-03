@@ -204,7 +204,7 @@ export const generateParameterDeclarations = (
       .filter((parameter) => parameter.type === "file")
       .map((parameter) => {
         const param = `params.${parameter.name}`;
-        return `${channelNameFor(parameter)} = Channel.of(nwaveInputFile(${param}))\n`;
+        return `${channelNameFor(parameter)} = channel.of(nwaveInputFile(${param}))\n`;
       })
       .join(""),
   };
