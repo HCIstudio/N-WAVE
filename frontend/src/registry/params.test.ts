@@ -111,8 +111,8 @@ describe("generateParameterDeclarations", () => {
     ]);
     expect(channels).toBe(
       [
-        "refs_fasta = Channel.of(nwaveInputFile(params.fasta))",
-        "refs_gtf = Channel.of(nwaveInputFile(params.gtf))",
+        "refs_fasta = channel.of(nwaveInputFile(params.fasta))",
+        "refs_gtf = channel.of(nwaveInputFile(params.gtf))",
         "",
       ].join("\n"),
     );
@@ -236,18 +236,17 @@ describe("Parameters node in an rnaseq-style workflow", () => {
   });
 
   it("feeds the FASTA and GTF to genome preparation and the GTF to alignment", () => {
-    expect(script).toContain("    refs_fasta = Channel.of(nwaveInputFile(params.fasta))");
+    expect(script).toContain("    ch_fasta = channel.of(nwaveInputFile(params.fasta))");
     // Input files resolve through one top-level helper (strict syntax).
     expect(script).toContain("def nwaveInputFile(path) {");
-    expect(script).toMatch(/ch_\w+_genome_fasta_nfcore = refs_fasta\n/);
-    expect(script).toMatch(/ch_\w+_genome_gtf_nfcore = refs_gtf\.first\(\)/);
-    expect(script).toMatch(
-      /ch_\w+_align_index_nfcore = genome_index\.first\(\)/,
+    // Plain reference files get a meta map named after the file.
+    expect(script).toContain(
+      "ch_star_genomegenerate_fasta = ch_fasta.map { fasta -> [ [id: fasta.simpleName, single_end: true], fasta ] }",
     );
-    expect(script).toMatch(/ch_\w+_align_gtf_nfcore = refs_gtf\.first\(\)/);
-    expect(script).toMatch(/ch_\w+_align_reads_nfcore = sheet_samples\n/);
-    expect(script).toMatch(
-      /ALIGN_ALIGN\(ch_\w+_align_reads_nfcore, ch_\w+_align_index_nfcore, ch_\w+_align_gtf_nfcore, false\)/,
+    expect(script).toContain("ch_star_genomegenerate_gtf = ch_gtf.map { gtf -> [ [id: gtf.simpleName], gtf ] }.first()");
+    // Samplesheet rows and the index are [meta, files] already: passed on as they are.
+    expect(script).toContain(
+      "STAR_ALIGN(ch_samplesheet, STAR_GENOMEGENERATE.out.index.first(), ch_star_align_gtf, false)",
     );
   });
 

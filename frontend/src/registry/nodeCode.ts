@@ -1,8 +1,8 @@
+import { baseProcessName } from "../generators/core/naming";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import {
   buildMixedChannelExpression,
-  getProcessNameForNode,
   sanitizeVarName,
 } from "../generators/core/generateNextflowScript";
 import { getNodeDefinitionForNode } from "./nodeDefinitions";
@@ -62,7 +62,7 @@ export const getNodeCode = (node: Node<NodeData>): NodeCode | null => {
   const definition = getNodeDefinitionForNode(node);
   if (!definition?.generateNextflow) return null;
 
-  const processName = getProcessNameForNode(node);
+  const processName = baseProcessName(node);
   const inputs = getPorts(node, "inputs");
   const outputs = getPorts(node, "outputs");
 

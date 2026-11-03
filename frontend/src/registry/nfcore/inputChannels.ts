@@ -2,6 +2,7 @@ import type { Edge } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { groovyStringWithParams } from "../params";
 import { buildMixedChannelExpression } from "../../generators/core/mixChannels";
+import type { ItemShape } from "../nodeGeneration";
 
 // Turns the input layout of an nf-core module (one group per process
 // argument, see scripts/nfcoreModuleParser.mjs) into the channel expressions
@@ -56,6 +57,8 @@ interface BuildContext {
   incomingEdges: Edge[];
   resolveUpstream: (edge: Edge) => string | null;
   sanitizeVarName: (name: string) => string;
+  /** What the items coming over a connection look like, when known. */
+  shapeOf?: (edge: Edge) => ItemShape;
 }
 
 /** Groups from older catalogs only list path fields: treat them as per-item. */
@@ -191,6 +194,16 @@ export const buildNfCoreGroupChannels = (
     return upstream.length > 0 ? buildMixedChannelExpression(upstream) : null;
   };
 
+  // The shape of what arrives on a port: the same over every connection, else unknown.
+  const shapeFor = (port: string): ItemShape => {
+    const shapes = new Set(
+      incomingEdges
+        .filter((candidate) => candidate.targetHandle === port || (port === firstPort && !candidate.targetHandle))
+        .map((edge) => context.shapeOf?.(edge) ?? "unknown"),
+    );
+    return shapes.size === 1 ? ([...shapes][0] as ItemShape) : "unknown";
+  };
+
   const channels: NfCoreInputChannel[] = [];
 
   for (const group of groups) {
@@ -210,8 +223,41 @@ export const buildNfCoreGroupChannels = (
     }
 
     const channelName = sanitizeVarName(
-      `ch_${processName}_${group.handle}_nfcore`,
+      `ch_${processName.toLowerCase()}_${group.handle}`,
     );
+
+    // One connection whose items are known: pass it on as a person would.
+    const simple = connected.length === 1 && connected[0].item.mode !== "collect" ? connected[0] : null;
+    if (simple) {
+      const shape = shapeFor(simple.item.name);
+      const first = simple.item.mode === "first" ? ".first()" : "";
+      const local = localName(simple.item.name);
+      const metaAndFile =
+        group.tuple && items.length === 2 && items[0].kind === "meta" && items[1] === simple.item;
+      const fileOnly = !group.tuple && items.length === 1;
+      // [meta, files] into `tuple val(meta), path(x)`, files into `path(x)`: as they are.
+      if ((metaAndFile && shape === "meta") || (fileOnly && shape === "file")) {
+        channels.push({ name: `${simple.upstream}${first}` });
+        continue;
+      }
+      // [meta, files] into `path(x)`: just the files.
+      if (fileOnly && shape === "meta") {
+        channels.push({
+          name: channelName,
+          definition: `    ${channelName} = ${simple.upstream}.map { meta, ${local} -> ${local} }${first}\n`,
+        });
+        continue;
+      }
+      // Files into `tuple val(meta), path(x)`: a meta map named after each file.
+      if (metaAndFile && shape === "file") {
+        const singleEnd = group.metaName === "meta" && simple.item.mode === "each" ? ", single_end: true" : "";
+        channels.push({
+          name: channelName,
+          definition: `    ${channelName} = ${simple.upstream}.map { ${local} -> [ [id: ${local}.simpleName${singleEnd}], ${local} ] }${first}\n`,
+        });
+        continue;
+      }
+    }
 
     // Feed each connected field according to its mode.
     const sources = connected.map(({ item, upstream }) => {
@@ -253,7 +299,7 @@ export const buildNfCoreGroupChannels = (
     );
     const filter =
       perSample.length > 1
-        ? `\n        .filter { ${closureArgs} -> [${perSample.join(", ")}].findAll { ${hasMeta("it")} }.collect { it[0].id }.unique().size() <= 1 }`
+        ? `\n        .filter { ${closureArgs} -> [${perSample.join(", ")}].findAll { item -> ${hasMeta("item")} }.collect { item -> item[0].id }.unique().size() <= 1 }`
         : "";
 
     const locals = connected.map(({ item }, index) => ({

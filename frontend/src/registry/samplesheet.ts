@@ -307,12 +307,12 @@ export const generateSamplesheetChannel = ({
   return {
     params: `params.${paramName} = "\${params.inputdir}/${fileName.replace(/["\\$]/g, "")}"\n`,
     channel: [
-      `${channelName} = Channel.fromPath(params.${paramName}, checkIfExists: true)`,
+      `${channelName} = channel.fromPath(params.${paramName}, checkIfExists: true)`,
       // Quoted values ("A","a,b.fq"), as spreadsheet programs write them.
       "    .splitCsv(header: true, strip: true, quote: '\"')",
       "    .map { row ->",
-      `        def reads = [${readColumns.map((column) => `row[${groovyString(column)}]`).join(", ")}].findAll { it }.collect { nwaveInputFile(it) }`,
-      `        def meta = row.findAll { key, value -> !(key in [${mappedColumns.map(groovyString).join(", ")}]) } + [id: row[${groovyString(mapping.idColumn)}], single_end: reads.size() == 1]`,
+      `        def reads = [${readColumns.map((column) => `row[${groovyString(column)}]`).join(", ")}].findAll { path -> path }.collect { path -> nwaveInputFile(path) }`,
+      `        def meta = row.findAll { key, _value -> !(key in [${mappedColumns.map(groovyString).join(", ")}]) } + [id: row[${groovyString(mapping.idColumn)}], single_end: reads.size() == 1]`,
       "        tuple(meta, reads)",
       "    }",
       "",

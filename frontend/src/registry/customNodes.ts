@@ -2,6 +2,7 @@ import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import CustomNodePanel from "../components/panels/process/CustomNodePanel";
 import type { NodeDefinition } from "./nodeDefinitions";
+import { setEmbeddedDefinitionResolver } from "./embeddedDefinition";
 import {
   registerDynamicNodeDefinitions,
   unregisterDynamicNodeDefinitions,
@@ -169,10 +170,9 @@ const parseWorkflowSource = (source: string): ParsedCustomNodeSource => {
 export const parseCustomNodeSource = (
   source: string
 ): ParsedCustomNodeSource => {
-  if (
-    !/\bprocess\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/.test(source) &&
-    /^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/m.test(source)
-  ) {
+  // A named workflow (with the processes it calls, when it was imported
+  // from a script): its takes and emits are the node's ports.
+  if (/^\s*workflow\s+[A-Za-z_][A-Za-z0-9_]*\s*\{/m.test(source)) {
     return parseWorkflowSource(source);
   }
   const processName =
@@ -217,10 +217,8 @@ export const parseCustomNodeSource = (
   return {
     processName,
     inputs: Array.from(inputMap.values()),
-    outputs:
-      outputs.length > 0
-        ? outputs
-        : [{ name: "out", emit: "out", label: "Output" }],
+    // A process without outputs has none (nothing to read as `.out`).
+    outputs,
     arguments: argumentList,
     warnings,
   };
@@ -382,9 +380,12 @@ const generateCustomNode =
       const outputVar =
         context.channelNameMap.get(`${node.id}.${output.name}`) ??
         context.sanitizeVarName(`${processName}_${output.name}`);
+      const position = customNode.outputs.indexOf(output);
       const outputRef = output.emit
         ? `${processName}.out.${output.emit}`
-        : `${processName}.out`;
+        : customNode.outputs.length > 1
+          ? `${processName}.out[${position}]`
+          : `${processName}.out`;
       return `    ${outputVar} = ${outputRef}\n`;
     });
     const invocation = [
@@ -461,7 +462,7 @@ const buildArgumentChannels = ({
 
   if (customNode.kind === "workflow") {
     // Workflow takes: connected channels, or the input's placeholder while
-    // unconnected; needs at least one connection.
+    // unconnected; needs at least one connection when it takes channels.
     const inputsByName = new Map(
       customNode.inputs.map((input) => [input.name, input])
     );
@@ -488,7 +489,8 @@ const buildArgumentChannels = ({
         name: upstream ?? input?.emptyValue ?? "Channel.empty()",
       });
     }
-    return connected > 0 ? channels : null;
+    const takesChannels = argumentList.some((argument) => argument.kind !== "val");
+    return connected > 0 || !takesChannels ? channels : null;
   }
 
   for (const argument of argumentList) {
@@ -529,7 +531,7 @@ const buildArgumentChannels = ({
     if (upstreams.some((upstream) => !upstream)) return null;
 
     const channelName = sanitizeVarName(
-      `ch_${processName}_${argument.name}_custom_tuple`
+      `ch_${processName.toLowerCase()}_${argument.name}`
     );
     channels.push({
       name: channelName,
@@ -603,11 +605,18 @@ const buildTupleDefinition = ({
   ].join("\n");
 };
 
+const SECTION_LABELS = "input|output|when|script|shell|exec|stub|topic";
+
 const getSectionLines = (source: string, section: string): string[] => {
+  // `input: path x` on one line reads like `input:` and `path x` on two.
+  const lines = source.replace(
+    new RegExp(`^([ \\t]*)(${SECTION_LABELS}):[ \\t]*(\\S[^\\n]*)$`, "gm"),
+    (_line, indent: string, label: string, rest: string) => `${indent}${label}:\n${indent}${rest}`,
+  );
   const block =
-    source.match(
+    lines.match(
       new RegExp(
-        `^\\s*${section}:\\s*$([\\s\\S]*?)(?=^\\s*(input|output|when|script|shell|stub|publishDir|label|conda|container|cpus|memory|time):\\s*$|^\\s*}\\s*$)`,
+        `^\\s*${section}:\\s*$([\\s\\S]*?)(?=^\\s*(${SECTION_LABELS}):\\s*$|^\\s*}\\s*$)`,
         "m"
       )
     )?.[1] ?? "";
@@ -617,23 +626,20 @@ const getSectionLines = (source: string, section: string): string[] => {
     .map(stripLineComment)
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line) => /^(tuple|path|val|env|stdin)\b/.test(line));
+    .filter((line) => /^(tuple|path|val|env|stdin|stdout|each|file|eval)\b/.test(line));
 };
 
 const parseInputDeclaration = (
   declaration: string,
   index: number
 ): CustomNodeArgument | null => {
-  if (declaration.startsWith("path ")) {
-    const name = declaration.match(/^path\s+([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
-    if (!name) return null;
-    return { kind: "path", name, fields: [{ kind: "path", name }] };
-  }
-
-  if (declaration.startsWith("val ")) {
-    const name = declaration.match(/^val\s+([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
-    if (!name) return null;
-    return { kind: "val", name, fields: [{ kind: "val", name }] };
+  // `path x`, `path(x)`, `path x, stageAs: 'y'`; `path '*'` (no name): input_<n>.
+  const simple = declaration.match(/^(path|val|each|env|stdin|file)\b\s*\(?\s*([A-Za-z_][A-Za-z0-9_]*)?/);
+  if (simple && !declaration.startsWith("tuple")) {
+    const name = simple[2] && simple[2] !== "stdin" ? simple[2] : `input_${index + 1}`;
+    // `val`, `env` and `stdin` take a value (a setting, or a channel when one feeds it); `path`, `file` and `each` a channel.
+    const kind = ["val", "env", "stdin"].includes(simple[1]) ? "val" : "path";
+    return { kind, name, fields: [{ kind, name }] };
   }
 
   if (!declaration.startsWith("tuple ")) return null;
@@ -650,8 +656,10 @@ const parseInputDeclaration = (
         continue;
       }
 
-      const pathName = token.match(/^path\(\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
+      const pathName = token.match(/^(?:path|file|env|stdin)\(\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
       if (pathName) fields.push({ kind: "path", name: pathName });
+      // `path('*.fq')`: a file without a name in the script.
+      else if (/^(?:path|file|env|stdin)\b/.test(token)) fields.push({ kind: "path", name: `file_${index + 1}_${fields.length + 1}` });
     }
 
   if (fields.length === 0) return null;
@@ -669,8 +677,8 @@ const parseOutputDeclaration = (
   index: number
 ): CustomNodeOutput | null => {
   const emit = declaration.match(/\bemit:\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1] ?? "";
-  const name = emit || (index === 0 ? "out" : "");
-  if (!name) return null;
+  // Unnamed outputs are read by position: `.out` (the only one) or `.out[1]`.
+  const name = emit || (index === 0 ? "out" : `out_${index}`);
 
   return {
     name,
@@ -827,3 +835,17 @@ const slugify = (value: string): string =>
 
 const escapeRegExp = (value: string): string =>
   value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+// A process imported from a script lives only in its workflow: the node
+// carries its definition (customNodeDefinition) and is generated from it.
+const embeddedDefinitions = new WeakMap<object, NodeDefinition>();
+setEmbeddedDefinitionResolver((node) => {
+  const stored = node.data.customNodeDefinition as StoredCustomNode | undefined;
+  if (!stored || typeof stored !== "object" || typeof stored.source !== "string") return undefined;
+  let definition = embeddedDefinitions.get(stored);
+  if (!definition) {
+    definition = createNodeDefinitionFromCustomNode(stored);
+    embeddedDefinitions.set(stored, definition);
+  }
+  return definition;
+});

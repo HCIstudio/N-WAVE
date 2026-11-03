@@ -26,6 +26,7 @@ const generate = (
   modulePath: string,
   connectedPorts: string[],
   data: Partial<NodeData> = {},
+  shapeOf?: (edge: Edge) => "file" | "meta" | "unknown",
 ) => {
   const definition = createNodeDefinitionFromNfCoreManifest(
     buildNfCoreManifest(entry(modulePath)),
@@ -57,6 +58,7 @@ const generate = (
     resolveChannelNameForEdge: (edge) => `${edge.targetHandle}_up`,
     buildMixedChannelExpression: (names) => `${names.join(".mix(")})`,
     sanitizeVarName: (name) => name.replace(/[^A-Za-z0-9_]/g, "_"),
+    shapeOf,
   });
   return { definition, result };
 };
@@ -82,16 +84,16 @@ describe("nf-core module inputs", () => {
       "include { STAR_ALIGN as PROC_N1 } from './modules/nf-core/star/align/main'",
     ]);
     expect(callOf(result?.processInvocations[0])).toBe(
-      "PROC_N1(ch_proc_n1_reads_nfcore, ch_proc_n1_index_nfcore, ch_proc_n1_gtf_nfcore, false)",
+      "PROC_N1(ch_proc_n1_reads, ch_proc_n1_index, ch_proc_n1_gtf, false)",
     );
 
     const definitions = result?.channelDefinitions?.join("\n") ?? "";
     // Per-sample reads keep the upstream meta, or get one built.
-    expect(definitions).toContain("ch_proc_n1_reads_nfcore = reads_up\n");
+    expect(definitions).toContain("ch_proc_n1_reads = reads_up\n");
     expect(definitions).toContain("single_end:");
     // References are value channels so every sample can use them.
-    expect(definitions).toContain("ch_proc_n1_index_nfcore = index_up.first()");
-    expect(definitions).toContain("ch_proc_n1_gtf_nfcore = gtf_up.first()");
+    expect(definitions).toContain("ch_proc_n1_index = index_up.first()");
+    expect(definitions).toContain("ch_proc_n1_gtf = gtf_up.first()");
   });
 
   it("uses the node's value settings", () => {
@@ -104,7 +106,7 @@ describe("nf-core module inputs", () => {
   it("passes empty placeholders for unconnected optional inputs", () => {
     const { result } = generate("star/align", ["reads", "index"]);
     expect(callOf(result?.processInvocations[0])).toBe(
-      "PROC_N1(ch_proc_n1_reads_nfcore, ch_proc_n1_index_nfcore, [[:], []], false)",
+      "PROC_N1(ch_proc_n1_reads, ch_proc_n1_index, [[:], []], false)",
     );
   });
 
@@ -126,11 +128,11 @@ describe("nf-core module inputs", () => {
       "transcript_fasta",
     ]);
     expect(callOf(result?.processInvocations[0])).toBe(
-      "PROC_N1(ch_proc_n1_reads_nfcore, ch_proc_n1_index_nfcore)",
+      "PROC_N1(ch_proc_n1_reads, ch_proc_n1_index)",
     );
     const definitions = result?.channelDefinitions?.join("\n") ?? "";
     expect(definitions).toContain(
-      "ch_proc_n1_index_nfcore = index_up.first().map { item -> [item] }\n        .combine(gtf_up.first().map { item -> [item] })\n        .combine(transcript_fasta_up.first().map { item -> [item] })",
+      "ch_proc_n1_index = index_up.first().map { item -> [item] }\n        .combine(gtf_up.first().map { item -> [item] })\n        .combine(transcript_fasta_up.first().map { item -> [item] })",
     );
     expect(definitions).toContain("tuple(meta, index, gtf, transcript_fasta)");
     // A combined reference must stay a value channel for every sample.
@@ -144,7 +146,7 @@ describe("nf-core module inputs", () => {
       nfcoreValues: { index_format: "bai" },
     });
     expect(callOf(result?.processInvocations[0])).toBe(
-      "PROC_N1(ch_proc_n1_bam_nfcore, [[:], [], []], 'bai')",
+      "PROC_N1(ch_proc_n1_bam, [[:], [], []], 'bai')",
     );
   });
 
@@ -152,7 +154,7 @@ describe("nf-core module inputs", () => {
     const { result } = generate("rseqc/bamstat", ["bam", "bai"]);
     const definitions = result?.channelDefinitions?.join("\n") ?? "";
     expect(definitions).toContain(
-      "ch_proc_n1_bam_nfcore = bam_up.map { item -> [item] }\n        .combine(bai_up.map { item -> [item] })\n        .filter { in0, in1 ->",
+      "ch_proc_n1_bam = bam_up.map { item -> [item] }\n        .combine(bai_up.map { item -> [item] })\n        .filter { in0, in1 ->",
     );
   });
 
@@ -162,13 +164,13 @@ describe("nf-core module inputs", () => {
     });
     const definitions = result?.channelDefinitions?.join("\n") ?? "";
     expect(definitions).toContain(
-      "ch_proc_n1_quants_nfcore = quants_up.map { item ->",
+      "ch_proc_n1_quants = quants_up.map { item ->",
     );
     // Flattened first: paired-end outputs are lists of files per sample.
     expect(definitions).toContain(".flatten().collect()");
     expect(definitions).toContain("[id: 'all_samples']");
     expect(callOf(result?.processInvocations[0])).toBe(
-      "PROC_N1(ch_proc_n1_quants_nfcore, ch_proc_n1_tx2gene_nfcore, 'salmon')",
+      "PROC_N1(ch_proc_n1_quants, ch_proc_n1_tx2gene, 'salmon')",
     );
   });
 
@@ -202,5 +204,34 @@ describe("nf-core module inputs", () => {
         nfcorePublish: false,
       }).result?.nextflowConfigBlocks,
     ).toEqual(["withName: 'PROC_N1' {\n  ext.prefix = 'genes.filtered'\n}"]);
+  });
+
+  describe("when the shape of what arrives is known", () => {
+    const code = (result: ReturnType<typeof generate>["result"]) =>
+      [...(result?.channelDefinitions ?? []), ...(result?.processInvocations ?? [])].join("");
+
+    it("passes [meta, files] on as they are", () => {
+      const { result } = generate("fastqc", ["reads"], {}, () => "meta");
+      expect(code(result).trim().split("\n")[0]).toBe("PROC_N1(reads_up)");
+    });
+
+    it("names each plain file's sample after the file", () => {
+      const { result } = generate("fastqc", ["reads"], {}, () => "file");
+      expect(code(result)).toContain(
+        "ch_proc_n1_reads = reads_up.map { reads -> [ [id: reads.simpleName, single_end: true], reads ] }",
+      );
+    });
+
+    it("keeps references to one item with .first()", () => {
+      const { result } = generate("star/align", ["reads", "index", "gtf"], {}, () => "meta");
+      expect(callOf(code(result).split("\n").find((line) => line.includes("PROC_N1(")))).toBe(
+        "PROC_N1(reads_up, index_up.first(), gtf_up.first(), false)",
+      );
+    });
+
+    it("takes the files out of [meta, files] for a plain path input", () => {
+      const { result } = generate("gffread", ["gff", "fasta"], {}, () => "meta");
+      expect(code(result)).toContain("ch_proc_n1_fasta = fasta_up.map { meta, fasta -> fasta }");
+    });
   });
 });

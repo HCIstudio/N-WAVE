@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  getMetaEmits,
   getInputDeclarations,
   getInputGroups,
   getMetaInputs,
@@ -197,4 +198,21 @@ describe("stripLineComment", () => {
   it("keeps // inside strings", () => {
     assert.equal(stripLineComment("path 'a//b' // note"), "path 'a//b'");
   });
+});
+
+it("getMetaEmits lists the [meta, files] outputs", () => {
+  const mainNf = [
+    "process TRIMGALORE {",
+    "    output:",
+    '    tuple val(meta), path("*{3prime,5prime,trimmed,val}{,_1,_2}.fq.gz"), emit: reads',
+    '    tuple val(meta), path("*report.txt")                               , emit: log     , optional: true',
+    '    tuple val(meta), path(reads), path(index)                          , emit: pair',
+    '    path "versions.yml"                                                , emit: versions',
+    '    tuple val("${task.process}"), val("trimgalore"), eval("x"), topic: versions, emit: versions_trimgalore',
+    "",
+    "    when:",
+    "    task.ext.when == null || task.ext.when",
+    "}",
+  ].join("\n");
+  assert.deepEqual(getMetaEmits(mainNf), ["reads", "log"]);
 });

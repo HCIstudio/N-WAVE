@@ -14,6 +14,7 @@
 - [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)
 - [Global Settings, notifications and verbose mode](https://github.com/HCIstudio/N-WAVE/wiki/Settings)
 - [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects)
+- [Importing workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows)
 - [Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting)
 - [How N-WAVE explains things](https://github.com/HCIstudio/N-WAVE/wiki/How-N-WAVE-Explains-Things)
 

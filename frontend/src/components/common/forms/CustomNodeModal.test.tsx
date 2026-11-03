@@ -355,7 +355,7 @@ describe("CustomNodeModal", () => {
     const { user } = setup();
     await replaceSource(
       user,
-      'process ODD {\n  input:\n  path reads\n  env TOKEN\n  output:\n  path "o", emit: o\n}',
+      'process ODD {\n  input:\n  path reads\n  tuple odd\n  output:\n  path "o", emit: o\n}',
     );
     expect(screen.getByText(/Could not infer input/)).toBeTruthy();
   });

@@ -114,6 +114,6 @@ describe("generated scripts", () => {
     const script = generateNextflowScript([input("a"), input("b"), filter], [fileEdge("a"), fileEdge("b")], "wf", "results", "{workflow_name}");
     // A saved workflow with two connections into Filter: neither is dropped
     // (the workflow check asks to merge them before a run).
-    expect(script).toMatch(/\(ch_files_a\.concat\(ch_files_b\)\)|ch_files_a\.concat\(ch_files_b\)/);
+    expect(script).toContain("FILTER(ch_files.concat(ch_files_2))");
   });
 });

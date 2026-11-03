@@ -172,9 +172,36 @@ describe("validateChannelOperator", () => {
     expect(
       validateChannelOperator({ inputs: ["a"], outputs: [], code: "" }),
     ).toContainEqual({
-      level: "error",
-      message: "Add at least one output.",
+      // Code like `.view()` needs none.
+      level: "warning",
+      message: "It has no output, so other steps can't read its channels.",
     });
+  });
+
+  it("leaves params.input, strings and comments alone", () => {
+    expect(
+      validateChannelOperator({
+        inputs: [],
+        outputs: ["files"],
+        code: "// input.none\noutput.files = channel.fromPath(params.input).map { f -> 'output.txt' }",
+      }),
+    ).toEqual([]);
+  });
+
+  it("reads ports inside string interpolations", () => {
+    expect(
+      validateChannelOperator({ inputs: ["in"], outputs: [], code: 'println "got ${input.in}"' }).filter((issue) => issue.level === "error"),
+    ).toEqual([]);
+  });
+
+  it("counts outputs assigned together or with .set", () => {
+    expect(
+      validateChannelOperator({
+        inputs: ["in"],
+        outputs: ["a", "b", "c"],
+        code: "(output.a, output.b) = params.skip ? [input.in, channel.empty()] : [channel.empty(), input.in]\ninput.in.set { output.c }",
+      }),
+    ).toEqual([]);
   });
 
   it("doesn't generate code with errors", () => {
@@ -246,11 +273,11 @@ describe("channel operators in a workflow", () => {
       "{workflow_name}",
     );
     const workflow = script.slice(script.indexOf("workflow {"));
-    const producer = workflow.search(/upper_out = /);
-    const operator = workflow.indexOf(
-      "grouped_out = upper_out.map { sample_id -> [ sample_id, file_count ] }",
-    );
-    const consumer = workflow.search(/outputDisplay_show\(grouped_out/);
+    const producer = workflow.search(/\bMAP\(ch_files\)/);
+    const channel = workflow.match(/(ch_\w+) = MAP\.out\.map \{ sample_id -> \[ sample_id, file_count \] \}/)?.[1];
+    expect(channel).toBeDefined();
+    const operator = workflow.indexOf(`${channel} = `);
+    const consumer = workflow.search(new RegExp(`[A-Z_]+\\(${channel}\\b`));
     expect(producer).toBeGreaterThan(-1);
     expect(operator).toBeGreaterThan(producer);
     expect(consumer).toBeGreaterThan(operator);
@@ -282,8 +309,9 @@ describe("channel operators in a workflow", () => {
       "{workflow_name}",
     );
     const workflow = script.slice(script.indexOf("workflow {"));
-    const operator = workflow.indexOf("all_out = ");
-    expect(operator).toBeGreaterThan(workflow.indexOf("first_out = "));
-    expect(operator).toBeGreaterThan(workflow.indexOf("second_out = "));
+    // Both Map steps are named after their label: MAP and MAP_2.
+    const operator = workflow.search(/ch_\w+ = MAP\.out\.concat\(MAP_2\.out\)\.collect\(\)/);
+    expect(operator).toBeGreaterThan(workflow.indexOf("MAP("));
+    expect(operator).toBeGreaterThan(workflow.indexOf("MAP_2("));
   });
 });

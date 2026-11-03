@@ -16,6 +16,8 @@ export interface NfCoreCatalogEntryForManifest {
   inputGroups?: NfCoreModuleInputGroup[];
   valueInputs?: NfCoreValueInput[];
   emits: string[];
+  /** Emits whose items are [meta, files]. */
+  metaEmits?: string[];
   settings?: NfCoreAdapterManifest["settings"];
   support: NfCoreAdapterManifest["support"];
   installability?: NfCoreAdapterManifest["installability"];
@@ -88,6 +90,7 @@ export const buildNfCoreManifest = (
     emit,
     label: toTitle(emit),
     ...kindOf(entry.portTypes?.outputs[emit]),
+    ...(entry.metaEmits?.includes(emit) ? { metaTuple: true } : {}),
   })),
   defaults: {
     label: entry.label,

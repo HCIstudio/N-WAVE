@@ -39,6 +39,8 @@ export interface PortData {
   kind?: PortKind;
   /** Inputs: takes any number of connections, mixed (otherwise one). */
   multiple?: boolean;
+  /** Outputs: each item is `[meta, files]` (nf-core `tuple val(meta), path(...)`). */
+  metaTuple?: boolean;
 }
 
 /** Files, a folder (e.g. an index), a value, or a tool's versions. */

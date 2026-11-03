@@ -1,6 +1,7 @@
 import type { Node } from "@xyflow/react";
 import type { RunTask } from "../api/runs";
-import { getProcessNameForNode } from "../generators/core/generateNextflowScript";
+import { legacyProcessNameForNode } from "../generators/core/generateNextflowScript";
+import { processNamesFor } from "../generators/core/naming";
 
 /** What the last run did for one node of the canvas. */
 export interface NodeRunSummary {
@@ -92,6 +93,17 @@ const normalize = (name: string): string =>
  * an nf-core subworkflow node); every process of a pipeline run belongs to
  * its Pipeline node.
  */
+/**
+ * Node ids by the (normalized) process name their tasks run as: the names
+ * scripts use since 1.6, and the ones earlier runs used.
+ */
+const processLookup = (nodes: Node[]): Map<string, string> => {
+  const lookup = new Map<string, string>();
+  for (const node of nodes) lookup.set(normalize(legacyProcessNameForNode(node)), node.id);
+  for (const [id, name] of processNamesFor(nodes)) lookup.set(normalize(name), id);
+  return lookup;
+};
+
 export const nodeIdForProcess = (
   process: string,
   nodes: Node[],
@@ -99,7 +111,7 @@ export const nodeIdForProcess = (
 ): string | undefined => {
   if (pipelineNodeId) return pipelineNodeId;
   const wanted = normalize(process.split(":")[0] ?? "");
-  return nodes.find((node) => normalize(getProcessNameForNode(node)) === wanted)?.id;
+  return processLookup(nodes).get(wanted);
 };
 
 /**
@@ -114,10 +126,7 @@ export const summarizeNodeRuns = (
   nodes: Node[],
   pipelineNodeId?: string | null,
 ): Record<string, NodeRunSummary> => {
-  const nodeByProcess = new Map<string, string>();
-  for (const node of nodes) {
-    nodeByProcess.set(normalize(getProcessNameForNode(node)), node.id);
-  }
+  const nodeByProcess = processLookup(nodes);
 
   const grouped = new Map<string, RunTask[]>();
   for (const task of tasks) {

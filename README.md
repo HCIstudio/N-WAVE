@@ -35,14 +35,16 @@ each step produced.
 - **Run** them with Docker, follow each step, resume failed runs, and run on a SLURM cluster
   ([Running workflows](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows),
   [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)).
-- **Export** a runnable Nextflow project that works without N-WAVE
-  ([Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects)).
+- **Export** a runnable Nextflow project that works without N-WAVE, and **import** Nextflow
+  scripts and projects onto the canvas, your own included
+  ([Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects),
+  [Importing workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows)).
 - **Understand failures**: common errors are explained in plain language, with the log lines
   they are based on and how sure they are
   ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting),
   [How N-WAVE explains things](https://github.com/HCIstudio/N-WAVE/wiki/How-N-WAVE-Explains-Things)).
-- **Make it yours**: switch N-WAVE's aids on and off, and record what happens for bug reports
-  and usability tests in verbose mode
+- **Run studies**: switch N-WAVE's aids on and off, and record what happens in verbose mode
+  for usability tests (and bug reports)
   ([Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)).
 
 ## Running N-WAVE

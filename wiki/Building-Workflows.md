@@ -8,8 +8,9 @@ On the home page:
 
 - **New Workflow** offers an **Empty workflow**, the **QC of FASTQ files** template (FastQC on
   two test samples and a MultiQC report), or an editable copy of a built-in demo.
-- **Import Workflow** reads a Nextflow script (`.nf`), pasted or from a file, and draws its
-  processes as nodes. Files it lists have to be uploaded again; warnings show above the canvas.
+- **Import Workflow** reads a Nextflow script (`.nf`, pasted or from a file), a project zip or
+  a project folder and draws it on the canvas; warnings show above the canvas
+  ([Importing workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows)).
 - On a workflow card: **Edit** (name and description), **Duplicate** and **Delete**.
 
 The three **built-in demos** are read-only. The first change you make asks whether to

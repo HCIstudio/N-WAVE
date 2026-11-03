@@ -1,28 +1,42 @@
-// Parses a Nextflow script into a visual workflow graph (nodes + edges).
+// Imports a Nextflow script as a workflow: the canvas is built from the
+// script (see import/importScript.ts), and the original source is kept with
+// the workflow for reference.
 //
-// This is the single, canonical implementation. Import runs entirely in the
-// browser: the parsed draft is then saved through the normal "create workflow"
-// path (POST /workflows in a real deployment, or the in-browser store in the
-// demo). The backend therefore has no import endpoint — the frontend owns all
-// graph logic (generation and import), the backend owns persistence and
-// execution.
+// Import runs entirely in the browser: the draft is then saved through the
+// normal "create workflow" path (POST /workflows in a real deployment, or the
+// in-browser store in the demo). The backend has no import endpoint: the
+// frontend owns all graph logic (generation and import), the backend owns
+// persistence and execution.
 
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../components/nodes/BaseNode";
+import { getNfCoreCatalog } from "../api/nfcore";
+import { registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
 import type { ExecutionSettings } from "../types/execution";
+import type { FileContent } from "../utils/fileContent";
 import { defaultExecutionSettings } from "./defaultExecutionSettings";
+import { importNextflowScript, type NfCoreCatalogForImport } from "./import/importScript";
 
 interface ImportNextflowWorkflowInput {
   name?: string;
   description?: string;
   rawSource: string;
   sourceKey?: string | null;
+  /** The nf-core catalog; loaded when the script includes nf-core components and none is given. */
+  catalog?: NfCoreCatalogForImport | null;
+  /** For a project: its .nf files by path, the script's path among them, and its nextflow.config. */
+  files?: Record<string, string>;
+  path?: string;
+  config?: string;
+  /** For a project: its input files by name. */
+  inputs?: Record<string, FileContent>;
 }
 
 export interface ImportedWorkflowDraft {
   name: string;
   description: string;
-  nodes: VisualNodeDraft[];
-  edges: VisualEdgeDraft[];
+  nodes: Node<NodeData>[];
+  edges: Edge[];
   executionSettings: ExecutionSettings;
   originType: "imported";
   sourceFormat: "nextflow";
@@ -33,414 +47,63 @@ export interface ImportedWorkflowDraft {
   isReadOnly: false;
 }
 
-const inferWorkflowName = (rawSource: string): string | null => {
-  const workflowMatch = rawSource.match(/workflow\s+([A-Za-z0-9_]+)\s*\{/);
-  if (workflowMatch?.[1]) {
-    return workflowMatch[1];
-  }
+/** The script's workflow name: its N-WAVE header, else its first named workflow or process. */
+const inferWorkflowName = (rawSource: string): string | null =>
+  rawSource.match(/^\s*\/\/\s*(.+)\n\/\/ Written by N-WAVE/)?.[1]?.trim() ??
+  rawSource.match(/\bworkflow\s+([A-Za-z0-9_]+)\s*\{/)?.[1] ??
+  rawSource.match(/\bprocess\s+([A-Za-z0-9_]+)\s*\{/)?.[1] ??
+  null;
 
-  const processMatch = rawSource.match(/process\s+([A-Za-z0-9_]+)\s*\{/);
-  if (processMatch?.[1]) {
-    return processMatch[1];
-  }
+const usesNfCore = (source: string): boolean => /\b(modules|subworkflows)\/nf-core\//.test(source);
 
-  return null;
-};
-
-interface ParsedProcess {
-  name: string;
-  body: string;
-}
-
-interface VisualNodeDraft {
-  id: string;
-  type: string;
-  position: { x: number; y: number };
-  data: NodeData;
-}
-
-interface VisualEdgeDraft {
-  id: string;
-  source: string;
-  target: string;
-  sourceHandle: string;
-  targetHandle: string;
-  data?: { order: number };
-  type: "default";
-}
-
-const sanitizeId = (value: string): string =>
-  value.replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "") || "node";
-
-const parseProcesses = (rawSource: string): ParsedProcess[] => {
-  const processes: ParsedProcess[] = [];
-  const processPattern = /process\s+([A-Za-z_][A-Za-z0-9_]*)\s*\{/g;
-  for (
-    let match = processPattern.exec(rawSource);
-    match !== null;
-    match = processPattern.exec(rawSource)
-  ) {
-    const processName = match[1];
-    if (!processName) continue;
-
-    let depth = 1;
-    let cursor = processPattern.lastIndex;
-    while (cursor < rawSource.length && depth > 0) {
-      const char = rawSource[cursor];
-      if (char === "{") depth++;
-      if (char === "}") depth--;
-      cursor++;
-    }
-
-    processes.push({
-      name: processName,
-      body: rawSource.slice(processPattern.lastIndex, cursor - 1),
-    });
-    processPattern.lastIndex = cursor;
-  }
-
-  return processes;
-};
-
-const getWorkflowBody = (rawSource: string): string => {
-  const workflowMatch = /workflow(?:\s+[A-Za-z_][A-Za-z0-9_]*)?\s*\{/g.exec(
-    rawSource
-  );
-  if (!workflowMatch) return "";
-
-  let depth = 1;
-  let cursor = workflowMatch.index + workflowMatch[0].length;
-  const start = cursor;
-  while (cursor < rawSource.length && depth > 0) {
-    const char = rawSource[cursor];
-    if (char === "{") depth++;
-    if (char === "}") depth--;
-    cursor++;
-  }
-
-  return rawSource.slice(start, cursor - 1);
-};
-
-/**
- * The file lists of the script's File Inputs, by suffix: "" for a lone File
- * Input (`params.selected_files`), "_<node>" for each of several
- * (`params.selected_files_<node>`, read from channel `ch_files_<node>`).
- */
-const parseSelectedFiles = (rawSource: string): Map<string, string[]> => {
-  const lists = new Map<string, string[]>();
-  for (const match of rawSource.matchAll(
-    /params\.selected_files(_[A-Za-z0-9_]+)?\s*=\s*\[([\s\S]*?)\]/g
-  )) {
-    const suffix = match[1] ?? "";
-    // The first assignment wins, as in Nextflow.
-    if (lists.has(suffix)) continue;
-    lists.set(
-      suffix,
-      (match[2] ?? "")
-        .split(",")
-        .map((entry) => entry.trim().replace(/^['"]|['"]$/g, ""))
-        .filter(Boolean)
-    );
-  }
-  return lists;
-};
-
-const inferProcessNode = (
-  process: ParsedProcess,
-  index: number
-): VisualNodeDraft => {
-  const lowerName = process.name.toLowerCase();
-  const lowerBody = process.body.toLowerCase();
-  const id = `import-${sanitizeId(process.name)}`;
-  const basePosition = { x: 320 + index * 240, y: 180 };
-
-  if (lowerName.startsWith("outputdisplay") || lowerName.includes("output")) {
-    return {
-      id,
-      type: "outputDisplay",
-      position: basePosition,
-      data: {
-        label: "Display Output",
-        icon: "Eye",
-        subtitle: process.name,
-        inputs: [{ name: "in" }],
-      },
-    };
-  }
-
-  if (lowerName.startsWith("filter") || lowerBody.includes("grep ")) {
-    const grepMatch = process.body.match(
-      /grep\s+(?:-v\s+)?(?:-E\s+)?["']([^"']+)["']/
-    );
-    return {
-      id,
-      type: "operator",
-      position: basePosition,
-      data: {
-        label: "Filter",
-        icon: "Funnel",
-        subtitle: grepMatch?.[1] ? `Contains ${grepMatch[1]}` : process.name,
-        operatorType: "filter",
-        filterText: grepMatch?.[1] ?? "",
-        filterMode: "contains",
-        filterNegate: /\bgrep\s+-v\b/.test(process.body),
-        inputs: [{ name: "in" }],
-        outputs: [{ name: "out", isConnectable: true }],
-      },
-    };
-  }
-
-  if (
-    lowerName.startsWith("map") ||
-    lowerBody.includes(" tr ") ||
-    lowerBody.includes("sed ")
-  ) {
-    return {
-      id,
-      type: "operator",
-      position: basePosition,
-      data: {
-        label: "Map",
-        icon: "Wand",
-        subtitle: lowerBody.includes("tr '[:lower:]' '[:upper:]'")
-          ? "Uppercase"
-          : process.name,
-        operatorType: "map",
-        mapOperation: lowerBody.includes("sed ") ? "replaceText" : "changeCase",
-        mapChangeCase: lowerBody.includes("tr '[:upper:]' '[:lower:]'")
-          ? "toLowerCase"
-          : "toUpperCase",
-        inputs: [{ name: "in" }],
-        outputs: [{ name: "out", isConnectable: true }],
-      },
-    };
-  }
-
-  if (lowerName.startsWith("merge") || lowerBody.includes("cat $input_files")) {
-    return {
-      id,
-      type: "operator",
-      position: basePosition,
-      data: {
-        label: "Merge",
-        icon: "Minimize",
-        subtitle: process.name,
-        operatorType: "merge",
-        mergeOperation: "join",
-        inputs: [{ name: "in" }],
-        outputs: [{ name: "out", isConnectable: true }],
-      },
-    };
-  }
-
-  return {
-    id,
-    type: "process",
-    position: basePosition,
-    data: {
-      label: process.name,
-      icon: "Cog",
-      subtitle: "Imported process",
-      // Its code stays in the imported script, which runs as it is.
-      importedProcess: true,
-      inputs: [{ name: "in" }],
-      outputs: [{ name: "out", isConnectable: true }],
-    },
-  };
-};
-
-const extractIdentifiers = (expression: string): string[] => {
-  const ignored = new Set([
-    "collect",
-    "file",
-    "map",
-    "mix",
-    "params",
-    "view",
-    "if",
-    "else",
-    "true",
-    "false",
-    "null",
-  ]);
-  const matches = expression.match(/\b[A-Za-z_][A-Za-z0-9_]*\b/g) ?? [];
-  return [...new Set(matches.filter((match) => !ignored.has(match)))];
-};
-
-const buildVisualGraph = (
-  rawSource: string
-): { nodes: VisualNodeDraft[]; edges: VisualEdgeDraft[]; warnings: string[] } => {
-  const processes = parseProcesses(rawSource);
-  const selectedFiles = parseSelectedFiles(rawSource);
-  const workflowBody = getWorkflowBody(rawSource);
-  const warnings: string[] = [];
-
-  const nodes: VisualNodeDraft[] = [];
-  const edges: VisualEdgeDraft[] = [];
-  const processNodes = new Map<string, VisualNodeDraft>();
-  const variableSources = new Map<string, string[]>();
-
-  // One File Input per file list; a script reading ch_files without a list
-  // still gets one.
-  if (selectedFiles.size === 0 && /\bch_files\b/.test(rawSource)) {
-    selectedFiles.set("", []);
-  }
-  [...selectedFiles].forEach(([suffix, files], index) => {
-    const fileInputId = `import-file-input${suffix.replace(/_/g, "-")}`;
-    nodes.push({
-      id: fileInputId,
-      type: "fileInput",
-      position: { x: 80, y: 180 + index * 180 },
-      data: {
-        label: "File Input",
-        icon: "FolderOpen",
-        subtitle:
-          files.length > 0
-            ? `${files.length} imported file reference${
-                files.length === 1 ? "" : "s"
-              }`
-            : "Imported input channel",
-        files: files.map((name) => ({
-          name,
-          size: 0,
-          fileType: name.split(".").pop() || "txt",
-          content: "",
-        })),
-        outputs: [{ name: "out", isConnectable: true }],
-      },
-    });
-    variableSources.set(`ch_files${suffix}`, [fileInputId]);
-  });
-
-  processes.forEach((process, index) => {
-    const node = inferProcessNode(process, index);
-    nodes.push(node);
-    processNodes.set(process.name, node);
-  });
-
-  const resolveSources = (expression: string): string[] =>
-    extractIdentifiers(expression).flatMap(
-      (identifier) => variableSources.get(identifier) ?? []
-    );
-
-  const addEdges = (sourceIds: string[], targetNode: VisualNodeDraft) => {
-    const uniqueSourceIds = [...new Set(sourceIds)].filter(
-      (sourceId) => sourceId !== targetNode.id
-    );
-    uniqueSourceIds.forEach((sourceId, index) => {
-      const sourceNode = nodes.find((node) => node.id === sourceId);
-      edges.push({
-        id: `import-edge-${edges.length + 1}-${sourceId}-${targetNode.id}`,
-        source: sourceId,
-        target: targetNode.id,
-        sourceHandle: sourceNode?.type === "fileInput" ? "ch_files_out" : "out",
-        targetHandle: "in",
-        data: { order: index },
-        type: "default",
-      });
-    });
-  };
-
-  // Whole statements: a call or assignment can span lines (a `.flatMap { … }`
-  // or a call's arguments), so lines are joined until their brackets close.
-  const workflowLines: string[] = [];
-  let statement = "";
-  let depth = 0;
-  for (const rawLine of workflowBody.split(/\r?\n/)) {
-    const line = rawLine.replace(/\/\/.*$/, "").trim();
-    if (!line) continue;
-    statement = statement ? `${statement} ${line}` : line;
-    depth += (line.match(/[([{]/g) ?? []).length - (line.match(/[)\]}]/g) ?? []).length;
-    if (depth <= 0) {
-      workflowLines.push(statement);
-      statement = "";
-      depth = 0;
-    }
-  }
-  if (statement) workflowLines.push(statement);
-  for (const line of workflowLines) {
-    const assignmentMatch = line.match(
-      /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/
-    );
-    if (assignmentMatch?.[1] && assignmentMatch[2]) {
-      const [, outputVariable, processName, args = ""] = assignmentMatch;
-      const targetNode = processNodes.get(processName);
-      if (targetNode) {
-        const sources = resolveSources(args);
-        addEdges(sources, targetNode);
-        variableSources.set(outputVariable, [targetNode.id]);
-        continue;
-      }
-    }
-
-    const callMatch = line.match(/^([A-Za-z_][A-Za-z0-9_]*)\(([\s\S]*)\)\s*$/);
-    if (callMatch?.[1]) {
-      const [, processName, args = ""] = callMatch;
-      const targetNode = processNodes.get(processName);
-      if (targetNode) {
-        addEdges(resolveSources(args), targetNode);
-        continue;
-      }
-    }
-
-    const channelAssignmentMatch = line.match(
-      /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([\s\S]+)$/
-    );
-    if (channelAssignmentMatch?.[1] && channelAssignmentMatch[2]) {
-      const sources = resolveSources(channelAssignmentMatch[2]);
-      if (sources.length > 0) {
-        variableSources.set(channelAssignmentMatch[1], sources);
-      }
-    }
-  }
-
-  if (processes.length === 0) {
-    warnings.push("No Nextflow process blocks were found to visualize.");
-  }
-  if (workflowBody.trim() === "") {
-    warnings.push(
-      "No workflow block was found, so process connections could not be inferred."
-    );
-  }
-  if (processes.length > 0 && edges.length === 0) {
-    warnings.push(
-      "Processes were visualized, but no workflow connections could be inferred."
-    );
-  }
-
-  return { nodes, edges, warnings };
-};
-
-export const importNextflowWorkflow = ({
+export const importNextflowWorkflow = async ({
   name,
   description,
   rawSource,
   sourceKey,
-}: ImportNextflowWorkflowInput): ImportedWorkflowDraft => {
+  catalog,
+  files,
+  path,
+  config,
+  inputs,
+}: ImportNextflowWorkflowInput): Promise<ImportedWorkflowDraft> => {
   const normalizedSource = rawSource.trim();
-
   if (!normalizedSource) {
     throw new Error("Nextflow source is required for import.");
   }
 
-  const inferredName = inferWorkflowName(normalizedSource);
-  const workflowName =
-    name?.trim() || inferredName || "Imported Nextflow Workflow";
-  const visualGraph = buildVisualGraph(normalizedSource);
+  let nfCoreCatalog = catalog ?? null;
+  const warnings: string[] = [];
+  if (!nfCoreCatalog && [normalizedSource, ...Object.values(files ?? {})].some(usesNfCore)) {
+    try {
+      nfCoreCatalog = await getNfCoreCatalog();
+    } catch {
+      warnings.push("The nf-core catalog couldn't be loaded, so nf-core modules in the script aren't recognized.");
+    }
+  }
+
+  const imported = importNextflowScript(normalizedSource, { catalog: nfCoreCatalog, files, path, config, inputs });
+  // The nf-core components the canvas uses, so it can show and generate them
+  // (the workflow page asks to install those that aren't).
+  registerDynamicNodeDefinitions(imported.definitions);
+
+  if (imported.nodes.length === 0) {
+    warnings.push("No Nextflow process blocks were found to visualize.");
+  }
 
   return {
-    name: workflowName,
+    name: name?.trim() || imported.name || inferWorkflowName(normalizedSource) || "Imported Nextflow Workflow",
     description:
       description?.trim() ||
-      "Imported from Nextflow source with an inferred visual workflow graph.",
-    nodes: visualGraph.nodes,
-    edges: visualGraph.edges,
+      "Imported from a Nextflow script: each process, module and channel step is a node.",
+    nodes: imported.nodes,
+    edges: imported.edges,
     executionSettings: defaultExecutionSettings,
     originType: "imported",
     sourceFormat: "nextflow",
     sourceKey: sourceKey?.trim() || null,
     rawSource: normalizedSource,
-    importWarnings: [...visualGraph.warnings],
+    importWarnings: [...warnings, ...imported.warnings],
     isBuiltin: false,
     isReadOnly: false,
   };

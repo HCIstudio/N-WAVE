@@ -1,3 +1,4 @@
+import { includeFor } from "./nfcore/include";
 import {
   publishDirLines,
   resultsFolderFor,
@@ -31,6 +32,8 @@ export interface NfCorePortKind {
   kind?: PortKind;
   /** File name pattern, e.g. "*.{bam}". */
   filePattern?: string;
+  /** Outputs: each item is [meta, files]. */
+  metaTuple?: boolean;
 }
 
 export interface NfCoreModuleInput extends NfCorePortKind {
@@ -103,6 +106,7 @@ export interface NfCoreAdapterManifest {
     handle: string;
     emit: string;
     label?: string;
+    metaTuple?: boolean;
   }>;
   defaults?: Partial<NodeData>;
   /** Subworkflows: every `take`, in call order. */
@@ -112,9 +116,10 @@ export interface NfCoreAdapterManifest {
 }
 
 /** A port's kind fields, only those it has. */
-const portKind = ({ kind, filePattern }: NfCorePortKind): NfCorePortKind => ({
+const portKind = ({ kind, filePattern, metaTuple }: NfCorePortKind): NfCorePortKind => ({
   ...(kind ? { kind } : {}),
   ...(filePattern ? { filePattern } : {}),
+  ...(metaTuple ? { metaTuple } : {}),
 });
 
 /**
@@ -214,6 +219,7 @@ export const createNodeDefinitionFromNfCoreManifest = (
         label: output.label,
         isConnectable: true,
         ...portKind(output),
+        ...(output.metaTuple ? { metaTuple: true } : {}),
       })),
       nwaveExecutionBackend: "nf-core",
       nwaveNfCoreModuleId: manifest.id,
@@ -237,7 +243,7 @@ export const generateNfCoreModuleNode =
     const { node, processName, incomingEdges, resolveChannelNameForEdge, channelNameMap } =
       context;
     const moduleAlias = sanitizeProcessName(processName).toUpperCase();
-    const includeStatement = `include { ${adapter.processName} as ${moduleAlias} } from '${adapter.modulePath}'`;
+    const includeStatement = includeFor(adapter.processName, moduleAlias, adapter.modulePath);
     const inputChannels = buildNfCoreInputChannels({
       adapter,
       data: node.data,
@@ -246,6 +252,7 @@ export const generateNfCoreModuleNode =
       resolveChannelNameForEdge,
       channelNameMap,
       sanitizeVarName: context.sanitizeVarName,
+      shapeOf: context.shapeOf,
     });
 
     if (!inputChannels) return null;
@@ -338,7 +345,7 @@ function buildAdaptedInputChannel({
     return { name: upstream };
   }
 
-  const channelName = sanitizeVarName(`ch_${processName}_${handle}_nfcore`);
+  const channelName = sanitizeVarName(`ch_${processName.toLowerCase()}_${handle}`);
 
   return {
     name: channelName,
@@ -362,6 +369,7 @@ function buildNfCoreInputChannels({
   resolveChannelNameForEdge,
   channelNameMap,
   sanitizeVarName,
+  shapeOf,
 }: {
   adapter: NfCoreModuleAdapter;
   data: NodeData;
@@ -370,6 +378,7 @@ function buildNfCoreInputChannels({
   resolveChannelNameForEdge: NodeGenerationContext["resolveChannelNameForEdge"];
   channelNameMap: Map<string, string>;
   sanitizeVarName: (name: string) => string;
+  shapeOf?: NodeGenerationContext["shapeOf"];
 }): Array<{ name: string; definition?: string }> | null {
   if (!adapter.inputGroups || adapter.inputGroups.length === 0) {
     const inputChannels = adapter.inputs
@@ -404,6 +413,7 @@ function buildNfCoreInputChannels({
     incomingEdges,
     resolveUpstream: (edge) => resolveChannelNameForEdge(edge, channelNameMap),
     sanitizeVarName,
+    shapeOf,
   });
 }
 

@@ -30,6 +30,7 @@ import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
+import { type ImportProject, readFolder, readProject, readZip } from "../workflows/import/readProject";
 import { logActivity } from "../activity/activityLog";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
@@ -139,11 +140,14 @@ const HomePage: React.FC = () => {
   const [importDescription, setImportDescription] = useState("");
   const [importSource, setImportSource] = useState("");
   const [importFileName, setImportFileName] = useState("");
+  /** A whole project (zip or folder): its other files go with the main script. */
+  const [importProject, setImportProject] = useState<ImportProject | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const nameTextareaRef = useRef<HTMLTextAreaElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const editingCardRef = useRef<HTMLDivElement>(null);
   const importFileInputRef = useRef<HTMLInputElement>(null);
+  const importFolderInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   // Global Settings → Features: without templates, no demos (and no tutorial,
   // which starts from one), and New Workflow starts empty.
@@ -364,8 +368,32 @@ const HomePage: React.FC = () => {
     setImportDescription("");
     setImportSource("");
     setImportFileName("");
+    setImportProject(null);
     if (importFileInputRef.current) {
       importFileInputRef.current.value = "";
+    }
+    if (importFolderInputRef.current) {
+      importFolderInputRef.current.value = "";
+    }
+  };
+
+  /** Show a project's main script, keeping its other files for the import. */
+  const showImportProject = (project: ImportProject, label: string) => {
+    setImportProject(project);
+    setImportSource(project.source);
+    const scripts = Object.keys(project.files).filter((path) => path.endsWith(".nf")).length;
+    setImportFileName(`${label} (${project.path}, ${scripts} Nextflow file${scripts === 1 ? "" : "s"})`);
+    if (!importName.trim()) setImportName(label.replace(/\.zip$/, "").replace(/_/g, " "));
+  };
+
+  const handleImportFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const chosen = Array.from(e.target.files ?? []);
+    if (chosen.length === 0) return;
+    try {
+      const folder = chosen[0].webkitRelativePath.split("/")[0] || "Project";
+      showImportProject(readProject(await readFolder(chosen)), folder);
+    } catch (err) {
+      reportActionError("Failed to read the project folder.", err);
     }
   };
 
@@ -376,7 +404,14 @@ const HomePage: React.FC = () => {
     if (!file) return;
 
     try {
+      // A zip by its content (`PK`), whatever its name.
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) {
+        showImportProject(readProject(await readZip(bytes)), file.name);
+        return;
+      }
       const content = await file.text();
+      setImportProject(null);
       setImportSource(content);
       setImportFileName(file.name);
       if (!importName.trim()) {
@@ -397,11 +432,14 @@ const HomePage: React.FC = () => {
       setIsImporting(true);
       // Parse the Nextflow source into a visual graph in the browser, then save
       // it through the normal create endpoint (no dedicated import endpoint).
-      const draft = importNextflowWorkflow({
+      const draft = await importNextflowWorkflow({
         name: importName.trim() || undefined,
         description: importDescription.trim() || undefined,
         rawSource: importSource,
         sourceKey: importFileName || undefined,
+        ...(importProject
+          ? { files: importProject.files, path: importProject.path, config: importProject.config, inputs: importProject.inputs }
+          : {}),
       });
       const response = await api.post("/workflows", draft);
       logActivity("workflow.imported", {
@@ -955,15 +993,24 @@ const HomePage: React.FC = () => {
             </div>
             <div>
               <label htmlFor={`${fieldId}-nextflow-file`} className="mb-1 block text-sm text-text">
-                Nextflow File
+                Nextflow File, Project Zip or Folder
               </label>
               <div className="flex gap-2">
                 <input
                   id={`${fieldId}-nextflow-file`}
                   ref={importFileInputRef}
                   type="file"
-                  accept=".nf,.txt,.groovy"
+                  accept=".nf,.txt,.groovy,.zip"
                   onChange={handleImportFileChange}
+                  className="hidden"
+                />
+                <input
+                  ref={importFolderInputRef}
+                  type="file"
+                  aria-label="Nextflow project folder"
+                  // A whole project: main.nf with its modules and nextflow.config.
+                  {...{ webkitdirectory: "" }}
+                  onChange={handleImportFolderChange}
                   className="hidden"
                 />
                 <button
@@ -972,6 +1019,13 @@ const HomePage: React.FC = () => {
                   className="rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
                 >
                   Choose File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => importFolderInputRef.current?.click()}
+                  className="rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
+                >
+                  Choose Folder
                 </button>
                 <div className="flex min-w-0 items-center text-sm text-text-light">
                   <span className="truncate">

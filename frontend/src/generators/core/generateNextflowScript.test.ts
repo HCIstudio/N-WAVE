@@ -1,3 +1,4 @@
+import { processNamesFor } from "./naming";
 import { describe, it, expect, vi } from "vitest";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
@@ -142,16 +143,14 @@ describe("generateNextflowScript with nf-core modules", () => {
       "{workflow_name}"
     );
     const workflowBlock = generated.slice(generated.indexOf("workflow {"));
-    const fastqcCall = workflowBlock.search(/\bNFCORE_FASTQC_FASTQC\(/);
-    const zipAssignment = workflowBlock.search(/\bfastqc_zip = NFCORE_FASTQC_FASTQC\.out\.zip/);
-    const multiqcInput = workflowBlock.search(
-      /\bch_\w*multiqc_files_nfcore = fastqc_zip\b/
-    );
-    const multiqcCall = workflowBlock.search(/\bNFCORE_MULTIQC_MULTIQC\(/);
+    // Named after their labels; MultiQC reads FastQC's output as FASTQC.out.zip.
+    expect(generated).toContain("include { FASTQC } from './modules/nf-core/fastqc/main'");
+    const fastqcCall = workflowBlock.search(/\bFASTQC\(/);
+    const multiqcInput = workflowBlock.search(/\bch_multiqc_multiqc_files = FASTQC\.out\.zip\b/);
+    const multiqcCall = workflowBlock.search(/\bMULTIQC\(/);
 
     expect(fastqcCall).toBeGreaterThan(-1);
-    expect(zipAssignment).toBeGreaterThan(fastqcCall);
-    expect(multiqcInput).toBeGreaterThan(zipAssignment);
+    expect(multiqcInput).toBeGreaterThan(fastqcCall);
     expect(multiqcCall).toBeGreaterThan(multiqcInput);
   });
 
@@ -200,9 +199,10 @@ describe("generateNextflowScript with nf-core modules", () => {
       "{workflow_name}"
     );
     const workflowBlock = generated.slice(generated.indexOf("workflow {"));
-    const defined = workflowBlock.indexOf("op_joined = ");
-    const used = workflowBlock.search(/\(op_joined\b|= op_joined\b|op_joined\./);
-    expect(defined).toBeGreaterThan(-1);
+    const channel = workflowBlock.match(/(ch_\w+) = ch_files\.mix\(channel\.empty\(\)\)/)?.[1];
+    expect(channel).toBeDefined();
+    const defined = workflowBlock.indexOf(`${channel} = `);
+    const used = workflowBlock.search(new RegExp(`[A-Z_]+\\(${channel}\\b`));
     expect(used).toBeGreaterThan(defined);
   });
 });
@@ -234,16 +234,14 @@ describe("generateNextflowScript edge cases", () => {
       [fileInput([{ name: "a.txt", size: 1, content: "a" }])],
       [],
     );
-    expect(script).toContain("params.selected_files = ['a.txt']");
-    expect(script).toContain(
-      "ch_files = Channel.fromList(params.selected_files)",
-    );
+    expect(script).toContain("params.files = ['a.txt']");
+    expect(script).toContain("ch_files = channel.fromList(params.files)");
   });
 
   it("gives a File Input without files an empty channel", () => {
     const script = generate([fileInput([])], []);
-    expect(script).toContain("params.selected_files = []");
-    expect(script).toContain("ch_files = Channel.empty()");
+    expect(script).toContain("params.files = []");
+    expect(script).toContain("ch_files = channel.empty()");
   });
 
   it("gives each File Input its own files param and channel", () => {
@@ -258,13 +256,13 @@ describe("generateNextflowScript edge cases", () => {
       [fileInput([{ name: "a.txt", size: 1, content: "a" }]), second, filter, filter2],
       [edge("out"), { ...edge("out"), id: "e2", source: "in2", target: "f2" }],
     );
-    expect(script).toContain("params.selected_files_in = ['a.txt']");
-    expect(script).toContain("params.selected_files_in2 = ['b.txt']");
-    expect(script).toContain(
-      "ch_files_in2 = Channel.fromList(params.selected_files_in2)",
-    );
-    expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files_in.flatMap`);
-    expect(script).toContain(`${getProcessNameForNode(filter2)}(ch_files_in2.flatMap`);
+    const nodesIn = [fileInput([{ name: "a.txt", size: 1, content: "a" }]), second, filter, filter2];
+    expect(script).toContain("params.files = ['a.txt']");
+    expect(script).toContain("params.files_2 = ['b.txt']");
+    expect(script).toContain("ch_files_2 = channel.fromList(params.files_2)");
+    // Plain files go into the step as they are.
+    expect(script).toContain(`${getProcessNameForNode(filter, nodesIn)}(ch_files)`);
+    expect(script).toContain(`${getProcessNameForNode(filter2, nodesIn)}(ch_files_2)`);
   });
 
   it("quotes file names and the output directory as Groovy strings", () => {
@@ -273,7 +271,7 @@ describe("generateNextflowScript edge cases", () => {
       [],
       "/home/o'brien/results",
     );
-    expect(script).toContain(String.raw`params.selected_files = ['patient\'s.fq']`);
+    expect(script).toContain(String.raw`params.files = ['patient\'s.fq']`);
     expect(script).toContain(String.raw`params.outdir = '/home/o\'brien/results'`);
   });
 
@@ -319,10 +317,11 @@ describe("generateNextflowScript edge cases", () => {
         { id: "e2", source: "n1", sourceHandle: "out", target: "f", targetHandle: "in" },
       ],
     );
-    const call = script.indexOf(`${custom.processType}`, script.indexOf("workflow {"));
+    const nodesIn = [fileInput([]), save, filter];
+    const call = script.indexOf(`${getProcessNameForNode(save, nodesIn)}(`, script.indexOf("workflow {"));
     expect(call).toBeGreaterThan(-1);
     expect(call).toBeLessThan(
-      script.indexOf(`${getProcessNameForNode(filter)}(`, script.indexOf("workflow {")),
+      script.indexOf(`${getProcessNameForNode(filter, nodesIn)}(`, script.indexOf("workflow {")),
     );
   });
 
@@ -344,41 +343,35 @@ describe("generateNextflowScript edge cases", () => {
 
   it("skips a node nothing is connected to", () => {
     const script = generate([fileInput([]), filter], []);
-    expect(script).not.toContain(getProcessNameForNode(filter));
+    expect(script).not.toContain("process FILTER");
   });
 
   it("falls back to another output of the source when the handle is unknown", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const script = generate(
-        [fileInput([]), filter],
-        [edge("no_such_handle")],
-      );
-      expect(script).toContain(`${getProcessNameForNode(filter)}(ch_files.flatMap`);
-      expect(
-        warn.mock.calls.map((args) => String(args[0])).join("\n"),
-      ).toContain("Using fallback channel mapping");
-    } finally {
-      warn.mockRestore();
-    }
+    const nodesIn = [fileInput([]), filter];
+    const script = generate(nodesIn, [edge("no_such_handle")]);
+    expect(script).toContain(`${getProcessNameForNode(filter, nodesIn)}(ch_files)`);
   });
 
   it("skips a node whose source has no channel", () => {
-    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    try {
-      const note = { ...makeNode("note"), id: "in" } as Node<NodeData>;
-      const script = generate([note, filter], [edge("out")]);
-      expect(script).not.toContain(getProcessNameForNode(filter));
-      expect(
-        warn.mock.calls.map((args) => String(args[0])).join("\n"),
-      ).toContain("No upstream channel found for in.out");
-    } finally {
-      warn.mockRestore();
-    }
+    const note = { ...makeNode("note"), id: "in" } as Node<NodeData>;
+    const script = generate([note, filter], [edge("out")]);
+    expect(script.slice(script.indexOf("workflow {"))).not.toContain("FILTER(");
   });
 });
 
 describe("generator helpers", () => {
+  it("names each step after its label, uniquely and in the order nodes were added", () => {
+    const step = (id: string, label: string): Node =>
+      ({ id, type: "process", position: { x: 0, y: 0 }, data: { label } }) as Node;
+    const nodesIn = [step("n2", "FastQC (raw reads)"), step("n1", "FastQC (raw reads)"), step("n3", "Ünïcode 1st"), step("n4", "")];
+    const names = processNamesFor(nodesIn);
+    expect(names.get("n1")).toBe("FASTQC_RAW_READS");
+    expect(names.get("n2")).toBe("FASTQC_RAW_READS_2");
+    expect(names.get("n3")).toBe("UNICODE_1ST");
+    expect(names.get("n4")).toBe("PROCESS");
+    expect(getProcessNameForNode(nodesIn[0], nodesIn)).toBe("FASTQC_RAW_READS_2");
+  });
+
   it("names a node's process after its type and ID", () => {
     expect(
       getProcessNameForNode({

@@ -68,6 +68,8 @@ export interface NfCoreCatalogEntry {
 	}>;
 	outputs: string[];
 	emits: string[];
+	/** Emits whose items are [meta, files]. */
+	metaEmits?: string[];
 	/** What each input and output carries, from meta.yml. */
 	portTypes?: {
 		inputs: Record<string, NfCorePortType>;
@@ -391,6 +393,7 @@ export const buildAdapterManifest = (entry: NfCoreCatalogEntry) => ({
 		emit,
 		label: toTitle(emit),
 		...portKind(entry.portTypes?.outputs[emit]),
+		...(entry.metaEmits?.includes(emit) ? { metaTuple: true } : {}),
 	})),
 	defaults: {
 		label: entry.label,
