@@ -41,8 +41,8 @@ each step produced.
   they are based on and how sure they are
   ([Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting),
   [How N-WAVE explains things](https://github.com/HCIstudio/N-WAVE/wiki/How-N-WAVE-Explains-Things)).
-- **Make it yours**: switch N-WAVE's aids on and off, and record what happens for bug reports
-  and usability tests in verbose mode
+- **Run studies**: switch N-WAVE's aids on and off, and record what happens in verbose mode
+  for usability tests (and bug reports)
   ([Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)).
 
 ## Running N-WAVE
