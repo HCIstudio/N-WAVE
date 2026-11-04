@@ -7,10 +7,11 @@
 //   - a process or workflow definition: the node of that name;
 //   - an include: the node of the (first) name it includes as;
 //   - a statement of the entry workflow: the step it calls first in its
-//     first line (`ALIGN(…)`, `x = ALIGN(…)`), else the node whose channel
-//     it defines (a channel operator's block, an input's channel), else the
-//     node of the statement right before it (a channel operator's block
-//     goes on without a blank line).
+//     first line (`ALIGN(…)`, `x = ALIGN(…)`); else, for glue a step reads
+//     (`ch_x = A.out.y.map { … }`), the step that reads it; else the node
+//     whose channel it defines (a channel operator's block, an input's
+//     channel); else the node of the statement right before it (a channel
+//     operator's block goes on without a blank line).
 //   - code kept as written at its place (a code node: functions, the output
 //     block, publish:): that node, found by its code.
 // Other lines (params, the header, comments, helper functions) belong to no node.
@@ -94,19 +95,42 @@ const ownEntryWorkflow = (
 ) => {
   const body = blockBody(text);
   let cursor = start + text.indexOf(body);
-  let previous: string | undefined;
-  for (const statement of splitWorkflowStatements(body)) {
+  const statements = splitWorkflowStatements(body).flatMap((statement) => {
     const at = script.indexOf(statement.text, cursor);
-    if (at === -1) continue;
+    if (at === -1) return [];
     cursor = at + statement.text.length;
-    // A channel operator's code is one block: its later statements follow
-    // without a blank line and belong to it too.
+    return [{ ...statement, at, called: calledStep(statement.text, byName) }];
+  });
+  let previous: string | undefined;
+  statements.forEach((statement, index) => {
+    // Glue (`ch_x = A.out.y.map { … }`) is the step that reads it next.
+    const defined = definedNames(statement.text);
+    // Only an assignment is glue, not a block (`if (…) { ch_x = … }`).
+    const isAssignment = /^\s*[A-Za-z_]\w*\s*=(?!=)/.test(statement.text);
+    const consumer = statement.called || !isAssignment
+      ? undefined
+      : statements
+          .slice(index + 1)
+          .find((later) => later.called && defined.some((name) => new RegExp(`(?<![.\\w])${name}(?!\\w)`).test(later.text)))?.called;
+    const definesOwnChannel = defined.map((name) => byName.get(name)).find(Boolean);
     const owner =
+      statement.called ??
+      definesOwnChannel ??
+      consumer ??
       ownerOf(statement.text, byName) ??
+      // A channel operator's code is one block: its later statements follow
+      // without a blank line and belong to it too.
       (statement.blankBefore ? undefined : previous);
-    own(at, cursor, owner);
+    own(statement.at, statement.at + statement.text.length, owner);
     previous = owner;
-  }
+  });
+};
+
+/** The step a statement's first line calls (`ALIGN(…)`, `x = ALIGN(…)`). */
+const calledStep = (statement: string, byName: Map<string, string>): string | undefined => {
+  const firstLine = maskSource(statement).split("\n")[0] ?? "";
+  const call = firstLine.match(/^\s*(?:[A-Za-z_]\w*\s*=\s*)?([A-Za-z_]\w*)\s*\(/);
+  return call ? byName.get(call[1]) : undefined;
 };
 
 /** The node a workflow statement is: the step its first line calls, else the channel it defines. */

@@ -136,6 +136,7 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `analysis.run` | The workflow was analysed (**Analyse**) | `lint`, `bioflow` (each `done`, `unavailable` or `failed`), `errors`, `warnings`; or `failed` |
 | `analysis.structureViewed` | The analysis's structure view was switched | `view` (`steps` or `channels`) |
 | `analysis.downloaded` | The analysed structure was downloaded | `format` (`mermaid` or `dot`), `view` |
+| `canvas.viewChanged` | The canvas view was switched (**All**, **Steps**) | `view` (`all` or `steps`) |
 | `nested.opened` | The steps inside a subworkflow or pipeline node were opened | `nodeId` (from the canvas) or `step` (from inside), `depth` |
 | `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
 | `undo`, `redo` | Undo or redo | |

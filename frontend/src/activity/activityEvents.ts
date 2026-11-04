@@ -41,6 +41,8 @@ export const ACTIVITY_TYPES = {
   "glossary.opened": "A glossary explanation was opened",
   /** `nodeId`. */
   "code.opened": "A node's Code tab was opened",
+  /** `view`: all or steps. */
+  "canvas.viewChanged": "The canvas view changed (All, Steps only)",
   /** `lint`, `bioflow`: each tool's status (done, unavailable, failed); `errors`, `warnings`: counts; or `failed`. */
   "analysis.run": "The workflow was analysed (Analyse in the bottom bar)",
   /** `view`: steps or channels. */

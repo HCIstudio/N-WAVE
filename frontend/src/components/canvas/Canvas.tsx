@@ -23,6 +23,7 @@ import CustomControls, { type HistoryControls } from "./CustomControls";
 import CanvasMinimap from "./CanvasMinimap";
 import { useFeature } from "../../settings/useFeatures";
 import CustomEdge from "./CustomEdge";
+import DerivedEdge from "./DerivedEdge";
 import BaseNode from "../nodes/BaseNode";
 import NoteNode from "../nodes/note/NoteNode";
 import FileInputNode from "../nodes/input/FileInputNode";
@@ -47,6 +48,9 @@ const nodeTypes = {
 const edgeTypes = {
   default: CustomEdge,
   custom: CustomEdge,
+  // Drawn by N-WAVE, not by the user: connections made in code, steps
+  // connected through hidden channel code.
+  derived: DerivedEdge,
 };
 
 interface CanvasProps {
@@ -68,6 +72,8 @@ interface CanvasProps {
   onShowShortcuts?: () => void;
   /** Zooms to the step that failed in the last run; none: nothing failed. */
   onZoomToFailed?: () => void;
+  /** A view that can't be edited (Steps only): no connecting or deleting. */
+  readOnly?: boolean;
 }
 
 /**
@@ -102,6 +108,7 @@ const Canvas: FC<CanvasProps> = ({
   history,
   onShowShortcuts,
   onZoomToFailed,
+  readOnly = false,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
@@ -126,7 +133,8 @@ const Canvas: FC<CanvasProps> = ({
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         connectionMode={ConnectionMode.Loose}
-        deleteKeyCode={["Backspace", "Delete"]}
+        nodesConnectable={!readOnly}
+        deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
         className="bg-background"
         proOptions={{ hideAttribution: true }}
       >

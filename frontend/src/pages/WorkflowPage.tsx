@@ -57,6 +57,8 @@ import NestedView from "../components/canvas/NestedView";
 import AnalysisPanel from "../components/canvas/AnalysisPanel";
 import AnalyseButton from "../components/canvas/AnalyseButton";
 import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
+import { useCanvasView } from "../canvas/useCanvasView";
+import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
 import { buildSubworkflowCopy, CopySubworkflowContext } from "../workflows/copySubworkflowWorkflow";
 import { nestedEntryOf } from "../workflows/nested/nestedEntry";
 import { NestedViewContext } from "../workflows/nested/NestedViewContext";
@@ -210,12 +212,20 @@ const WorkflowPageContent: React.FC = () => {
   const analysisOn = useFeature("analysis");
   const analysis = useWorkflowAnalysis(nodes, edges, workflowName);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  // All or Steps only, and the connections the code makes that the canvas doesn't show.
+  const canvasView = useCanvasView(nodes, edges, workflowName, {
+    showCodeConnections: useFeature("connectionHints"),
+  });
+  const extraProblems = useMemo(
+    () => [...canvasView.problems, ...(analysisOn ? analysis.problems : [])],
+    [canvasView.problems, analysisOn, analysis.problems],
+  );
   const check = useWorkflowCheck({
     nodes,
     edges,
     settings: runSettings,
     missingNfCoreComponents,
-    analysisProblems: analysisOn ? analysis.problems : undefined,
+    analysisProblems: extraProblems,
   });
   // Connections whose ports don't fit; stable while a drag moves nodes.
   const hintsOn = useFeature("connectionHints");
@@ -463,8 +473,10 @@ const WorkflowPageContent: React.FC = () => {
         draggable: !isRunning,
         connectable: !isRunning,
         deletable: !isRunning,
+        // Steps only: channel code is hidden.
+        hidden: canvasView.view === "steps" && node.type === "channelOperator",
       })),
-    [nodes, panels.highlightedId, isRunning]
+    [nodes, panels.highlightedId, isRunning, canvasView.view]
   );
 
   if (workflow.loadError) {
@@ -505,14 +517,19 @@ const WorkflowPageContent: React.FC = () => {
           >
             <Canvas
               nodes={canvasNodes}
-              edges={edges}
+              edges={canvasView.edges}
+              readOnly={canvasView.view !== "all"}
               onNodesChange={guards.handleNodesChange}
               onEdgesChange={guards.handleEdgesChange}
               onConnect={guards.handleConnect}
               onNodeDragStart={deletion.onNodeDragStart}
               onNodeDrag={deletion.onNodeDrag}
               onNodeDragStop={deletion.onNodeDragStop}
-              onNodeDoubleClick={(_, node) => panels.open(node.id)}
+              onNodeDoubleClick={(_, node) => {
+                // Settings are edited in All.
+                if (canvasView.view !== "all") canvasView.setView("all");
+                panels.open(node.id);
+              }}
               isValidConnection={isValidConnection}
               onConnectStart={onConnectStart}
               onConnectEnd={onConnectEnd}
@@ -521,6 +538,22 @@ const WorkflowPageContent: React.FC = () => {
               onZoomToFailed={failingNodeId ? () => showNode(failingNodeId) : undefined}
             />
           </ErrorBoundary>
+          {canvasView.view === "steps" && (
+            <div
+              role="status"
+              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
+            >
+              Steps only: channel code is hidden, and steps connect through it (dotted). This view
+              can&apos;t be edited.
+              <button
+                type="button"
+                onClick={() => canvasView.setView("all")}
+                className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
+              >
+                Back to All
+              </button>
+            </div>
+          )}
           <WorkflowTutorial tutorial={tutorial} />
           {nestedNode && nestedEntry && (
             <NestedView
@@ -584,6 +617,7 @@ const WorkflowPageContent: React.FC = () => {
           isSaving={workflow.isSaving}
           isRunning={isRunning}
           runBlockedReason={check.blockedReason}
+          viewControl={<CanvasViewSwitch view={canvasView.view} onChange={canvasView.setView} />}
           analysisControl={
             analysisOn ? (
               <AnalyseButton
