@@ -56,6 +56,9 @@ services:
       # A GitHub access token for downloading nf-core pipelines past GitHub's
       # limit for anonymous downloads (set it in the shell or a .env file).
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      # The workflow analysis (BioFlow-Insight) runs hcistudio/nwave-bioflow
+      # of this version, downloaded on first use; NWAVE_BIOFLOW=off switches it off.
+      # NWAVE_BIOFLOW: "off"
     ports:
       - "${NWAVE_BIND_ADDRESS:-127.0.0.1}:5001:5001"
     volumes:

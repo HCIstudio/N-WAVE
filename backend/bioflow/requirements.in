@@ -1,0 +1,4 @@
+# What the analysis image installs. requirements.txt pins it, and every
+# dependency, with hashes: pip-compile --generate-hashes requirements.in
+# Updates come from Dependabot, one version at a time; see UPDATING.md.
+bioflow-insight==2.1.1

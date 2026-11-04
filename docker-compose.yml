@@ -51,6 +51,11 @@
       # NWAVE_FEATURES: connectionHints=off,workflowCheck=warn,verbose=on
       # Verbose mode records parameter values and file contents too:
       # NWAVE_VERBOSE_VALUES: "on"
+      # The workflow analysis (BioFlow-Insight, backend/bioflow): the image the
+      # backend runs, and NWAVE_BIOFLOW=off to switch it off. By default the
+      # released image of this version, downloaded on first use; to use the
+      # local one: docker compose --profile analysis build bioflow
+      # NWAVE_BIOFLOW_IMAGE: nwave-bioflow:dev
     # Ports are bound to 127.0.0.1: N-WAVE has no login and the backend can
     # start containers on the host's Docker. NWAVE_BIND_ADDRESS=0.0.0.0 opens
     # them to your network (trusted networks only).
@@ -75,6 +80,13 @@
       - backend
     ports:
       - "${NWAVE_BIND_ADDRESS:-127.0.0.1}:5173:80"
+
+  # The workflow analysis image (backend/bioflow). Not a service that runs:
+  # the backend starts it for each analysis, without network.
+  bioflow:
+    build: ./backend/bioflow
+    image: nwave-bioflow:dev
+    profiles: ["analysis"]
 
 volumes:
   mongodb_data:

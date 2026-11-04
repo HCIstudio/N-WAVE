@@ -4,3 +4,8 @@ Copyright 2026 HCIstudio
 This product is licensed under the Apache License, Version 2.0 (see the LICENSE
 file). It orchestrates Nextflow (https://www.nextflow.io/, Apache License 2.0)
 but does not bundle or redistribute it.
+
+The workflow analysis image (backend/bioflow) installs BioFlow-Insight
+(https://gitlab.liris.cnrs.fr/sharefair/bioflow-insight, MIT License) and its
+dependencies from PyPI, and the Nextflow language server it bundles
+(Apache License 2.0). N-WAVE does not copy their code.

@@ -1,0 +1,114 @@
+{
+ "schema": "n-wave-bioflow/1",
+ "tool": {
+  "name": "BioFlow-Insight",
+  "version": "2.1.1",
+  "engine": "nls"
+ },
+ "dsl": "DSL2",
+ "error": null,
+ "notes": [],
+ "steps": [
+  {
+   "id": "ALIGN",
+   "name": "ALIGN",
+   "process": "ALIGN",
+   "file": "modules/local/align/main.nf",
+   "subworkflow": null,
+   "code": "process ALIGN {\n    input:\n    path input\n\n    output:\n    path 'align.out', emit: out\n\n    script:\n    \"touch align.out\"\n}",
+   "conditions": []
+  },
+  {
+   "id": "GENOME.INDEX",
+   "name": "INDEX",
+   "process": "INDEX",
+   "file": "modules/local/index/main.nf",
+   "subworkflow": "GENOME",
+   "code": "process INDEX {\n    input:\n    path input\n\n    output:\n    path 'index.out', emit: out\n\n    script:\n    \"touch index.out\"\n}",
+   "conditions": []
+  },
+  {
+   "id": "GENOME.STATS_INDEX",
+   "name": "STATS_INDEX",
+   "process": "STATS",
+   "file": "modules/local/stats/main.nf",
+   "subworkflow": "GENOME",
+   "code": "process STATS {\n    input:\n    path input\n\n    output:\n    path 'stats.out', emit: out\n\n    script:\n    \"touch stats.out\"\n}",
+   "conditions": []
+  },
+  {
+   "id": "QC.STATS_READS",
+   "name": "STATS_READS",
+   "process": "STATS",
+   "file": "modules/local/stats/main.nf",
+   "subworkflow": "QC",
+   "code": "process STATS {\n    input:\n    path input\n\n    output:\n    path 'stats.out', emit: out\n\n    script:\n    \"touch stats.out\"\n}",
+   "conditions": []
+  },
+  {
+   "id": "STATS_ALIGNED",
+   "name": "STATS_ALIGNED",
+   "process": "STATS",
+   "file": "modules/local/stats/main.nf",
+   "subworkflow": null,
+   "code": "process STATS {\n    input:\n    path input\n\n    output:\n    path 'stats.out', emit: out\n\n    script:\n    \"touch stats.out\"\n}",
+   "conditions": []
+  }
+ ],
+ "connections": [
+  {
+   "from": "ALIGN",
+   "to": "STATS_ALIGNED"
+  },
+  {
+   "from": "GENOME.INDEX",
+   "to": "ALIGN"
+  },
+  {
+   "from": "GENOME.INDEX",
+   "to": "GENOME.STATS_INDEX"
+  }
+ ],
+ "subworkflows": [
+  {
+   "id": "GENOME",
+   "name": "GENOME",
+   "workflow": "PREPARE_GENOME",
+   "file": "subworkflows/local/prepare_genome/main.nf",
+   "parent": null
+  },
+  {
+   "id": "QC",
+   "name": "QC",
+   "workflow": "QC",
+   "file": "subworkflows/local/qc/main.nf",
+   "parent": null
+  }
+ ],
+ "conditions": [],
+ "groups": {
+  "condition": [],
+  "dominator": [
+   {
+    "steps": [
+     "ALIGN",
+     "GENOME.STATS_INDEX",
+     "STATS_ALIGNED"
+    ],
+    "parent": null
+   }
+  ],
+  "parallel": []
+ },
+ "metrics": {
+  "steps": 5,
+  "processes": 3,
+  "connections": 3,
+  "subworkflow_calls": 2,
+  "subworkflow_depth": 1,
+  "conditions": 0,
+  "conditional_steps": 0,
+  "files": 6,
+  "lines": 73
+ }
+}

@@ -1,0 +1,34 @@
+cff-version: 1.2.0
+message: "If you use N-WAVE, please cite it as below. Please also cite the tools whose results you use (see references)."
+title: "N-WAVE: Nextflow Workflow Authoring and Visualization Environment"
+type: software
+authors:
+  - name: HCIstudio
+repository-code: "https://github.com/HCIstudio/N-WAVE"
+url: "https://hcistudio.github.io/N-WAVE/"
+license: Apache-2.0
+keywords:
+  - Nextflow
+  - workflow
+  - visual programming
+  - bioinformatics
+references:
+  - type: article
+    title: "BioFlow-Insight: facilitating reuse of Nextflow workflows with structure reconstruction and visualization"
+    authors:
+      - family-names: Marchment
+        given-names: George
+      - family-names: Brancotte
+        given-names: Bryan
+      - family-names: Schmit
+        given-names: Marie
+      - family-names: Lemoine
+        given-names: Frédéric
+      - family-names: Cohen-Boulakia
+        given-names: Sarah
+    journal: "NAR Genomics and Bioinformatics"
+    volume: 6
+    issue: 3
+    start: lqae092
+    year: 2024
+    doi: 10.1093/nargab/lqae092

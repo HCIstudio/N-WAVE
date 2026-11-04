@@ -1,0 +1,43 @@
+{
+ "schema": "n-wave-bioflow/1",
+ "tool": {
+  "name": "BioFlow-Insight",
+  "version": "2.1.1",
+  "engine": "bioflow"
+ },
+ "dsl": "DSL2",
+ "error": null,
+ "notes": [
+  "Nextflow's parser couldn't check the code: it includes plugins (nf-schema), which the analysis can't read without network. BioFlow-Insight's own parser read the structure."
+ ],
+ "steps": [
+  {
+   "id": "A",
+   "name": "A",
+   "process": "A",
+   "file": "main.nf",
+   "subworkflow": null,
+   "code": "process A {\n    input:\n    val x\n\n    output:\n    stdout\n\n    script:\n    \"echo ${x}\"\n}",
+   "conditions": []
+  }
+ ],
+ "connections": [],
+ "subworkflows": [],
+ "conditions": [],
+ "groups": {
+  "condition": [],
+  "dominator": [],
+  "parallel": []
+ },
+ "metrics": {
+  "steps": 1,
+  "processes": 1,
+  "connections": 0,
+  "subworkflow_calls": 0,
+  "subworkflow_depth": 0,
+  "conditions": 0,
+  "conditional_steps": 0,
+  "files": 1,
+  "lines": 17
+ }
+}

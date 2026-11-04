@@ -52,3 +52,5 @@ helper functions then move to the top of that script.
 - [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects): what
   the exported code and project look like
 - [Building workflows](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows)
+- [Workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis): what
+  BioFlow-Insight finds in a workflow's code

@@ -1,0 +1,102 @@
+{
+ "schema": "n-wave-bioflow/1",
+ "tool": {
+  "name": "BioFlow-Insight",
+  "version": "2.1.1",
+  "engine": "nls"
+ },
+ "dsl": "DSL2",
+ "error": null,
+ "notes": [],
+ "steps": [
+  {
+   "id": "ALIGN",
+   "name": "ALIGN",
+   "process": "ALIGN",
+   "file": "main.nf",
+   "subworkflow": null,
+   "code": "process ALIGN {\n    input:\n    path reads\n\n    output:\n    path 'aligned.bam'\n\n    script:\n    \"touch aligned.bam\"\n}",
+   "conditions": []
+  },
+  {
+   "id": "QC",
+   "name": "QC",
+   "process": "QC",
+   "file": "main.nf",
+   "subworkflow": null,
+   "code": "process QC {\n    input:\n    path reads\n\n    output:\n    path 'qc.txt'\n\n    script:\n    \"echo qc > qc.txt\"\n}",
+   "conditions": [
+    "!params.skip_qc"
+   ]
+  },
+  {
+   "id": "REPORT",
+   "name": "REPORT",
+   "process": "REPORT",
+   "file": "main.nf",
+   "subworkflow": null,
+   "code": "process REPORT {\n    input:\n    path files\n\n    output:\n    path 'report.html'\n\n    script:\n    \"touch report.html\"\n}",
+   "conditions": []
+  },
+  {
+   "id": "TRIM",
+   "name": "TRIM",
+   "process": "TRIM",
+   "file": "main.nf",
+   "subworkflow": null,
+   "code": "process TRIM {\n    input:\n    path reads\n\n    output:\n    path 'trimmed.fastq', emit: reads\n\n    script:\n    \"cp ${reads} trimmed.fastq\"\n}",
+   "conditions": [
+    "params.trim"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "from": "ALIGN",
+   "to": "REPORT"
+  },
+  {
+   "from": "TRIM",
+   "to": "ALIGN"
+  }
+ ],
+ "subworkflows": [],
+ "conditions": [
+  {
+   "condition": "!params.skip_qc",
+   "steps": [
+    "QC"
+   ]
+  },
+  {
+   "condition": "params.trim",
+   "steps": [
+    "TRIM"
+   ]
+  }
+ ],
+ "groups": {
+  "condition": [],
+  "dominator": [
+   {
+    "steps": [
+     "ALIGN",
+     "REPORT"
+    ],
+    "parent": null
+   }
+  ],
+  "parallel": []
+ },
+ "metrics": {
+  "steps": 4,
+  "processes": 4,
+  "connections": 2,
+  "subworkflow_calls": 0,
+  "subworkflow_depth": 0,
+  "conditions": 2,
+  "conditional_steps": 2,
+  "files": 1,
+  "lines": 63
+ }
+}

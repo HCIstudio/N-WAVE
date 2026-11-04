@@ -46,6 +46,9 @@ each step produced.
 - **Run studies**: switch N-WAVE's aids on and off, and record what happens in verbose mode
   for usability tests (and bug reports)
   ([Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)).
+- **Analyse** a workflow's code with [BioFlow-Insight](https://doi.org/10.1093/nargab/lqae092)
+  (structure, conditions, errors), on your own machine and without network
+  ([Workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis)).
 
 ## Running N-WAVE
 
@@ -136,6 +139,9 @@ CLI is told the engine's minimum API version, since Docker Engine 29 refuses it 
 | `NWAVE_DATA_DIR` | `results/.nwave` | Installed nf-core components and the run history. |
 | `NWAVE_CUSTOM_NODE_DIR` | `results/.nwave/custom-nodes` in `latest.yml` | Where custom nodes and node packs are stored. |
 | `GITHUB_TOKEN` | none | A GitHub access token Nextflow downloads pipelines with, past GitHub's 60 downloads an hour without one. |
+| `NWAVE_BIOFLOW` | `on` | `off` switches the [workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis) off. |
+| `NWAVE_BIOFLOW_IMAGE` | `hcistudio/nwave-bioflow:<version>` | The analysis image (`backend/bioflow`). |
+| `NWAVE_BIOFLOW_TIMEOUT` | `120` | Time limit of one analysis, in seconds. |
 
 The Docker setups also read `NWAVE_BIND_ADDRESS` (default `127.0.0.1`), the address their
 ports are published on.
@@ -184,7 +190,8 @@ N-WAVE/
 ## CI and releases
 
 Every pull request runs the `Test` workflow (lint, unit tests with coverage floors,
-typecheck, build, Nextflow lint of the generated scripts, and end-to-end tests), and `main` only
+typecheck, build, Nextflow lint of the generated scripts, the workflow analysis image with its
+contract tests and cross-check, and end-to-end tests), and `main` only
 accepts green pull requests. Every merge to `main` is released automatically: version bump,
 Docker images, the demo site and a GitHub Release with `latest.yml`. Details, and how to set a
 new minor or major version, are in [CONTRIBUTING.md](CONTRIBUTING.md#releases).
@@ -194,6 +201,18 @@ new minor or major version, are in [CONTRIBUTING.md](CONTRIBUTING.md#releases).
 See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, the checks every pull
 request must pass, and how releases work. Bugs and ideas go to the
 [issues](https://github.com/HCIstudio/N-WAVE/issues).
+
+## Credits
+
+N-WAVE builds on published research tools, used as their authors publish them:
+
+- **BioFlow-Insight** (workflow analysis): Marchment, Brancotte, Schmit, Lemoine,
+  Cohen-Boulakia: *BioFlow-Insight: facilitating reuse of Nextflow workflows with structure
+  reconstruction and visualization*. NAR Genomics and Bioinformatics 6(3), lqae092, 2024.
+  [doi:10.1093/nargab/lqae092](https://doi.org/10.1093/nargab/lqae092).
+  Code: [gitlab.liris.cnrs.fr/sharefair/bioflow-insight](https://gitlab.liris.cnrs.fr/sharefair/bioflow-insight) (MIT).
+
+To cite N-WAVE, see [`CITATION.cff`](CITATION.cff).
 
 ## License
 
