@@ -21,6 +21,8 @@ import { buildMixedChannelExpression } from "./mixChannels";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
 import { lowerSnake, processNamesFor, uniqueName } from "./naming";
 import { formatLayoutComment } from "./layoutComment";
+import { contractedEdges, groupsOf } from "../../groups/groups";
+import { withGroupSelectors } from "../../groups/inlineGroups";
 import type { ItemShape } from "../../registry/nodeGeneration";
 
 // Writes a workflow on the canvas as a Nextflow script, the way a person
@@ -95,7 +97,17 @@ export const generateNextflowScriptWithNames = (
     : "";
 
   const processNames = processNamesFor(nodes);
-  const order = stepOrder(nodes, edges, processNames);
+  // Groups of steps (#221): each a named workflow, called where its steps would be.
+  const groups = groupsOf(nodes);
+  const processNameSet = new Set(processNames.values());
+  /** Each group's workflow name: its own, unless a step already has it. */
+  const groupWorkflowNames = new Map<string, string>();
+  for (const group of groups.keys()) {
+    let name = group;
+    while (processNameSet.has(name) || [...groupWorkflowNames.values()].includes(name)) name = `${name}_WF`;
+    groupWorkflowNames.set(group, name);
+  }
+  const order = groups.size === 0 ? stepOrder(nodes, edges, processNames) : groupedOrder(nodes, edges, processNames, groups);
   // Lower-case names for channels: unique, apart from the processes' upper-case ones.
   const takenChannels = new Set<string>();
 
@@ -218,6 +230,57 @@ export const generateNextflowScriptWithNames = (
     }
   }
 
+  // A group's steps read the channels from outside through its takes; the
+  // steps outside read its outputs as GROUP.out.<emit>. Both by the channel's
+  // name, which is unique in the script.
+  const scopes = new Map<string, GroupScope>();
+  const scopeOf = new Map<string, GroupScope>();
+  /** The channels as the steps outside the groups read them. */
+  const outerChannels = new Map(channelNameMap);
+  const emitted = new Map<string, string>();
+  for (const [group, members] of groups) {
+    const ids = new Set(members.map((member) => member.id));
+    const workflow = groupWorkflowNames.get(group) ?? group;
+    const emits: GroupScope["emits"] = [];
+    const emitNames = new Set<string>();
+    // Each output the steps outside read: named after its port, or its step's
+    // too when two steps' ports have the same name (`star_index_index`).
+    const leaving = edges.flatMap((edge) => {
+      if (!ids.has(edge.source) || ids.has(edge.target)) return [];
+      const raw = resolveChannelNameForEdge(edge, channelNameMap);
+      const port = lowerSnake(String(edge.sourceHandle ?? ""));
+      const step = lowerSnake(processNames.get(edge.source) ?? "") || "out";
+      return raw ? [{ raw, port: !port || port === "out" || port === "output" ? "" : port, step }] : [];
+    });
+    for (const { raw, port, step } of leaving) {
+      if (emits.some((emit) => emit.raw === raw)) continue;
+      const shared = leaving.some((other) => other.port === port && other.step !== step);
+      const name = uniqueName(!port ? step : shared ? `${step}_${port}` : port, emitNames);
+      emits.push({ name, raw });
+      emitted.set(raw, `${workflow}.out.${name}`);
+    }
+    const scope: GroupScope = { workflow, ids, takes: [], emits, channels: new Map(), statements: [], callAt: null, calledAs: 0 };
+    scopes.set(group, scope);
+    for (const id of ids) scopeOf.set(id, scope);
+  }
+  for (const [key, value] of channelNameMap) if (emitted.has(value)) outerChannels.set(key, emitted.get(value) as string);
+  for (const scope of scopes.values()) {
+    const takeNames = new Set<string>();
+    const takeByRaw = new Map<string, string>();
+    for (const edge of sortIncomingEdges(edges.filter((candidate) => scope.ids.has(candidate.target) && !scope.ids.has(candidate.source)))) {
+      const raw = resolveChannelNameForEdge(edge, channelNameMap);
+      if (!raw || takeByRaw.has(raw)) continue;
+      const base = /^ch_[A-Za-z0-9_]+$/.test(raw)
+        ? raw
+        : `ch_${lowerSnake(processNames.get(edge.source) ?? "") || "input"}${edge.sourceHandle && !["out", "output"].includes(edge.sourceHandle) ? `_${lowerSnake(edge.sourceHandle)}` : ""}`;
+      const name = uniqueName(base, takeNames);
+      takeByRaw.set(raw, name);
+      // Called with the channel as the workflow outside has it (another group's output, say).
+      scope.takes.push({ name, argument: emitted.get(raw) ?? raw });
+    }
+    for (const [key, value] of channelNameMap) scope.channels.set(key, takeByRaw.get(value) ?? value);
+  }
+
   const processScripts: string[] = [];
   const noteComments: string[] = [];
   const includeStatements: string[] = [];
@@ -249,6 +312,13 @@ export const generateNextflowScriptWithNames = (
 
   for (const node of order) {
     if (!STEP_TYPES.has(String(node.type))) continue;
+    // A group is called where its first step would be (its steps come one after another).
+    const scope = scopeOf.get(node.id);
+    if (scope && scope.callAt === null) {
+      scope.callAt = stepStatements.length;
+      scope.calledAs = [...scopes.values()].filter((other) => other.callAt !== null).length;
+    }
+    const channels = scope?.channels ?? outerChannels;
     const placement = node.type === "channelOperator" ? placementOf(node.data) : null;
     if (placement) {
       layoutNames.set(node.id, uniqueName(CODE_PLACEMENTS[placement].key, takenChannels));
@@ -274,7 +344,7 @@ export const generateNextflowScriptWithNames = (
     const firstInputEdges = firstInput ? edgesIntoPort(node, incomingEdges, firstInput) : [];
     const upstreamEdges = firstInputEdges.length > 0 ? firstInputEdges : incomingEdges.slice(0, 1);
     const upstreamNames = upstreamEdges
-      .map((edge) => resolveChannelNameForEdge(edge, channelNameMap))
+      .map((edge) => resolveChannelNameForEdge(edge, channels))
       .filter((name): name is string => Boolean(name));
     if (upstreamNames.length === 0 && !standalone) {
       keepImportedDefinition(node, processName);
@@ -289,7 +359,7 @@ export const generateNextflowScriptWithNames = (
     let outputChannelName = null;
     // Display Output, channel code like `.view()` and some processes have no outputs.
     if (node.type !== "outputDisplay" && (node.data.outputs ?? []).length > 0) {
-      outputChannelName = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
+      outputChannelName = channels.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
       if (!outputChannelName) {
       keepImportedDefinition(node, processName);
       continue;
@@ -304,7 +374,7 @@ export const generateNextflowScriptWithNames = (
       upstreamChannelName,
       upstreamIsFiles,
       outputChannelName,
-      channelNameMap,
+      channelNameMap: channels,
       outputDisplayCounter,
       outputNamingPattern,
       workflowName,
@@ -324,7 +394,9 @@ export const generateNextflowScriptWithNames = (
 
     if (generationResult.processScript.trim()) processScripts.push(generationResult.processScript);
     includeStatements.push(...(generationResult.includeStatements ?? []));
-    nextflowConfigBlocks.push(...(generationResult.nextflowConfigBlocks ?? []));
+    // In a group, a subworkflow's processes are GROUP:SUB:PROC: its selectors say so.
+    const configBlocks = generationResult.nextflowConfigBlocks ?? [];
+    nextflowConfigBlocks.push(...(scope ? configBlocks.map((block) => withGroupSelectors(block, scope.workflow)) : configBlocks));
 
     const statements = [
       ...(generationResult.channelDefinitions ?? []),
@@ -337,7 +409,7 @@ export const generateNextflowScriptWithNames = (
     // imports) as one step.
     if (node.type === "channelOperator" && statements.length > 0) {
       const label = String(node.data.label || "").replace(/\n/g, " ").trim();
-      const firstOutput = channelNameMap.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
+      const firstOutput = channels.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
       // Not when it only repeats the node's name (`ch_channels_1`).
       if (label && label !== firstOutput && label !== layoutNames.get(node.id)) statements.unshift(`    // ${label}\n`);
       statements.unshift("\n");
@@ -350,7 +422,7 @@ export const generateNextflowScriptWithNames = (
     if (node.type !== "channelOperator" && comments.length > 0 && statements.length > 0) {
       statements.splice(statements.length - 1, 0, `\n${indent(comments.join("\n"))}\n`);
     }
-    (node.type === "outputDisplay" ? outputStatements : stepStatements).push(statements.join(""));
+    (node.type === "outputDisplay" ? outputStatements : (scope?.statements ?? stepStatements)).push(statements.join(""));
     outputDisplayCounter += generationResult.outputDisplayCounterIncrement ?? 0;
   }
 
@@ -402,16 +474,53 @@ export const generateNextflowScriptWithNames = (
     noteComments.push(`/* Note: ${String(node.data.label || "Note").replace(/\n/g, " ").replace(/\*\//g, "* /")}\n${text}\n*/`);
   }
 
-  const workflowBody = [...assignedCalls].reduce(
-    (body, [processName, variable]) => body.replace(new RegExp(`^( *)${processName}\\(`, "m"), `$1${variable} = ${processName}(`),
+  const withAssignedCalls = (text: string) =>
+    [...assignedCalls].reduce(
+      (body, [processName, variable]) => body.replace(new RegExp(`^( *)${processName}\\(`, "m"), `$1${variable} = ${processName}(`),
+      text,
+    );
+
+  // Each group: its workflow, and its call where its steps were.
+  const groupWorkflows: string[] = [];
+  const groupCalls: Array<{ at: number; text: string; order: number }> = [];
+  // In the order they are called.
+  for (const scope of [...scopes.values()].sort((left, right) => left.calledAs - right.calledAs)) {
+    if (scope.statements.length === 0 || scope.callAt === null) continue;
+    // Each emit as a call naturalize leaves alone and rewrites the channel in (`STEP.out.reads`).
+    const emitLines = scope.emits.map((emit) => `    nwaveEmit('${emit.name}', ${emit.raw})\n`);
+    const values = new Map<string, string>();
+    const body = withAssignedCalls(naturalize([...scope.statements, ...emitLines].join(""), processNameSet))
+      .split("\n")
+      .filter((line) => {
+        const emit = line.match(/^\s*nwaveEmit\('(\w+)', (.*)\)\s*$/);
+        if (emit) values.set(emit[1], emit[2]);
+        return !emit;
+      })
+      .join("\n")
+      .replace(/^\n+/, "")
+      .replace(/\n+$/, "");
+    let block = `workflow ${scope.workflow} {\n`;
+    if (scope.takes.length > 0) block += `    take:\n${scope.takes.map((take) => `    ${take.name}`).join("\n")}\n\n`;
+    block += `    main:\n${body}\n`;
+    if (scope.emits.length > 0) {
+      block += `\n    emit:\n${scope.emits.map((emit) => `    ${emit.name} = ${values.get(emit.name) ?? emit.raw}`).join("\n")}\n`;
+    }
+    groupWorkflows.push(`${block}}`);
+    groupCalls.push({ at: scope.callAt, order: scope.calledAs, text: `    ${scope.workflow}(${scope.takes.map((take) => take.argument).join(", ")})\n` });
+  }
+  // From the last place back; groups at the same place in their order.
+  groupCalls.sort((left, right) => right.at - left.at || right.order - left.order);
+  for (const call of groupCalls) stepStatements.splice(call.at, 0, call.text);
+
+  const workflowBody = withAssignedCalls(
     naturalize(
       [inputScript.trimEnd() ? `${indent(inputScript.trimEnd())}\n\n` : "", ...stepStatements, ...outputStatements].join(""),
-      new Set(processNames.values()),
+      processNameSet,
     ),
   );
 
   // Helper functions the generated code calls (top-level, strict syntax).
-  const helperFunctions = helperFunctionsFor([workflowBody, ...processScripts].join("\n"));
+  const helperFunctions = helperFunctionsFor([workflowBody, ...groupWorkflows, ...processScripts].join("\n"));
   if (helperFunctions.length > 0) {
     finalScript += `${helperFunctions.join("\n\n")}\n\n`;
   }
@@ -437,6 +546,8 @@ export const generateNextflowScriptWithNames = (
     finalScript += `${uniqueProcessScripts.map(tidyBlock).join("\n\n")}\n\n`;
   }
 
+  if (groupWorkflows.length > 0) finalScript += `${groupWorkflows.join("\n\n")}\n\n`;
+
   if (noteComments.length > 0) finalScript += `${noteComments.join("\n\n")}\n\n`;
 
   // Sections after main: (publish:, onComplete:, onError:) need main: written.
@@ -450,10 +561,67 @@ export const generateNextflowScriptWithNames = (
   if (options.layout !== false && nodes.length > 0) {
     // In the order of the code (inputs, steps), notes last: the same after an import.
     const placed = [...order.filter((node) => node.type !== "note"), ...nodes.filter((node) => node.type === "note")];
-    finalScript += `\n${formatLayoutComment(placed, layoutNames)}\n`;
+    // Grouped steps carry their group (`@ALIGN`), so an import groups them again.
+    const groupMarks = new Map<string, string>();
+    for (const [group, members] of groups) for (const member of members) groupMarks.set(member.id, groupWorkflowNames.get(group) ?? group);
+    finalScript += `\n${formatLayoutComment(placed, layoutNames, groupMarks)}\n`;
   }
 
   return { script: finalScript.replace(/\n{3,}/g, "\n\n"), names: layoutNames };
+};
+
+interface GroupScope {
+  /** The workflow's name in the code. */
+  workflow: string;
+  ids: Set<string>;
+  /** Its takes, and the channel the call passes to each. */
+  takes: Array<{ name: string; argument: string }>;
+  /** Its emits, and the channel (as its steps name it) each emits. */
+  emits: Array<{ name: string; raw: string }>;
+  /** The channels as its steps read them: from outside, by take. */
+  channels: Map<string, string>;
+  statements: string[];
+  /** Where its call goes among the workflow's statements. */
+  callAt: number | null;
+  /** How many groups were called before it, it included (for groups at the same place). */
+  calledAs: number;
+}
+
+/**
+ * The steps in dependency order with each group's steps one after another:
+ * the order of the workflow with each group as one step.
+ */
+const groupedOrder = (
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+  names: Map<string, string>,
+  groups: Map<string, Node<NodeData>[]>,
+): Node<NodeData>[] => {
+  const contracted = contractedEdges(nodes, edges);
+  const cycle = findCycle(contracted);
+  if (cycle) {
+    const group = cycle.find((id) => id.startsWith("group:"))?.slice("group:".length) ?? "";
+    throw new Error(
+      `Data leaves the group “${group}” and comes back into it through a step outside, so its Nextflow script can't be written. Add that step to the group, or take steps out of it.`
+    );
+  }
+  const grouped = new Set([...groups.values()].flat().map((node) => node.id));
+  const stand = [...groups].map(([group, members]) => ({
+    id: `group:${group}`,
+    type: "group",
+    position: {
+      x: Math.min(...members.map((member) => member.position?.x ?? 0)),
+      y: Math.min(...members.map((member) => member.position?.y ?? 0)),
+    },
+    data: {} as NodeData,
+  }));
+  const standNames = new Map(names);
+  for (const group of groups.keys()) standNames.set(`group:${group}`, group);
+  return stepOrder([...nodes.filter((node) => !grouped.has(node.id)), ...stand], contracted, standNames).flatMap((node) =>
+    node.type === "group" && node.id.startsWith("group:")
+      ? stepOrder(groups.get(node.id.slice("group:".length)) ?? [], edges, names)
+      : [node],
+  );
 };
 
 const stripLeadingComments = (text: string): string =>

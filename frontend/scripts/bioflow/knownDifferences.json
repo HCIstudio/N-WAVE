@@ -6,5 +6,9 @@
   "nfcore-subworkflow-chain": {
     "missingInBioflow": ["FASTQ_TRIM_FASTP_FASTQC -> FASTQ_ALIGN_BWA"],
     "reason": "BioFlow-Insight 2.1.1 doesn't follow FASTP's reads to the emit `reads` of nf-core/fastq_trim_fastp_fastqc, where the channel is set again with `.set { ch_trim_reads }` inside an `if` block"
+  },
+  "grouped-subworkflow-chain": {
+    "missingInBioflow": ["FASTQ_TRIM_FASTP_FASTQC -> FASTQ_ALIGN_BWA"],
+    "reason": "As in nfcore-subworkflow-chain: BioFlow-Insight 2.1.1 doesn't follow FASTP's reads to the emit `reads` of nf-core/fastq_trim_fastp_fastqc"
   }
 }

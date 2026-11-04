@@ -38,6 +38,14 @@ In the [browser demo](https://hcistudio.github.io/N-WAVE/) there is no server to
 the built-in examples show the analysis they got when the demo was built, other workflows say
 that analysing needs an installation.
 
+## Steps that belong together
+
+BioFlow-Insight finds steps that belong together: those that run under the same condition, a
+step and the steps only it leads to, parallel branches. The panel lists them (two steps or
+more, not already a group) under **Steps that belong together**; **Group into subworkflow…**
+groups one ([Groups of steps](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows#groups-of-steps)).
+Grouping by hand doesn't need the analysis.
+
 ## When a step runs
 
 After an analysis, a step that runs only under a condition (inside an `if`, or its `else`)

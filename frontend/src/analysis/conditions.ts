@@ -10,7 +10,7 @@
 import type { Node } from "@xyflow/react";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { getNodeParameters } from "../registry/params";
-import type { BioflowResult } from "./bioflow";
+import { type BioflowResult, nodesOfSteps } from "./bioflow";
 
 type Value = string | number | boolean | null;
 /** A value, or unknown (can't be told before the run). */
@@ -206,11 +206,10 @@ export interface NodeConditions {
 export const conditionsByNode = (result: BioflowResult, names: Map<string, string>): Map<string, string[]> => {
   const byName = new Map<string, string>();
   for (const [nodeId, name] of names) if (!byName.has(name)) byName.set(name, nodeId);
-  const subworkflowName = new Map(result.subworkflows.map((sub) => [sub.id, sub.name]));
+  const nodeOf = nodesOfSteps(result, byName);
   const perNode = new Map<string, string[][]>();
   for (const step of result.steps) {
-    const top = step.subworkflow ? (subworkflowName.get(step.id.split(".")[0] ?? "") ?? "") : step.name;
-    const nodeId = byName.get(top);
+    const nodeId = nodeOf.get(step.id);
     if (!nodeId) continue;
     perNode.set(nodeId, [...(perNode.get(nodeId) ?? []), step.conditions]);
   }

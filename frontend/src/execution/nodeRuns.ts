@@ -2,6 +2,7 @@ import type { Node } from "@xyflow/react";
 import type { RunTask } from "../api/runs";
 import { legacyProcessNameForNode } from "../generators/core/generateNextflowScript";
 import { processNamesFor } from "../generators/core/naming";
+import { groupsOf } from "../groups/groups";
 
 /** What the last run did for one node of the canvas. */
 export interface NodeRunSummary {
@@ -104,14 +105,25 @@ const processLookup = (nodes: Node[]): Map<string, string> => {
   return lookup;
 };
 
+/** Groups (#221) are workflows of their own: `GROUP:PROC`, `GROUP:SUB:PROC` run as PROC, SUB. */
+const groupNames = (nodes: Node[]): Set<string> =>
+  new Set([...groupsOf(nodes).keys()].map(normalize));
+
+/** The node a task's process belongs to: its first part, after any groups. */
+const nodeOfProcess = (process: string, lookup: Map<string, string>, groups: Set<string>): string | undefined => {
+  const parts = process.split(":").map(normalize);
+  let index = 0;
+  while (index < parts.length - 1 && groups.has(parts[index]) && !lookup.has(parts[index])) index += 1;
+  return lookup.get(parts[index] ?? "");
+};
+
 export const nodeIdForProcess = (
   process: string,
   nodes: Node[],
   pipelineNodeId?: string | null,
 ): string | undefined => {
   if (pipelineNodeId) return pipelineNodeId;
-  const wanted = normalize(process.split(":")[0] ?? "");
-  return processLookup(nodes).get(wanted);
+  return nodeOfProcess(process, processLookup(nodes), groupNames(nodes));
 };
 
 /**
@@ -127,12 +139,12 @@ export const summarizeNodeRuns = (
   pipelineNodeId?: string | null,
 ): Record<string, NodeRunSummary> => {
   const nodeByProcess = processLookup(nodes);
+  const groups = groupNames(nodes);
 
   const grouped = new Map<string, RunTask[]>();
   for (const task of tasks) {
     const nodeId =
-      pipelineNodeId ??
-      nodeByProcess.get(normalize(task.process.split(":")[0] ?? ""));
+      pipelineNodeId ?? nodeOfProcess(task.process, nodeByProcess, groups);
     if (!nodeId) continue;
     grouped.set(nodeId, [...(grouped.get(nodeId) ?? []), task]);
   }

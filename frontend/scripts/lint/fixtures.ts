@@ -415,6 +415,36 @@ const copiedSubworkflows = (): LintFixture[] =>
     return { name: `copied-${name.replace(/_/g, "-")}`, description: copy.name, nodes: copy.nodes, edges: copy.edges };
   });
 
+/** A fixture with some of its steps in groups (#221), each named by its steps' labels or ids. */
+const grouped = (
+  fixture: LintFixture,
+  name: string,
+  description: string,
+  groups: Record<string, string[]>,
+): LintFixture => ({
+  name,
+  description,
+  nodes: fixture.nodes.map((candidate) => {
+    const group = Object.entries(groups).find(([, members]) =>
+      members.some(
+        (member) =>
+          member === candidate.id ||
+          member === candidate.data.label ||
+          member === candidate.data.nwaveNfCoreModuleId,
+      ),
+    )?.[0];
+    return group ? { ...candidate, data: { ...candidate.data, group } } : candidate;
+  }),
+  edges: fixture.edges,
+});
+
+const demo1 = (): LintFixture => ({
+  name: "demo-1-text-basics",
+  description: demoWorkflowSeed.name,
+  nodes: demoWorkflowSeed.nodes as Node<NodeData>[],
+  edges: demoWorkflowSeed.edges as Edge[],
+});
+
 export const buildLintFixtures = (): LintFixture[] => {
   const starSalmon = rnaseqStarSalmon as unknown as {
     nodes: Node<NodeData>[];
@@ -427,13 +457,14 @@ export const buildLintFixtures = (): LintFixture[] => {
     edges: Edge[];
   };
   registerNfCoreNodes(qcFastq.nodes);
+  const demo3: LintFixture = {
+    name: "demo-3-rnaseq-from-nodes",
+    description: "Demo 3 - nf-core/rnaseq rebuilt from nodes",
+    nodes: starSalmon.nodes,
+    edges: starSalmon.edges,
+  };
   return [
-    {
-      name: "demo-1-text-basics",
-      description: demoWorkflowSeed.name,
-      nodes: demoWorkflowSeed.nodes as Node<NodeData>[],
-      edges: demoWorkflowSeed.edges as Edge[],
-    },
+    demo1(),
     {
       name: "demo-3-rnaseq-from-nodes",
       description: "Demo 3 - nf-core/rnaseq rebuilt from nodes",
@@ -452,5 +483,18 @@ export const buildLintFixtures = (): LintFixture[] => {
     nfCoreModuleShapes(),
     nfCoreSubworkflowChain(),
     ...copiedSubworkflows(),
+    // Groups of steps: written as subworkflows, one group's output feeding another.
+    grouped(demo1(), "grouped-demo-1", "Demo 1 with a branch grouped", {
+      BARRY_UPPERCASE: ["demo-filter-barry", "demo-map-uppercase"],
+    }),
+    grouped(demo3, "grouped-demo-3", "Demo 3 with its steps grouped", {
+      PREPARE_GENOME: ["gunzip_gtf", "gtf_filter", "transcripts_fasta", "star_index", "salmon_index"],
+      READ_QC: ["fastqc_raw", "trim_galore"],
+      ALIGN_AND_QUANTIFY: ["star_align", "salmon_quant", "bam_sort_stats"],
+    }),
+    grouped(nfCoreSubworkflowChain(), "grouped-subworkflow-chain", "nf-core subworkflows in groups", {
+      INDEX: ["nf-core/bwa/index"],
+      TRIM_AND_ALIGN: ["nf-core/subworkflows/fastq_trim_fastp_fastqc", "nf-core/subworkflows/fastq_align_bwa"],
+    }),
   ];
 };

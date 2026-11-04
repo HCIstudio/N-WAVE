@@ -1,6 +1,5 @@
 import { memo, useEffect, useMemo, useCallback } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
-import { useEdges, useNodes } from "@xyflow/react";
 import BaseNode, { type NodeData } from "./BaseNode";
 import { useWorkflowContext } from "../../context/WorkflowContext";
 import { useOperatorLogic } from "../../hooks";
@@ -22,9 +21,19 @@ const portsEqual = (
 
 const OperatorNode = (props: NodeProps<Node<NodeData>>) => {
   const { data, id } = props;
-  const { updateNodeData } = useWorkflowContext();
-  const edges = useEdges();
-  const nodes = useNodes<Node<NodeData>>();
+  // The workflow's own nodes and connections, not the view's (Steps only and
+  // Grouped draw other edges), so a view never changes what a node computes.
+  const { updateNodeData: updateAnyNodeData, nodes, edges } = useWorkflowContext();
+  // Writes only while the node is still an operator: converting it to a
+  // custom node changes its type, and this component can render once more
+  // with the workflow's new nodes before it is replaced.
+  const isOperator = useLatestRef(nodes.find((node) => node.id === id)?.type === props.type);
+  const updateNodeData = useCallback(
+    (nodeId: string, update: Partial<NodeData>) => {
+      if (isOperator.current) updateAnyNodeData(nodeId, update);
+    },
+    [isOperator, updateAnyNodeData],
+  );
 
   // Callback to save operator data
   const handleOperatorSave = useCallback(

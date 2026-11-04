@@ -30,6 +30,7 @@ import FileInputNode from "../nodes/input/FileInputNode";
 import OutputDisplayNode from "../nodes/output/OutputDisplayNode";
 import OperatorNode from "../nodes/OperatorNode";
 import ProcessNode from "../nodes/process/ProcessNode";
+import { GroupBoxNode, GroupFrameNode } from "./GroupNodes";
 
 const nodeTypes = {
   default: BaseNode,
@@ -43,6 +44,9 @@ const nodeTypes = {
   filter: OperatorNode,
   operator: OperatorNode,
   process: ProcessNode,
+  // Groups of steps (#221): a frame in All, a box in Grouped.
+  groupFrame: GroupFrameNode,
+  groupBox: GroupBoxNode,
 };
 
 const edgeTypes = {

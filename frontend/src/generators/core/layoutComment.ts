@@ -18,19 +18,26 @@ export interface LayoutEntry {
   x: number;
   y: number;
   label?: string;
+  /** The group (subworkflow) the step is in. */
+  group?: string;
 }
 
 const quote = (text: string): string =>
   `"${text.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\r?\n/g, " ")}"`;
 
-export const formatLayoutComment = (nodes: Node[], names: Map<string, string>): string => {
+export const formatLayoutComment = (
+  nodes: Node[],
+  names: Map<string, string>,
+  groups: Map<string, string> = new Map(),
+): string => {
   const entries = nodes.flatMap((node) => {
     const name = names.get(node.id);
     if (!name) return [];
     const x = Math.round(node.position?.x ?? 0);
     const y = Math.round(node.position?.y ?? 0);
     const label = (node.data as { label?: unknown }).label;
-    return [`${name} ${x},${y}${typeof label === "string" && label ? ` ${quote(label)}` : ""}`];
+    const group = groups.get(node.id);
+    return [`${name} ${x},${y}${typeof label === "string" && label ? ` ${quote(label)}` : ""}${group ? ` @${group}` : ""}`];
   });
   return `${LAYOUT_PREFIX} ${entries.join("; ")}`;
 };
@@ -44,13 +51,14 @@ export const parseLayoutComment = (script: string): Map<string, LayoutEntry> => 
     .find((candidate) => candidate.trim().startsWith(LAYOUT_PREFIX));
   if (!line) return entries;
   const text = line.trim().slice(LAYOUT_PREFIX.length);
-  const entry = /\s*([A-Za-z_][A-Za-z0-9_]*)\s+(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:\s+"((?:[^"\\]|\\.)*)")?\s*(?:;|$)/gy;
+  const entry = /\s*([A-Za-z_][A-Za-z0-9_]*)\s+(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:\s+"((?:[^"\\]|\\.)*)")?(?:\s+@([A-Za-z_][A-Za-z0-9_]*))?\s*(?:;|$)/gy;
   for (let match = entry.exec(text); match; match = entry.exec(text)) {
     entries.set(match[1], {
       name: match[1],
       x: Number(match[2]),
       y: Number(match[3]),
       ...(match[4] !== undefined ? { label: match[4].replace(/\\(.)/g, "$1") } : {}),
+      ...(match[5] ? { group: match[5] } : {}),
     });
   }
   return entries;

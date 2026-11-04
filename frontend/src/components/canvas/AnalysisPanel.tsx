@@ -40,6 +40,7 @@ import {
 import type { WorkflowAnalysisState } from "../../analysis/useWorkflowAnalysis";
 import { STEP_HEIGHT, STEP_WIDTH } from "../../workflows/nested/nestedGraph";
 import type { NodeData } from "../nodes/BaseNode";
+import { groupSuggestions, SUGGESTION_REASONS } from "../../groups/suggestions";
 
 interface StructureNodeData extends Record<string, unknown> {
   label: string;
@@ -132,6 +133,8 @@ interface AnalysisPanelProps {
   workflowName: string;
   nodeLabels: Record<string, string>;
   onShowNode: (nodeId: string) => void;
+  /** Group the steps of a suggestion (absent: can't be changed now). */
+  onGroup?: (ids: string[]) => void;
   onClose: () => void;
 }
 
@@ -141,6 +144,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   workflowName,
   nodeLabels,
   onShowNode,
+  onGroup,
   onClose,
 }) => {
   const headingId = useId();
@@ -168,6 +172,14 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   const metrics = useMemo(
     () => (bioflow ? structureMetrics(bioflow) : null),
     [bioflow],
+  );
+  // Steps that belong together, by BioFlow-Insight (only while the steps are as analysed).
+  const suggestions = useMemo(
+    () =>
+      bioflow && analysis && state.structureCurrent
+        ? groupSuggestions(bioflow, analysis.names, nodes)
+        : [],
+    [bioflow, analysis, state.structureCurrent, nodes],
   );
 
   // The canvas node of each top-level step, to show it.
@@ -389,6 +401,42 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                       </dt>
                       <dd className="text-text">{metrics.conditionalSteps}</dd>
                     </dl>
+                  </>
+                )}
+                {suggestions.length > 0 && (
+                  <>
+                    <h3 className="mb-2 mt-4 text-sm font-semibold text-text">
+                      Steps that belong together
+                    </h3>
+                    <ul
+                      aria-label="Suggested groups"
+                      className="space-y-2 text-sm text-text"
+                    >
+                      {suggestions.map((suggestion) => (
+                        <li
+                          key={suggestion.ids.join("|")}
+                          className="rounded-md border border-panel-border p-2"
+                        >
+                          <p className="text-xs text-text-light">
+                            {SUGGESTION_REASONS[suggestion.kind]}
+                          </p>
+                          <p>
+                            {suggestion.ids
+                              .map((id) => nodeLabels[id] ?? id)
+                              .join(", ")}
+                          </p>
+                          {onGroup && (
+                            <button
+                              type="button"
+                              onClick={() => onGroup(suggestion.ids)}
+                              className="mt-1 rounded border border-panel-border px-2 py-0.5 text-xs hover:bg-accent"
+                            >
+                              Group into subworkflow…
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
                   </>
                 )}
                 {bioflow && bioflow.notes.length > 0 && (

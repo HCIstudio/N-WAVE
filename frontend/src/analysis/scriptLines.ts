@@ -74,8 +74,11 @@ export const lineOwners = (
   }
 
   for (const item of topLevelItems(script)) {
-    if ((item.kind === "process" || item.kind === "workflow") && item.name) {
+    if ((item.kind === "process" || item.kind === "workflow") && item.name && byName.has(item.name)) {
       own(item.start, item.end, byName.get(item.name));
+    } else if (item.kind === "workflow" && item.name) {
+      // A group (#221): its statements are its steps', as in the entry workflow.
+      ownEntryWorkflow(script, item.start, item.text, byName, own);
     } else if (item.kind === "include") {
       const first = readIncludeItem(item.text)[0];
       own(item.start, item.end, first && byName.get(first.alias));
