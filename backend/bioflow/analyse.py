@@ -58,6 +58,9 @@ def base_document(engine: str | None) -> dict:
         "subworkflows": [],
         "conditions": [],
         "groups": {kind: None for kind in GROUP_KINDS},
+        # Steps, channel operations and the channels between them; null
+        # when it could not be read (see notes).
+        "specification": None,
         "metrics": {},
     }
 
@@ -132,6 +135,9 @@ class Analysis:
         self.get_object = get_object
         self.project = project
         self.main_file = main_file
+        self.subworkflow_ids: list[dict] = []
+        self.doc_steps: list[dict] = []
+        self.step_id_set: set[str] = set()
         # BioFlow-Insight's id of each process call -> N-WAVE's step id.
         self.step_ids: dict[str, str] = {}
 
@@ -172,6 +178,7 @@ class Analysis:
                     alias = self.call_alias(name, parent_file)
                 sub_id = ".".join([*path, alias])
                 doc["subworkflows"].append({"id": sub_id, "name": alias, "workflow": name, "file": file, "parent": parent})
+                self.subworkflow_ids.append({"id": sub_id, "path": [*path, alias], "workflow_path": [*path, name]})
                 visit(sub, [*path, alias], sub_id, file)
 
         visit(graph, [], None, self.main_file)
@@ -187,6 +194,8 @@ class Analysis:
 
         edges(graph)
         doc["steps"].sort(key=lambda step: step["id"])
+        self.doc_steps = doc["steps"]
+        self.step_id_set = {step["id"] for step in doc["steps"]}
         doc["connections"] = [{"from": a, "to": b} for a, b in sorted(connections)]
 
     def call_alias(self, name: str, file: str | None) -> str:
@@ -215,6 +224,78 @@ class Analysis:
             if element.get_type() == "Call":
                 return self.step_of(element.get_first_element_called())
         return None
+
+    def read_specification(self, structure: dict) -> dict:
+        """
+        The specification graph: steps (as in `steps`), channel operations
+        and the channels between them. Operations get ids `op1`, `op2`, ...
+        in the order BioFlow-Insight lists them.
+        """
+        nodes: list[dict] = []
+        edges = set()
+        ids: dict[str, str] = {}
+
+        def node_id(key: str, element, subworkflow: str | None) -> str | None:
+            if key in ids:
+                return ids[key]
+            if key in self.step_ids:
+                ids[key] = self.step_ids[key]
+                return ids[key]
+            try:
+                kind = element.get_type()
+            except Exception:
+                return None
+            if kind == "Process":
+                # The same call as in `steps`: its name under the subworkflow call it's in.
+                alias = str(element.get_alias())
+                step_id = f"{subworkflow}.{alias}" if subworkflow else alias
+                if step_id in self.step_id_set:
+                    ids[key] = step_id
+                    return step_id
+                return None
+            if kind != "Operation":
+                return None
+            op_id = f"op{sum(1 for entry in nodes if entry['kind'] == 'operation') + 1}"
+            ids[key] = op_id
+            code = ""
+            with contextlib.suppress(Exception):
+                code = str(element.get_code()).strip()
+            nodes.append({"id": op_id, "kind": "operation", "subworkflow": subworkflow, "code": code})
+            return op_id
+
+        def visit(level: dict, subworkflow: str | None, path: list[str]) -> None:
+            for node in level["nodes"]:
+                key = str(node["id"])
+                element = None
+                with contextlib.suppress(Exception):
+                    element = self.get_object(node["id"])
+                node_id(key, element, subworkflow)
+            for key in sorted(level["subworkflows"], key=subworkflow_name):
+                sub = level["subworkflows"][key]
+                alias = subworkflow_name(key)
+                # The ids read_graph gave the same subworkflow call.
+                sub_id = next(
+                    (entry["id"] for entry in self.subworkflow_ids if entry["path"] == [*path, alias] or entry["workflow_path"] == [*path, alias]),
+                    ".".join([*path, alias]),
+                )
+                visit(sub, sub_id, sub_id.split("."))
+
+        visit(structure, None, [])
+
+        def collect(level: dict) -> None:
+            for edge in level["edges"]:
+                a, b = ids.get(str(edge["A"])), ids.get(str(edge["B"]))
+                if a and b and a != b:
+                    edges.add((a, b, str(edge.get("label") or "")))
+            for sub in level["subworkflows"].values():
+                collect(sub)
+
+        collect(structure)
+        steps = [{"id": step["id"], "kind": "step", "subworkflow": step["subworkflow"], "code": ""} for step in self.doc_steps if step["id"] in ids.values()]
+        return {
+            "nodes": steps + nodes,
+            "edges": [{"from": a, "to": b, "label": label} for a, b, label in sorted(edges)],
+        }
 
     def read_conditions(self, doc: dict) -> None:
         conditions = self.workflow.get_most_influential_conditions(True)
@@ -344,6 +425,10 @@ def analyse(project: Path, entry: str) -> dict:
                     analysis.read_conditions(doc)
                 except Exception as error:
                     notes.append(f"Conditions could not be read: {read_error(error, project)['message']}")
+                try:
+                    doc["specification"] = analysis.read_specification(workflow.get_structure())
+                except Exception as error:
+                    notes.append(f"The specification graph could not be read: {read_error(error, project)['message']}")
                 for kind in GROUP_KINDS:
                     try:
                         doc["groups"][kind] = analysis.read_groups(kind, graph)

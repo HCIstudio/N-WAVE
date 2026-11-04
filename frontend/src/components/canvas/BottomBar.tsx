@@ -38,6 +38,8 @@ interface BottomBarProps {
   runBlockedReason?: string | null;
   /** The workflow check, shown before the Run button. */
   checkControl?: React.ReactNode;
+  /** Analyse (the workflow's code and structure), shown before the check. */
+  analysisControl?: React.ReactNode;
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
   /** What runs use: the workflow's settings with the Settings page's defaults filled in. */
@@ -68,6 +70,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   isRunning = false,
   runBlockedReason = null,
   checkControl,
+  analysisControl,
   isLoading = false,
   executionSettings,
   runSettings = executionSettings,
@@ -450,6 +453,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
             <Settings className="w-4 h-4" />
           )}
         </button>
+
+        {analysisControl}
 
         {checkControl}
 

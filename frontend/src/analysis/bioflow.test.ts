@@ -54,6 +54,7 @@ const result: BioflowResult = {
   ],
   conditions: [],
   groups: { condition: [], dominator: [], parallel: [] },
+  specification: null,
   metrics: {},
 };
 

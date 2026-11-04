@@ -41,6 +41,12 @@ export const ACTIVITY_TYPES = {
   "glossary.opened": "A glossary explanation was opened",
   /** `nodeId`. */
   "code.opened": "A node's Code tab was opened",
+  /** `lint`, `bioflow`: each tool's status (done, unavailable, failed); `errors`, `warnings`: counts; or `failed`. */
+  "analysis.run": "The workflow was analysed (Analyse in the bottom bar)",
+  /** `view`: steps or channels. */
+  "analysis.structureViewed": "The analysis's structure view was shown",
+  /** `format`: mermaid or dot; `view`. */
+  "analysis.downloaded": "The analysed structure was downloaded",
   /** `nodeId` (a canvas node) or `step` (a step inside), `depth`. */
   "nested.opened": "The steps inside a subworkflow or pipeline were opened",
   undo: "Undo",

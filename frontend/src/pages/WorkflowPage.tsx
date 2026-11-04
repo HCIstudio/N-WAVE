@@ -54,6 +54,9 @@ import { useRunResume } from "./workflow/useRunResume";
 import { useCanvasActivity } from "./workflow/useCanvasActivity";
 import { logActivity } from "../activity/activityLog";
 import NestedView from "../components/canvas/NestedView";
+import AnalysisPanel from "../components/canvas/AnalysisPanel";
+import AnalyseButton from "../components/canvas/AnalyseButton";
+import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
 import { buildSubworkflowCopy, CopySubworkflowContext } from "../workflows/copySubworkflowWorkflow";
 import { nestedEntryOf } from "../workflows/nested/nestedEntry";
 import { NestedViewContext } from "../workflows/nested/NestedViewContext";
@@ -203,11 +206,16 @@ const WorkflowPageContent: React.FC = () => {
   useCanvasActivity({ workflowId, nodes, edges, isLoading: workflow.isLoading });
   const { missingNfCoreComponents, reloadInstalledNfCore } =
     useLibraryNodes(nodes);
+  // Analyse: the generated code checked (nextflow lint, BioFlow-Insight) and its structure.
+  const analysisOn = useFeature("analysis");
+  const analysis = useWorkflowAnalysis(nodes, edges, workflowName);
+  const [analysisOpen, setAnalysisOpen] = useState(false);
   const check = useWorkflowCheck({
     nodes,
     edges,
     settings: runSettings,
     missingNfCoreComponents,
+    analysisProblems: analysisOn ? analysis.problems : undefined,
   });
   // Connections whose ports don't fit; stable while a drag moves nodes.
   const hintsOn = useFeature("connectionHints");
@@ -524,6 +532,19 @@ const WorkflowPageContent: React.FC = () => {
               onClose={closeNested}
             />
           )}
+          {analysisOn && analysisOpen && (
+            <AnalysisPanel
+              state={analysis}
+              nodes={nodes}
+              workflowName={workflowName}
+              nodeLabels={nodeLabels}
+              onShowNode={(nodeId) => {
+                setAnalysisOpen(false);
+                showNode(nodeId);
+              }}
+              onClose={() => setAnalysisOpen(false)}
+            />
+          )}
           <CanvasNotices
             isRunning={isRunning}
             missingNfCoreComponents={missingNfCoreComponents}
@@ -563,8 +584,20 @@ const WorkflowPageContent: React.FC = () => {
           isSaving={workflow.isSaving}
           isRunning={isRunning}
           runBlockedReason={check.blockedReason}
+          analysisControl={
+            analysisOn ? (
+              <AnalyseButton
+                running={analysis.running}
+                current={analysis.current}
+                onAnalyse={() => {
+                  setAnalysisOpen(true);
+                  if (!analysis.current && !analysis.running) void analysis.analyse();
+                }}
+              />
+            ) : undefined
+          }
           checkControl={
-            check.mode === "off" ? undefined : (
+            check.mode === "off" && check.problems.length === 0 ? undefined : (
               <WorkflowCheckButton
                 problems={check.problems}
                 nodeLabels={nodeLabels}

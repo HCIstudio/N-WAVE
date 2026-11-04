@@ -79,6 +79,7 @@ everyone using this N-WAVE and are saved as soon as you change one (no **Save** 
 | Run profiles | `runProfiles` | Runs use this computer; run profiles can't be chosen or edited. |
 | Notifications | `notifications` | No browser notifications, and their settings are hidden. |
 | Run performance and reports | `performance` | No **Performance** tab, execution report or timeline after a run. |
+| Workflow analysis | `analysis` | No **Analyse** button: the workflow's code isn't checked with nextflow lint and BioFlow-Insight, and its structure isn't shown ([Workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis)). |
 
 [Verbose mode](#verbose-mode) is switched the same way (`verbose`, off by default) and can be
 fixed by the installation too.
@@ -132,6 +133,9 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `run.results` | A finished run's results were read | `runId`, `steps` (`name`, `status`, `durationMs`), `files` (result paths) |
 | `failure.explained` | A failure explanation was shown | `kind`, `title`, `certainty`, `process` |
 | `failure.feedback` | *Did this help?* was answered under a failure explanation | `kind`, `certainty`, `helpful` (`true` or `false`) |
+| `analysis.run` | The workflow was analysed (**Analyse**) | `lint`, `bioflow` (each `done`, `unavailable` or `failed`), `errors`, `warnings`; or `failed` |
+| `analysis.structureViewed` | The analysis's structure view was switched | `view` (`steps` or `channels`) |
+| `analysis.downloaded` | The analysed structure was downloaded | `format` (`mermaid` or `dot`), `view` |
 | `nested.opened` | The steps inside a subworkflow or pipeline node were opened | `nodeId` (from the canvas) or `step` (from inside), `depth` |
 | `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
 | `undo`, `redo` | Undo or redo | |

@@ -26,9 +26,9 @@ interface ServerState {
 
 const UNKNOWN: ServerState = { docker: null, nextflow: null, limits: null };
 
-/** Why Run is disabled, from the check's errors, or null. */
+/** Why Run is disabled, from the check's errors (not the analysis's), or null. */
 export const runBlockedReason = (problems: WorkflowProblem[]): string | null => {
-  const errors = problems.filter((problem) => problem.level === "error");
+  const errors = problems.filter((problem) => problem.level === "error" && !problem.advisory);
   if (errors.length === 0) return null;
   const more = errors.length - 1;
   return `Can't run yet: ${errors[0].message}${
@@ -41,9 +41,13 @@ interface Options {
   edges: Edge[];
   settings: ExecutionSettings;
   missingNfCoreComponents: string[];
+  /** What the analysis found (Analyse in the bottom bar), shown with the check's own problems. */
+  analysisProblems?: WorkflowProblem[];
 }
 
-export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponents }: Options) => {
+const NONE: WorkflowProblem[] = [];
+
+export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponents, analysisProblems = NONE }: Options) => {
   const [server, setServer] = useState<ServerState>(UNKNOWN);
   const [isChecking, setIsChecking] = useState(false);
   // Global Settings → Features: block on problems, only warn, or no check;
@@ -73,15 +77,19 @@ export const useWorkflowCheck = ({ nodes, edges, settings, missingNfCoreComponen
     void recheck();
   }, [recheck]);
 
-  const problems = useMemo(
-    () =>
-      mode === "off"
-        ? []
-        : checkWorkflow(nodes, edges, { missingNfCoreComponents, settings, ...server }).filter(
-            (problem) => hintsOn || !problem.id.startsWith("fit:"),
-          ),
-    [nodes, edges, missingNfCoreComponents, settings, server, mode, hintsOn],
-  );
+  const problems = useMemo(() => {
+    if (mode === "off") return analysisProblems;
+    const own = checkWorkflow(nodes, edges, { missingNfCoreComponents, settings, ...server }).filter(
+      (problem) => hintsOn || !problem.id.startsWith("fit:"),
+    );
+    // Errors first, the check's own before the analysis's.
+    return [
+      ...own.filter((problem) => problem.level === "error"),
+      ...analysisProblems.filter((problem) => problem.level === "error"),
+      ...own.filter((problem) => problem.level !== "error"),
+      ...analysisProblems.filter((problem) => problem.level !== "error"),
+    ];
+  }, [nodes, edges, missingNfCoreComponents, settings, server, mode, hintsOn, analysisProblems]);
 
   // Verbose mode: the check's result, each time it changes.
   const resultKey = problems.map((problem) => `${problem.level}:${problem.id}`).join("\n");

@@ -83,7 +83,7 @@ describe("channel operator templates", () => {
     },
     branch: {
       code: [
-        "    op_branched = in_up.branch { meta, reads ->",
+        "    op_branched = in_up.branch { meta, _reads ->",
         "        single: meta.single_end",
         "        paired: true",
         "    }",
@@ -104,7 +104,7 @@ describe("channel operator templates", () => {
         "    op_grouped = in_up",
         "        .map { meta, files -> [ meta.id, meta, files ] }",
         "        .groupTuple()",
-        "        .map { id, metas, files -> [ metas[0], files.flatten() ] }",
+        "        .map { _id, metas, files -> [ metas[0], files.flatten() ] }",
         "",
       ].join("\n"),
       defines: ["op_grouped"],

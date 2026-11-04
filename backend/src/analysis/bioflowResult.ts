@@ -57,6 +57,21 @@ export const bioflowResultSchema = z.object({
     dominator: z.array(groupSchema).nullable(),
     parallel: z.array(groupSchema).nullable(),
   }),
+  /** Steps, channel operations (`op1`, …) and the channels between them; null when not read. */
+  specification: z
+    .object({
+      nodes: z.array(
+        z.object({
+          id: z.string().min(1),
+          kind: z.enum(["step", "operation"]),
+          subworkflow: z.string().nullable(),
+          /** An operation's code (empty for steps: see `steps`). */
+          code: z.string(),
+        })
+      ),
+      edges: z.array(z.object({ from: z.string(), to: z.string(), label: z.string() })),
+    })
+    .nullable(),
   metrics: z.record(z.number()),
 });
 
@@ -89,6 +104,17 @@ export const checkReferences = (result: BioflowResult): string[] => {
   }
   for (const condition of result.conditions) {
     for (const id of condition.steps) step(id, `condition ${condition.condition}`);
+  }
+  if (result.specification) {
+    const known = new Set(result.specification.nodes.map((node) => node.id));
+    for (const node of result.specification.nodes) {
+      if (node.kind === "step") step(node.id, "the specification graph");
+    }
+    for (const edge of result.specification.edges) {
+      for (const id of [edge.from, edge.to]) {
+        if (!known.has(id)) problems.push(`the specification graph names an unknown node ${id}`);
+      }
+    }
   }
   for (const [kind, groups] of Object.entries(result.groups)) {
     for (const [index, group] of (groups ?? []).entries()) {

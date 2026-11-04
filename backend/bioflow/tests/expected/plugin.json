@@ -29,6 +29,29 @@
   "dominator": [],
   "parallel": []
  },
+ "specification": {
+  "nodes": [
+   {
+    "id": "A",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "op1",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "channel.fromList(samplesheetToList(params.input, \"schema.json\"))"
+   }
+  ],
+  "edges": [
+   {
+    "from": "op1",
+    "to": "A",
+    "label": ""
+   }
+  ]
+ },
  "metrics": {
   "steps": 1,
   "processes": 1,

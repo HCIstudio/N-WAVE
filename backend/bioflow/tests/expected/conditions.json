@@ -88,6 +88,123 @@
   ],
   "parallel": []
  },
+ "specification": {
+  "nodes": [
+   {
+    "id": "ALIGN",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "QC",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "REPORT",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "TRIM",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "op1",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "trim"
+   },
+   {
+    "id": "op2",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "reads"
+   },
+   {
+    "id": "op3",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "skip_qc"
+   },
+   {
+    "id": "op4",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "ch_reads"
+   },
+   {
+    "id": "op5",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "ch_align"
+   },
+   {
+    "id": "op6",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "ch_align"
+   },
+   {
+    "id": "op7",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "ch_align"
+   }
+  ],
+  "edges": [
+   {
+    "from": "ALIGN",
+    "to": "REPORT",
+    "label": ""
+   },
+   {
+    "from": "TRIM",
+    "to": "op6",
+    "label": ""
+   },
+   {
+    "from": "op2",
+    "to": "op4",
+    "label": ""
+   },
+   {
+    "from": "op4",
+    "to": "QC",
+    "label": ""
+   },
+   {
+    "from": "op4",
+    "to": "TRIM",
+    "label": ""
+   },
+   {
+    "from": "op4",
+    "to": "op7",
+    "label": ""
+   },
+   {
+    "from": "op5",
+    "to": "ALIGN",
+    "label": ""
+   },
+   {
+    "from": "op6",
+    "to": "op5",
+    "label": ""
+   },
+   {
+    "from": "op7",
+    "to": "op5",
+    "label": ""
+   }
+  ]
+ },
  "metrics": {
   "steps": 4,
   "processes": 4,

@@ -63,6 +63,11 @@ export const FEATURE_SWITCHES: { id: Exclude<FeatureId, "workflowCheck">; label:
     label: "Run performance and reports",
     off: "No Performance tab, execution report or timeline after a run.",
   },
+  {
+    id: "analysis",
+    label: "Workflow analysis",
+    off: "No Analyse button: the workflow's code isn't checked with nextflow lint and BioFlow-Insight, and its structure isn't shown.",
+  },
 ];
 
 export const WORKFLOW_CHECK_MODES: { mode: WorkflowCheckMode; label: string; description: string }[] = [

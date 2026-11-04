@@ -64,7 +64,21 @@ export const generateNextflowScript = (
   outputDirectory: string,
   outputNamingPattern = "{workflow_name}",
   options: GenerateOptions = {},
-): string => {
+): string => generateNextflowScriptWithNames(nodes, edges, workflowName, outputDirectory, outputNamingPattern, options).script;
+
+/**
+ * The script, with the name each node has in it (`names`): its process or
+ * call name, or the channel it defines. The analysis maps what it finds in
+ * the script back to nodes with these.
+ */
+export const generateNextflowScriptWithNames = (
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+  workflowName: string,
+  outputDirectory: string,
+  outputNamingPattern = "{workflow_name}",
+  options: GenerateOptions = {},
+): { script: string; names: Map<string, string> } => {
   // A loop has no order to write its channels in (the workflow check and the
   // canvas say so first; downloads and exports show this message).
   const cycle = findCycle(edges);
@@ -439,7 +453,7 @@ export const generateNextflowScript = (
     finalScript += `\n${formatLayoutComment(placed, layoutNames)}\n`;
   }
 
-  return finalScript.replace(/\n{3,}/g, "\n\n");
+  return { script: finalScript.replace(/\n{3,}/g, "\n\n"), names: layoutNames };
 };
 
 const stripLeadingComments = (text: string): string =>

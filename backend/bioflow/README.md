@@ -88,6 +88,12 @@ addresses, no paths outside the project.
   // Groups of steps BioFlow-Insight's abstractions find; parent is an index
   // into the same list. null when an abstraction failed (see notes).
   "groups": { "condition": [], "dominator": [{ "steps": ["…"], "parent": null }], "parallel": [] },
+  // The specification graph: steps (ids as in "steps"), channel operations
+  // (op1, op2, …, with their code) and the channels between them.
+  "specification": {
+    "nodes": [{ "id": "op1", "kind": "operation", "subworkflow": null, "code": "ch_reads" }],
+    "edges": [{ "from": "op1", "to": "QC", "label": "" }]
+  },
   "metrics": {
     "steps": 5, "processes": 3, "connections": 3, "subworkflow_calls": 2,
     "subworkflow_depth": 1, "conditions": 0, "conditional_steps": 0, "files": 6, "lines": 73
