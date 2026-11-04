@@ -7,7 +7,6 @@ import os from "node:os";
 import path from "node:path";
 import { materializeNfCoreModules } from "../execution/materializeNfCore";
 import {
-  extractNwaveNextflowAssets,
   getReferencedNfCoreModules,
   getReferencedNfCoreSubworkflows,
 } from "../execution/nextflowScript";
@@ -21,6 +20,14 @@ export interface AnalysisProject {
 
 /** The project's files an analysis reads: scripts and configs. */
 const ANALYSED = /\.(nf|config)$/;
+
+/**
+ * The script without N-WAVE's settings comment (`/* N-WAVE_NEXTFLOW_CONFIG … *\/`),
+ * which a run moves into its config. Its lines stay, empty, so lines in the
+ * analysis are the lines of the script the canvas generated.
+ */
+export const blankNwaveConfig = (script: string): string =>
+  script.replace(/\/\*\s*N-WAVE_NEXTFLOW_CONFIG[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ""));
 
 /** A path inside the project: relative, no `..`, no backslashes. */
 export const isProjectPath = (value: string): boolean =>
@@ -48,7 +55,7 @@ export const buildAnalysisProject = async (
   nextflowScript: string,
   extraFiles: Record<string, string> = {}
 ): Promise<AnalysisProject> => {
-  const { script } = extractNwaveNextflowAssets(nextflowScript);
+  const script = blankNwaveConfig(nextflowScript);
   await ensureModulesInstalled(getReferencedNfCoreModules(script));
   await ensureSubworkflowsInstalled(getReferencedNfCoreSubworkflows(script));
 

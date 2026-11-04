@@ -52,7 +52,7 @@ export const CHANNEL_OPERATOR_TEMPLATES: ChannelOperatorTemplate[] = [
     inputs: ["in"],
     outputs: ["single", "paired"],
     code: [
-      "local.branched = input.in.branch { meta, reads ->",
+      "local.branched = input.in.branch { meta, _reads ->",
       "    single: meta.single_end",
       "    paired: true",
       "}",
@@ -79,7 +79,7 @@ export const CHANNEL_OPERATOR_TEMPLATES: ChannelOperatorTemplate[] = [
       "output.grouped = input.in",
       "    .map { meta, files -> [ meta.id, meta, files ] }",
       "    .groupTuple()",
-      "    .map { id, metas, files -> [ metas[0], files.flatten() ] }",
+      "    .map { _id, metas, files -> [ metas[0], files.flatten() ] }",
     ].join("\n"),
   },
   {

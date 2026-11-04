@@ -58,3 +58,15 @@ describe.each(Object.entries(scripts))("the hand-written script %s", (_path, sou
     expect(generateNextflowScript(imported.nodes, imported.edges, "wf", "results")).toBe(script);
   });
 });
+
+describe("a channel set in both branches of an if", () => {
+  it("stays a channel: the other branch's value isn't lost to a step's output", () => {
+    const source = scripts["./fixtures/channel-set-in-if-else.nf"];
+    const { script } = roundTrip(source);
+    expect(script).toContain("ch_align = TRIM.out.reads");
+    expect(script).toContain("ch_align = ch_reads");
+    expect(script).toContain("ALIGN(ch_align)");
+    expect(script).not.toMatch(/TRIM\.out\.reads\s*=/);
+  });
+});
+

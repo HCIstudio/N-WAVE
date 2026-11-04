@@ -125,7 +125,7 @@ const samplesheet = () =>
     outputs: [{ name: "samples", label: "Samples", isConnectable: true }],
   });
 
-/** Every channel operator template, fed from a samplesheet. */
+/** Every channel operator template, fed from a samplesheet, each output shown. */
 const channelOperators = (): LintFixture => {
   const sheet = samplesheet();
   const nodes: Node<NodeData>[] = [sheet];
@@ -150,6 +150,12 @@ const channelOperators = (): LintFixture => {
     nodes.push(operator);
     for (const input of template.inputs) {
       edges.push(edge(sheet, "samples", operator, input));
+    }
+    // Each output shown, so every channel the operator makes is used.
+    for (const output of template.outputs) {
+      const display = node("outputDisplay", { label: `${template.label}: ${output}` });
+      nodes.push(display);
+      edges.push(edge(operator, output, display, "in"));
     }
   }
   return {

@@ -137,9 +137,10 @@ jobs:
   bioflow:
     name: Workflow analysis (BioFlow-Insight)
     # The analysis image (backend/bioflow): built, its contract tests (the
-    # output must equal the recorded one), the backend running it, and the
-    # cross-check of its connections with N-WAVE's importer on every lint
-    # fixture (scripts/bioflow-cross-check.sh).
+    # output must equal the recorded one), the backend running it (and
+    # nextflow lint), the cross-check of its connections with N-WAVE's
+    # importer on every lint fixture (scripts/bioflow-cross-check.sh), and
+    # the Analyse button's check on every fixture.
     if: >-
       ${{ github.event_name != 'push' ||
       !startsWith(github.event.head_commit.message, 'chore(release):') }}
@@ -182,9 +183,18 @@ jobs:
         run: pnpm exec vitest run src/analysis
         env:
           BIOFLOW_IMAGE_TEST: ${{ env.BIOFLOW_IMAGE }}
+          LINT_IMAGE_TEST: nextflow/nextflow:25.10.4
 
       - name: Cross-check with N-WAVE's importer
         run: scripts/bioflow-cross-check.sh
+
+      - name: Analyse every lint fixture (nextflow lint, BioFlow-Insight)
+        # What the Analyse button finds in code N-WAVE writes: nothing.
+        working-directory: backend
+        run: npx tsx scripts/analyseFixtures.ts ../.bioflow-cross-check
+        env:
+          NWAVE_BIOFLOW_IMAGE: ${{ env.BIOFLOW_IMAGE }}
+          NWAVE_DATA_DIR: ${{ runner.temp }}/nwave-data
 
   e2e:
     name: E2E (canvas flow)

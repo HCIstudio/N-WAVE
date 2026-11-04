@@ -15,7 +15,8 @@ describe("buildAnalysisProject", () => {
     const script = "/* N-WAVE_NEXTFLOW_CONFIG\nprocess.cpus = 2\n*/\nworkflow {\n}\n";
     const project = await buildAnalysisProject(script, { "modules/local/a/main.nf": "process A {}" });
     expect(project.entry).toBe("main.nf");
-    expect(project.files["main.nf"]).toBe("\nworkflow {\n}\n");
+    // The settings comment's lines stay, empty, so lines match the script sent.
+    expect(project.files["main.nf"]).toBe("\n\n\nworkflow {\n}\n");
     expect(project.files["modules/local/a/main.nf"]).toBe("process A {}");
   });
 

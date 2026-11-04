@@ -46,6 +46,16 @@ export interface BioflowResult {
   }>;
   conditions: Array<{ condition: string; steps: string[] }>;
   groups: Record<"condition" | "dominator" | "parallel", BioflowGroup[] | null>;
+  /** Steps, channel operations (`op1`, …) and the channels between them; null when not read. */
+  specification: {
+    nodes: Array<{
+      id: string;
+      kind: "step" | "operation";
+      subworkflow: string | null;
+      code: string;
+    }>;
+    edges: Array<{ from: string; to: string; label: string }>;
+  } | null;
   metrics: Record<string, number>;
 }
 

@@ -10,7 +10,8 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
-import { AlertTriangle, ArrowDownToDot, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowDownToDot, GitBranch, XCircle } from "lucide-react";
+import { useNodeConditions } from "../../execution/NodeConditionsContext";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
@@ -185,6 +186,11 @@ const BaseNode = ({
     : problems.length > 0
       ? "warning"
       : null;
+
+  // When the step runs (from the analysis): greyed out when the parameters'
+  // values say it won't.
+  const conditions = useNodeConditions(id);
+  if (conditions?.runs === false) nodeClasses.push("opacity-40", "grayscale");
 
   // Conditional classes based on node state
   if (problemLevel === "error") {
@@ -385,6 +391,25 @@ const BaseNode = ({
             <AlertTriangle className="h-3.5 w-3.5" aria-hidden />
           )}
           {problems.length > 1 && problems.length}
+        </span>
+      )}
+
+      {/* The conditions it runs under; greyed when they don't hold now. */}
+      {conditions && (
+        <span
+          role="img"
+          aria-label={`${conditions.runs === false ? "Won't run with these parameters" : "Runs when"}: ${conditions.conditions.map((entry) => entry.text).join(" and ")}`}
+          title={`${conditions.runs === false ? "Won't run with these parameters. " : ""}Runs when ${conditions.conditions
+            .map((entry) => `${entry.text}${entry.holds === null ? " (can't tell before the run)" : entry.holds ? " ✓" : " ✗"}`)
+            .join("\nand ")}`}
+          data-runs={conditions.runs === null ? "unknown" : String(conditions.runs)}
+          className={clsx(
+            "absolute -top-3 -right-3 flex h-6 items-center gap-0.5 rounded-full border px-1.5 text-[10px] font-semibold shadow-sm",
+            conditions.runs === false ? "border-gray-400 bg-gray-100 text-gray-600" : "border-sky-500 bg-sky-50 text-sky-800",
+          )}
+        >
+          <GitBranch className="h-3.5 w-3.5" aria-hidden />
+          if
         </span>
       )}
 

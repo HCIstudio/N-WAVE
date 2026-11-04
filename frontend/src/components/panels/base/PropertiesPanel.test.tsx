@@ -379,3 +379,35 @@ describe("PropertiesPanel", () => {
     }
   });
 });
+
+const { NodeConditionsContext } = await import("../../../execution/NodeConditionsContext");
+
+describe("When it runs (#220)", () => {
+  const showWith = (conditions: React.ContextType<typeof NodeConditionsContext>) =>
+    render(
+      <NodeConditionsContext.Provider value={conditions}>
+        <PropertiesPanel node={makeNode("note")} onClose={vi.fn()} onSave={vi.fn()} onDelete={vi.fn()} />
+      </NodeConditionsContext.Provider>,
+    );
+
+  it("lists the conditions and whether each holds with the parameter values", () => {
+    showWith({
+      "node-note": {
+        runs: false,
+        conditions: [
+          { text: "!(params.aligner == 'star')", holds: false },
+          { text: "params.extra", holds: null },
+        ],
+      },
+    });
+    const section = screen.getByRole("region", { name: "When it runs" });
+    expect(section.textContent).toContain("Won't run with these parameters. Runs when:");
+    expect(section.textContent).toContain("!(params.aligner == 'star')(doesn't hold)");
+    expect(section.textContent).toContain("params.extra(can't tell before the run)");
+  });
+
+  it("isn't there for a step without conditions", () => {
+    showWith({});
+    expect(screen.queryByRole("region", { name: "When it runs" })).toBeNull();
+  });
+});

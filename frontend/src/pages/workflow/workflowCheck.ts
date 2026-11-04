@@ -24,6 +24,8 @@ export interface WorkflowProblem {
   nodeId?: string;
   /** About the server (Docker, Nextflow), which can be checked again. */
   system?: boolean;
+  /** Found by the analysis (nextflow lint, BioFlow-Insight): shown, never blocking a run. */
+  advisory?: boolean;
 }
 
 /** GET /execute/docker-status */

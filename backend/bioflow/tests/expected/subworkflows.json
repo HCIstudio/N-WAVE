@@ -100,6 +100,183 @@
   ],
   "parallel": []
  },
+ "specification": {
+  "nodes": [
+   {
+    "id": "ALIGN",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "GENOME.INDEX",
+    "kind": "step",
+    "subworkflow": "GENOME",
+    "code": ""
+   },
+   {
+    "id": "GENOME.STATS_INDEX",
+    "kind": "step",
+    "subworkflow": "GENOME",
+    "code": ""
+   },
+   {
+    "id": "QC.STATS_READS",
+    "kind": "step",
+    "subworkflow": "QC",
+    "code": ""
+   },
+   {
+    "id": "STATS_ALIGNED",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   },
+   {
+    "id": "op1",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "take:fasta"
+   },
+   {
+    "id": "op2",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "emit:index"
+   },
+   {
+    "id": "op3",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "take:reads"
+   },
+   {
+    "id": "op4",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "emit:stats"
+   },
+   {
+    "id": "op5",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "reads"
+   },
+   {
+    "id": "op6",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "fasta"
+   },
+   {
+    "id": "op7",
+    "kind": "operation",
+    "subworkflow": null,
+    "code": "ch_reads"
+   },
+   {
+    "id": "op8",
+    "kind": "operation",
+    "subworkflow": "GENOME",
+    "code": "fasta"
+   },
+   {
+    "id": "op9",
+    "kind": "operation",
+    "subworkflow": "GENOME",
+    "code": "index"
+   },
+   {
+    "id": "op10",
+    "kind": "operation",
+    "subworkflow": "QC",
+    "code": "reads"
+   },
+   {
+    "id": "op11",
+    "kind": "operation",
+    "subworkflow": "QC",
+    "code": "stats"
+   }
+  ],
+  "edges": [
+   {
+    "from": "ALIGN",
+    "to": "STATS_ALIGNED",
+    "label": ""
+   },
+   {
+    "from": "GENOME.INDEX",
+    "to": "GENOME.STATS_INDEX",
+    "label": ""
+   },
+   {
+    "from": "GENOME.INDEX",
+    "to": "op9",
+    "label": ""
+   },
+   {
+    "from": "QC.STATS_READS",
+    "to": "op11",
+    "label": ""
+   },
+   {
+    "from": "op1",
+    "to": "op8",
+    "label": ""
+   },
+   {
+    "from": "op10",
+    "to": "QC.STATS_READS",
+    "label": ""
+   },
+   {
+    "from": "op11",
+    "to": "op4",
+    "label": ""
+   },
+   {
+    "from": "op2",
+    "to": "ALIGN",
+    "label": ""
+   },
+   {
+    "from": "op3",
+    "to": "op10",
+    "label": ""
+   },
+   {
+    "from": "op5",
+    "to": "op7",
+    "label": ""
+   },
+   {
+    "from": "op6",
+    "to": "op1",
+    "label": ""
+   },
+   {
+    "from": "op7",
+    "to": "ALIGN",
+    "label": ""
+   },
+   {
+    "from": "op7",
+    "to": "op3",
+    "label": ""
+   },
+   {
+    "from": "op8",
+    "to": "GENOME.INDEX",
+    "label": ""
+   },
+   {
+    "from": "op9",
+    "to": "op2",
+    "label": ""
+   }
+  ]
+ },
  "metrics": {
   "steps": 5,
   "processes": 3,

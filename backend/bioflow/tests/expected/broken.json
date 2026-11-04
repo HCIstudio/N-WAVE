@@ -33,6 +33,17 @@
   "dominator": [],
   "parallel": []
  },
+ "specification": {
+  "nodes": [
+   {
+    "id": "HELLO",
+    "kind": "step",
+    "subworkflow": null,
+    "code": ""
+   }
+  ],
+  "edges": []
+ },
  "metrics": {
   "steps": 1,
   "processes": 1,

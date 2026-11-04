@@ -1,0 +1,1334 @@
+{
+ "51bb194b2faf63a675d1f87730bc4d32ca63b42b93bd154f67229632cf7ddff5": {
+  "lint": {
+   "status": "done",
+   "result": {
+    "tool": {
+     "name": "nextflow lint",
+     "image": "nextflow/nextflow:25.10.4"
+    },
+    "files": [
+     "main.nf"
+    ],
+    "problems": []
+   }
+  },
+  "bioflow": {
+   "status": "done",
+   "result": {
+    "schema": "n-wave-bioflow/1",
+    "tool": {
+     "name": "BioFlow-Insight",
+     "version": "2.1.1",
+     "engine": "nls"
+    },
+    "dsl": "DSL2",
+    "error": null,
+    "notes": [],
+    "steps": [
+     {
+      "id": "DISPLAY_OUTPUT",
+      "name": "DISPLAY_OUTPUT",
+      "process": "DISPLAY_OUTPUT",
+      "file": "main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "FILTER",
+      "name": "FILTER",
+      "process": "FILTER",
+      "file": "main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "FILTER_2",
+      "name": "FILTER_2",
+      "process": "FILTER_2",
+      "file": "main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "MAP",
+      "name": "MAP",
+      "process": "MAP",
+      "file": "main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "MERGE",
+      "name": "MERGE",
+      "process": "MERGE",
+      "file": "main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     }
+    ],
+    "connections": [
+     {
+      "from": "FILTER",
+      "to": "MAP"
+     },
+     {
+      "from": "FILTER_2",
+      "to": "MERGE"
+     },
+     {
+      "from": "MAP",
+      "to": "MERGE"
+     },
+     {
+      "from": "MERGE",
+      "to": "DISPLAY_OUTPUT"
+     }
+    ],
+    "subworkflows": [],
+    "conditions": [],
+    "groups": {
+     "condition": [],
+     "dominator": [],
+     "parallel": [
+      {
+       "steps": [
+        "FILTER",
+        "MAP"
+       ],
+       "parent": null
+      }
+     ]
+    },
+    "specification": {
+     "nodes": [
+      {
+       "id": "DISPLAY_OUTPUT",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "FILTER",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "FILTER_2",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "MAP",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "MERGE",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "op1",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "files"
+      },
+      {
+       "id": "op2",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_files"
+      }
+     ],
+     "edges": [
+      {
+       "from": "FILTER",
+       "to": "MAP",
+       "label": ""
+      },
+      {
+       "from": "FILTER_2",
+       "to": "MERGE",
+       "label": ""
+      },
+      {
+       "from": "MAP",
+       "to": "MERGE",
+       "label": ""
+      },
+      {
+       "from": "MERGE",
+       "to": "DISPLAY_OUTPUT",
+       "label": ""
+      },
+      {
+       "from": "op1",
+       "to": "op2",
+       "label": ""
+      },
+      {
+       "from": "op2",
+       "to": "FILTER",
+       "label": ""
+      },
+      {
+       "from": "op2",
+       "to": "FILTER_2",
+       "label": ""
+      }
+     ]
+    },
+    "metrics": {
+     "steps": 5,
+     "processes": 5,
+     "connections": 4,
+     "subworkflow_calls": 0,
+     "subworkflow_depth": 0,
+     "conditions": 0,
+     "conditional_steps": 0,
+     "files": 1,
+     "lines": 169
+    }
+   }
+  }
+ },
+ "54c61c293c1286b8f25f2ec23baad7ecf48a59e42431d5aad352ae69e91e407a": {
+  "lint": {
+   "status": "done",
+   "result": {
+    "tool": {
+     "name": "nextflow lint",
+     "image": "nextflow/nextflow:25.10.4"
+    },
+    "files": [
+     "main.nf"
+    ],
+    "problems": [
+     {
+      "level": "warning",
+      "file": "main.nf",
+      "line": 61,
+      "column": 5,
+      "message": "Variable was declared but not used"
+     },
+     {
+      "level": "warning",
+      "file": "main.nf",
+      "line": 69,
+      "column": 5,
+      "message": "Variable was declared but not used"
+     },
+     {
+      "level": "warning",
+      "file": "main.nf",
+      "line": 70,
+      "column": 5,
+      "message": "Variable was declared but not used"
+     }
+    ]
+   }
+  },
+  "bioflow": {
+   "status": "done",
+   "result": {
+    "schema": "n-wave-bioflow/1",
+    "tool": {
+     "name": "BioFlow-Insight",
+     "version": "2.1.1",
+     "engine": "nls"
+    },
+    "dsl": "DSL2",
+    "error": null,
+    "notes": [],
+    "steps": [],
+    "connections": [],
+    "subworkflows": [],
+    "conditions": [],
+    "groups": {
+     "condition": [],
+     "dominator": [],
+     "parallel": []
+    },
+    "specification": {
+     "nodes": [
+      {
+       "id": "op1",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "samplesheet"
+      },
+      {
+       "id": "op2",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "gtf"
+      },
+      {
+       "id": "op3",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "fasta"
+      },
+      {
+       "id": "op4",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_samplesheet"
+      },
+      {
+       "id": "op5",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_fasta"
+      },
+      {
+       "id": "op6",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_gtf"
+      }
+     ],
+     "edges": [
+      {
+       "from": "op1",
+       "to": "op4",
+       "label": ""
+      },
+      {
+       "from": "op2",
+       "to": "op6",
+       "label": ""
+      },
+      {
+       "from": "op3",
+       "to": "op5",
+       "label": ""
+      }
+     ]
+    },
+    "metrics": {
+     "steps": 0,
+     "processes": 0,
+     "connections": 0,
+     "subworkflow_calls": 0,
+     "subworkflow_depth": 0,
+     "conditions": 0,
+     "conditional_steps": 0,
+     "files": 1,
+     "lines": 73
+    }
+   }
+  }
+ },
+ "5f3ed38a70ea4b4627dffddf337c0f4ca3326b73a851a027a8cfb9b8830e4ea9": {
+  "lint": {
+   "status": "done",
+   "result": {
+    "tool": {
+     "name": "nextflow lint",
+     "image": "nextflow/nextflow:25.10.4"
+    },
+    "files": [
+     "main.nf"
+    ],
+    "problems": []
+   }
+  },
+  "bioflow": {
+   "status": "done",
+   "result": {
+    "schema": "n-wave-bioflow/1",
+    "tool": {
+     "name": "BioFlow-Insight",
+     "version": "2.1.1",
+     "engine": "nls"
+    },
+    "dsl": "DSL2",
+    "error": null,
+    "notes": [],
+    "steps": [
+     {
+      "id": "FASTQC_RAW_READS",
+      "name": "FASTQC_RAW_READS",
+      "process": "FASTQC",
+      "file": "modules/nf-core/fastqc/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "FILTER_GTF",
+      "name": "FILTER_GTF",
+      "process": "CUSTOM_GTFFILTER",
+      "file": "modules/nf-core/custom/gtffilter/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "MULTIQC",
+      "name": "MULTIQC",
+      "process": "MULTIQC",
+      "file": "modules/nf-core/multiqc/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SALMON_INDEX",
+      "name": "SALMON_INDEX",
+      "process": "SALMON_INDEX",
+      "file": "modules/nf-core/salmon/index/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SALMON_QUANTIFICATION",
+      "name": "SALMON_QUANTIFICATION",
+      "process": "SALMON_QUANT",
+      "file": "modules/nf-core/salmon/quant/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+      "name": "SAMTOOLS_FLAGSTAT",
+      "process": "SAMTOOLS_FLAGSTAT",
+      "file": "modules/nf-core/samtools/flagstat/main.nf",
+      "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+      "name": "SAMTOOLS_IDXSTATS",
+      "process": "SAMTOOLS_IDXSTATS",
+      "file": "modules/nf-core/samtools/idxstats/main.nf",
+      "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+      "name": "SAMTOOLS_STATS",
+      "process": "SAMTOOLS_STATS",
+      "file": "modules/nf-core/samtools/stats/main.nf",
+      "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+      "name": "SAMTOOLS_INDEX",
+      "process": "SAMTOOLS_INDEX",
+      "file": "modules/nf-core/samtools/index/main.nf",
+      "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+      "name": "SAMTOOLS_SORT",
+      "process": "SAMTOOLS_SORT",
+      "file": "modules/nf-core/samtools/sort/main.nf",
+      "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "STAR_ALIGNMENT",
+      "name": "STAR_ALIGNMENT",
+      "process": "STAR_ALIGN",
+      "file": "modules/nf-core/star/align/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "STAR_INDEX",
+      "name": "STAR_INDEX",
+      "process": "STAR_GENOMEGENERATE",
+      "file": "modules/nf-core/star/genomegenerate/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "TRANSCRIPT_FASTA",
+      "name": "TRANSCRIPT_FASTA",
+      "process": "GFFREAD",
+      "file": "modules/nf-core/gffread/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "TRIM_GALORE",
+      "name": "TRIM_GALORE",
+      "process": "TRIMGALORE",
+      "file": "modules/nf-core/trimgalore/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     },
+     {
+      "id": "UNZIP_GTF",
+      "name": "UNZIP_GTF",
+      "process": "GUNZIP",
+      "file": "modules/nf-core/gunzip/main.nf",
+      "subworkflow": null,
+      "code": "",
+      "conditions": []
+     }
+    ],
+    "connections": [
+     {
+      "from": "FASTQC_RAW_READS",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "FILTER_GTF",
+      "to": "SALMON_QUANTIFICATION"
+     },
+     {
+      "from": "FILTER_GTF",
+      "to": "STAR_ALIGNMENT"
+     },
+     {
+      "from": "FILTER_GTF",
+      "to": "STAR_INDEX"
+     },
+     {
+      "from": "FILTER_GTF",
+      "to": "TRANSCRIPT_FASTA"
+     },
+     {
+      "from": "SALMON_INDEX",
+      "to": "SALMON_QUANTIFICATION"
+     },
+     {
+      "from": "SALMON_QUANTIFICATION",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS"
+     },
+     {
+      "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX"
+     },
+     {
+      "from": "STAR_ALIGNMENT",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "STAR_ALIGNMENT",
+      "to": "SALMON_QUANTIFICATION"
+     },
+     {
+      "from": "STAR_ALIGNMENT",
+      "to": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT"
+     },
+     {
+      "from": "STAR_INDEX",
+      "to": "STAR_ALIGNMENT"
+     },
+     {
+      "from": "TRANSCRIPT_FASTA",
+      "to": "SALMON_INDEX"
+     },
+     {
+      "from": "TRANSCRIPT_FASTA",
+      "to": "SALMON_QUANTIFICATION"
+     },
+     {
+      "from": "TRIM_GALORE",
+      "to": "MULTIQC"
+     },
+     {
+      "from": "TRIM_GALORE",
+      "to": "STAR_ALIGNMENT"
+     },
+     {
+      "from": "UNZIP_GTF",
+      "to": "FILTER_GTF"
+     }
+    ],
+    "subworkflows": [
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS",
+      "name": "SAMTOOLS_SORT_INDEX_STATS",
+      "workflow": "BAM_SORT_STATS_SAMTOOLS",
+      "file": "subworkflows/nf-core/bam_sort_stats_samtools/main.nf",
+      "parent": null
+     },
+     {
+      "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+      "name": "BAM_STATS_SAMTOOLS",
+      "workflow": "BAM_STATS_SAMTOOLS",
+      "file": "subworkflows/nf-core/bam_stats_samtools/main.nf",
+      "parent": "SAMTOOLS_SORT_INDEX_STATS"
+     }
+    ],
+    "conditions": [],
+    "groups": {
+     "condition": [],
+     "dominator": [
+      {
+       "steps": [
+        "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+        "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+        "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+        "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+        "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT"
+       ],
+       "parent": null
+      },
+      {
+       "steps": [
+        "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+        "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+        "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+        "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX"
+       ],
+       "parent": 0
+      },
+      {
+       "steps": [
+        "FILTER_GTF",
+        "SALMON_INDEX",
+        "STAR_INDEX",
+        "TRANSCRIPT_FASTA"
+       ],
+       "parent": null
+      },
+      {
+       "steps": [
+        "SALMON_INDEX",
+        "STAR_INDEX",
+        "TRANSCRIPT_FASTA"
+       ],
+       "parent": 2
+      }
+     ],
+     "parallel": []
+    },
+    "specification": {
+     "nodes": [
+      {
+       "id": "FASTQC_RAW_READS",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "FILTER_GTF",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "MULTIQC",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "SALMON_INDEX",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "SALMON_QUANTIFICATION",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+       "kind": "step",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": ""
+      },
+      {
+       "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+       "kind": "step",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": ""
+      },
+      {
+       "id": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+       "kind": "step",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": ""
+      },
+      {
+       "id": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+       "kind": "step",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": ""
+      },
+      {
+       "id": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+       "kind": "step",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": ""
+      },
+      {
+       "id": "STAR_ALIGNMENT",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "STAR_INDEX",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "TRANSCRIPT_FASTA",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "TRIM_GALORE",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "UNZIP_GTF",
+       "kind": "step",
+       "subworkflow": null,
+       "code": ""
+      },
+      {
+       "id": "op1",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "take:ch_bam"
+      },
+      {
+       "id": "op2",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "take:ch_fasta_fai"
+      },
+      {
+       "id": "op3",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "emit:bam"
+      },
+      {
+       "id": "op4",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "emit:index"
+      },
+      {
+       "id": "op5",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "emit:stats"
+      },
+      {
+       "id": "op6",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "emit:flagstat"
+      },
+      {
+       "id": "op7",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "emit:idxstats"
+      },
+      {
+       "id": "op8",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "samplesheet"
+      },
+      {
+       "id": "op9",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "gtf"
+      },
+      {
+       "id": "op10",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "fasta"
+      },
+      {
+       "id": "op11",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_samplesheet"
+      },
+      {
+       "id": "op12",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_fasta"
+      },
+      {
+       "id": "op13",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_gtf"
+      },
+      {
+       "id": "op14",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_unzip_gtf_archive"
+      },
+      {
+       "id": "op15",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_filter_gtf_fasta"
+      },
+      {
+       "id": "op16",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_star_index_fasta"
+      },
+      {
+       "id": "op17",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_salmon_index_transcript_fasta"
+      },
+      {
+       "id": "op18",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_salmon_quantification_index"
+      },
+      {
+       "id": "op19",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_collect_qc_reports"
+      },
+      {
+       "id": "op20",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_multiqc_multiqc_files"
+      },
+      {
+       "id": "op21",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "take:ch_bam_bai"
+      },
+      {
+       "id": "op22",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "take:ch_fasta_fai"
+      },
+      {
+       "id": "op23",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "emit:stats"
+      },
+      {
+       "id": "op24",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "emit:flagstat"
+      },
+      {
+       "id": "op25",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "emit:idxstats"
+      },
+      {
+       "id": "op26",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "ch_bam"
+      },
+      {
+       "id": "op27",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "ch_fasta_fai"
+      },
+      {
+       "id": "op28",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "ch_bam_bai"
+      },
+      {
+       "id": "op29",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "flagstat"
+      },
+      {
+       "id": "op30",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "stats"
+      },
+      {
+       "id": "op31",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "idxstats"
+      },
+      {
+       "id": "op32",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "index"
+      },
+      {
+       "id": "op33",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS",
+       "code": "bam"
+      },
+      {
+       "id": "op34",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": "ch_bam_bai"
+      },
+      {
+       "id": "op35",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": "ch_fasta_fai"
+      },
+      {
+       "id": "op36",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": "flagstat"
+      },
+      {
+       "id": "op37",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": "stats"
+      },
+      {
+       "id": "op38",
+       "kind": "operation",
+       "subworkflow": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS",
+       "code": "idxstats"
+      }
+     ],
+     "edges": [
+      {
+       "from": "FASTQC_RAW_READS",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "FILTER_GTF",
+       "to": "STAR_ALIGNMENT",
+       "label": ""
+      },
+      {
+       "from": "FILTER_GTF",
+       "to": "STAR_INDEX",
+       "label": ""
+      },
+      {
+       "from": "FILTER_GTF",
+       "to": "TRANSCRIPT_FASTA",
+       "label": ""
+      },
+      {
+       "from": "FILTER_GTF",
+       "to": "op18",
+       "label": ""
+      },
+      {
+       "from": "SALMON_INDEX",
+       "to": "op18",
+       "label": ""
+      },
+      {
+       "from": "SALMON_QUANTIFICATION",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+       "to": "op36",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+       "to": "op38",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+       "to": "op37",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+       "to": "op28",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+       "to": "op32",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_INDEX",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+       "to": "op28",
+       "label": ""
+      },
+      {
+       "from": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+       "to": "op33",
+       "label": ""
+      },
+      {
+       "from": "STAR_ALIGNMENT",
+       "to": "SALMON_QUANTIFICATION",
+       "label": ""
+      },
+      {
+       "from": "STAR_ALIGNMENT",
+       "to": "op1",
+       "label": ""
+      },
+      {
+       "from": "STAR_ALIGNMENT",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "STAR_INDEX",
+       "to": "STAR_ALIGNMENT",
+       "label": ""
+      },
+      {
+       "from": "TRANSCRIPT_FASTA",
+       "to": "op17",
+       "label": ""
+      },
+      {
+       "from": "TRANSCRIPT_FASTA",
+       "to": "op18",
+       "label": ""
+      },
+      {
+       "from": "TRIM_GALORE",
+       "to": "STAR_ALIGNMENT",
+       "label": ""
+      },
+      {
+       "from": "TRIM_GALORE",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "UNZIP_GTF",
+       "to": "FILTER_GTF",
+       "label": ""
+      },
+      {
+       "from": "op1",
+       "to": "op26",
+       "label": ""
+      },
+      {
+       "from": "op10",
+       "to": "op12",
+       "label": ""
+      },
+      {
+       "from": "op11",
+       "to": "FASTQC_RAW_READS",
+       "label": ""
+      },
+      {
+       "from": "op11",
+       "to": "TRIM_GALORE",
+       "label": ""
+      },
+      {
+       "from": "op12",
+       "to": "TRANSCRIPT_FASTA",
+       "label": ""
+      },
+      {
+       "from": "op12",
+       "to": "op15",
+       "label": ""
+      },
+      {
+       "from": "op12",
+       "to": "op16",
+       "label": ""
+      },
+      {
+       "from": "op12",
+       "to": "op17",
+       "label": ""
+      },
+      {
+       "from": "op13",
+       "to": "op14",
+       "label": ""
+      },
+      {
+       "from": "op14",
+       "to": "UNZIP_GTF",
+       "label": ""
+      },
+      {
+       "from": "op15",
+       "to": "FILTER_GTF",
+       "label": ""
+      },
+      {
+       "from": "op16",
+       "to": "STAR_INDEX",
+       "label": ""
+      },
+      {
+       "from": "op17",
+       "to": "SALMON_INDEX",
+       "label": ""
+      },
+      {
+       "from": "op18",
+       "to": "SALMON_QUANTIFICATION",
+       "label": ""
+      },
+      {
+       "from": "op19",
+       "to": "op20",
+       "label": ""
+      },
+      {
+       "from": "op2",
+       "to": "op27",
+       "label": ""
+      },
+      {
+       "from": "op20",
+       "to": "MULTIQC",
+       "label": ""
+      },
+      {
+       "from": "op21",
+       "to": "op34",
+       "label": ""
+      },
+      {
+       "from": "op22",
+       "to": "op35",
+       "label": ""
+      },
+      {
+       "from": "op23",
+       "to": "op30",
+       "label": ""
+      },
+      {
+       "from": "op24",
+       "to": "op29",
+       "label": ""
+      },
+      {
+       "from": "op25",
+       "to": "op31",
+       "label": ""
+      },
+      {
+       "from": "op26",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+       "label": ""
+      },
+      {
+       "from": "op27",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.SAMTOOLS_SORT",
+       "label": ""
+      },
+      {
+       "from": "op27",
+       "to": "op22",
+       "label": ""
+      },
+      {
+       "from": "op28",
+       "to": "op21",
+       "label": ""
+      },
+      {
+       "from": "op29",
+       "to": "op6",
+       "label": ""
+      },
+      {
+       "from": "op30",
+       "to": "op5",
+       "label": ""
+      },
+      {
+       "from": "op31",
+       "to": "op7",
+       "label": ""
+      },
+      {
+       "from": "op32",
+       "to": "op4",
+       "label": ""
+      },
+      {
+       "from": "op33",
+       "to": "op3",
+       "label": ""
+      },
+      {
+       "from": "op34",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_FLAGSTAT",
+       "label": ""
+      },
+      {
+       "from": "op34",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_IDXSTATS",
+       "label": ""
+      },
+      {
+       "from": "op34",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+       "label": ""
+      },
+      {
+       "from": "op35",
+       "to": "SAMTOOLS_SORT_INDEX_STATS.BAM_STATS_SAMTOOLS.SAMTOOLS_STATS",
+       "label": ""
+      },
+      {
+       "from": "op36",
+       "to": "op24",
+       "label": ""
+      },
+      {
+       "from": "op37",
+       "to": "op23",
+       "label": ""
+      },
+      {
+       "from": "op38",
+       "to": "op25",
+       "label": ""
+      },
+      {
+       "from": "op5",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "op6",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "op7",
+       "to": "op19",
+       "label": ""
+      },
+      {
+       "from": "op8",
+       "to": "op11",
+       "label": ""
+      },
+      {
+       "from": "op9",
+       "to": "op13",
+       "label": ""
+      }
+     ]
+    },
+    "metrics": {
+     "steps": 15,
+     "processes": 15,
+     "connections": 26,
+     "subworkflow_calls": 2,
+     "subworkflow_depth": 2,
+     "conditions": 0,
+     "conditional_steps": 0,
+     "files": 18,
+     "lines": 1225
+    }
+   }
+  }
+ }
+}

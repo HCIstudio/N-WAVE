@@ -38,6 +38,10 @@ export const featuresSchema = z.object({
   notifications: z.boolean().default(true),
   /** A run's Performance tab, execution report and timeline. */
   performance: z.boolean().default(true),
+  /** Analyse in the bottom bar: the workflow's code checked (nextflow lint, BioFlow-Insight) and its structure. */
+  analysis: z.boolean().default(true),
+  /** When steps run: the analysis's conditions on steps, and steps greyed out by the parameters' values. */
+  conditions: z.boolean().default(true),
   /** Verbose mode: record what happens in N-WAVE (the activity log). Off by default. */
   verbose: z.boolean().default(false),
 });

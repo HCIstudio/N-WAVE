@@ -21,6 +21,7 @@ export const WIKI_PAGES = {
   "Exporting-Projects": "Exporting projects",
   Troubleshooting: "Troubleshooting",
   "How-N-WAVE-Explains-Things": "How N-WAVE explains things",
+  "Workflow-Analysis": "Workflow analysis",
 } as const;
 
 export type WikiPage = keyof typeof WIKI_PAGES;

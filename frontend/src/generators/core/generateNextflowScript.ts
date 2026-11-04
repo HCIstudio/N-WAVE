@@ -64,7 +64,21 @@ export const generateNextflowScript = (
   outputDirectory: string,
   outputNamingPattern = "{workflow_name}",
   options: GenerateOptions = {},
-): string => {
+): string => generateNextflowScriptWithNames(nodes, edges, workflowName, outputDirectory, outputNamingPattern, options).script;
+
+/**
+ * The script, with the name each node has in it (`names`): its process or
+ * call name, or the channel it defines. The analysis maps what it finds in
+ * the script back to nodes with these.
+ */
+export const generateNextflowScriptWithNames = (
+  nodes: Node<NodeData>[],
+  edges: Edge[],
+  workflowName: string,
+  outputDirectory: string,
+  outputNamingPattern = "{workflow_name}",
+  options: GenerateOptions = {},
+): { script: string; names: Map<string, string> } => {
   // A loop has no order to write its channels in (the workflow check and the
   // canvas say so first; downloads and exports show this message).
   const cycle = findCycle(edges);
@@ -439,7 +453,7 @@ export const generateNextflowScript = (
     finalScript += `\n${formatLayoutComment(placed, layoutNames)}\n`;
   }
 
-  return finalScript.replace(/\n{3,}/g, "\n\n");
+  return { script: finalScript.replace(/\n{3,}/g, "\n\n"), names: layoutNames };
 };
 
 const stripLeadingComments = (text: string): string =>
@@ -550,10 +564,27 @@ const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/;
 export const naturalize = (body: string, processNames: Set<string>): string => {
   const aliases = new Map<string, string>();
   const kept: string[] = [];
-  for (const line of body.split("\n")) {
+  const lines = body.split("\n");
+  // A variable set more than once (`if … { x = A.out } else { x = y }`) is
+  // not a new name for one output: it stays.
+  const assignments = new Map<string, number>();
+  for (const line of lines) {
+    const name = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/)?.[1];
+    if (name) assignments.set(name, (assignments.get(name) ?? 0) + 1);
+  }
+  const setOnce = (name: string) => (assignments.get(name) ?? 0) <= 1;
+  // Only statements of the workflow itself, not lines inside a block or closure.
+  let depth = 0;
+  for (const line of lines) {
+    const topLevel = depth === 0;
+    depth = Math.max(0, depth + braceDepthChange(line));
+    if (!topLevel) {
+      kept.push(line);
+      continue;
+    }
     // `x = STEP(args)` → `STEP(args)`, x is STEP.out
     const call = line.match(/^(\s*)([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*)\((.*)\)\s*$/);
-    if (call && processNames.has(call[3]) && balanced(call[4])) {
+    if (call && processNames.has(call[3]) && balanced(call[4]) && setOnce(call[2])) {
       aliases.set(call[2], `${call[3]}.out`);
       kept.push(`${call[1]}${call[3]}(${call[4]})`);
       continue;
@@ -572,7 +603,7 @@ export const naturalize = (body: string, processNames: Set<string>): string => {
     }
     // `x = STEP.out.reads` → (dropped), x is STEP.out.reads
     const output = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*([A-Za-z_][A-Za-z0-9_]*\.out(?:\.[A-Za-z_][A-Za-z0-9_]*|\[\d+\])?)\s*$/);
-    if (output && processNames.has(output[2].split(".")[0])) {
+    if (output && processNames.has(output[2].split(".")[0]) && setOnce(output[1])) {
       aliases.set(output[1], output[2]);
       continue;
     }
@@ -586,6 +617,14 @@ export const naturalize = (body: string, processNames: Set<string>): string => {
   if (aliases.size === 0) return kept.join("\n");
   const pattern = new RegExp(`(?<![.\\w])(${[...aliases.keys()].map(escapeRegExp).join("|")})(?!\\w)`, "g");
   return kept.map((line) => replaceOutsideStrings(line, pattern, (name) => aliases.get(name) ?? name)).join("\n");
+};
+
+/** How many blocks a line opens (`{`) minus closes, outside strings and comments. */
+const braceDepthChange = (line: string): number => {
+  const code = line
+    .replace(/'(?:[^'\\]|\\.)*'|"(?:[^"\\]|\\.)*"/g, "")
+    .replace(/\/\/.*$/, "");
+  return (code.match(/\{/g)?.length ?? 0) - (code.match(/\}/g)?.length ?? 0);
 };
 
 const balanced = (text: string): boolean => {

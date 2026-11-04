@@ -58,6 +58,23 @@ opens).
 - **Zoom to the failing step** appears next to them after a run failed and goes to the step
   that failed.
 
+## Views: all nodes, or the steps
+
+The switch in the bottom bar (**All** | **Steps**) chooses what the canvas shows:
+
+- **All**: every node, editable.
+- **Steps**: channel code (channel operator nodes, and code kept from an import) is hidden,
+  and each step connects straight to the steps its data reaches through it (dotted lines).
+  Large imported workflows read as their steps this way. This view can't be edited: editing
+  a node's settings, or any other change, goes back to **All**.
+
+**Connected in code** (orange dashed lines): code in a node can call a step or read another
+node's output that the canvas doesn't connect to it, for example an imported
+`if (params.trim) { TRIM(ch_reads) }`. N-WAVE finds these in the code it writes for the
+canvas, draws them dashed, and says so in the workflow check (a warning on the node whose code
+makes them). They work without a server, in the browser demo too, and follow the
+**Connection hints** switch (Global Settings → Features).
+
 ## Connecting
 
 Drag from an output (the dots on a node's right) to an input (on the left).

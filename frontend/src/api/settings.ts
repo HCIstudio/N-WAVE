@@ -60,6 +60,10 @@ export interface Features {
   runProfiles: boolean;
   notifications: boolean;
   performance: boolean;
+  /** Analyse: the workflow's code checked and its structure shown. */
+  analysis: boolean;
+  /** When steps run: conditions on steps, greyed out by the parameters' values. */
+  conditions: boolean;
   /** Verbose mode: record what happens (the activity log); off by default. */
   verbose: boolean;
 }
@@ -79,6 +83,8 @@ export const DEFAULT_FEATURES: Features = {
   runProfiles: true,
   notifications: true,
   performance: true,
+  analysis: true,
+  conditions: true,
   verbose: false,
 };
 

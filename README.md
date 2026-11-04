@@ -46,8 +46,9 @@ each step produced.
 - **Run studies**: switch N-WAVE's aids on and off, and record what happens in verbose mode
   for usability tests (and bug reports)
   ([Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)).
-- **Analyse** a workflow's code with [BioFlow-Insight](https://doi.org/10.1093/nargab/lqae092)
-  (structure, conditions, errors), on your own machine and without network
+- **Analyse** a workflow: its code checked with nextflow lint and
+  [BioFlow-Insight](https://doi.org/10.1093/nargab/lqae092), problems shown on their nodes,
+  and its structure as a graph, on your own machine and without network
   ([Workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis)).
 
 ## Running N-WAVE
@@ -142,6 +143,9 @@ CLI is told the engine's minimum API version, since Docker Engine 29 refuses it 
 | `NWAVE_BIOFLOW` | `on` | `off` switches the [workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis) off. |
 | `NWAVE_BIOFLOW_IMAGE` | `hcistudio/nwave-bioflow:<version>` | The analysis image (`backend/bioflow`). |
 | `NWAVE_BIOFLOW_TIMEOUT` | `120` | Time limit of one analysis, in seconds. |
+| `NWAVE_LINT` | `on` | `off` switches the analysis's nextflow lint off. |
+| `NWAVE_LINT_IMAGE` | `nextflow/nextflow:25.10.4` | The image nextflow lint runs in. |
+| `NWAVE_LINT_TIMEOUT` | `120` | Time limit of one lint, in seconds. |
 
 The Docker setups also read `NWAVE_BIND_ADDRESS` (default `127.0.0.1`), the address their
 ports are published on.
