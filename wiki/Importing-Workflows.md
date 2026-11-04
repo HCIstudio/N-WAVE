@@ -40,7 +40,9 @@ right in the order they run.
 Export and import give each other's results back: importing what N-WAVE exported gives the
 same canvas, and exporting it again gives the same code. This holds for the single script
 (**Download Workflow**) and for the project (**Export Project**), where processes and named
-workflows live in `modules/local/` and `subworkflows/local/`.
+workflows live in `modules/local/` and `subworkflows/local/`. Groups of steps come back as
+groups: the layout line marks their steps (`FASTQC 380,80 "FastQC" @READ_QC`), and their
+steps import as nodes of their own.
 
 For scripts written by hand, the first export writes them in N-WAVE's layout (steps called by
 name, outputs read as `STEP.out.x`, code N-WAVE has no node for in its place); from then on

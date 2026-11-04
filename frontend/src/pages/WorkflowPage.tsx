@@ -61,6 +61,9 @@ import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
 import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
+import GroupDialog from "../components/canvas/GroupDialog";
+import { GroupActionsContext } from "../components/canvas/GroupNodes";
+import { useGroups } from "./workflow/useGroups";
 import { buildSubworkflowCopy, CopySubworkflowContext } from "../workflows/copySubworkflowWorkflow";
 import { nestedEntryOf } from "../workflows/nested/nestedEntry";
 import { NestedViewContext } from "../workflows/nested/NestedViewContext";
@@ -220,6 +223,8 @@ const WorkflowPageContent: React.FC = () => {
   const canvasView = useCanvasView(nodes, edges, workflowName, {
     showCodeConnections: useFeature("connectionHints"),
   });
+  // Groups of steps (#221): grouped from a selection or the analysis's suggestions.
+  const grouping = useGroups({ nodes, edges, setNodes, setIsDirty, ensureEditable });
   const extraProblems = useMemo(
     () => [...canvasView.problems, ...(analysisOn ? analysis.problems : [])],
     [canvasView.problems, analysisOn, analysis.problems],
@@ -468,19 +473,35 @@ const WorkflowPageContent: React.FC = () => {
   // Interaction flags on the nodes the canvas shows: the node of the panel
   // under the pointer is highlighted, and a run stops editing. Nodes of a
   // read-only workflow stay draggable: dropping one opens an editable copy.
+  // The nodes of the view: steps only hides channel code, Grouped shows
+  // each group as one box, All draws a frame around each group's steps.
   const canvasNodes = useMemo(
     () =>
-      nodes.map((node) => ({
-        ...node,
-        data: { ...node.data, isHighlight: node.id === panels.highlightedId },
-        selectable: true,
-        draggable: !isRunning,
-        connectable: !isRunning,
-        deletable: !isRunning,
-        // Steps only: channel code is hidden.
-        hidden: canvasView.view === "steps" && node.type === "channelOperator",
-      })),
-    [nodes, panels.highlightedId, isRunning, canvasView.view]
+      canvasView.nodes.map((node) =>
+        node.type === "groupFrame" || node.type === "groupBox"
+          ? node
+          : {
+              ...node,
+              data: { ...node.data, isHighlight: node.id === panels.highlightedId },
+              selectable: true,
+              draggable: !isRunning,
+              connectable: !isRunning,
+              deletable: !isRunning,
+            },
+      ),
+    [canvasView.nodes, panels.highlightedId, isRunning]
+  );
+  const openGroup = useCallback(
+    (group: string) => {
+      canvasView.setView("all");
+      const members = (grouping.groups.get(group) ?? []).map((node) => ({ id: node.id }));
+      window.setTimeout(() => void fitView({ nodes: members, duration: 300, maxZoom: 1.2 }), 0);
+    },
+    [canvasView, grouping.groups, fitView],
+  );
+  const groupActions = useMemo(
+    () => ({ rename: grouping.startRename, ungroup: (group: string) => void grouping.ungroup(group), open: openGroup, editable: !isRunning }),
+    [grouping.startRename, grouping.ungroup, openGroup, isRunning],
   );
 
   if (workflow.loadError) {
@@ -499,6 +520,7 @@ const WorkflowPageContent: React.FC = () => {
       <NestedViewContext.Provider value={openNested}>
       <CopySubworkflowContext.Provider value={copySubworkflow}>
       <NodeConditionsContext.Provider value={stepConditions}>
+      <GroupActionsContext.Provider value={groupActions}>
     <NodeProblemsContext.Provider value={check.nodeProblems}>
       <ConnectionHintsContext.Provider value={edgeHints}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
@@ -531,6 +553,11 @@ const WorkflowPageContent: React.FC = () => {
               onNodeDrag={deletion.onNodeDrag}
               onNodeDragStop={deletion.onNodeDragStop}
               onNodeDoubleClick={(_, node) => {
+                if (node.type === "groupBox") {
+                  openGroup(String((node.data as { group?: unknown }).group));
+                  return;
+                }
+                if (node.type === "groupFrame") return;
                 // Settings are edited in All.
                 if (canvasView.view !== "all") canvasView.setView("all");
                 panels.open(node.id);
@@ -543,6 +570,48 @@ const WorkflowPageContent: React.FC = () => {
               onZoomToFailed={failingNodeId ? () => showNode(failingNodeId) : undefined}
             />
           </ErrorBoundary>
+          {canvasView.view === "all" && grouping.selection.length > 0 && !isRunning && (
+            <div
+              role="toolbar"
+              aria-label="Selected steps"
+              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
+            >
+              {grouping.selection.length} {grouping.selection.length === 1 ? "step" : "steps"} selected
+              <button
+                type="button"
+                onClick={() => grouping.startGrouping(grouping.selection.map((node) => node.id), "selection")}
+                className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
+              >
+                Group into subworkflow…
+              </button>
+            </div>
+          )}
+          {canvasView.view === "grouped" && (
+            <div
+              role="status"
+              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
+            >
+              Grouped: each group of steps is one box. Open one to see and edit its steps.
+              <button
+                type="button"
+                onClick={() => canvasView.setView("all")}
+                className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
+              >
+                Back to All
+              </button>
+            </div>
+          )}
+          {grouping.dialog && (
+            <GroupDialog
+              isOpen
+              mode={grouping.dialog.mode}
+              initialName={grouping.dialog.initialName}
+              steps={grouping.dialogSteps}
+              problemFor={grouping.problemFor}
+              onConfirm={(name) => void grouping.confirm(name)}
+              onClose={grouping.closeDialog}
+            />
+          )}
           {canvasView.view === "steps" && (
             <div
               role="status"
@@ -580,6 +649,14 @@ const WorkflowPageContent: React.FC = () => {
                 setAnalysisOpen(false);
                 showNode(nodeId);
               }}
+              onGroup={
+                isRunning
+                  ? undefined
+                  : (ids) => {
+                      setAnalysisOpen(false);
+                      grouping.startGrouping(ids, "suggestion");
+                    }
+              }
               onClose={() => setAnalysisOpen(false)}
             />
           )}
@@ -622,7 +699,7 @@ const WorkflowPageContent: React.FC = () => {
           isSaving={workflow.isSaving}
           isRunning={isRunning}
           runBlockedReason={check.blockedReason}
-          viewControl={<CanvasViewSwitch view={canvasView.view} onChange={canvasView.setView} />}
+          viewControl={<CanvasViewSwitch view={canvasView.view} onChange={canvasView.setView} hasGroups={grouping.groups.size > 0} />}
           analysisControl={
             analysisOn ? (
               <AnalyseButton
@@ -801,6 +878,7 @@ const WorkflowPageContent: React.FC = () => {
       </div>
       </ConnectionHintsContext.Provider>
       </NodeProblemsContext.Provider>
+      </GroupActionsContext.Provider>
     </NodeConditionsContext.Provider>
       </CopySubworkflowContext.Provider>
       </NestedViewContext.Provider>

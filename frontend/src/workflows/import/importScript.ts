@@ -24,6 +24,8 @@ import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import { generateOperatorCode } from "../../generators/core/templateEngine";
 import { parseLayoutComment, type LayoutEntry } from "../../generators/core/layoutComment";
+import { inlineGroups, withoutGroupSelectors } from "../../groups/inlineGroups";
+import { directoryOf, normalizePath, relativePath } from "./projectPaths";
 import type { WorkflowParameter } from "../../registry/params";
 import { nodeDefinitions, type NodeDefinition } from "../../registry/nodeDefinitions";
 import {
@@ -559,39 +561,22 @@ export interface ImportOptions {
   inputs?: Record<string, FileContent>;
 }
 
-/** `a/b/../c` → `a/c`; no leading `./`. */
-const normalizePath = (path: string): string => {
-  const parts: string[] = [];
-  for (const part of path.split("/")) {
-    if (part === "" || part === ".") continue;
-    if (part === "..") parts.pop();
-    else parts.push(part);
-  }
-  return parts.join("/");
-};
 /** The names code calls: `FOO(…)`, `helper(…)`. */
 const namesCalledIn = (text: string): Set<string> =>
   new Set([...maskSource(text, { keepInterpolations: true }).matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)].map((match) => match[1]));
 
-/** `target` (from the files' root) as seen from the folder `base`: `./modules/x`, `../lib/y`. */
-const relativePath = (base: string, target: string): string => {
-  const from = base ? base.split("/") : [];
-  const to = target.split("/");
-  let shared = 0;
-  while (shared < from.length && shared < to.length - 1 && from[shared] === to[shared]) shared += 1;
-  const up = from.length - shared;
-  const rest = to.slice(shared).join("/");
-  return up === 0 ? `./${rest}` : `${"../".repeat(up)}${rest}`;
-};
-const directoryOf = (path: string): string => (path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "");
-
-export const importNextflowScript = (source: string, options: ImportOptions = {}): ImportedCanvas => {
+export const importNextflowScript = (original: string, options: ImportOptions = {}): ImportedCanvas => {
+  // Groups N-WAVE wrote (#221): their steps back in the workflow, as nodes of their own.
+  const { source, groups: groupOfStep } = inlineGroups(original, { files: options.files, path: options.path });
   modules = options.catalog?.modules ?? [];
   subworkflows = options.catalog?.subworkflows ?? [];
   const warnings: string[] = [];
   const items = topLevelItems(source);
   const layout = parseLayoutComment(source);
-  const config = [embeddedConfig(source), options.config ?? ""].filter(Boolean).join("\n");
+  const config = withoutGroupSelectors(
+    [embeddedConfig(source), options.config ?? ""].filter(Boolean).join("\n"),
+    new Set(groupOfStep.values()),
+  );
   const settingsFor = configBlocks(config);
   const headerName = source.match(/^\s*\/\/\s*(.+)\n\/\/ Written by N-WAVE/)?.[1]?.trim() ?? null;
 
@@ -1383,6 +1368,10 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
     autoLayout(nodes, edges, new Set(nodes.filter((node) => layout.has(keyOf(node))).map((node) => node.id)));
   }
   if (!entry) warnings.push("No workflow block was found, so connections could not be read.");
+  for (const node of nodes) {
+    const group = groupOfStep.get(keyOf(node));
+    if (group) node.data = { ...node.data, group };
+  }
 
   return { name: headerName, nodes, edges, definitions, warnings };
 

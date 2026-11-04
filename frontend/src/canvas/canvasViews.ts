@@ -3,13 +3,16 @@
 //     imported block, a custom workflow) that calls a step or reads a
 //     node's channel the canvas doesn't connect to it;
 //   - "Steps only": channel operator nodes hidden, steps connected straight
-//     through them.
+//     through them;
+//   - "Grouped": each group of steps (#221) as one box, connected to the
+//     rest; and in All, a frame around each group's steps.
 
-import type { Edge, Node } from "@xyflow/react";
+import { type Edge, type Node, Position } from "@xyflow/react";
 import type { LineOwners } from "../analysis/scriptLines";
+import { groupsOf, groupTitle } from "../groups/groups";
 import { maskSource, topLevelItems } from "../workflows/import/nextflowSource";
 
-export type CanvasView = "all" | "steps";
+export type CanvasView = "all" | "steps" | "grouped";
 
 export interface CodeConnection {
   /** Where data comes from, and the node it reaches through code. */
@@ -201,5 +204,111 @@ export const stepsOnlyView = (
         .map(codeConnectionEdge),
       ...derived.values(),
     ],
+  };
+};
+
+/** What a group's box and frame show. */
+export interface GroupNodeData extends Record<string, unknown> {
+  group: string;
+  title: string;
+  steps: string[];
+}
+
+const DEFAULT_SIZE = { width: 180, height: 90 };
+const sizeOf = (node: Node) => ({
+  width: node.measured?.width ?? node.width ?? DEFAULT_SIZE.width,
+  height: node.measured?.height ?? node.height ?? DEFAULT_SIZE.height,
+});
+const stepLabels = (members: Node[]) => members.map((member) => String((member.data as { label?: unknown }).label || member.type));
+
+/** A frame behind each group's steps, with its name (All view). */
+export const groupFrames = (nodes: Node[]): Node<GroupNodeData>[] =>
+  [...groupsOf(nodes)].map(([group, members]) => {
+    const padding = 20;
+    const header = 30;
+    const left = Math.min(...members.map((member) => member.position.x)) - padding;
+    const top = Math.min(...members.map((member) => member.position.y)) - padding - header;
+    const right = Math.max(...members.map((member) => member.position.x + sizeOf(member).width)) + padding;
+    const bottom = Math.max(...members.map((member) => member.position.y + sizeOf(member).height)) + padding;
+    return {
+      id: `frame:${group}`,
+      type: "groupFrame",
+      position: { x: left, y: top },
+      style: { width: right - left, height: bottom - top },
+      width: right - left,
+      height: bottom - top,
+      zIndex: -1,
+      selectable: false,
+      draggable: false,
+      connectable: false,
+      deletable: false,
+      focusable: false,
+      data: { group, title: groupTitle(group), steps: stepLabels(members) },
+    };
+  });
+
+export const GROUP_BOX_WIDTH = 224;
+/** Its name, its steps (five at most, then "and N more") and Open. */
+const groupBoxHeight = (steps: number) => 112 + 18 * Math.min(steps, 6);
+
+/**
+ * The "Grouped" view: each group's steps hidden behind one box, the
+ * connections into and out of them drawn to the box.
+ */
+export const groupedView = (nodes: Node[], edges: Edge[]): { nodes: Node[]; edges: Edge[] } => {
+  const groups = groupsOf(nodes);
+  const boxOf = new Map<string, string>();
+  for (const [group, members] of groups) for (const member of members) boxOf.set(member.id, `group:${group}`);
+  const boxes: Node<GroupNodeData>[] = [...groups].map(([group, members]) => ({
+    id: `group:${group}`,
+    type: "groupBox",
+    position: {
+      x: Math.min(...members.map((member) => member.position.x)),
+      y: Math.min(...members.map((member) => member.position.y)),
+    },
+    // A size of its own: the canvas measures only the workflow's nodes.
+    width: GROUP_BOX_WIDTH,
+    height: groupBoxHeight(members.length),
+    style: { width: GROUP_BOX_WIDTH, height: groupBoxHeight(members.length) },
+    // Its handles, where GroupBoxNode draws them: in, left; out, right.
+    handles: [
+      { type: "target" as const, position: Position.Left, x: -4, y: groupBoxHeight(members.length) / 2 - 4, width: 8, height: 8 },
+      { type: "source" as const, position: Position.Right, x: GROUP_BOX_WIDTH - 4, y: groupBoxHeight(members.length) / 2 - 4, width: 8, height: 8 },
+    ],
+    selectable: false,
+    draggable: false,
+    connectable: false,
+    deletable: false,
+    data: { group, title: groupTitle(group), steps: stepLabels(members) },
+  }));
+  const shown = new Map<string, Edge>();
+  for (const edge of edges) {
+    const source = boxOf.get(edge.source);
+    const target = boxOf.get(edge.target);
+    if (!source && !target) {
+      shown.set(edge.id, edge);
+      continue;
+    }
+    if (source && source === target) continue;
+    const from = source ?? edge.source;
+    const to = target ?? edge.target;
+    const id = `grouped:${from}:${source ? "" : (edge.sourceHandle ?? "")}->${to}:${target ? "" : (edge.targetHandle ?? "")}`;
+    if (shown.has(id)) continue;
+    shown.set(id, {
+      id,
+      source: from,
+      target: to,
+      sourceHandle: source ? null : edge.sourceHandle,
+      targetHandle: target ? null : edge.targetHandle,
+      type: "derived",
+      deletable: false,
+      selectable: false,
+      focusable: false,
+      data: { kind: "through", label: "Into or out of a group" },
+    });
+  }
+  return {
+    nodes: [...nodes.map((node) => (boxOf.has(node.id) ? { ...node, hidden: true } : node)), ...boxes],
+    edges: [...shown.values()],
   };
 };

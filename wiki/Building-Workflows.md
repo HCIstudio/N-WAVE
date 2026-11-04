@@ -58,15 +58,18 @@ opens).
 - **Zoom to the failing step** appears next to them after a run failed and goes to the step
   that failed.
 
-## Views: all nodes, or the steps
+## Views: all nodes, the steps, or groups
 
-The switch in the bottom bar (**All** | **Steps**) chooses what the canvas shows:
+The switch in the bottom bar (**All** | **Steps** | **Grouped**) chooses what the canvas shows:
 
 - **All**: every node, editable.
 - **Steps**: channel code (channel operator nodes, and code kept from an import) is hidden,
   and each step connects straight to the steps its data reaches through it (dotted lines).
   Large imported workflows read as their steps this way. This view can't be edited: editing
   a node's settings, or any other change, goes back to **All**.
+- **Grouped** (when the workflow has [groups](#groups-of-steps)): each group is one box with
+  its steps listed, connected to the rest. **Open** (or a double-click) goes back to **All**,
+  zoomed to the group's steps. This view can't be edited either.
 
 **Connected in code** (orange dashed lines): code in a node can call a step or read another
 node's output that the canvas doesn't connect to it, for example an imported
@@ -74,6 +77,55 @@ node's output that the canvas doesn't connect to it, for example an imported
 canvas, draws them dashed, and says so in the workflow check (a warning on the node whose code
 makes them). They work without a server, in the browser demo too, and follow the
 **Connection hints** switch (Global Settings → Features).
+
+## Groups of steps
+
+Steps that belong together (a quality check and its report, an alignment with its sorting and
+statistics) can be grouped into a **subworkflow**. Each step keeps its node and its settings;
+the group changes how the code is written and adds a way to see the workflow:
+
+1. Select the steps (click one, then Ctrl+click, or ⌘+click on a Mac, the others) and click
+   **Group into subworkflow…** above the canvas. Or take a suggestion of the
+   [analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis#steps-that-belong-together).
+2. Name it. The name is the subworkflow's in the code (`Read QC` → `READ_QC`); it can't be a
+   step's name or another group's.
+3. On the canvas, a frame shows the group's steps, with **Rename** and **Ungroup** (the steps
+   on their own again). **Grouped** in the bottom bar shows each group as one box.
+
+In the code, the group is a named workflow the workflow calls: what its steps read from the
+other steps becomes its inputs (`take:`), what the other steps read from it its outputs
+(`emit:`). It runs as before; Nextflow names its tasks `READ_QC:FASTQC`, and N-WAVE shows them
+on their steps as usual.
+
+```groovy
+workflow READ_QC {
+    take:
+    ch_samplesheet
+
+    main:
+    FASTQC_RAW_READS(ch_samplesheet)
+    TRIM_GALORE(ch_samplesheet)
+
+    emit:
+    reads = TRIM_GALORE.out.reads
+    zip = FASTQC_RAW_READS.out.zip
+}
+
+workflow {
+    …
+    READ_QC(ch_samplesheet)
+    STAR_ALIGN(READ_QC.out.reads, …)
+}
+```
+
+- Only steps can be grouped: inputs, outputs, Parameters and notes stay outside.
+- Data can't leave a group and come back into it through a step outside: add that step to
+  the group, or leave out the steps after it. The workflow check says when that's the case.
+- Channel code inside a group that names a channel outside it by name (not through a
+  connection) can't see that channel in the subworkflow; connect it instead.
+- [Importing](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows) a script or project
+  N-WAVE wrote gives the groups back. A subworkflow written by hand imports as one step that
+  keeps its code.
 
 ## Connecting
 

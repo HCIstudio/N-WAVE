@@ -14,6 +14,8 @@ import {
   type CodeConnection,
   codeConnectionEdge,
   codeConnections,
+  groupedView,
+  groupFrames,
   stepsOnlyView,
 } from "./canvasViews";
 
@@ -89,8 +91,10 @@ export const useCanvasView = (
 
   const display = useMemo(() => {
     if (view === "steps") return stepsOnlyView(nodes, edges, shown);
+    if (view === "grouped") return groupedView(nodes, edges);
+    const frames = groupFrames(nodes);
     return {
-      nodes,
+      nodes: frames.length > 0 ? [...frames, ...nodes] : nodes,
       edges:
         shown.length > 0 ? [...edges, ...shown.map(codeConnectionEdge)] : edges,
     };

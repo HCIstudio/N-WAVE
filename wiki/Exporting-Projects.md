@@ -48,6 +48,8 @@ The script reads like Nextflow written by hand:
 - Notes become `/* Note: … */` comments, and the last line, `// N-WAVE layout: …`, keeps the
   canvas positions, so [importing](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows)
   the code gives the same canvas back.
+- [Groups of steps](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows#groups-of-steps)
+  are named workflows (subworkflows) the workflow calls.
 - In a project, processes and named workflows are in `modules/local/` and
   `subworkflows/local/` and included from `main.nf`. Steps that use N-WAVE's helper functions
   (Filter, Map) stay in `main.nf`, where those functions are.

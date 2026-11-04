@@ -74,17 +74,32 @@ export const nodesForSteps = (
 ): Map<string, string> => {
   const byName = new Map<string, string>();
   for (const [nodeId, name] of processNamesFor(nodes)) byName.set(name, nodeId);
+  return nodesOfSteps(result, byName);
+};
+
+/**
+ * Each step's canvas node, by the nodes' names in the script: the outermost
+ * of its subworkflows that is a node (an nf-core subworkflow node), else the
+ * step's own (a step in a group of steps, #221, is a node of its own).
+ */
+export const nodesOfSteps = (
+  result: BioflowResult,
+  byName: Map<string, string>,
+): Map<string, string> => {
   const subworkflowNames = new Map(
     result.subworkflows.map((sub) => [sub.id, sub.name]),
   );
-  const topName = (step: BioflowStep): string => {
-    if (!step.subworkflow) return step.name;
-    const top = step.id.split(".")[0] ?? step.id;
-    return subworkflowNames.get(top) ?? top;
-  };
   const mapped = new Map<string, string>();
   for (const step of result.steps) {
-    const nodeId = byName.get(topName(step));
+    const path = step.subworkflow
+      ? step.id
+          .split(".")
+          .slice(0, -1)
+          .map((id) => subworkflowNames.get(id) ?? id)
+      : [];
+    const nodeId = [...path, step.name]
+      .map((name) => byName.get(name))
+      .find(Boolean);
     if (nodeId) mapped.set(step.id, nodeId);
   }
   return mapped;

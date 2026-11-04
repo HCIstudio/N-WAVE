@@ -43,8 +43,13 @@ export const ACTIVITY_TYPES = {
   "code.opened": "A node's Code tab was opened",
   /** `notRunning`: the nodes the preview says won't run with the current values; `conditional`: how many have conditions. */
   "conditions.preview": "The preview of which steps run (by parameter values) changed",
-  /** `view`: all or steps. */
-  "canvas.viewChanged": "The canvas view changed (All, Steps only)",
+  /** `view`: all, steps or grouped. */
+  "canvas.viewChanged": "The canvas view changed (All, Steps only, Grouped)",
+  /** `steps`: how many; `from`: selection or suggestion (from the analysis). */
+  "group.created": "Steps were grouped into a subworkflow",
+  /** `steps`: how many it had. */
+  "group.removed": "A group was ungrouped (its steps back on their own)",
+  "group.renamed": "A group was renamed",
   /** `lint`, `bioflow`: each tool's status (done, unavailable, failed); `errors`, `warnings`: counts; or `failed`. */
   "analysis.run": "The workflow was analysed (Analyse in the bottom bar)",
   /** `view`: steps or channels. */

@@ -116,7 +116,9 @@ Guidelines:
 Patch versions are automatic: each merge steps the patch version from the latest `v*` tag. To
 release a new minor or major version (for example when closing a milestone), set `"version"`
 in both `frontend/package.json` and `backend/package.json` to it (e.g. `1.4.0`) in the pull
-request. When it is newer than the latest tag, the merge releases exactly that version, and
+request. Before that, test the release on a local installation with
+[RELEASE-TESTING.md](RELEASE-TESTING.md) (its list goes into the release's testing issue).
+When that version is newer than the latest tag, the merge releases exactly it, and
 later merges continue from it. The two files must match, or the release fails.
 
 A minor or major release also updates the Roadmap page (`/roadmap`) in

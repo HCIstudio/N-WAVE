@@ -12,6 +12,7 @@ import { getSamplesheetMapping, parseSamplesheet } from "../../registry/samplesh
 import type { ExecutionSettings } from "../../types/execution";
 import { getNodeInputFiles, getWorkflowInputFiles, isFileContentMissing } from "../../utils/inputFiles";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
+import { contractedEdges, groupOf, groupTitle } from "../../groups/groups";
 
 export type ProblemLevel = "error" | "warning";
 
@@ -200,6 +201,18 @@ const checkWorkflowWide = (
       message: `The workflow has a loop: ${describeCycle(cycle, nodes)}. A step's output can't come back to its own input; remove one of these connections.`,
       nodeId: cycle[0],
     });
+  } else {
+    // A group (#221) whose data leaves it and comes back: its subworkflow can't be written.
+    const groupCycle = findCycle(contractedEdges(nodes, edges));
+    const group = groupCycle?.find((id) => id.startsWith("group:"))?.slice("group:".length);
+    if (group) {
+      problems.push({
+        id: `group-cycle:${group}`,
+        level: "error",
+        message: `Data leaves the group “${groupTitle(group)}” and comes back into it through a step outside. Add that step to the group, or take steps out of it.`,
+        nodeId: nodes.find((node) => groupOf(node) === group)?.id,
+      });
+    }
   }
 
   // Several connections into a one-connection input (saved before the rule):
