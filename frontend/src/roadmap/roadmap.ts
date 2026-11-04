@@ -164,7 +164,7 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "Workflow analysis with BioFlow-Insight, on your own machine", issue: 19, status: "released" },
       { title: "Analyse a workflow: check its code and see its structure", issue: 218, status: "released" },
       { title: "Canvas views: steps only, and connections made in code", issue: 219, status: "released" },
-      { title: "When a step runs: its conditions, and a preview by parameter values", issue: 220 },
+      { title: "When a step runs: its conditions, and a preview by parameter values", issue: 220, status: "released" },
       { title: "Group steps into a subworkflow", issue: 221 },
       { title: "Export and import through the FONDA workflow metamodel", issue: 194 },
     ],

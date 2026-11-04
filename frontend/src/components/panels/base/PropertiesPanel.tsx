@@ -1,5 +1,6 @@
 import type React from "react";
 import { useState, useCallback, useEffect, useRef, memo } from "react";
+import { useNodeConditions } from "../../../execution/NodeConditionsContext";
 import type { Node } from "@xyflow/react";
 import { GripVertical, Trash2, X } from "lucide-react";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
@@ -59,6 +60,8 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onEditCustomNode,
 }) => {
   const panelRef = useRef<HTMLDivElement>(null);
+  // When it runs, from the analysis (#220).
+  const conditions = useNodeConditions(node.id);
   const [label, setLabel] = useState(node.data.label || "");
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [chosenTab, setActiveTab] = useState<PanelTab>("settings");
@@ -282,6 +285,32 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </button>
         </div>
       </div>
+
+      {conditions && (
+        <section aria-label="When it runs" className="border-b border-panel-border px-3 py-2 text-xs">
+          <p className="font-medium">
+            {conditions.runs === false
+              ? "Won't run with these parameters. Runs when:"
+              : "Runs when:"}
+          </p>
+          <ul className="mt-1 space-y-0.5">
+            {conditions.conditions.map((entry) => (
+              <li key={entry.text} className="flex items-start gap-1.5">
+                <span aria-hidden className="w-3 shrink-0 text-center">
+                  {entry.holds === null ? "?" : entry.holds ? "✓" : "✗"}
+                </span>
+                <code className="break-all">{entry.text}</code>
+                <span className="sr-only">
+                  {entry.holds === null ? "(can't tell before the run)" : entry.holds ? "(holds)" : "(doesn't hold)"}
+                </span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1 text-text-light">
+            From the analysis (BioFlow-Insight), with the Parameters node&apos;s values.
+          </p>
+        </section>
+      )}
 
       <div
         role="tablist"

@@ -158,3 +158,27 @@ export const codeSignature = (nodes: Node<NodeData>[], edges: Edge[]): string =>
       edge.targetHandle,
     ]),
   ]);
+
+/**
+ * What changes the workflow's structure: as codeSignature, without the
+ * Parameters nodes' values (which change when a step runs, not which steps
+ * there are and where they're called).
+ */
+export const structureSignature = (nodes: Node<NodeData>[], edges: Edge[]): string =>
+  codeSignature(
+    nodes.map((node) =>
+      node.type === "parameters"
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              parameters: Array.isArray(node.data.parameters)
+                ? (node.data.parameters as Array<{ name?: unknown; type?: unknown }>).map(({ name, type }) => ({ name, type }))
+                : node.data.parameters,
+            },
+          }
+        : node,
+    ),
+    edges,
+  );
+

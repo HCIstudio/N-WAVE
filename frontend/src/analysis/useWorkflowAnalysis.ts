@@ -11,6 +11,7 @@ import {
   analyseWorkflow,
   analysisProblems,
   codeSignature,
+  structureSignature,
   type WorkflowAnalysis,
 } from "./analysis";
 
@@ -25,12 +26,17 @@ export const useWorkflowAnalysis = (
   const [analysedSignature, setAnalysedSignature] = useState<string | null>(
     null,
   );
+  const [analysedStructure, setAnalysedStructure] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const latest = useRef(0);
 
   const signature = useMemo(() => codeSignature(nodes, edges), [nodes, edges]);
   const current = analysis !== null && analysedSignature === signature;
+  // Changing a parameter's value changes the code, not which steps there are
+  // and the conditions they're called under.
+  const structure = useMemo(() => structureSignature(nodes, edges), [nodes, edges]);
+  const structureCurrent = analysis !== null && analysedStructure === structure;
 
   const analyse = useCallback(async () => {
     const attempt = latest.current + 1;
@@ -38,11 +44,13 @@ export const useWorkflowAnalysis = (
     setRunning(true);
     setError(null);
     const started = codeSignature(nodes, edges);
+    const startedStructure = structureSignature(nodes, edges);
     try {
       const result = await analyseWorkflow(nodes, edges, workflowName);
       if (latest.current !== attempt) return;
       setAnalysis(result);
       setAnalysedSignature(started);
+      setAnalysedStructure(startedStructure);
       const found = analysisProblems(result, nodes);
       logActivity("analysis.run", {
         lint: result.lint.status,
@@ -72,6 +80,8 @@ export const useWorkflowAnalysis = (
     analysis,
     /** The analysis is of the workflow as it is now. */
     current,
+    /** The analysis is of the workflow's steps as they are now (parameter values aside). */
+    structureCurrent,
     running,
     error,
     problems,

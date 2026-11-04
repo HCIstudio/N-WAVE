@@ -38,6 +38,28 @@ In the [browser demo](https://hcistudio.github.io/N-WAVE/) there is no server to
 the built-in examples show the analysis they got when the demo was built, other workflows say
 that analysing needs an installation.
 
+## When a step runs
+
+After an analysis, a step that runs only under a condition (inside an `if`, or its `else`)
+has an **if** badge on its node; hover it to read the condition. Its panel shows **When it
+runs**: each condition, and whether it holds.
+
+N-WAVE checks the conditions against the **Parameters** node's values, and a step that won't
+run with them is greyed out. Change a value (say `aligner` from `star` to `hisat2`) and the
+canvas follows straight away, without analysing again: the other aligner greys out.
+
+- A subworkflow node shows the conditions all of its steps share.
+- N-WAVE evaluates `params.…`, strings, numbers, `true`, `false`, `null`, `!`, `&&`, `||`,
+  comparisons and parentheses. A condition with anything else (a function, a value computed
+  during the run), or with a parameter the Parameters node doesn't set, shows `?` and greys
+  nothing out.
+- It is a preview: Nextflow decides when it runs, with the values it is given then.
+- The badges stay as long as the workflow's steps and code are as analysed. Changing a
+  parameter's value keeps them; any other change of the code removes them until the next
+  analysis.
+
+Switch it off in Global Settings → Features → When steps run (`conditions`).
+
 ## What is analysed
 
 The workflow's script as N-WAVE writes it, the nf-core modules and subworkflows it includes,

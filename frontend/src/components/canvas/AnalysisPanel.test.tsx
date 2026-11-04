@@ -47,6 +47,7 @@ const analysis = (overrides: Partial<WorkflowAnalysis> = {}): WorkflowAnalysis =
 const state = (overrides: Partial<WorkflowAnalysisState> = {}): WorkflowAnalysisState => ({
   analysis: analysis(),
   current: true,
+  structureCurrent: true,
   running: false,
   error: null,
   problems: [],

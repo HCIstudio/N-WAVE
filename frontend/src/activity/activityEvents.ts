@@ -41,6 +41,8 @@ export const ACTIVITY_TYPES = {
   "glossary.opened": "A glossary explanation was opened",
   /** `nodeId`. */
   "code.opened": "A node's Code tab was opened",
+  /** `notRunning`: the nodes the preview says won't run with the current values; `conditional`: how many have conditions. */
+  "conditions.preview": "The preview of which steps run (by parameter values) changed",
   /** `view`: all or steps. */
   "canvas.viewChanged": "The canvas view changed (All, Steps only)",
   /** `lint`, `bioflow`: each tool's status (done, unavailable, failed); `errors`, `warnings`: counts; or `failed`. */

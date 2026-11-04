@@ -57,6 +57,8 @@ import NestedView from "../components/canvas/NestedView";
 import AnalysisPanel from "../components/canvas/AnalysisPanel";
 import AnalyseButton from "../components/canvas/AnalyseButton";
 import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
+import { useStepConditions } from "../analysis/useStepConditions";
+import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
 import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
 import { buildSubworkflowCopy, CopySubworkflowContext } from "../workflows/copySubworkflowWorkflow";
@@ -212,6 +214,8 @@ const WorkflowPageContent: React.FC = () => {
   const analysisOn = useFeature("analysis");
   const analysis = useWorkflowAnalysis(nodes, edges, workflowName);
   const [analysisOpen, setAnalysisOpen] = useState(false);
+  // When steps run: the analysis's conditions with the Parameters node's values.
+  const stepConditions = useStepConditions(analysis, nodes, useFeature("conditions") && analysisOn);
   // All or Steps only, and the connections the code makes that the canvas doesn't show.
   const canvasView = useCanvasView(nodes, edges, workflowName, {
     showCodeConnections: useFeature("connectionHints"),
@@ -494,7 +498,8 @@ const WorkflowPageContent: React.FC = () => {
     <RunTasksContext.Provider value={runTasks}>
       <NestedViewContext.Provider value={openNested}>
       <CopySubworkflowContext.Provider value={copySubworkflow}>
-      <NodeProblemsContext.Provider value={check.nodeProblems}>
+      <NodeConditionsContext.Provider value={stepConditions}>
+    <NodeProblemsContext.Provider value={check.nodeProblems}>
       <ConnectionHintsContext.Provider value={edgeHints}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
         <Header
@@ -796,6 +801,7 @@ const WorkflowPageContent: React.FC = () => {
       </div>
       </ConnectionHintsContext.Provider>
       </NodeProblemsContext.Provider>
+    </NodeConditionsContext.Provider>
       </CopySubworkflowContext.Provider>
       </NestedViewContext.Provider>
     </RunTasksContext.Provider>

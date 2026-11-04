@@ -68,6 +68,11 @@ export const FEATURE_SWITCHES: { id: Exclude<FeatureId, "workflowCheck">; label:
     label: "Workflow analysis",
     off: "No Analyse button: the workflow's code isn't checked with nextflow lint and BioFlow-Insight, and its structure isn't shown.",
   },
+  {
+    id: "conditions",
+    label: "When steps run",
+    off: "Steps show no conditions from the analysis, and aren't greyed out by the parameters' values.",
+  },
 ];
 
 export const WORKFLOW_CHECK_MODES: { mode: WorkflowCheckMode; label: string; description: string }[] = [
