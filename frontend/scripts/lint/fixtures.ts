@@ -16,6 +16,8 @@ import {
   type StoredCustomNode,
 } from "../../src/registry/customNodes";
 import catalog from "../../src/registry/nfcore/catalog.json";
+import { copySubworkflow } from "../../src/workflows/import/copySubworkflow";
+import type { NfCoreCatalogForImport } from "../../src/workflows/import/importScript";
 import {
   buildNfCoreManifest,
   type NfCoreCatalogEntryForManifest,
@@ -387,6 +389,26 @@ const nfCoreSubworkflowChain = (): LintFixture => {
   };
 };
 
+/** nf-core subworkflows copied into workflows of their own ("Copy into new workflow"). */
+const copiedSubworkflows = (): LintFixture[] =>
+  [
+    ["quantify_pseudo_alignment", "nested/quantify_pseudo_alignment.nf"],
+    ["bam_sort_stats_samtools", "nfcore-bam_sort_stats_samtools.main.nf"],
+    ["fastq_align_hisat2", "nested/fastq_align_hisat2.nf"],
+  ].map(([name, file]) => {
+    const entry = (catalog as unknown as NfCoreCatalogForImport).subworkflows?.find(
+      (candidate) => candidate.id === `nf-core/subworkflows/${name}`,
+    );
+    if (!entry) throw new Error(`${name} isn't in the catalog`);
+    const copy = copySubworkflow(
+      readFileSync(join(__dirname, "../../src/test/fixtures", file), "utf8"),
+      entry,
+      catalog as unknown as NfCoreCatalogForImport,
+    );
+    registerDynamicNodeDefinitions(copy.definitions);
+    return { name: `copied-${name.replace(/_/g, "-")}`, description: copy.name, nodes: copy.nodes, edges: copy.edges };
+  });
+
 export const buildLintFixtures = (): LintFixture[] => {
   const starSalmon = rnaseqStarSalmon as unknown as {
     nodes: Node<NodeData>[];
@@ -423,5 +445,6 @@ export const buildLintFixtures = (): LintFixture[] => {
     migratedNodes(),
     nfCoreModuleShapes(),
     nfCoreSubworkflowChain(),
+    ...copiedSubworkflows(),
   ];
 };

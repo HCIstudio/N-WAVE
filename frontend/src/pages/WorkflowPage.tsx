@@ -3,7 +3,7 @@ import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import { type Node, ReactFlowProvider, useReactFlow } from "@xyflow/react";
-import { isDemoMode } from "../api";
+import api, { isDemoMode } from "../api";
 import { refreshCustomNodes } from "../api/customNodes";
 import BottomBar from "../components/canvas/BottomBar";
 import Canvas from "../components/canvas/Canvas";
@@ -54,6 +54,7 @@ import { useRunResume } from "./workflow/useRunResume";
 import { useCanvasActivity } from "./workflow/useCanvasActivity";
 import { logActivity } from "../activity/activityLog";
 import NestedView from "../components/canvas/NestedView";
+import { buildSubworkflowCopy, CopySubworkflowContext } from "../workflows/copySubworkflowWorkflow";
 import { nestedEntryOf } from "../workflows/nested/nestedEntry";
 import { NestedViewContext } from "../workflows/nested/NestedViewContext";
 import { getProcessNameForNode } from "../generators/core/generateNextflowScript";
@@ -239,6 +240,22 @@ const WorkflowPageContent: React.FC = () => {
     setNestedNodeId(nodeId);
   }, []);
   const closeNested = useCallback(() => setNestedNodeId(null), []);
+  // "Copy into new workflow" for an nf-core subworkflow: a new workflow with its steps, opened.
+  const copySubworkflow = useCallback(
+    async (id: string) => {
+      try {
+        const draft = await buildSubworkflowCopy(id);
+        const response = await api.post("/workflows", draft);
+        logActivity("workflow.copiedSubworkflow", { subworkflow: id, workflowId: response.data._id, nodes: draft.nodes.length });
+        setNestedNodeId(null);
+        navigate(`/workflow/${response.data._id}`);
+        showToast(`“${draft.name}” is a new workflow with the subworkflow's steps. The original is unchanged.`, "success");
+      } catch (caught) {
+        showToast(getApiErrorMessage(caught, "The subworkflow couldn't be copied."), "error");
+      }
+    },
+    [navigate, showToast],
+  );
   // The save conflict dialog can be closed to keep looking; saving opens it
   // again, since nothing is saved until a version is picked.
   const [conflictDismissed, setConflictDismissed] = useState(false);
@@ -456,6 +473,7 @@ const WorkflowPageContent: React.FC = () => {
   return (
     <RunTasksContext.Provider value={runTasks}>
       <NestedViewContext.Provider value={openNested}>
+      <CopySubworkflowContext.Provider value={copySubworkflow}>
       <NodeProblemsContext.Provider value={check.nodeProblems}>
       <ConnectionHintsContext.Provider value={edgeHints}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
@@ -711,6 +729,7 @@ const WorkflowPageContent: React.FC = () => {
       </div>
       </ConnectionHintsContext.Provider>
       </NodeProblemsContext.Provider>
+      </CopySubworkflowContext.Provider>
       </NestedViewContext.Provider>
     </RunTasksContext.Provider>
   );

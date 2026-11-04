@@ -115,6 +115,8 @@ export const valueLiteral = (
 ): string => {
   const values = (data.nfcoreValues ?? {}) as Record<string, unknown>;
   const value = values[input.name] ?? input.defaultValue;
+  // A setting can be a parameter of the workflow: `params.pseudo_aligner`.
+  if (typeof value === "string" && /^params\.[A-Za-z_]\w*$/.test(value.trim())) return value.trim();
 
   switch (input.type) {
     case "boolean":

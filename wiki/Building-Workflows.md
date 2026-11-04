@@ -51,6 +51,10 @@ opens).
   shows what it did and how many of its tasks are done. Connections follow the channels the
   workflow passes from one step to the next; ones N-WAVE can't follow (built in a function, for
   example) are left out.
+- **Copy into new workflow** (in the steps inside of an nf-core subworkflow, and in its
+  node's panel) makes a new, editable workflow from the subworkflow's steps, to swap a tool, add
+  a step or leave one out. The original node stays as it is
+  ([Copying a subworkflow](https://github.com/HCIstudio/N-WAVE/wiki/nf-core-Library#copying-a-subworkflow)).
 - **Zoom to the failing step** appears next to them after a run failed and goes to the step
   that failed.
 

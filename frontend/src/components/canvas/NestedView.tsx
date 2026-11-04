@@ -11,11 +11,12 @@ import {
   ReactFlowProvider,
 } from "@xyflow/react";
 import clsx from "clsx";
-import { ArrowDownToDot, ChevronRight, Loader, X } from "lucide-react";
+import { ArrowDownToDot, ChevronRight, Copy, Loader, X } from "lucide-react";
 import NodeStack, { STACK_BORDER, type StackTone } from "../nodes/NodeStack";
 import type { RunTask } from "../../api/runs";
 import { logActivity } from "../../activity/activityLog";
 import { loadWorkflowGraph } from "../../workflows/nested/loadWorkflow";
+import { useCopySubworkflow } from "../../workflows/copySubworkflowWorkflow";
 import { layoutGraph, nestedSource, STEP_HEIGHT, STEP_WIDTH, type StepRun, stepRun, type WorkflowSource } from "../../workflows/nested/nestedGraph";
 import type { NestedEntry } from "../../workflows/nested/nestedEntry";
 import type { WorkflowGraph, WorkflowStep } from "../../workflows/nested/workflowGraph";
@@ -160,6 +161,8 @@ const NestedView: React.FC<NestedViewProps> = ({ title, entry, workflowName, tas
   const [graph, setGraph] = useState<WorkflowGraph | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  const copySubworkflow = useCopySubworkflow();
+  const [copying, setCopying] = useState(false);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: attempt reads again.
   useEffect(() => {
@@ -271,6 +274,24 @@ const NestedView: React.FC<NestedViewProps> = ({ title, entry, workflowName, tas
               ))}
             </ol>
           </nav>
+          <div className="flex shrink-0 items-center gap-2">
+          {copySubworkflow && level.source.type === "nfcore" && (
+            <button
+              type="button"
+              disabled={copying}
+              onClick={() => {
+                const { source } = level;
+                if (source.type !== "nfcore") return;
+                setCopying(true);
+                void copySubworkflow(source.id).finally(() => setCopying(false));
+              }}
+              title="A new workflow with these steps, to change as you like. This subworkflow stays as it is."
+              className="flex items-center gap-1 rounded-md border border-panel-border px-2 py-1 text-sm text-text hover:bg-accent disabled:opacity-60"
+            >
+              {copying ? <Loader className="h-4 w-4 animate-spin" aria-hidden /> : <Copy className="h-4 w-4" aria-hidden />}
+              Copy into new workflow
+            </button>
+          )}
           <button
             type="button"
             onClick={onClose}
@@ -279,6 +300,7 @@ const NestedView: React.FC<NestedViewProps> = ({ title, entry, workflowName, tas
           >
             <X className="h-5 w-5" aria-hidden />
           </button>
+          </div>
         </header>
         <div className="relative min-h-0 flex-1">
           {error ? (

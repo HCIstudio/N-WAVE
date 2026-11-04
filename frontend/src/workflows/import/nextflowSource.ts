@@ -450,6 +450,10 @@ export const definedNames = (statement: string): string[] => {
   const tuple = masked.match(/^\s*(?:def\s+)?\(([^)]*)\)\s*=(?!=)/);
   if (tuple) names.push(...tuple[1].split(",").map((name) => name.trim()).filter((name) => /^\w+$/.test(name)));
   for (const set of masked.matchAll(/\.set\s*\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}/g)) names.push(set[1]);
+  // `if (…) { ch = … } else { ch = … }`: what the branches assign (not `def`, which stays inside).
+  if (/^\s*(if|try)\b/.test(masked)) {
+    for (const assigned of masked.matchAll(/(?:^|\n|\{)\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/g)) names.push(assigned[1]);
+  }
   return [...new Set(names)];
 };
 

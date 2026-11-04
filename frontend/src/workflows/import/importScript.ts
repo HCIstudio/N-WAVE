@@ -25,11 +25,7 @@ import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import { generateOperatorCode } from "../../generators/core/templateEngine";
 import { parseLayoutComment, type LayoutEntry } from "../../generators/core/layoutComment";
 import type { WorkflowParameter } from "../../registry/params";
-import {
-  getNodeDefinitionForNode,
-  nodeDefinitions,
-  type NodeDefinition,
-} from "../../registry/nodeDefinitions";
+import { nodeDefinitions, type NodeDefinition } from "../../registry/nodeDefinitions";
 import {
   createNodeDefinitionFromCustomNode,
   createStoredCustomNode,
@@ -387,12 +383,13 @@ const channelInputs = (
 
 /** The catalog definition of an nf-core module or subworkflow, by the path a script includes it from. */
 const nfCoreDefinitionFor = (path: string): NodeDefinition | null => {
-  const module = path.match(/(?:^|\/)modules\/nf-core\/(.+?)\/main(?:\.nf)?$/)?.[1];
+  // `…/fastqc/main`, `…/fastqc/main.nf` and `…/fastqc` are the same.
+  const module = path.match(/(?:^|\/)modules\/nf-core\/(.+?)(?:\/main(?:\.nf)?)?$/)?.[1];
   if (module) {
     const entry = modules.find((candidate) => candidate.modulePath === module);
     return entry ? createNodeDefinitionFromNfCoreManifest(buildNfCoreManifest(entry)) : null;
   }
-  const subworkflow = path.match(/(?:^|\/)subworkflows\/nf-core\/(.+?)\/main(?:\.nf)?$/)?.[1];
+  const subworkflow = path.match(/(?:^|\/)subworkflows\/nf-core\/(.+?)(?:\/main(?:\.nf)?)?$/)?.[1];
   if (subworkflow) {
     const entry = subworkflows.find((candidate) => candidate.id === `nf-core/subworkflows/${subworkflow}`);
     return entry ? createNodeDefinitionFromNfCoreSubworkflowManifest(buildNfCoreSubworkflowManifest(entry)) : null;
@@ -422,6 +419,9 @@ const isLiteral = (value: string): boolean => {
 /** Comments N-WAVE writes itself (header, layout, config, notes): not kept as code. */
 const isNwaveComment = (comment: string): boolean =>
   /^\/\/ (Written by N-WAVE|N-WAVE layout:)/.test(comment) || /^\/\* (N-WAVE_NEXTFLOW_CONFIG|Note:)/.test(comment);
+
+/** An nf-core include's path to its main.nf, as the project export reads it (`…/fastqc/main`). */
+const nfCoreMain = (path: string): string => path.replace(/\.nf$/, "").replace(/(?<!\/main)$/, "/main");
 
 const isNfCorePath = (path: string): boolean => /\b(modules|subworkflows)\/nf-core\//.test(path);
 
@@ -697,7 +697,7 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
       for (const include of included) {
         // nf-core modules and subworkflows the catalog knows are nf-core nodes, even with their files in the project.
         if (isNfCorePath(include.path) && nfCoreDefinitionFor(rootPath(scriptPath, include.path))) {
-          includes.set(include.alias, { name: include.name, path: rootPath(scriptPath, include.path) });
+          includes.set(include.alias, { name: include.name, path: nfCoreMain(rootPath(scriptPath, include.path)) });
           continue;
         }
         const local = readLocalInclude(scriptPath, include.path, include.name);
@@ -706,7 +706,7 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
         else if (local?.kind === "workflow") {
           namedWorkflows.set(include.alias, local.item);
           workflowFiles.set(include.alias, local.file);
-        } else if (isNfCorePath(include.path)) includes.set(include.alias, { name: include.name, path: rootPath(scriptPath, include.path) });
+        } else if (isNfCorePath(include.path)) includes.set(include.alias, { name: include.name, path: nfCoreMain(rootPath(scriptPath, include.path)) });
         else unread.push(include);
       }
       // Plugins and files that weren't imported with the script: the include stays, calls stay code.
@@ -1036,12 +1036,11 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
   /** Connect a step's arguments to its ports; settings from literal arguments. */
   const wireStep = (node: Node<NodeData>, args: string[], stepName: string): boolean => {
     let complete = true;
-    const definition = getNodeDefinitionForNode(node) ?? null;
     const data = node.data;
-    // nf-core modules: one argument per input group.
-    const groups = (definition?.defaults?.nwaveNfCoreModuleId && !String(definition.defaults.nwaveNfCoreModuleId).includes("subworkflows")
-      ? (catalogGroups(String(definition.defaults.nwaveNfCoreModuleId)) ?? [])
-      : []) as NfCoreModuleInputGroup[];
+    // nf-core modules: one argument per input group. (The node has its module's
+    // id; its definition may not be registered yet, the import brings it.)
+    const moduleId = String(data.nwaveNfCoreModuleId ?? "");
+    const groups = (moduleId && !moduleId.includes("subworkflows") ? (catalogGroups(moduleId) ?? []) : []) as NfCoreModuleInputGroup[];
     if (groups.length > 0) {
       const values: Record<string, unknown> = { ...((data.nfcoreValues as Record<string, unknown>) ?? {}) };
       [...groups]
@@ -1315,7 +1314,8 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
     const label = statement.comments[0]?.match(/^\/\/\s*(.*)$/)?.[1]?.trim() ?? null;
     if (label !== null || statement.blankBefore || group.length === 0) {
       flush();
-      groupLabel = label;
+      // A bare `//` line names nothing: the node is named after its channel.
+      groupLabel = label || null;
     }
     group.push(statement);
     groupEnd = index;
@@ -1328,6 +1328,17 @@ export const importNextflowScript = (source: string, options: ImportOptions = {}
     const made = stepForProcess(name, text);
     // Code calls it (`ch | FOO`, inside an `if`) or nothing does: export writes its definition, not a call.
     steps.set(name, addNode(name, made.type, { ...made.data, definitionOnly: true }, name));
+  }
+
+  // nf-core components only code calls (inside an `if`, `ch | FASTQC`): their includes stay.
+  const usedInMain = new Set([...maskSource(mainText, { keepInterpolations: true }).matchAll(/(?<![.\w$])([A-Za-z_]\w*)\b/g)].map((match) => match[1]));
+  for (const [alias, include] of includes) {
+    if (steps.has(alias) || !usedInMain.has(alias)) continue;
+    kept.push({
+      placement: "script",
+      start: 0,
+      text: `include { ${include.name === alias ? alias : `${include.name} as ${alias}`} } from '${include.path}'`,
+    });
   }
 
   // Code kept as written: one node for each place it goes.

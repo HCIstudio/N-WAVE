@@ -15,6 +15,7 @@ vi.mock("../../api/nfcore", () => ({ getNfCoreModuleSource: (id: string) => modu
 
 const { default: NestedView } = await import("./NestedView");
 const { forgetLoadedWorkflows } = await import("../../workflows/nested/loadWorkflow");
+const { CopySubworkflowContext } = await import("../../workflows/copySubworkflowWorkflow");
 
 const fixture = (name: string) => readFileSync(join(__dirname, "../../test/fixtures/nested", name), "utf8");
 
@@ -117,5 +118,28 @@ describe("NestedView", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("GitHub is down");
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(await screen.findByRole("button", { name: /^RNASEQ/ })).toBeTruthy();
+  });
+
+  it("copies the nf-core subworkflow it shows into a new workflow, where that's offered", async () => {
+    moduleSource.mockResolvedValue(fixture("quantify_pseudo_alignment.nf"));
+    const copy = vi.fn(async () => {});
+    const user = userEvent.setup();
+    const entry = { source: { type: "nfcore" as const, id: "nf-core/subworkflows/quantify_pseudo_alignment" }, path: ["Q"] };
+    const { unmount } = render(
+      <CopySubworkflowContext.Provider value={copy}>
+        <NestedView title="Quantify" entry={entry} workflowName="Mine" tasks={[]} isRunning={false} onClose={vi.fn()} />
+      </CopySubworkflowContext.Provider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Copy into new workflow" }));
+    expect(copy).toHaveBeenCalledWith("nf-core/subworkflows/quantify_pseudo_alignment");
+    unmount();
+
+    // Not for a pipeline's files, nor without the page offering it.
+    render(
+      <CopySubworkflowContext.Provider value={copy}>
+        <NestedView title="x" entry={pipelineEntry} workflowName="W" tasks={[]} isRunning={false} onClose={vi.fn()} />
+      </CopySubworkflowContext.Provider>,
+    );
+    expect(screen.queryByRole("button", { name: "Copy into new workflow" })).toBeNull();
   });
 });
