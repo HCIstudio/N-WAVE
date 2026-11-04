@@ -162,7 +162,7 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "Downloaded scripts import back into the same graph", issue: 171, status: "released" },
       { title: "Copy a subworkflow into a new, editable workflow", issue: 209, status: "released" },
       { title: "Workflow analysis with BioFlow-Insight, on your own machine", issue: 19, status: "released" },
-      { title: "Analyse a workflow: check its code and see its structure", issue: 218 },
+      { title: "Analyse a workflow: check its code and see its structure", issue: 218, status: "released" },
       { title: "Canvas views: steps only, and connections made in code", issue: 219 },
       { title: "When a step runs: its conditions, and a preview by parameter values", issue: 220 },
       { title: "Group steps into a subworkflow", issue: 221 },
