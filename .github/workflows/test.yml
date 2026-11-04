@@ -134,6 +134,58 @@ jobs:
       - name: Lint generated Nextflow
         run: scripts/lint-generated-nextflow.sh
 
+  bioflow:
+    name: Workflow analysis (BioFlow-Insight)
+    # The analysis image (backend/bioflow): built, its contract tests (the
+    # output must equal the recorded one), the backend running it, and the
+    # cross-check of its connections with N-WAVE's importer on every lint
+    # fixture (scripts/bioflow-cross-check.sh).
+    if: >-
+      ${{ github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    runs-on: ubuntu-latest
+    env:
+      BIOFLOW_IMAGE: nwave-bioflow:ci
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build the analysis image
+        run: docker build -t "$BIOFLOW_IMAGE" backend/bioflow
+
+      - name: Contract tests
+        run: >-
+          docker run --rm --network none --read-only --tmpfs /tmp
+          -v "$PWD/backend/bioflow/tests:/opt/bioflow/tests:ro"
+          --entrypoint python "$BIOFLOW_IMAGE" -I /opt/bioflow/tests/contract.py
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: 10.14.0
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: |
+            frontend/pnpm-lock.yaml
+            backend/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: |
+          pnpm --dir frontend install --frozen-lockfile
+          pnpm --dir backend install --frozen-lockfile
+
+      - name: Backend runs the image
+        working-directory: backend
+        run: pnpm exec vitest run src/analysis
+        env:
+          BIOFLOW_IMAGE_TEST: ${{ env.BIOFLOW_IMAGE }}
+
+      - name: Cross-check with N-WAVE's importer
+        run: scripts/bioflow-cross-check.sh
+
   e2e:
     name: E2E (canvas flow)
     # Separate and non-blocking for now: browser tests are slower and can be

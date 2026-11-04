@@ -2,6 +2,7 @@ results/*
 .cache/
 # Output of scripts/lint-generated-nextflow.sh
 .lint-nextflow/
+.bioflow-cross-check/
 
 # macOS metadata files (anywhere in the tree)
 .DS_Store

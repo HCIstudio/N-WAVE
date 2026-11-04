@@ -36,6 +36,7 @@ concurrency:
 env:
   BACKEND_IMAGE: hcistudio/nwave-backend
   FRONTEND_IMAGE: hcistudio/nwave-frontend
+  BIOFLOW_IMAGE: hcistudio/nwave-bioflow
 
 jobs:
   # Decide the next version once, so every downstream job uses the same number.
@@ -200,6 +201,19 @@ jobs:
           cache-from: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.FRONTEND_IMAGE }}:buildcache,mode=max
 
+      - name: Build & push the workflow analysis
+        uses: docker/build-push-action@v7
+        with:
+          # BioFlow-Insight (backend/bioflow); the backend runs the image of its own version.
+          context: ./backend/bioflow
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ env.BIOFLOW_IMAGE }}:latest
+            ${{ env.BIOFLOW_IMAGE }}:${{ needs.version.outputs.version }}
+          cache-from: type=registry,ref=${{ env.BIOFLOW_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.BIOFLOW_IMAGE }}:buildcache,mode=max
+
       - name: Commit version bump and tag
         run: |
           version="${{ needs.version.outputs.version }}"
@@ -233,6 +247,7 @@ jobs:
             **Docker images** (linux/amd64 and linux/arm64)
             - `${{ env.BACKEND_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`)
             - `${{ env.FRONTEND_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`)
+            - `${{ env.BIOFLOW_IMAGE }}:${{ needs.version.outputs.version }}` (also `:latest`): the workflow analysis, downloaded on first use
 
             **Run it**
             ```bash

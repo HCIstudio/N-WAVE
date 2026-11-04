@@ -156,6 +156,30 @@ export const executeRequestSchema = z
   });
 export type ExecuteRequestBody = z.infer<typeof executeRequestSchema>;
 
+/** A file of a project, by path from its folder (`modules/local/x/main.nf`). */
+const projectFilePath = z
+  .string()
+  .max(1_024)
+  .refine(
+    (value) =>
+      value !== "" &&
+      !value.includes("\\") &&
+      !value.startsWith("/") &&
+      !value.split("/").some((part) => part === ".." || part === ""),
+    { message: "must be a path inside the project" }
+  );
+
+export const bioflowAnalysisSchema = z.object({
+  nextflowScript: z.string().min(1).max(MAX_SCRIPT_LENGTH),
+  /** Other files of the project (an imported project's local modules). */
+  files: z
+    .record(projectFilePath, z.string().max(MAX_SCRIPT_LENGTH))
+    .refine((files) => Object.keys(files).length <= MAX_INPUT_FILES, {
+      message: `at most ${MAX_INPUT_FILES} files are allowed`,
+    })
+    .optional(),
+});
+
 export const workflowCacheQuerySchema = z.object({
   workflowId: z.string().min(1).max(255),
 });

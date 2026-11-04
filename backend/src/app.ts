@@ -12,6 +12,7 @@ import customNodeRoutes from "./routes/customNodeRoutes";
 import pipelineRoutes from "./routes/pipelineRoutes";
 import settingsRoutes from "./routes/settingsRoutes";
 import activityRoutes from "./routes/activityRoutes";
+import analysisRoutes from "./routes/analysisRoutes";
 import { getErrorMessage } from "./utils/errors";
 
 /** Maximum JSON/urlencoded request body; input file contents travel inline. */
@@ -62,6 +63,7 @@ export const createApp = (): Express => {
   app.use("/api/pipelines", pipelineRoutes);
   app.use("/api/settings", settingsRoutes);
   app.use("/api/activity", activityRoutes);
+  app.use("/api/analysis", analysisRoutes);
 
   // Whether N-WAVE answers (pages watch this to notice it went away and came back).
   app.get("/api/health", (_req: Request, res: Response) => {

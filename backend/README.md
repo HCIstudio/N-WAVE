@@ -44,6 +44,7 @@ in `src/validation/schemas.ts`; invalid requests get `400` with `{ message, erro
 | `GET /pipelines/workflow-file?name=&version=&path=` | A pipeline's `main.nf`, or a file under `workflows/` or `subworkflows/`, for the steps inside a Pipeline node (cached per release). |
 | `GET/POST/DELETE /activity`, `GET /activity/summary`, `PUT /activity/settings` | Verbose mode's activity log: record events (only while it's on), read them by time (`from`, `to`) or marked test (`test`), clear it, and how long to keep them. |
 | `GET/PUT /settings`, `PUT /settings/features` | Global Settings: the run defaults, and the feature switches with the ones the installation fixes (`NWAVE_FEATURES`, `NWAVE_FEATURES_FILE`; changing those gets `409`). |
+| `GET /analysis/bioflow`, `POST /analysis/bioflow` | Whether workflows can be analysed here, and analysing one (`{ nextflowScript, files? }`) with BioFlow-Insight in its container (`bioflow/`); `503` when the analysis isn't available. |
 
 ## Structure
 
@@ -51,6 +52,8 @@ in `src/validation/schemas.ts`; invalid requests get `400` with `{ message, erro
 - `src/execution/`: setting up and starting runs (run folder, Nextflow command, resources,
   run profiles, the runner)
 - `src/runs/`: run history, task events and run caches
+- `src/analysis/`, `bioflow/`: the workflow analysis with BioFlow-Insight (its image and
+  the JSON it returns, see `bioflow/README.md`)
 - `src/nfcore/`, `src/pipelines/`: installing nf-core components; pipeline schemas and versions
 - `src/workflows/`: built-in demos, import and materializing
 - `src/validation/`, `src/models/`, `src/routes/`, `src/config/`, `src/utils/`

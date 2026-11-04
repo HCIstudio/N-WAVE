@@ -53,3 +53,27 @@ updates:
       # Node major upgrades are deliberate (CI pins Node 20 too).
       - dependency-name: node
         update-types: ["version-update:semver-major"]
+
+  # The workflow analysis (backend/bioflow): BioFlow-Insight only, one version
+  # at a time and never merged on its own. Its dependencies stay as pinned
+  # until an update needs others. Every update goes through
+  # backend/bioflow/UPDATING.md.
+  - package-ecosystem: pip
+    directory: /backend/bioflow
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    labels: [bioflow-update]
+    allow:
+      - dependency-name: bioflow-insight
+
+  - package-ecosystem: docker
+    directory: /backend/bioflow
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 1
+    labels: [bioflow-update]
+    ignore:
+      # bioflow-insight 2.1.1 needs numpy 1.26, which installs on Python 3.12 at most.
+      - dependency-name: python
+        versions: [">=3.13"]
