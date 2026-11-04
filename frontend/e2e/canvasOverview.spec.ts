@@ -96,3 +96,32 @@ test("opens the steps inside nf-core/rnaseq as a pipeline node", async ({ page }
   await view.getByRole("button", { name: "Close the steps inside" }).click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
 });
+
+test("copies a subworkflow into a new, editable workflow", async ({ page }) => {
+  await page.route("https://raw.githubusercontent.com/nf-core/modules/**", (route) => {
+    const url = route.request().url();
+    const body = url.endsWith("subworkflows/nf-core/bam_sort_stats_samtools/main.nf")
+      ? fixture("nfcore-bam_sort_stats_samtools.main.nf")
+      : url.endsWith("subworkflows/nf-core/bam_stats_samtools/main.nf")
+        ? fixture("nfcore-bam_stats_samtools.main.nf")
+        : "process STAND_IN {\n}\n";
+    return route.fulfill({ contentType: "text/plain", body });
+  });
+  await page.goto("./workflow/builtin:rnaseq-star-salmon");
+  const subworkflow = page.locator('[data-id="bam_sort_stats"]');
+  await subworkflow.getByRole("button", { name: /^Step in/ }).click();
+  const view = page.getByRole("dialog", { name: "SAMtools sort, index, stats" });
+  await expect(view.getByText("SAMTOOLS_SORT", { exact: true })).toBeVisible();
+  await view.getByRole("button", { name: "Copy into new workflow" }).click();
+
+  // A new workflow opens with the subworkflow's steps, its inputs and outputs.
+  await expect(page).toHaveURL(/\/workflow\/(?!builtin:)[^/]+$/);
+  await expect(page.getByText(/is a new workflow with the subworkflow's steps/)).toBeVisible();
+  for (const label of ["SAMTOOLS_SORT", "SAMTOOLS_INDEX", "BAM_STATS_SAMTOOLS", "Parameters", "Fasta fai", "Idxstats output"]) {
+    await expect(page.locator(".react-flow__node").filter({ hasText: label }).first()).toBeVisible();
+  }
+  // What wasn't copied is named above the canvas.
+  await expect(page.getByText(/modules\.config \(ext\.args, ext\.prefix\)/)).toBeVisible();
+  // Steps can be changed: the copy isn't read-only.
+  await expect(page.getByRole("button", { name: "Make a copy" })).toHaveCount(0);
+});

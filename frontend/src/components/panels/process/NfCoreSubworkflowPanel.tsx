@@ -1,7 +1,8 @@
 import type React from "react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import type { Node } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
+import { useCopySubworkflow } from "../../../workflows/copySubworkflowWorkflow";
 import type { NfCoreSubworkflowTake } from "../../../registry/nfcore/subworkflow";
 import type { NodeData } from "../../nodes/BaseNode";
 import NfCoreValueInputs from "./NfCoreValueInputs";
@@ -23,6 +24,8 @@ const NfCoreSubworkflowPanel: React.FC<NfCoreSubworkflowPanelProps> = ({
 }) => {
   const fieldId = useId();
   const { edges } = useWorkflowContext();
+  const copySubworkflow = useCopySubworkflow();
+  const [copying, setCopying] = useState(false);
   const takes: NfCoreSubworkflowTake[] = Array.isArray(
     node.data.nfcoreSubworkflowTakes,
   )
@@ -52,6 +55,24 @@ const NfCoreSubworkflowPanel: React.FC<NfCoreSubworkflowPanelProps> = ({
         <p className="mt-1 text-sm text-text-light">
           {node.data.nwaveNfCoreModuleId || "Installed nf-core subworkflow"}
         </p>
+        {copySubworkflow && typeof node.data.nwaveNfCoreModuleId === "string" && (
+          <div className="mt-2">
+            <button
+              type="button"
+              disabled={copying}
+              onClick={() => {
+                setCopying(true);
+                void copySubworkflow(String(node.data.nwaveNfCoreModuleId)).finally(() => setCopying(false));
+              }}
+              className="rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent disabled:opacity-60"
+            >
+              {copying ? "Copying…" : "Copy into new workflow"}
+            </button>
+            <p className="mt-1 text-xs text-text-light">
+              A new workflow with its steps, to change as you like. This node stays as it is.
+            </p>
+          </div>
+        )}
       </div>
 
       {node.data.nwaveNfCoreOutdated && (

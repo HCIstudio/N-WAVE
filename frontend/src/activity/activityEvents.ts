@@ -47,6 +47,8 @@ export const ACTIVITY_TYPES = {
   redo: "Redo",
   /** `format` (nextflow, json). */
   "workflow.imported": "A workflow was imported",
+  /** `subworkflow`, `workflowId`, `nodes`. */
+  "workflow.copiedSubworkflow": "An nf-core subworkflow was copied into a new workflow",
   /** `kind` (script, project). */
   "workflow.exported": "A workflow was exported",
   /** `label`. */

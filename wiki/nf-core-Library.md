@@ -43,6 +43,31 @@ and **Demo 3** show both. Settings are described in the
 Each module's outputs are copied to `results/<node name>/`, like nf-core pipelines lay out
 their results.
 
+## Copying a subworkflow
+
+An nf-core subworkflow node runs the subworkflow as nf-core publishes it, so its steps can't
+be changed on the canvas. To change them, **Step in** and choose **Copy into new workflow**
+(also in the node's panel). N-WAVE opens a new workflow with:
+
+| In the subworkflow | In the copy |
+| --- | --- |
+| Modules and subworkflows it calls | nf-core nodes (missing ones are offered for install); subworkflows inside can be copied in turn |
+| Its inputs (`take:`): reads | A **Samplesheet** node |
+| Its inputs: reference files (genome, index, annotation) | File parameters in a **Parameters** node; a reference of several files (`[ meta, fasta, fai ]`) is built from them by a channel operator where a step takes it as one |
+| Its inputs: other files (a BAM per sample) | A **File Input** node |
+| Its inputs: values (`save_unaligned`, `pseudo_aligner`) | Parameters at their defaults, which the steps and code read as `params.<name>` |
+| Its outputs (`emit:`) | **Display Output** nodes (not `versions`) |
+| How steps pass channels | Connections, also through variables in between |
+| Channel code (`join`, `map`, `branch`, an `if` choosing a tool) | Channel operator nodes, with the code as written |
+
+What a copy can't bring is named above its canvas:
+
+- settings nf-core pipelines give modules in their `modules.config` (`ext.args`, `ext.prefix`),
+  which aren't part of the subworkflow: set them on each step;
+- outputs it can't trace to a step, and inputs with several files that go into channel code.
+
+The copy is a workflow like any other: it runs, exports and imports as such.
+
 ## Whole pipelines
 
 The **nf-core Pipeline** node runs a complete pipeline, such as nf-core/rnaseq, instead of
