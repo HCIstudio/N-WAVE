@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Node } from "@xyflow/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -35,7 +35,15 @@ const { resetFeatures } = await import("../../../settings/useFeatures");
 const { recorded, startRecording, stopRecording } = await import("../../../activity/activityTesting");
 // Loaded after the panel: loading the node definitions first goes through an
 // import cycle that leaves registry/index without their exports.
-const { nodeDefinitions } = await import("../../../registry/nodeDefinitions");
+const {
+  nodeDefinitions,
+  registerDynamicNodeDefinitions,
+  unregisterDynamicNodeDefinitions,
+} = await import("../../../registry/nodeDefinitions");
+const { buildNfCoreManifest } = await import("../../../registry/nfcore/manifest");
+const { createNodeDefinitionFromNfCoreManifest } = await import(
+  "../../../registry/nfcoreModuleAdapters"
+);
 
 // Built like src/test/nodes.ts's makeNode, which .tsx tests can't import:
 // tsconfig.app.json type-checks them but excludes src/test.
@@ -57,6 +65,21 @@ const makeNode = (
     },
   };
 };
+// A trimmed nf-core catalog entry (tsconfig.app.json, which type-checks
+// .tsx tests, doesn't include the bundled catalog.json).
+const salmonDefinition = createNodeDefinitionFromNfCoreManifest(
+  buildNfCoreManifest({
+    id: "nf-core/salmon/quant",
+    modulePath: "salmon/quant",
+    label: "salmon_quant",
+    description: "Quantify transcripts with Salmon",
+    processName: "SALMON_QUANT",
+    inputs: ["reads", "index"],
+    emits: ["results"],
+    support: "candidate",
+  }),
+);
+
 type Props = React.ComponentProps<typeof PropertiesPanel>;
 
 const show = (props: Partial<Props> = {}, ran = false) => {
@@ -167,6 +190,28 @@ describe("PropertiesPanel", () => {
       expect(screen.getByText(/isn't installed on this server yet/)).toBeTruthy();
       // Ports come from the node, or from its definition when it has none.
       expect(screen.getByText("Docs of samtools/sort: bam /")).toBeTruthy();
+    });
+
+    it("shows a module's settings once it is registered after the panel opened", () => {
+      // After a reload a saved node is shown before the installed modules are
+      // loaded into the registry.
+      const definition = salmonDefinition;
+      show({
+        node: {
+          id: "salmon",
+          type: definition.type,
+          position: { x: 0, y: 0 },
+          data: { label: definition.label, ...definition.defaults },
+        },
+      });
+      expect(screen.getByText(/isn't installed on this server yet/)).toBeTruthy();
+
+      try {
+        act(() => registerDynamicNodeDefinitions([definition]));
+        expect(screen.queryByText(/isn't installed on this server yet/)).toBeNull();
+      } finally {
+        act(() => unregisterDynamicNodeDefinitions([definition.id]));
+      }
     });
 
     it("can't be edited while the workflow runs", () => {

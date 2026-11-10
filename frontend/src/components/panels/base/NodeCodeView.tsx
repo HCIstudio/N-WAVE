@@ -5,6 +5,7 @@ import type { Node } from "@xyflow/react";
 import { getNfCoreModuleSource } from "../../../api/nfcore";
 import { isNfCoreSubworkflowId } from "../../../registry/nfcore/subworkflow";
 import { getNodeCode } from "../../../registry/nodeCode";
+import { useNodeDefinitionsVersion } from "../../../registry/useNodeDefinitionsVersion";
 import { getErrorMessage } from "../../../utils/errors";
 import CodeBlock from "../../common/data/CodeBlock";
 import type { NodeData } from "../../nodes/BaseNode";
@@ -43,7 +44,11 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
   onConvertToCustom,
   onEditCustomNode,
 }) => {
-  const code = useMemo(() => getNodeCode(node), [node]);
+  // The node's module may be registered only after the panel opened (the
+  // installed list loads after a reload), so recompute when it is.
+  const registryVersion = useNodeDefinitionsVersion();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: registryVersion changes what getNodeCode finds in the registry
+  const code = useMemo(() => getNodeCode(node), [node, registryVersion]);
   // An nf-core node whose module isn't installed has no code yet, but its
   // module's source can still be shown.
   const uninstalledModuleId =

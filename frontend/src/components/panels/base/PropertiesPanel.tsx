@@ -7,6 +7,7 @@ import type { NodeData, PortData } from "../../nodes/BaseNode";
 import ConfirmDialog from "../../common/dialogs/ConfirmDialog";
 import OperatorNodePanel from "../operator/OperatorNodePanel";
 import { getNodeDefinitionForNode } from "../../../registry";
+import { useNodeDefinitionsVersion } from "../../../registry/useNodeDefinitionsVersion";
 import NodeCodeView from "./NodeCodeView";
 import NodeRunResults from "./NodeRunResults";
 import NfCoreModuleDocs from "../process/NfCoreModuleDocs";
@@ -197,6 +198,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     isDragging ? "cursor-move" : "cursor-move"
   }`;
 
+  // Re-render when installed modules are registered after the panel opened,
+  // so their settings replace the "not installed" note.
+  useNodeDefinitionsVersion();
   const definition = getNodeDefinitionForNode(node);
   const nfCoreModuleId =
     typeof node.data.nwaveNfCoreModuleId === "string"
