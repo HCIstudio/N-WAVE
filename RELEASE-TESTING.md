@@ -127,6 +127,9 @@ or has an issue that is explicitly moved to a later release.
 
 - [ ] **Export** in the bottom bar opens one dialog: **Download script**, **Copy script** (the
       script on the clipboard), **Download project** and **Download DAW model** each do what it says.
+- [ ] **Diagram** in the Export dialog: SVG, PNG, Mermaid and Dot of the canvas open in a browser,
+      an image viewer, mermaid.live and Graphviz; after **Analyse**, the same for the analysis's
+      steps and channels.
 - [ ] **Export** → **Download project**: the zip runs with plain Nextflow (`nextflow run main.nf -profile docker`)
       without N-WAVE, and gives the same results. Its README is right.
 - [ ] Exporting the same workflow twice gives identical files.

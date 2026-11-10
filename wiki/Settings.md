@@ -145,7 +145,7 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `nested.opened` | The steps inside a subworkflow or pipeline node were opened | `nodeId` (from the canvas) or `step` (from inside), `depth` |
 | `help.opened`, `glossary.opened`, `code.opened` | Help, a glossary explanation (`term`) or a node's Code tab (`nodeId`) was opened | |
 | `undo`, `redo` | Undo or redo | |
-| `workflow.imported`, `workflow.exported` | A workflow was imported (`format`: nextflow or daw-model) or exported (`kind`: script, script-copy, project or daw-model) | |
+| `workflow.imported`, `workflow.exported` | A workflow was imported (`format`: nextflow or daw-model) or exported (`kind`: script, script-copy, project, daw-model or diagram, with its `source` and `format`) | |
 | `test.started`, `test.ended` | A marked test began or ended | `label` |
 
 **Not recorded:** names, what is typed into fields, file contents and parameter values. An

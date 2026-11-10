@@ -57,6 +57,7 @@ import NestedView from "../components/canvas/NestedView";
 import AnalysisPanel from "../components/canvas/AnalysisPanel";
 import AnalyseButton from "../components/canvas/AnalyseButton";
 import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
+import type { DiagramFormat } from "../export/diagrams";
 import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
@@ -78,6 +79,9 @@ import {
   downloadDawModel,
   downloadScript,
   copyScript,
+  type DiagramSource,
+  diagramSources,
+  downloadDiagram,
   exportProject,
   type WorkflowSource,
 } from "./workflow/workflowExport";
@@ -466,6 +470,21 @@ const WorkflowPageContent: React.FC = () => {
     }
   };
 
+  // The analysis's graphs, while it is of the workflow's steps as they are.
+  const analysedStructure =
+    analysis.structureCurrent && analysis.analysis?.bioflow.status === "done"
+      ? analysis.analysis.bioflow.result
+      : null;
+
+  const handleDiagram = async (which: string, format: DiagramFormat) => {
+    try {
+      const fileName = await downloadDiagram(workflowSource, which as DiagramSource, format, analysedStructure);
+      showToast(`Exported ${fileName}.`, "success");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Couldn't draw the diagram.");
+    }
+  };
+
   const handleExportDawModel = () => {
     const fileName = downloadDawModel(workflowSource);
     showToast(`Exported ${fileName}: the workflow as a DAW model. Import it in N-WAVE to get this canvas back.`, "success");
@@ -713,6 +732,8 @@ const WorkflowPageContent: React.FC = () => {
             onCopyScript: handleCopyScript,
             onExportProject: handleExportProject,
             onExportDawModel: handleExportDawModel,
+            diagramSources: diagramSources(analysedStructure),
+            onDiagram: handleDiagram,
           }}
           isExporting={isExporting}
           onRun={() => run.run(runSettings, { resume: resume.resume })}

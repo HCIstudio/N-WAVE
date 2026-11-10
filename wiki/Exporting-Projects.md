@@ -7,6 +7,7 @@ choices; they work in the [browser demo](https://hcistudio.github.io/N-WAVE/) to
 | **Download script** | The generated script (`<workflow>.nf`) on its own. **Copy script** puts it on the clipboard. |
 | **Download project** | A zip with everything the run needs. |
 | **Download DAW model** | The workflow as a [DAW model](https://github.com/HCIstudio/N-WAVE/wiki/DAW-Model), for other tools. |
+| **Diagram** | A picture of the workflow: **SVG** or **PNG** for papers and slides, or **Mermaid** and **Dot** text that Mermaid and Graphviz draw. Of the canvas as drawn (notes left out, one arrow per pair of steps), or, after **Analyse**, of the steps and channels BioFlow-Insight found ([Workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis)). |
 
 ## The project
 

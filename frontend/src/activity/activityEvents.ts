@@ -64,7 +64,7 @@ export const ACTIVITY_TYPES = {
   "workflow.imported": "A workflow was imported",
   /** `subworkflow`, `workflowId`, `nodes`. */
   "workflow.copiedSubworkflow": "An nf-core subworkflow was copied into a new workflow",
-  /** `kind` (script, script-copy, project, daw-model). */
+  /** `kind` (script, script-copy, project, daw-model, diagram); a diagram's `source` (canvas, steps, channels) and `format`. */
   "workflow.exported": "A workflow was exported",
   /** `label`. */
   "test.started": "A marked test started",

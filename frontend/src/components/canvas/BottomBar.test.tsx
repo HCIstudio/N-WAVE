@@ -146,6 +146,25 @@ describe("BottomBar", () => {
       }
     });
 
+    it("exports a diagram of the source and in the format chosen", async () => {
+      const onDiagram = vi.fn();
+      show({
+        exports: {
+          onDownload: vi.fn(),
+          onDiagram,
+          diagramSources: [
+            { id: "canvas", label: "The canvas, as drawn" },
+            { id: "steps", label: "Analysis: steps" },
+          ],
+        },
+      });
+      const user = userEvent.setup();
+      await user.click(button("Export"));
+      await user.selectOptions(screen.getByLabelText("Of"), "steps");
+      await user.click(button("Download diagram as SVG"));
+      expect(onDiagram).toHaveBeenCalledWith("steps", "svg");
+    });
+
     it("offers only the exports it has handlers for", async () => {
       show();
       await userEvent.setup().click(button("Export"));
