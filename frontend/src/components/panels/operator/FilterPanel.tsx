@@ -3,22 +3,17 @@ import { useCallback } from "react";
 import type { Node } from "@xyflow/react";
 import type { NodeData, FileObject } from "../../nodes/BaseNode";
 
-import { SelectField, InputField, CheckboxField } from "../../common";
-import BaseOperatorPanel, {
-  type InjectedOperatorProps,
-} from "./BaseOperatorPanel";
+import { SelectField, InputField, CheckboxField, OperatorHeader } from "../../common";
+import { useOperatorPanel } from "../../../hooks";
 
 interface FilterPanelProps {
   node: Node<NodeData>;
   onSave: (nodeId: string, data: Partial<NodeData>) => void;
 }
 
-const FilterPanelContent: React.FC<InjectedOperatorProps> = ({
-  nodeData = {},
-  handleDataChange = () => {},
-  incomingFiles = [],
-  node,
-}) => {
+const FilterPanel: React.FC<FilterPanelProps> = ({ node, onSave }) => {
+  const { incomingFiles, handleDataChange } = useOperatorPanel(node, onSave);
+  const nodeData = node.data;
   const {
     filterText = "",
     filterMode = "contains",
@@ -27,7 +22,7 @@ const FilterPanelContent: React.FC<InjectedOperatorProps> = ({
   } = nodeData;
 
   // Create unique IDs for this specific node to avoid conflicts
-  const nodeId = node?.id || "unknown";
+  const nodeId = node.id;
   const selectAllId = `selectAll-${nodeId}`;
 
   const handleFileSelectionChange = useCallback(
@@ -69,8 +64,8 @@ const FilterPanelContent: React.FC<InjectedOperatorProps> = ({
     incomingFiles.every((file) => isFileSelected(file));
 
   return (
-    <>
-      {/* Custom file selection for Filter */}
+    <div className="space-y-3">
+      <OperatorHeader title="Filter" />
       <div className="space-y-2 mb-4">
         <h3 className="text-md font-semibold text-text border-b border-accent pb-2">
           File Selection
@@ -156,20 +151,7 @@ const FilterPanelContent: React.FC<InjectedOperatorProps> = ({
         checked={filterNegate}
         onChange={(e) => handleDataChange("filterNegate", e.target.checked)}
       />
-    </>
-  );
-};
-
-const FilterPanel: React.FC<FilterPanelProps> = ({ node, onSave }) => {
-  return (
-    <BaseOperatorPanel
-      node={node}
-      onSave={onSave}
-      title="Filter"
-      showFileSelection={false} // We handle file selection custom in FilterPanelContent
-    >
-      <FilterPanelContent key={node.id} />
-    </BaseOperatorPanel>
+    </div>
   );
 };
 

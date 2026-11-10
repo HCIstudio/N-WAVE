@@ -1,36 +1,28 @@
-import type React from "react";
+// The Map operator's settings: change each line's case, or replace text.
+
 import type { Node } from "@xyflow/react";
+import type React from "react";
+import { useOperatorPanel } from "../../../hooks";
+import { InputField, OperatorHeader, SelectField } from "../../common";
 import type { NodeData } from "../../nodes/BaseNode";
 
-import { SelectField, InputField } from "../../common";
-import BaseOperatorPanel, {
-  type InjectedOperatorProps,
-} from "./BaseOperatorPanel";
-
-interface MapPanelProps {
+const MapPanel: React.FC<{
   node: Node<NodeData>;
   onSave: (nodeId: string, data: Partial<NodeData>) => void;
-}
-
-const MapPanelContent: React.FC<InjectedOperatorProps> = ({
-  nodeData = {},
-  handleDataChange = () => {},
-}) => {
-  const {
-    mapOperation = "changeCase",
-    mapChangeCase = "toUpperCase",
-    mapReplaceFind = "",
-    mapReplaceWith = "",
-  } = nodeData;
+}> = ({ node, onSave }) => {
+  const { handleDataChange: set } = useOperatorPanel(node, onSave);
+  const { mapOperation = "changeCase", mapChangeCase = "toUpperCase", mapReplaceFind = "", mapReplaceWith = "" } =
+    node.data;
 
   return (
-    <>
+    <div className="space-y-3">
+      <OperatorHeader title="Map" />
       <SelectField
         label="Transformation"
         id="mapOperation"
         name="mapOperation"
         value={mapOperation}
-        onChange={(e) => handleDataChange("mapOperation", e.target.value)}
+        onChange={(e) => set("mapOperation", e.target.value)}
       >
         <option value="changeCase">Change Case</option>
         <option value="replaceText">Replace Text</option>
@@ -42,7 +34,7 @@ const MapPanelContent: React.FC<InjectedOperatorProps> = ({
           id="mapChangeCase"
           name="mapChangeCase"
           value={mapChangeCase}
-          onChange={(e) => handleDataChange("mapChangeCase", e.target.value)}
+          onChange={(e) => set("mapChangeCase", e.target.value)}
         >
           <option value="toUpperCase">Uppercase</option>
           <option value="toLowerCase">Lowercase</option>
@@ -56,7 +48,7 @@ const MapPanelContent: React.FC<InjectedOperatorProps> = ({
             id="mapReplaceFind"
             name="mapReplaceFind"
             value={mapReplaceFind}
-            onChange={(e) => handleDataChange("mapReplaceFind", e.target.value)}
+            onChange={(e) => set("mapReplaceFind", e.target.value)}
             placeholder="Text to find"
           />
           <InputField
@@ -64,20 +56,12 @@ const MapPanelContent: React.FC<InjectedOperatorProps> = ({
             id="mapReplaceWith"
             name="mapReplaceWith"
             value={mapReplaceWith}
-            onChange={(e) => handleDataChange("mapReplaceWith", e.target.value)}
+            onChange={(e) => set("mapReplaceWith", e.target.value)}
             placeholder="Text to replace with"
           />
         </div>
       )}
-    </>
-  );
-};
-
-const MapPanel: React.FC<MapPanelProps> = ({ node, onSave }) => {
-  return (
-    <BaseOperatorPanel node={node} onSave={onSave} title="Map">
-      <MapPanelContent />
-    </BaseOperatorPanel>
+    </div>
   );
 };
 
