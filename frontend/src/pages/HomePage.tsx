@@ -19,7 +19,6 @@ import api, { isDemoMode } from "../api";
 import {
   ConfirmDialog,
   ActionDialog,
-  Modal,
   Toast,
   type ActionButtonProps,
 } from "../components/common";
@@ -29,14 +28,10 @@ import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
 import { DEFAULT_EXECUTION_SETTINGS } from "./workflow/executionSettings";
-import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
-import { importDawWorkflow } from "../workflows/importDawWorkflow";
-import { looksLikeDawModel } from "../metamodel/dawModel";
-import { type ImportProject, readFolder, readProject, readZip } from "../workflows/import/readProject";
-import { logActivity } from "../activity/activityLog";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
 import NodeKindLegend from "../components/common/workflow/NodeKindLegend";
 import RunsOverview from "./home/RunsOverview";
+import ImportWorkflowDialog from "./home/ImportWorkflowDialog";
 import { useFeature } from "../settings/useFeatures";
 import { WORKFLOW_TEMPLATES } from "../templates/workflowTemplates";
 import { useRunsOverview } from "./home/useRunsOverview";
@@ -63,6 +58,12 @@ const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
 const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
 const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
 const TUTORIAL_VERSION = "custom-nodes-v3";
+
+const HEADER_BUTTON = "inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors";
+const FOOTER_LINK = "underline-offset-2 hover:text-text hover:underline";
+const LOGO_LINK = "shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md";
+
+const REVEAL_ON_HOVER = "opacity-0 group-hover:opacity-100 transition-opacity";
 
 const PILL_CLASS =
   "rounded-full bg-background px-2 py-0.5 text-xs text-text-light";
@@ -138,18 +139,9 @@ const HomePage: React.FC = () => {
   const [workflowToDelete, setWorkflowToDelete] = useState<string | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isNewWorkflowOpen, setIsNewWorkflowOpen] = useState(false);
-  const [importName, setImportName] = useState("");
-  const [importDescription, setImportDescription] = useState("");
-  const [importSource, setImportSource] = useState("");
-  const [importFileName, setImportFileName] = useState("");
-  /** A whole project (zip or folder): its other files go with the main script. */
-  const [importProject, setImportProject] = useState<ImportProject | null>(null);
-  const [isImporting, setIsImporting] = useState(false);
   const nameTextareaRef = useRef<HTMLTextAreaElement>(null);
   const descriptionTextareaRef = useRef<HTMLTextAreaElement>(null);
   const editingCardRef = useRef<HTMLDivElement>(null);
-  const importFileInputRef = useRef<HTMLInputElement>(null);
-  const importFolderInputRef = useRef<HTMLInputElement>(null);
   const navigate = useNavigate();
   // Global Settings → Features: without templates, no demos (and no tutorial,
   // which starts from one), and New Workflow starts empty.
@@ -365,110 +357,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const resetImportForm = () => {
-    setImportName("");
-    setImportDescription("");
-    setImportSource("");
-    setImportFileName("");
-    setImportProject(null);
-    if (importFileInputRef.current) {
-      importFileInputRef.current.value = "";
-    }
-    if (importFolderInputRef.current) {
-      importFolderInputRef.current.value = "";
-    }
-  };
-
-  /** Show a project's main script, keeping its other files for the import. */
-  const showImportProject = (project: ImportProject, label: string) => {
-    setImportProject(project);
-    setImportSource(project.source);
-    const scripts = Object.keys(project.files).filter((path) => path.endsWith(".nf")).length;
-    setImportFileName(`${label} (${project.path}, ${scripts} Nextflow file${scripts === 1 ? "" : "s"})`);
-    if (!importName.trim()) setImportName(label.replace(/\.zip$/, "").replace(/_/g, " "));
-  };
-
-  const handleImportFolderChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const chosen = Array.from(e.target.files ?? []);
-    if (chosen.length === 0) return;
-    try {
-      const folder = chosen[0].webkitRelativePath.split("/")[0] || "Project";
-      showImportProject(readProject(await readFolder(chosen)), folder);
-    } catch (err) {
-      reportActionError("Failed to read the project folder.", err);
-    }
-  };
-
-  const handleImportFileChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    try {
-      // A zip by its content (`PK`), whatever its name.
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      if (bytes[0] === 0x50 && bytes[1] === 0x4b && bytes[2] === 0x03 && bytes[3] === 0x04) {
-        showImportProject(readProject(await readZip(bytes)), file.name);
-        return;
-      }
-      const content = await file.text();
-      setImportProject(null);
-      setImportSource(content);
-      setImportFileName(file.name);
-      if (!importName.trim()) {
-        setImportName(file.name.replace(/\.[^.]+$/, ""));
-      }
-    } catch (err) {
-      reportActionError("Failed to read import file.", err);
-    }
-  };
-
-  const handleImportWorkflow = async () => {
-    if (!importSource.trim()) {
-      setActionError("Nextflow source is required for import.");
-      return;
-    }
-
-    try {
-      setIsImporting(true);
-      // Parse the Nextflow source into a visual graph in the browser, then save
-      // it through the normal create endpoint (no dedicated import endpoint).
-      // A DAW model (JSON in the workflow metamodel) or Nextflow, by its content.
-      const isDawModel = !importProject && looksLikeDawModel(importSource);
-      const draft = isDawModel
-        ? await importDawWorkflow({
-            name: importName.trim() || undefined,
-            description: importDescription.trim() || undefined,
-            source: importSource,
-            sourceKey: importFileName || undefined,
-          })
-        : await importNextflowWorkflow({
-            name: importName.trim() || undefined,
-            description: importDescription.trim() || undefined,
-            rawSource: importSource,
-            sourceKey: importFileName || undefined,
-            ...(importProject
-              ? { files: importProject.files, path: importProject.path, config: importProject.config, inputs: importProject.inputs }
-              : {}),
-          });
-      const response = await api.post("/workflows", draft);
-      logActivity("workflow.imported", {
-        format: isDawModel ? "daw-model" : "nextflow",
-        workflowId: response.data._id,
-        nodes: draft.nodes.length,
-        edges: draft.edges.length,
-      });
-      setIsImportModalOpen(false);
-      resetImportForm();
-      navigate(`/workflow/${response.data._id}`);
-    } catch (err) {
-      reportActionError("Failed to import workflow.", err);
-    } finally {
-      setIsImporting(false);
-    }
-  };
-
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (editingId && e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -588,6 +476,7 @@ const HomePage: React.FC = () => {
     const changedAt =
       wf.updatedAt ?? (isBuiltinWorkflow(wf) ? buildInfo.buildDate : undefined);
     const lastRun = runsOverview.lastRuns.get(wf._id);
+    const isDuplicating = pendingAction === `duplicate:${wf._id}`;
 
     const cardContent = (
       <>
@@ -596,78 +485,58 @@ const HomePage: React.FC = () => {
         // whenever they show.
         <div
           className={`absolute top-4 right-2 z-10 flex items-center gap-1 rounded-md border border-transparent transition-colors group-hover:border-panel-border group-hover:bg-panel-background group-hover:shadow-sm ${
-            pendingAction === `duplicate:${wf._id}`
+            isDuplicating
               ? "border-panel-border bg-panel-background shadow-sm"
               : ""
           }`}
         >
           {isEditing ? (
-            <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleSave(wf._id);
+              }}
+              className="p-1 text-text-light hover:text-white"
+              aria-label="Save"
+            >
+              <Save size={16} />
+            </button>
+          ) : (
+            !isReadOnly && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (editingId) handleSave(editingId);
-                }}
-                className="p-1 text-text-light hover:text-white"
-                aria-label="Save"
+                onClick={(e) => handleEditClick(e, wf)}
+                className={`p-1 text-text-light hover:text-white ${REVEAL_ON_HOVER}`}
+                aria-label="Edit"
               >
-                <Save size={16} />
+                <Pencil size={16} />
               </button>
-              {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={(e) => handleDeleteClick(e, wf._id)}
-                  className="p-1 text-text-light hover:text-red-500"
-                  aria-label="Delete"
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </>
-          ) : (
-            <>
-              {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={(e) => handleEditClick(e, wf)}
-                  className="p-1 text-text-light hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Edit"
-                >
-                  <Pencil size={16} />
-                </button>
-              )}
-              {showDuplicate && (
-                <button
-                  type="button"
-                  onClick={(e) => handleDuplicate(e, wf._id)}
-                  disabled={pendingAction !== null}
-                  className={`p-1 text-text-light hover:text-white transition-opacity disabled:cursor-wait ${
-                    pendingAction === `duplicate:${wf._id}`
-                      ? "opacity-100"
-                      : "opacity-0 group-hover:opacity-100"
-                  }`}
-                  aria-label="Duplicate"
-                >
-                  {pendingAction === `duplicate:${wf._id}` ? (
-                    <Loader size={16} className="animate-spin" aria-hidden />
-                  ) : (
-                    <Copy size={16} />
-                  )}
-                </button>
-              )}
-              {!isReadOnly && (
-                <button
-                  type="button"
-                  onClick={(e) => handleDeleteClick(e, wf._id)}
-                  className="p-1 text-text-light hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                  aria-label="Delete"
-                >
-                  <Trash2 size={16} />
-                </button>
-              )}
-            </>
+            )
+          )}
+          {!isEditing && showDuplicate && (
+            <button
+              type="button"
+              onClick={(e) => handleDuplicate(e, wf._id)}
+              disabled={pendingAction !== null}
+              className={`p-1 text-text-light hover:text-white transition-opacity disabled:cursor-wait ${
+                isDuplicating ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+              }`}
+              aria-label="Duplicate"
+            >
+              {isDuplicating ? <Loader size={16} className="animate-spin" aria-hidden /> : <Copy size={16} />}
+            </button>
+          )}
+          {!isReadOnly && (
+            <button
+              type="button"
+              onClick={(e) => handleDeleteClick(e, wf._id)}
+              className={`p-1 text-text-light hover:text-red-500 ${isEditing ? "" : REVEAL_ON_HOVER}`}
+              aria-label="Delete"
+            >
+              <Trash2 size={16} />
+            </button>
           )}
         </div>
         )}
@@ -784,7 +653,7 @@ const HomePage: React.FC = () => {
                 <button
                   type="button"
                   onClick={retakeTutorial}
-                  className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                  className={HEADER_BUTTON}
                 >
                   Retake Tutorial
                 </button>
@@ -793,7 +662,7 @@ const HomePage: React.FC = () => {
                 href="https://github.com/HCIstudio/N-WAVE/wiki"
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                className={HEADER_BUTTON}
               >
                 <BookOpen size={16} />
                 <span>Wiki</span>
@@ -801,7 +670,7 @@ const HomePage: React.FC = () => {
               {glossaryOn && (
                 <Link
                   to="/help"
-                  className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                  className={HEADER_BUTTON}
                 >
                   <CircleHelp size={16} aria-hidden />
                   <span>Help</span>
@@ -810,7 +679,7 @@ const HomePage: React.FC = () => {
               <Link
                 to="/roadmap"
                 title="Where N-WAVE is going"
-                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                className={HEADER_BUTTON}
               >
                 <Signpost size={16} aria-hidden />
                 <span>Roadmap</span>
@@ -818,14 +687,14 @@ const HomePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                className={HEADER_BUTTON}
               >
                 <Upload size={16} />
                 <span>Import Workflow</span>
               </button>
               <Link
                 to="/settings"
-                className="inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors"
+                className={HEADER_BUTTON}
               >
                 <Settings size={16} aria-hidden />
                 <span>Global Settings</span>
@@ -946,119 +815,11 @@ const HomePage: React.FC = () => {
           message="You have unsaved changes. What would you like to do?"
           actions={unsavedChangesActions}
         />
-        <Modal
+        <ImportWorkflowDialog
           isOpen={isImportModalOpen}
-          onClose={() => {
-            if (!isImporting) {
-              setIsImportModalOpen(false);
-              resetImportForm();
-            }
-          }}
-          title="Import Nextflow Workflow"
-          footer={
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsImportModalOpen(false);
-                  resetImportForm();
-                }}
-                className="rounded-md bg-gray-200 px-4 py-2 text-gray-800 hover:bg-gray-300"
-                disabled={isImporting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleImportWorkflow}
-                className="rounded-md bg-nextflow-green px-4 py-2 text-white hover:bg-nextflow-green-dark disabled:opacity-50"
-                disabled={isImporting || !importSource.trim()}
-              >
-                {isImporting ? "Importing..." : "Import"}
-              </button>
-            </div>
-          }
-        >
-          <div className="space-y-4">
-            <div>
-              <label htmlFor={`${fieldId}-name`} className="mb-1 block text-sm text-text">Name</label>
-              <input
-                id={`${fieldId}-name`}
-                type="text"
-                value={importName}
-                onChange={(e) => setImportName(e.target.value)}
-                className="w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none"
-                placeholder="Imported Nextflow Workflow"
-              />
-            </div>
-            <div>
-              <label htmlFor={`${fieldId}-description`} className="mb-1 block text-sm text-text">Description</label>
-              <textarea
-                id={`${fieldId}-description`}
-                value={importDescription}
-                onChange={(e) => setImportDescription(e.target.value)}
-                className="w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none"
-                rows={2}
-                placeholder="Optional description"
-              />
-            </div>
-            <div>
-              <label htmlFor={`${fieldId}-nextflow-file`} className="mb-1 block text-sm text-text">
-                Nextflow File, Project Zip, Folder or DAW Model
-              </label>
-              <div className="flex gap-2">
-                <input
-                  id={`${fieldId}-nextflow-file`}
-                  ref={importFileInputRef}
-                  type="file"
-                  accept=".nf,.txt,.groovy,.zip,.json"
-                  onChange={handleImportFileChange}
-                  className="hidden"
-                />
-                <input
-                  ref={importFolderInputRef}
-                  type="file"
-                  aria-label="Nextflow project folder"
-                  // A whole project: main.nf with its modules and nextflow.config.
-                  {...{ webkitdirectory: "" }}
-                  onChange={handleImportFolderChange}
-                  className="hidden"
-                />
-                <button
-                  type="button"
-                  onClick={() => importFileInputRef.current?.click()}
-                  className="rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
-                >
-                  Choose File
-                </button>
-                <button
-                  type="button"
-                  onClick={() => importFolderInputRef.current?.click()}
-                  className="rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent"
-                >
-                  Choose Folder
-                </button>
-                <div className="flex min-w-0 items-center text-sm text-text-light">
-                  <span className="truncate">
-                    {importFileName || "No file selected"}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <label htmlFor={`${fieldId}-nextflow-source`} className="mb-1 block text-sm text-text">
-                Nextflow Source
-              </label>
-              <textarea
-                id={`${fieldId}-nextflow-source`}
-                value={importSource}
-                onChange={(e) => setImportSource(e.target.value)}
-                className="min-h-[220px] w-full rounded-md border border-gray-600 bg-accent p-2 font-mono text-sm text-text focus:border-nextflow-green focus:outline-none"
-                placeholder="Paste a Nextflow workflow (or a DAW model) here, or load a file."
-              />
-            </div>
-          </div>
-        </Modal>
+          onClose={() => setIsImportModalOpen(false)}
+          onError={(message, error) => (error === undefined ? setActionError(message) : reportActionError(message, error))}
+        />
         <footer className="relative z-30 border-t border-accent/60 bg-background px-8 py-4 text-xs text-text-light">
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
             <div className="flex shrink-0 items-center gap-3">
@@ -1066,7 +827,7 @@ const HomePage: React.FC = () => {
                 href="https://hcistudio.org"
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+                className={LOGO_LINK}
               >
                 <img
                   src={hcistudioLogo}
@@ -1078,7 +839,7 @@ const HomePage: React.FC = () => {
                 href="https://fonda.hu-berlin.de"
                 target="_blank"
                 rel="noreferrer"
-                className="shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md"
+                className={LOGO_LINK}
               >
                 <img src={fondaLogo} alt="FONDA" className="h-8 w-auto" />
               </a>
@@ -1086,14 +847,14 @@ const HomePage: React.FC = () => {
             <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
               <span>v{buildInfo.version}</span>
               <span>Built {buildInfo.displayBuildDate}</span>
-              <Link to="/references" className="underline-offset-2 hover:text-text hover:underline">
+              <Link to="/references" className={FOOTER_LINK}>
                 References
               </Link>
               <a
                 href="https://hcistudio.org/impressum/"
                 target="_blank"
                 rel="noreferrer"
-                className="underline-offset-2 hover:text-text hover:underline"
+                className={FOOTER_LINK}
               >
                 Legal Notice
               </a>
@@ -1101,7 +862,7 @@ const HomePage: React.FC = () => {
                 href="https://hcistudio.org/datenschutz/"
                 target="_blank"
                 rel="noreferrer"
-                className="underline-offset-2 hover:text-text hover:underline"
+                className={FOOTER_LINK}
               >
                 Privacy Policy
               </a>
@@ -1111,7 +872,7 @@ const HomePage: React.FC = () => {
                   href="https://github.com/HCIstudio/N-WAVE"
                   target="_blank"
                   rel="noreferrer"
-                  className="underline-offset-2 hover:text-text hover:underline"
+                  className={FOOTER_LINK}
                 >
                   View Source
                 </a>
