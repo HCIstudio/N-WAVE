@@ -25,7 +25,9 @@ diff -ru old new | less
    the project's changes (its repository and PyPI page). Note anything that
    changes what `analyse.py` calls (`Workflow`, `initialise_with_language_server`,
    `initialise_with_bioflow`, `get_process_dependency_graph_dico`,
-   `get_most_influential_conditions`, the abstractions, `get_object`).
+   `get_most_influential_conditions`, the abstractions, and the ids of its
+   graphs: memory addresses that `analyse.py` looks up among the live objects
+   instead of with the package's `get_object`).
 2. **The language server.** `src/language_server_source_code/language-server-all.jar`
    is a build of Nextflow's language server. Compare its hash with
    `language-server.sha256` (the image build fails when it differs). When it
