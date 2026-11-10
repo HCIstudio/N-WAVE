@@ -22,6 +22,9 @@ export const WIKI_PAGES = {
   Troubleshooting: "Troubleshooting",
   "How-N-WAVE-Explains-Things": "How N-WAVE explains things",
   "Workflow-Analysis": "Workflow analysis",
+  "DAW-Model": "DAW model",
+  "Running-the-nf-core-rnaseq-Example": "The nf-core/rnaseq pipeline example",
+  "RNA-seq-STAR-Salmon-Example": "RNA-seq from nodes",
 } as const;
 
 export type WikiPage = keyof typeof WIKI_PAGES;

@@ -40,7 +40,10 @@ test.describe("groups of steps", () => {
 
     // Grouped: one box instead of the two steps; Open goes back to them.
     const view = page.getByRole("group", { name: "Canvas view" });
-    await view.getByRole("button", { name: "Grouped" }).click();
+    await view.getByRole("button", { name: "Groups" }).click();
+    // A read-only view, drawn as a blueprint with its name in the title block.
+    await expect(page.locator('[data-blueprint="true"]')).toBeVisible();
+    await expect(page.getByRole("note", { name: "Read-only view" })).toContainText("Groups");
     await expect(filter).toBeHidden();
     const box = page.locator('.react-flow__node[data-id="group:BARRY_UPPERCASE"]');
     await expect(box).toContainText("Filter");
@@ -48,7 +51,8 @@ test.describe("groups of steps", () => {
     // Into the box from File Input, out of it into Merge.
     await expect(page.locator('[data-testid^="rf__edge-grouped:"]')).toHaveCount(2);
     await box.getByRole("button", { name: "Open" }).click();
-    await expect(view.getByRole("button", { name: "All" })).toHaveAttribute("aria-pressed", "true");
+    await expect(view.getByRole("button", { name: "Editor" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-blueprint="true"]')).toHaveCount(0);
     await expect(filter).toBeVisible();
 
     // The script: the group is a workflow the entry workflow calls.
@@ -62,7 +66,7 @@ test.describe("groups of steps", () => {
     // Ungroup: the steps on their own again.
     await frame.getByRole("button", { name: "Ungroup" }).click();
     await expect(frame).toHaveCount(0);
-    await expect(view.getByRole("button", { name: "Grouped" })).toHaveCount(0);
+    await expect(view.getByRole("button", { name: "Groups" })).toHaveCount(0);
   });
 
   test("groups what the analysis suggests", async ({ page }) => {

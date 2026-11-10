@@ -55,7 +55,8 @@ test.describe("node code view", () => {
     await expect(
       page.getByRole("button", { name: "Custom process" })
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: /^Process\b/ })).toHaveCount(
+    // In the node library (the bottom bar's "Process graph" view is no node).
+    await expect(page.getByRole("button", { name: /^Process\b(?! graph)/ })).toHaveCount(
       0
     );
   });

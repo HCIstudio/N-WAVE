@@ -208,13 +208,22 @@ request must pass, and how releases work. Bugs and ideas go to the
 
 ## Credits
 
-N-WAVE builds on published research tools, used as their authors publish them:
+N-WAVE builds on published work: [Nextflow](https://doi.org/10.1038/nbt.3820),
+[nf-core](https://doi.org/10.1038/s41587-020-0439-x) and the
+[nf-core/rnaseq](https://doi.org/10.5281/zenodo.1400710) pipeline (Demos 2 and 3), and the
+research tools below, used as their authors publish them. The **References** page in N-WAVE
+(linked in the home page's footer) lists each, with where N-WAVE uses it.
 
 - **BioFlow-Insight** (workflow analysis): Marchment, Brancotte, Schmit, Lemoine,
   Cohen-Boulakia: *BioFlow-Insight: facilitating reuse of Nextflow workflows with structure
   reconstruction and visualization*. NAR Genomics and Bioinformatics 6(3), lqae092, 2024.
   [doi:10.1093/nargab/lqae092](https://doi.org/10.1093/nargab/lqae092).
   Code: [gitlab.liris.cnrs.fr/sharefair/bioflow-insight](https://gitlab.liris.cnrs.fr/sharefair/bioflow-insight) (MIT).
+- **The DAW metamodel** (export and import as a DAW model): Hilbrich, Müller, Kulagina, Lazik,
+  De Mecquenem, Grunske: *A Consolidated View on Specification Languages for Data Analysis
+  Workflows*. ISoLA 2022, LNCS 13702, 201–215.
+  [doi:10.1007/978-3-031-19756-7_12](https://doi.org/10.1007/978-3-031-19756-7_12).
+  Metamodel and mappings: [github.com/CRC-FONDA/T1-DAW-Metamodel](https://github.com/CRC-FONDA/T1-DAW-Metamodel) (MIT).
 
 To cite N-WAVE, see [`CITATION.cff`](CITATION.cff).
 
