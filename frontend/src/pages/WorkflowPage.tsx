@@ -60,7 +60,7 @@ import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
 import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
-import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
+import CanvasViewSwitch, { VIEW_LABELS } from "../components/canvas/CanvasViewSwitch";
 import GroupDialog from "../components/canvas/GroupDialog";
 import { GroupActionsContext } from "../components/canvas/GroupNodes";
 import { useGroups } from "./workflow/useGroups";
@@ -220,7 +220,7 @@ const WorkflowPageContent: React.FC = () => {
   const [analysisOpen, setAnalysisOpen] = useState(false);
   // When steps run: the analysis's conditions with the Parameters node's values.
   const stepConditions = useStepConditions(analysis, nodes, useFeature("conditions") && analysisOn);
-  // All or Steps only, and the connections the code makes that the canvas doesn't show.
+  // The editor, the process graph or groups, and the connections the code makes that the canvas doesn't show.
   const canvasView = useCanvasView(nodes, edges, workflowName, {
     showCodeConnections: useFeature("connectionHints"),
   });
@@ -552,6 +552,7 @@ const WorkflowPageContent: React.FC = () => {
               nodes={canvasNodes}
               edges={canvasView.edges}
               readOnly={canvasView.view !== "all"}
+              blueprint={canvasView.view === "all" ? undefined : VIEW_LABELS[canvasView.view]}
               onNodesChange={guards.handleNodesChange}
               onEdgesChange={guards.handleEdgesChange}
               onConnect={guards.handleConnect}
@@ -597,13 +598,13 @@ const WorkflowPageContent: React.FC = () => {
               role="status"
               className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
             >
-              Grouped: each group of steps is one box. Open one to see and edit its steps.
+              Groups: each group of steps is one box. Open one to see and edit its steps.
               <button
                 type="button"
                 onClick={() => canvasView.setView("all")}
                 className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
               >
-                Back to All
+                Back to the editor
               </button>
             </div>
           )}
@@ -623,14 +624,14 @@ const WorkflowPageContent: React.FC = () => {
               role="status"
               className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
             >
-              Steps only: channel code is hidden, and steps connect through it (dotted). This view
-              can&apos;t be edited.
+              Process graph: the processes and how data flows between them. Channel code is
+              hidden; dotted lines go through it. Read-only.
               <button
                 type="button"
                 onClick={() => canvasView.setView("all")}
                 className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
               >
-                Back to All
+                Back to the editor
               </button>
             </div>
           )}

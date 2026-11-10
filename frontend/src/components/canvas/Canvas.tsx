@@ -1,8 +1,10 @@
+import clsx from "clsx";
 import React, { type FC, useEffect, useRef } from "react";
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
+  Panel,
   ConnectionMode,
   useNodesInitialized,
   useReactFlow,
@@ -76,6 +78,11 @@ interface CanvasProps {
   onShowShortcuts?: () => void;
   /** Zooms to the step that failed in the last run; none: nothing failed. */
   onZoomToFailed?: () => void;
+  /**
+   * A read-only view (the process graph, groups), drawn as a blueprint so it
+   * can't be mistaken for the editor: its name is in the title block.
+   */
+  blueprint?: string;
   /** A view that can't be edited (Steps only): no connecting or deleting. */
   readOnly?: boolean;
 }
@@ -113,6 +120,7 @@ const Canvas: FC<CanvasProps> = ({
   onShowShortcuts,
   onZoomToFailed,
   readOnly = false,
+  blueprint,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
@@ -120,7 +128,11 @@ const Canvas: FC<CanvasProps> = ({
   const minimapOn = useFeature("minimap");
 
   return (
-    <div className="flex-grow h-full" ref={reactFlowWrapper}>
+    <div
+      className={clsx("flex-grow h-full", blueprint && "canvas-blueprint")}
+      data-blueprint={blueprint ? "true" : undefined}
+      ref={reactFlowWrapper}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -139,16 +151,33 @@ const Canvas: FC<CanvasProps> = ({
         connectionMode={ConnectionMode.Loose}
         nodesConnectable={!readOnly}
         deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
-        className="bg-background"
+        className={blueprint ? "" : "bg-background"}
         proOptions={{ hideAttribution: true }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        {blueprint ? (
+          <>
+            {/* Blueprint paper: a fine grid, and a major line every fifth. */}
+            <Background id="blueprint-minor" variant={BackgroundVariant.Lines} gap={24} lineWidth={0.5} color="rgba(186, 220, 255, 0.16)" />
+            <Background id="blueprint-major" variant={BackgroundVariant.Lines} gap={120} lineWidth={1} color="rgba(186, 220, 255, 0.32)" />
+          </>
+        ) : (
+          <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
+        )}
         <CustomControls
           history={history}
           onShowShortcuts={onShowShortcuts}
           onZoomToFailed={onZoomToFailed}
         />
         {minimapOn && <CanvasMinimap />}
+        {blueprint && (
+          // The title block of a drawing: which view this is.
+          <Panel position="top-left">
+            <div role="note" aria-label="Read-only view" className="blueprint-title-block">
+              <span className="blueprint-title">{blueprint}</span>
+              <span className="blueprint-subtitle">Read-only view</span>
+            </div>
+          </Panel>
+        )}
       </ReactFlow>
     </div>
   );
