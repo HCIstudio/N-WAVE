@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, expect, test } from "./fixtures";
+import { addNode, expect, test, exportAs } from "./fixtures";
 
 const REFERENCE =
   "https://raw.githubusercontent.com/nf-core/test-datasets/626c8fab639062eade4b10747e919341cbf9b41a/reference";
@@ -47,9 +47,7 @@ test.describe("nf-core/rnaseq example", () => {
     await expect(page).toHaveURL(/builtin:rnaseq-pipeline/);
 
     const downloadPromise = page.waitForEvent("download");
-    await page
-      .getByRole("button", { name: "Export Project", exact: true })
-      .click();
+    await exportAs(page, "Download project");
     const download = await downloadPromise;
     const files = Object.fromEntries(
       Object.entries(

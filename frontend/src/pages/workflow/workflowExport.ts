@@ -78,6 +78,12 @@ export const downloadScript = (source: WorkflowSource) => {
   logActivity("workflow.exported", { kind: "script" });
 };
 
+/** Copy the same script to the clipboard. */
+export const copyScript = async (source: WorkflowSource): Promise<void> => {
+  await navigator.clipboard.writeText(scriptDownload(source).content);
+  logActivity("workflow.exported", { kind: "script-copy" });
+};
+
 /**
  * Download the workflow as a DAW model: an instance of the consolidated
  * metamodel of workflow languages, as JSON (metamodel/dawModel.ts).

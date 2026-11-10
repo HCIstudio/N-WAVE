@@ -2,11 +2,11 @@ import { readFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 import type { Download, Page } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, installNfCoreModule, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, installNfCoreModule, moveNode, test, exportAs } from "./fixtures";
 
 const exportProject = async (page: Page): Promise<Download> => {
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export Project" }).click();
+  await exportAs(page, "Download project");
   return downloadPromise;
 };
 

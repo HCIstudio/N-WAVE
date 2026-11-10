@@ -122,7 +122,9 @@ or has an issue that is explicitly moved to a later release.
 
 ## Export and import
 
-- [ ] **Export Project**: the zip runs with plain Nextflow (`nextflow run main.nf -profile docker`)
+- [ ] **Export** in the bottom bar opens one dialog: **Download script**, **Copy script** (the
+      script on the clipboard), **Download project** and **Download DAW model** each do what it says.
+- [ ] **Export** → **Download project**: the zip runs with plain Nextflow (`nextflow run main.nf -profile docker`)
       without N-WAVE, and gives the same results. Its README is right.
 - [ ] Exporting the same workflow twice gives identical files.
 - [ ] The exported `main.nf` reads like hand-written Nextflow: names from labels, `PROC.out`
@@ -154,7 +156,7 @@ or has an issue that is explicitly moved to a later release.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
       imports back grouped. The **Groups** view collapses and opens the groups.
-- [ ] **DAW model**: **Export as DAW model**, import the file, and get the same canvas (and the
+- [ ] **DAW model**: **Export** → **Download DAW model**, import the file, and get the same canvas (and the
       same file when exported again). A model written by hand with tasks that have no
       implementation opens as placeholders, and the workflow check lists them.
 

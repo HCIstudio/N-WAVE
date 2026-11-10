@@ -77,6 +77,7 @@ import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTut
 import {
   downloadDawModel,
   downloadScript,
+  copyScript,
   exportProject,
   type WorkflowSource,
 } from "./workflow/workflowExport";
@@ -456,6 +457,15 @@ const WorkflowPageContent: React.FC = () => {
     }
   };
 
+  const handleCopyScript = async () => {
+    try {
+      await copyScript(workflowSource);
+      showToast("Copied the Nextflow script.", "success");
+    } catch (error) {
+      showError(error instanceof Error ? error.message : "Couldn't copy the script.");
+    }
+  };
+
   const handleExportDawModel = () => {
     const fileName = downloadDawModel(workflowSource);
     showToast(`Exported ${fileName}: the workflow as a DAW model. Import it in N-WAVE to get this canvas back.`, "success");
@@ -698,9 +708,12 @@ const WorkflowPageContent: React.FC = () => {
           workflowName={workflow.workflowName}
           onWorkflowNameChange={handleWorkflowNameChange}
           onSave={saveWorkflow}
-          onDownload={handleDownloadScript}
-          onExportProject={handleExportProject}
-          onExportDawModel={handleExportDawModel}
+          exports={{
+            onDownload: handleDownloadScript,
+            onCopyScript: handleCopyScript,
+            onExportProject: handleExportProject,
+            onExportDawModel: handleExportDawModel,
+          }}
           isExporting={isExporting}
           onRun={() => run.run(runSettings, { resume: resume.resume })}
           isSaved={workflow.isSaved}

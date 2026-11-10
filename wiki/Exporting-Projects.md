@@ -1,11 +1,12 @@
 N-WAVE can hand a workflow over as plain Nextflow, to run without N-WAVE: on a server, a
-cluster or a colleague's computer. Both buttons are in the bottom bar and work in the
-[browser demo](https://hcistudio.github.io/N-WAVE/) too.
+cluster or a colleague's computer. **Export** in the bottom bar opens a dialog with the
+choices; they work in the [browser demo](https://hcistudio.github.io/N-WAVE/) too.
 
-| Button | You get |
+| Choice | You get |
 | --- | --- |
-| **Download Workflow** | The generated script (`<workflow>.nf`) on its own. |
-| **Export Project** | A zip with everything the run needs. |
+| **Download script** | The generated script (`<workflow>.nf`) on its own. **Copy script** puts it on the clipboard. |
+| **Download project** | A zip with everything the run needs. |
+| **Download DAW model** | The workflow as a [DAW model](https://github.com/HCIstudio/N-WAVE/wiki/DAW-Model), for other tools. |
 
 ## The project
 

@@ -10,11 +10,10 @@ import {
   Play,
   Settings,
   Container,
-  FolderDown,
   Hourglass,
-  Share2,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
+import ExportDialog, { type ExportActions } from "./ExportDialog";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
 import type { ExecutionSettings } from "../../types/execution";
 import { readStoredExecutionSettings, storeExecutionSettings } from "../../pages/workflow/executionSettings";
@@ -28,11 +27,8 @@ interface BottomBarProps {
   workflowName: string;
   onWorkflowNameChange: (newName: string) => void;
   onSave: () => void;
-  onDownload: () => void;
-  /** Download a runnable project (zip with modules, config and inputs). */
-  onExportProject?: () => void;
-  /** Download the workflow as a DAW model (the metamodel's JSON). */
-  onExportDawModel?: () => void;
+  /** What the Export dialog offers. */
+  exports: ExportActions;
   isExporting?: boolean;
   onRun?: (settings: ExecutionSettings) => void;
   isSaved: boolean;
@@ -67,9 +63,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   workflowName,
   onWorkflowNameChange,
   onSave,
-  onDownload,
-  onExportProject,
-  onExportDawModel,
+  exports,
   isExporting = false,
   onRun,
   isSaved,
@@ -95,6 +89,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   // Home while a run goes: ask first (the run goes on without the page).
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
   const navigate = useNavigate();
   const modalRef = useRef<HTMLDivElement>(null);
   const nameInputRef = useRef<HTMLInputElement>(null);
@@ -496,42 +491,14 @@ const BottomBar: React.FC<BottomBarProps> = ({
 
         <button
           type="button"
-          onClick={onDownload}
-          className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
-          aria-label="Download Workflow"
-          title="Download the Nextflow script"
+          onClick={() => setExportOpen(true)}
+          disabled={isExporting}
+          className="p-1.5 text-text hover:bg-accent rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          aria-label="Export"
+          title="Export: the Nextflow script, a runnable project or a DAW model"
         >
-          <Download className="w-4 h-4" />
+          {isExporting ? <Loader className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
         </button>
-
-        {onExportProject && (
-          <button
-            type="button"
-            onClick={onExportProject}
-            disabled={isExporting}
-            className="p-1.5 text-text hover:bg-accent rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            aria-label="Export Project"
-            title="Export a runnable project (script, config, modules and inputs)"
-          >
-            {isExporting ? (
-              <Loader className="w-4 h-4 animate-spin" />
-            ) : (
-              <FolderDown className="w-4 h-4" />
-            )}
-          </button>
-        )}
-
-        {onExportDawModel && (
-          <button
-            type="button"
-            onClick={onExportDawModel}
-            className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
-            aria-label="Export as DAW model"
-            title="Export as a DAW model (JSON in the workflow metamodel, for other tools)"
-          >
-            <Share2 className="w-4 h-4" />
-          </button>
-        )}
 
         <button
           type="button"
@@ -549,6 +516,9 @@ const BottomBar: React.FC<BottomBarProps> = ({
           )}
         </button>
       </div>
+
+      {/* Outside the bar: its transform would hold a fixed dialog inside it. */}
+      <ExportDialog isOpen={exportOpen} onClose={() => setExportOpen(false)} {...exports} />
 
       <ConfirmDialog
         isOpen={confirmLeave}

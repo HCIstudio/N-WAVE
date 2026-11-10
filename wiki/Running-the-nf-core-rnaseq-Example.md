@@ -64,7 +64,7 @@ page, so duplicate it first if you want to keep them with the workflow.
    or mouse genome needs about 40 GB of memory for the STAR index.
 
 ### Running it outside N-WAVE
-**Export Project** in the bottom bar downloads a folder with `run.sh`, `params.json`,
+**Export** → **Download project** in the bottom bar downloads a folder with `run.sh`, `params.json`,
 `inputs/samplesheet.csv` and a README. With Nextflow and Docker installed, run `bash run.sh` in
 that folder; results go to `results/`.
 

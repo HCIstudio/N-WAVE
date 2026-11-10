@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, moveNode, test, exportAs } from "./fixtures";
 
 test.describe("nf-core pipeline node", () => {
   test("builds the settings from the pipeline schema and exports the launch", async ({
@@ -58,7 +58,7 @@ test.describe("nf-core pipeline node", () => {
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export Project" }).click();
+    await exportAs(page, "Download project");
     const download = await downloadPromise;
     const files = Object.fromEntries(
       Object.entries(

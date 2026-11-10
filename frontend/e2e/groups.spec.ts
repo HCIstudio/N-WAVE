@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { canvasSettled, expect, test } from "./fixtures";
+import { canvasSettled, expect, test, exportAs } from "./fixtures";
 
 // Grouping steps into a subworkflow (#221), in a copy of Demo 1.
 test.describe("groups of steps", () => {
@@ -57,7 +57,7 @@ test.describe("groups of steps", () => {
 
     // The script: the group is a workflow the entry workflow calls.
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Download Workflow" }).click();
+    await exportAs(page, "Download script");
     const script = await readFile(await (await downloadPromise).path(), "utf8");
     expect(script).toContain("workflow BARRY_UPPERCASE {\n    take:\n    ch_files");
     expect(script).toContain("    BARRY_UPPERCASE(ch_files)");

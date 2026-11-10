@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -33,7 +33,7 @@ const show = (props: Partial<Props> = {}) => {
     workflowName: "RNA-seq",
     onWorkflowNameChange: vi.fn(),
     onSave: vi.fn(),
-    onDownload: vi.fn(),
+    exports: { onDownload: vi.fn() },
     isSaved: false,
     isSaving: false,
     executionSettings: DEFAULT_EXECUTION_SETTINGS,
@@ -117,16 +117,42 @@ describe("BottomBar", () => {
       );
     });
 
-    it("saves, downloads and exports", async () => {
-      const onExportProject = vi.fn();
-      const { all } = show({ onExportProject });
-      const user = userEvent.setup();
-      await user.click(button("Save Workflow"));
-      await user.click(button("Download Workflow"));
-      await user.click(button("Export Project"));
+    it("saves", async () => {
+      const { all } = show();
+      await userEvent.setup().click(button("Save Workflow"));
       expect(all.onSave).toHaveBeenCalledOnce();
-      expect(all.onDownload).toHaveBeenCalledOnce();
-      expect(onExportProject).toHaveBeenCalledOnce();
+    });
+
+    it("exports from one dialog, which closes after a choice", async () => {
+      const exports = {
+        onDownload: vi.fn(),
+        onCopyScript: vi.fn(),
+        onExportProject: vi.fn(),
+        onExportDawModel: vi.fn(),
+      };
+      show({ exports });
+      const user = userEvent.setup();
+      for (const [name, handler] of [
+        ["Download script", exports.onDownload],
+        ["Copy script", exports.onCopyScript],
+        ["Download project", exports.onExportProject],
+        ["Download DAW model", exports.onExportDawModel],
+      ] as const) {
+        await user.click(button("Export"));
+        const dialog = screen.getByRole("dialog", { name: "Export workflow" });
+        await user.click(within(dialog).getByRole("button", { name }));
+        expect(handler).toHaveBeenCalledOnce();
+        expect(screen.queryByRole("dialog", { name: "Export workflow" })).toBeNull();
+      }
+    });
+
+    it("offers only the exports it has handlers for", async () => {
+      show();
+      await userEvent.setup().click(button("Export"));
+      const dialog = screen.getByRole("dialog", { name: "Export workflow" });
+      expect(within(dialog).getAllByRole("button", { name: /^(Download|Copy)/ }).map((b) => b.textContent)).toEqual([
+        "Download script",
+      ]);
     });
 
     it("disables save when saved or saving", () => {
@@ -141,14 +167,13 @@ describe("BottomBar", () => {
     });
 
     it("disables export while exporting", () => {
-      show({ onExportProject: vi.fn(), isExporting: true });
-      expect(button("Export Project").disabled).toBe(true);
+      show({ isExporting: true });
+      expect(button("Export").disabled).toBe(true);
     });
 
-    it("hides optional buttons without handlers", () => {
+    it("hides Run without a handler", () => {
       show();
       expect(screen.queryByRole("button", { name: "Run Workflow" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Export Project" })).toBeNull();
     });
 
     it("names the run profile a run goes through", () => {

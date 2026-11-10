@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
-import { expect, test } from "./fixtures";
+import { expect, test, exportAs } from "./fixtures";
 
 interface ExampleNode {
   id: string;
@@ -91,7 +91,7 @@ test.describe("RNA-seq (STAR + Salmon) example", () => {
     await expect(page).toHaveURL(/builtin:rnaseq-star-salmon/);
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export Project", exact: true }).click();
+    await exportAs(page, "Download project");
     const download = await downloadPromise;
     const files = Object.fromEntries(
       Object.entries(
