@@ -113,6 +113,18 @@ describe("buildProjectFiles", () => {
     expect(files["inputs/sample.txt"]).toBe("hello");
   });
 
+  it("keeps Nextflow's error strategy, or the one the execution settings chose", () => {
+    expect(files["nextflow.config"]).not.toContain("errorStrategy");
+    const ignoring = buildProjectFiles({
+      workflowName: "QC run",
+      script,
+      inputFiles: [],
+      moduleFiles,
+      errorStrategy: "ignore",
+    });
+    expect(ignoring["nextflow.config"]).toContain("process.errorStrategy = 'ignore'");
+  });
+
   it("says so in the README when an input's name can't be a file in the project", () => {
     const odd = buildProjectFiles({
       workflowName: "QC run",

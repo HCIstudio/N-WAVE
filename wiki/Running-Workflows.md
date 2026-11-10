@@ -48,7 +48,7 @@ The **Execution Settings** button in the bottom bar opens the workflow's setting
 | **Output** | The **Output Directory** (default `results`) and the **Output Naming Pattern** for run folders (`{workflow_name}`, `{timestamp}`, `{date}`). |
 | **Resources** | **Use the global limits** (from [Global Settings](https://github.com/HCIstudio/N-WAVE/wiki/Settings)), or turn it off to set lower **Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout** for this workflow. Values above the global limits are lowered to them. |
 | **Profiles** | **Use the global run profile**, or turn it off to choose this computer or another profile for this workflow ([Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)). |
-| **Advanced** | The Nextflow version, what to do when a step fails, and clean-up after a failure. |
+| **Advanced** | The Nextflow version; the **Error Handling Strategy**, what Nextflow does when a step fails (stop the run, ignore the step, retry it once, or let running steps finish; also in the exported project); and **Cleanup on Failure**, which deletes a failed run's work directory, so Resume can't reuse its steps. |
 
 Below the tabs, **Run cache** shows how much space the workflow's cache takes.
 

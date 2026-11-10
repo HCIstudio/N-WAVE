@@ -91,6 +91,9 @@ const outputNaming = z
     message: "must not contain '..' path segments",
   });
 
+/** Nextflow's error strategies; "terminate" is its default. */
+export const ERROR_STRATEGIES = ["terminate", "ignore", "retry", "finish"] as const;
+
 export const executionSettingsSchema = z.object({
   useDocker: z.boolean().default(false),
   containerImage: dockerImage.or(z.literal("")).default("ubuntu:22.04"),
@@ -100,9 +103,11 @@ export const executionSettingsSchema = z.object({
   maxMemory: memoryAmount.default("4 GB"),
   // Minutes; 35_791 is the most setTimeout can wait (the UI allows 10_080).
   executionTimeout: z.number().min(0).max(35_791).default(0),
-  errorStrategy: z.string().max(64).default("terminate"),
+  /** What Nextflow does when a step fails (process.errorStrategy). */
+  errorStrategy: z.enum(ERROR_STRATEGIES).default("terminate"),
   publishMode: z.string().max(64).optional(),
-  cleanupOnFailure: z.boolean().default(true),
+  /** Delete the run's work directory (its cache) when it fails. */
+  cleanupOnFailure: z.boolean().default(false),
   nextflowVersion: nextflowVersion.optional(),
 });
 

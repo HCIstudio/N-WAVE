@@ -7,8 +7,10 @@ export interface ExecutionSettings {
   maxCpus: number;
   maxMemory: string;
   executionTimeout: number;
-  errorStrategy: string;
+  /** What Nextflow does when a step fails (process.errorStrategy). */
+  errorStrategy: "terminate" | "ignore" | "retry" | "finish";
   publishMode?: string;
+  /** Delete the run's work directory (its cache) when it fails. */
   cleanupOnFailure: boolean;
   nextflowVersion?: string;
 }

@@ -146,10 +146,10 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   ];
 
   const errorStrategies = [
-    { value: "terminate", label: "Terminate on first error (Recommended)" },
-    { value: "ignore", label: "Ignore errors and continue" },
-    { value: "retry", label: "Retry failed tasks" },
-    { value: "finish", label: "Finish running tasks then stop" },
+    { value: "terminate", label: "Stop the run at the first failed step (Nextflow's default)" },
+    { value: "ignore", label: "Ignore failed steps; the rest goes on" },
+    { value: "retry", label: "Retry a failed step once, then stop" },
+    { value: "finish", label: "Let running steps finish, then stop" },
   ];
 
   const tabs = [
@@ -757,7 +757,9 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 ))}
               </select>
               <p className="text-xs text-text-light mt-2">
-                How the workflow should behave when a process fails.
+                What Nextflow does when a step fails (its errorStrategy), in runs
+                and in the exported project. Other than the default, it also
+                replaces an nf-core pipeline&apos;s own retries.
               </p>
             </div>
 
@@ -768,7 +770,8 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                   Cleanup on Failure
                 </label>
                 <p className="text-xs text-text-light mt-1">
-                  Remove work directories when processes fail to save disk space
+                  Delete a failed run&apos;s work directory to save disk space.
+                  Resume can&apos;t reuse that run&apos;s finished steps then.
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer ml-4">

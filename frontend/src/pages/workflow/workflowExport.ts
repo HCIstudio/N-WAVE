@@ -138,6 +138,7 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
     nodes: source.nodes,
     nextflowVersion,
     profiles,
+    errorStrategy: source.settings?.errorHandling?.strategy,
   });
   downloadBlob(blob, fileName);
   logActivity("workflow.exported", { kind: "project" });

@@ -108,6 +108,9 @@ or has an issue that is explicitly moved to a later release.
 - [ ] A failing run (for example a custom process that exits with an error): the failure
       explanation next to the log, with its evidence lines (**Show in log**), how sure it is,
       the failing node marked, and the wiki link.
+- [ ] **Error Handling Strategy** (Execution Settings → Advanced): with **Ignore**, a failing step
+      doesn't stop the others. **Cleanup on Failure** deletes a failed run's work directory, and
+      Resume then runs every step.
 - [ ] **Resume** after fixing the failure: the finished steps are cached, only the rest runs.
       The run cache size in Global Settings, and clearing it.
 - [ ] Closing the tab or going Home during a run warns. Reopening the workflow reattaches to the

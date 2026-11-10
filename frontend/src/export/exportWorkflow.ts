@@ -6,6 +6,7 @@ import { getWorkflowInputFiles } from "../utils/inputFiles";
 import {
   buildProjectFiles,
   extractNextflowConfig,
+  type ProjectExportInput,
   type ProjectInputFile,
   resolveNfCoreComponents,
   toProjectName,
@@ -44,12 +45,14 @@ export const exportWorkflowProject = async ({
   nodes,
   nextflowVersion,
   profiles,
+  errorStrategy,
 }: {
   workflowName: string;
   script: string;
   nodes: Node<NodeData>[];
   nextflowVersion?: string;
   profiles?: RunProfile[];
+  errorStrategy?: ProjectExportInput["errorStrategy"];
 }): Promise<{ fileName: string; blob: Blob }> => {
   const workflowScript = extractNextflowConfig(script).script;
 
@@ -95,6 +98,7 @@ export const exportWorkflowProject = async ({
     subworkflowFiles,
     nextflowVersion,
     profiles,
+    errorStrategy,
   });
   return {
     fileName: `${toProjectName(workflowName)}.zip`,

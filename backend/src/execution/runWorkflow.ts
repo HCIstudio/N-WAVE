@@ -46,7 +46,7 @@ import type { ExecutionSettings } from "./types";
 import type { RunProfile } from "./runProfile";
 import { removeRunTaskContainers } from "./taskContainers";
 import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
-import { isClearingWorkflowCache } from "../runs/workflowCache";
+import { clearRunCache, isClearingWorkflowCache } from "../runs/workflowCache";
 import { buildReportsConfig } from "../runs/runReports";
 import { readFeatures } from "../settings/features";
 
@@ -103,6 +103,14 @@ const findRunToResume = (workflowId: string | undefined): { id: string; dir: str
   const run = findResumableRun(workflowId);
   return run && !isRunDirInUse(run.dir, isRunLive) ? run : null;
 };
+
+/**
+ * process.errorStrategy for the run's config, when it isn't Nextflow's
+ * default ("terminate"): a pipeline keeps its own (nf-core retries some
+ * failures) unless another one was chosen.
+ */
+export const buildErrorStrategyConfig = (strategy: ExecutionSettings["errorStrategy"]): string =>
+  strategy && strategy !== "terminate" ? `process.errorStrategy = '${strategy}'` : "";
 
 /** Where a profile runs the steps, for the run's log. */
 const describeProfileTarget = (profile: RunProfile): string =>
@@ -220,7 +228,13 @@ export const runNextflowWorkflow = async (
     const limits = resolveRunLimits(settings);
     const timeoutMs = resolveTimeoutMs(settings.executionTimeout);
     // With the report, timeline and trace every run gets (runs/runReports.ts).
-    const resourceConfig = `${buildResourceLimitsConfig(limits, timeoutMs)}\n\n${buildReportsConfig(id)}`;
+    const resourceConfig = [
+      buildResourceLimitsConfig(limits, timeoutMs),
+      buildReportsConfig(id),
+      buildErrorStrategyConfig(settings.errorStrategy),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     const scriptPath = path.join(dirs.workflow, `${name}.nf`);
     if (pipeline) {
@@ -364,6 +378,12 @@ export const runNextflowWorkflow = async (
         send(ending.output);
         if (ending.status === "succeeded") moveNextflowMetadata(dirs);
         recordEnd(id, ending.status, ending.summary);
+        if (ending.status === "failed" && settings.cleanupOnFailure) {
+          send("N-WAVE: cleanup on failure is on, so the run's work directory is deleted; Resume can't reuse its steps.\n");
+          clearRunCache(dirs.main).catch((error: unknown) =>
+            console.warn(`Could not delete the work directory of run ${id}:`, error)
+          );
+        }
         log.end();
         res.end();
       },

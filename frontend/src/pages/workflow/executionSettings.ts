@@ -121,6 +121,6 @@ export const flattenExecutionSettings = (settings: ExecutionSettings) => ({
   // Minutes; 0 lets the backend apply its default.
   executionTimeout: isoDurationToMinutes(settings.resources?.maxTime),
   errorStrategy: settings.errorHandling?.strategy ?? "terminate",
-  cleanupOnFailure: settings.cleanup?.onFailure ?? true,
+  cleanupOnFailure: settings.cleanup?.onFailure ?? false,
   nextflowVersion: settings.nextflow?.version ?? "25.04.4",
 });
