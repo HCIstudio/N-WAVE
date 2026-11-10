@@ -9,9 +9,6 @@ import {
   FolderOpen,
   Cpu,
   AlertTriangle,
-  ChevronDown,
-  ChevronRight,
-  HelpCircle,
   Server,
 } from "lucide-react";
 import api from "../../../api";
@@ -20,7 +17,6 @@ import {
   isoDurationToMinutes,
   minutesToIsoDuration,
 } from "../../../utils/duration";
-import { getErrorMessage, getErrorName } from "../../../utils/errors";
 import Term from "../ui/Term";
 import { availableRunProfiles, usesDefaultLimits } from "../../../settings/effectiveSettings";
 import { useRunDefaults } from "../../../settings/useRunDefaults";
@@ -48,14 +44,6 @@ interface NextflowStatus {
   note?: string;
 }
 
-/** File System Access API (Chromium only; feature-detected before use). */
-type DirectoryPickerWindow = Window & {
-  showDirectoryPicker: (options?: {
-    mode?: "read" | "readwrite";
-    startIn?: string;
-  }) => Promise<{ name: string }>;
-};
-
 /** The object-valued sections of the settings (everything but `mode`). */
 type SettingsSection = Exclude<keyof ExecutionSettings, "mode">;
 
@@ -63,6 +51,70 @@ interface ExecutionSettingsProps {
   settings: ExecutionSettings;
   onSettingsChange: (settings: Partial<ExecutionSettings>) => void;
 }
+
+const INPUT =
+  "w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green";
+const LABEL = "block text-sm font-medium text-text mb-2";
+const HINT = "text-xs text-text-light mt-2";
+
+/** Images offered for steps without a container of their own; any other can be typed. */
+const CONTAINER_IMAGES = [
+  "ubuntu:22.04",
+  "ubuntu:20.04",
+  "python:3.11",
+  "r-base:latest",
+  "biocontainers/samtools:latest",
+  "biocontainers/bwa:latest",
+  "biocontainers/fastqc:latest",
+];
+
+const ERROR_STRATEGIES = [
+  { value: "terminate", label: "Stop the run at the first failed step (Nextflow's default)" },
+  { value: "ignore", label: "Ignore failed steps; the rest goes on" },
+  { value: "retry", label: "Retry a failed step once, then stop" },
+  { value: "finish", label: "Let running steps finish, then stop" },
+];
+
+/** A setting that is on or off, as a switch, with what it does below its name. */
+const Toggle: React.FC<{
+  id: string;
+  label: string;
+  help: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}> = ({ id, label, help, checked, onChange }) => (
+  <div className="flex items-start justify-between gap-4">
+    <div>
+      <label htmlFor={id} className="text-sm font-medium text-text">
+        {label}
+      </label>
+      <p className="mt-1 text-xs text-text-light">{help}</p>
+    </div>
+    <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+      <input id={id} type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="peer sr-only" />
+      <div className="h-5 w-9 rounded-full bg-accent peer-checked:bg-nextflow-green peer-focus:ring-2 peer-focus:ring-nextflow-green/50 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white" />
+    </label>
+  </div>
+);
+
+/** Whether Docker or Nextflow is available. */
+const StatusLine: React.FC<{ loading: boolean; ok: boolean; text: string; label: string }> = ({
+  loading,
+  ok,
+  text,
+  label,
+}) => (
+  <div className="flex items-center gap-2">
+    {loading ? (
+      <RefreshCw className="h-3 w-3 animate-spin text-text-light" />
+    ) : ok ? (
+      <CheckCircle className="h-3 w-3 text-nextflow-green" />
+    ) : (
+      <XCircle className="h-3 w-3 text-red-400" />
+    )}
+    <span className="text-text-light">{loading ? `${label}: Checking...` : text}</span>
+  </div>
+);
 
 const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
   settings,
@@ -98,7 +150,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     onSettingsChange({ runProfiles: [] });
   };
   const [activeTab, setActiveTab] = useState<string>("execution");
-  const [showDirectoryHelp, setShowDirectoryHelp] = useState(false);
 
   const checkStatus = useCallback(async () => {
     setLoading(true);
@@ -107,15 +158,11 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
         api.get("/execute/docker-status"),
         api.get("/execute/nextflow-status"),
       ]);
-
       setDockerStatus(dockerResponse.data);
       setNextflowStatus(nextflowResponse.data);
     } catch (error) {
       console.error("Failed to check system status:", error);
-      setDockerStatus({
-        dockerAvailable: false,
-        error: "Failed to check Docker status",
-      });
+      setDockerStatus({ dockerAvailable: false, error: "Failed to check Docker status" });
       setNextflowStatus({
         nextflowAvailable: false,
         dockerNextflowAvailable: false,
@@ -130,28 +177,6 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     checkStatus();
   }, [checkStatus]);
 
-  const commonContainerImages = [
-    { value: "ubuntu:22.04", label: "Ubuntu 22.04 (Recommended)" },
-    { value: "ubuntu:20.04", label: "Ubuntu 20.04" },
-    { value: "python:3.11", label: "Python 3.11" },
-    { value: "python:3.10", label: "Python 3.10" },
-    { value: "python:3.9", label: "Python 3.9" },
-    { value: "r-base:latest", label: "R Base Environment" },
-    {
-      value: "biocontainers/samtools:latest",
-      label: "SAMtools (Bioinformatics)",
-    },
-    { value: "biocontainers/bwa:latest", label: "BWA Aligner" },
-    { value: "biocontainers/fastqc:latest", label: "FastQC Quality Control" },
-  ];
-
-  const errorStrategies = [
-    { value: "terminate", label: "Stop the run at the first failed step (Nextflow's default)" },
-    { value: "ignore", label: "Ignore failed steps; the rest goes on" },
-    { value: "retry", label: "Retry a failed step once, then stop" },
-    { value: "finish", label: "Let running steps finish, then stop" },
-  ];
-
   const tabs = [
     { id: "execution", label: "Execution", icon: Settings },
     { id: "output", label: "Output", icon: FolderOpen },
@@ -160,439 +185,131 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
     { id: "advanced", label: "Advanced", icon: AlertTriangle },
   ];
 
+  const nextflowAvailable = nextflowStatus?.nextflowAvailable || nextflowStatus?.dockerNextflowAvailable;
+
   const renderTabContent = () => {
     switch (activeTab) {
       case "execution":
         return (
-          <div className="space-y-6">
-            {/* Docker Configuration */}
-            <div className="border border-panel-border rounded-lg p-4 bg-panel-background">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Container className="w-4 h-4 text-nextflow-green" />
-                  <h4 className="text-sm font-medium text-text">
-                    Container Execution
-                  </h4>
-                  <Term id="container" />
-                  <Term id="docker" />
-                </div>
-                <button
-                  type="button"
-                  onClick={checkStatus}
-                  disabled={loading}
-                  className="p-1 hover:bg-accent rounded disabled:opacity-50 transition-colors"
-                  title="Refresh status"
-                >
-                  <RefreshCw
-                    className={`w-3 h-3 text-text-light ${
-                      loading ? "animate-spin" : ""
-                    }`}
-                  />
-                </button>
+          <section className="space-y-4 rounded-lg border border-panel-border bg-panel-background p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Container className="h-4 w-4 text-nextflow-green" />
+                <h4 className="text-sm font-medium text-text">Container Execution</h4>
+                <Term id="container" />
+                <Term id="docker" />
               </div>
+              <button
+                type="button"
+                onClick={checkStatus}
+                disabled={loading}
+                className="rounded p-1 transition-colors hover:bg-accent disabled:opacity-50"
+                title="Refresh status"
+              >
+                <RefreshCw className={`h-3 w-3 text-text-light ${loading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
 
-              {/* Docker Toggle */}
-              <div className="flex items-center justify-between mb-4">
-                <div>
-                  <label htmlFor={`${fieldId}-use-docker`} className="text-sm text-text font-medium">
-                    Enable Docker/Container execution
-                  </label>
-                  <p className="text-xs text-text-light mt-1">
-                    {useDocker
-                      ? "Processes run in isolated Docker containers (slower, maximum reproducibility)"
-                      : "Processes run locally in the host system (faster, less isolated)"}
-                  </p>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    id={`${fieldId}-use-docker`}
-                    type="checkbox"
-                    checked={useDocker}
-                    onChange={(e) =>
-                      updateSection("container", { enabled: e.target.checked })
-                    }
-                    className="sr-only peer"
-                  />
-                  <div className="w-9 h-5 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nextflow-green/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nextflow-green" />
+            <Toggle
+              id={`${fieldId}-use-docker`}
+              label="Enable Docker/Container execution"
+              help={
+                useDocker
+                  ? "Processes run in isolated Docker containers (slower, maximum reproducibility)"
+                  : "Processes run locally in the host system (faster, less isolated)"
+              }
+              checked={useDocker}
+              onChange={(enabled) => updateSection("container", { enabled })}
+            />
+
+            {useDocker && (
+              <div>
+                <label htmlFor={`${fieldId}-default-container-image`} className={LABEL}>
+                  Default Container Image
                 </label>
+                <input
+                  id={`${fieldId}-default-container-image`}
+                  list={`${fieldId}-container-images`}
+                  value={settings.container?.defaultImage ?? ""}
+                  onChange={(e) => updateSection("container", { defaultImage: e.target.value })}
+                  placeholder="ubuntu:22.04"
+                  className={INPUT}
+                />
+                <datalist id={`${fieldId}-container-images`}>
+                  {CONTAINER_IMAGES.map((image) => (
+                    <option key={image} value={image} />
+                  ))}
+                </datalist>
+                <p className={HINT}>
+                  For steps without a container of their own; nf-core modules bring theirs.
+                </p>
               </div>
+            )}
 
-              {/* Container Image Selection */}
-              {useDocker && (
-                <div className="space-y-3">
-                  <label htmlFor={`${fieldId}-default-container-image`} className="block text-sm text-text font-medium">
-                    Default Container Image
-                  </label>
-                  <select
-                    id={`${fieldId}-default-container-image`}
-                    value={settings.container?.defaultImage ?? ""}
-                    onChange={(e) =>
-                      updateSection("container", { defaultImage: e.target.value })
-                    }
-                    className="w-full px-3 py-2 text-sm bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
-                  >
-                    {commonContainerImages.map((image) => (
-                      <option
-                        key={image.value}
-                        value={image.value}
-                        className="bg-background text-text"
-                      >
-                        {image.label}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="text"
-                    value={settings.container?.defaultImage ?? ""}
-                    onChange={(e) =>
-                      updateSection("container", { defaultImage: e.target.value })
-                    }
-                    placeholder="Or enter custom container image..."
-                    className="w-full px-3 py-2 text-sm bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
-                  />
-                  <div className="text-xs text-text-light">
-                    <p className="mb-1">Popular bioinformatics containers:</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>biocontainers/samtools - SAM/BAM file processing</li>
-                      <li>biocontainers/bwa - DNA sequence alignment</li>
-                      <li>
-                        biocontainers/fastqc - Quality control for sequencing
-                        data
-                      </li>
-                    </ul>
-                  </div>
+            <div className="space-y-2 border-t border-panel-border pt-4 text-xs">
+              <StatusLine
+                loading={loading}
+                ok={Boolean(dockerStatus?.dockerAvailable)}
+                text={`Docker: ${dockerStatus?.dockerAvailable ? "Available" : "Not Available"}${dockerStatus?.version ? ` (${dockerStatus.version})` : ""}`}
+                label="Docker"
+              />
+              {!dockerStatus?.dockerAvailable && dockerStatus?.error && (
+                <div className="ml-5 rounded border border-red-400/50 bg-accent/30 p-2 text-text">
+                  <p className="font-medium text-red-600">{dockerStatus.error}</p>
+                  {dockerStatus.details && <p className="mt-1 text-text-light">{dockerStatus.details}</p>}
+                  {dockerStatus.error === "Docker Desktop not running" && (
+                    <p className="mt-1 text-text-light">Start Docker Desktop, wait until it runs, then refresh.</p>
+                  )}
                 </div>
               )}
-
-              {/* Status Information */}
-              <div className="space-y-2 mt-4 pt-4 border-t border-panel-border">
-                <div className="flex items-center gap-2 text-xs">
-                  {loading ? (
-                    <RefreshCw className="w-3 h-3 text-text-light animate-spin" />
-                  ) : dockerStatus?.dockerAvailable ? (
-                    <CheckCircle className="w-3 h-3 text-nextflow-green" />
-                  ) : (
-                    <XCircle className="w-3 h-3 text-red-400" />
-                  )}
-                  <span className="text-text-light">
-                    Docker:{" "}
-                    {loading
-                      ? "Checking..."
-                      : dockerStatus?.dockerAvailable
-                      ? "Available"
-                      : "Not Available"}
-                    {dockerStatus?.version && ` (${dockerStatus.version})`}
-                  </span>
-                </div>
-
-                {/* Docker Error Details */}
-                {!dockerStatus?.dockerAvailable && dockerStatus?.error && (
-                  <div className="ml-5 p-2 bg-accent/30 border border-red-400/50 rounded text-xs text-text">
-                    <div className="font-medium text-red-600">
-                      {dockerStatus.error}
-                    </div>
-                    {dockerStatus.details && (
-                      <div className="mt-1 text-text-light">
-                        {dockerStatus.details}
-                      </div>
-                    )}
-                    {dockerStatus.error === "Docker Desktop not running" && (
-                      <div className="mt-2 text-text">
-                        <strong className="text-nextflow-green">
-                          💡 To fix this:
-                        </strong>
-                        <ol className="list-decimal list-inside ml-2 mt-1 text-text-light">
-                          <li>Launch Docker Desktop from your Start menu</li>
-                          <li>
-                            Wait for Docker to start (green whale icon in system
-                            tray)
-                          </li>
-                          <li>Refresh this page to check status again</li>
-                        </ol>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Status Explanation */}
-                {!loading && (
-                  <div className="ml-5 p-2 bg-panel-background border border-panel-border rounded text-xs text-text-light">
-                    {dockerStatus?.dockerAvailable &&
-                    nextflowStatus?.nextflowAvailable ? (
-                      <div>
-                        <div className="text-nextflow-green font-medium">
-                          ✅ Optimal Setup
-                        </div>
-                        <div className="mt-1">
-                          Both Docker and local Nextflow are available. You can
-                          use either execution mode.
-                        </div>
-                      </div>
-                    ) : dockerStatus?.dockerAvailable &&
-                      nextflowStatus?.dockerNextflowAvailable ? (
-                      <div>
-                        <div className="text-nextflow-green font-medium">
-                          ✅ Docker Setup
-                        </div>
-                        <div className="mt-1">
-                          Docker is available, Nextflow will run via Docker
-                          container. This works well for most workflows.
-                        </div>
-                      </div>
-                    ) : !dockerStatus?.dockerAvailable &&
-                      !nextflowStatus?.nextflowAvailable &&
-                      !nextflowStatus?.dockerNextflowAvailable ? (
-                      <div>
-                        <div className="text-red-600 font-medium">
-                          ❌ No Execution Environment
-                        </div>
-                        <div className="mt-1">
-                          Neither Docker nor Nextflow are available. Install
-                          Docker Desktop or local Nextflow from{" "}
-                          <span className="text-nextflow-green">
-                            nextflow.io
-                          </span>
-                        </div>
-                      </div>
-                    ) : (
-                      <div>
-                        <div className="text-yellow-600 font-medium">
-                          ⚠️ Limited Setup
-                        </div>
-                        <div className="mt-1">
-                          Consider installing both Docker and Nextflow for the
-                          best experience.
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 text-xs">
-                  {loading ? (
-                    <RefreshCw className="w-3 h-3 text-text-light animate-spin" />
-                  ) : nextflowStatus?.nextflowAvailable ||
-                    nextflowStatus?.dockerNextflowAvailable ? (
-                    <CheckCircle className="w-3 h-3 text-nextflow-green" />
-                  ) : (
-                    <XCircle className="w-3 h-3 text-red-400" />
-                  )}
-                  <span className="text-text-light">
-                    Nextflow:{" "}
-                    {loading
-                      ? "Checking..."
-                      : nextflowStatus?.nextflowAvailable
-                      ? "Available (Local)"
-                      : nextflowStatus?.dockerNextflowAvailable
+              <StatusLine
+                loading={loading}
+                ok={Boolean(nextflowAvailable)}
+                text={`Nextflow: ${
+                  nextflowStatus?.nextflowAvailable
+                    ? "Available (Local)"
+                    : nextflowStatus?.dockerNextflowAvailable
                       ? "Available (Docker)"
-                      : "Not Available"}
-                    {nextflowStatus?.version && ` (${nextflowStatus.version})`}
-                    {!nextflowStatus?.version &&
-                      nextflowStatus?.note &&
-                      `: ${nextflowStatus.note}`}
-                  </span>
-                </div>
-              </div>
+                      : "Not Available"
+                }${nextflowStatus?.version ? ` (${nextflowStatus.version})` : nextflowStatus?.note ? `: ${nextflowStatus.note}` : ""}`}
+                label="Nextflow"
+              />
+              {!loading && !nextflowAvailable && nextflowStatus?.error && (
+                <p className="ml-5 text-red-600">{nextflowStatus.error}</p>
+              )}
             </div>
-          </div>
+          </section>
         );
 
       case "output":
         return (
           <div className="space-y-6">
-            {/* Output Directory */}
             <div>
-              <label htmlFor={`${fieldId}-output-directory`} className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-output-directory`} className={LABEL}>
                 Output Directory
               </label>
-              <div className="flex gap-2">
-                <input
-                  id={`${fieldId}-output-directory`}
-                  type="text"
-                  value={settings.output?.directory ?? ""}
-                  onChange={(e) =>
-                    onSettingsChange({
-                      output: {
-                        ...settings.output,
-                        directory: e.target.value.replace(/\\/g, "/"),
-                        namingPattern:
-                          settings.output?.namingPattern ||
-                          "{workflow_name}_{timestamp}",
-                      },
-                    })
-                  }
-                  placeholder="results"
-                  className="flex-1 px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
-                />
-                <button
-                  type="button"
-                  onClick={async () => {
-                    try {
-                      // Try the File System Access API with better error handling
-                      if ("showDirectoryPicker" in window) {
-                        try {
-                          const directoryHandle = await (
-                            window as DirectoryPickerWindow
-                          ).showDirectoryPicker({
-                            mode: "readwrite",
-                            startIn: "downloads", // Start in a safe location
-                          });
-
-                          // Try to get a more meaningful path representation
-                          // Note: Full path access is limited by browser security
-                          const selectedPath =
-                            directoryHandle.name === "."
-                              ? "Downloads"
-                              : directoryHandle.name;
-                          onSettingsChange({
-                            output: {
-                              ...settings.output,
-                              directory: selectedPath.replace(/\\/g, "/"),
-                              namingPattern:
-                                settings.output?.namingPattern ||
-                                "{workflow_name}_{timestamp}",
-                            },
-                          });
-
-                          // Show success feedback
-                          alert(
-                            `✅ Directory selected: ${selectedPath}\n\nNote: Due to browser security, you can only select user folders (Downloads, Documents, etc.). To save anywhere, type the full path manually.`
-                          );
-                        } catch (fsError: unknown) {
-                          if (getErrorName(fsError) === "AbortError") {
-                            // User cancelled, do nothing
-                            return;
-                          }if (
-                            getErrorName(fsError) === "NotAllowedError" ||
-                            getErrorMessage(fsError, "").includes("system files")
-                          ) {
-                            // Show helpful error message for system folder blocking
-                            showSystemFolderError();
-                          } else {
-                            console.warn(
-                              "File System Access API failed:",
-                              fsError
-                            );
-                            fallbackToManualInput();
-                          }
-                        }
-                      } else {
-                        fallbackToManualInput();
-                      }
-                    } catch {
-                      fallbackToManualInput();
-                    }
-
-                    function showSystemFolderError() {
-                      const result = confirm(
-                        `🚫 Can't access system folder\n\n` +
-                          "Chrome blocks access to system folders (C:\\, Program Files, etc.) for security.\n\n" +
-                          "Solutions:\n" +
-                          "1. Click OK to enter the path manually\n" +
-                          "2. Choose a user folder (Downloads, Documents, Desktop)\n\n" +
-                          "Click OK to enter path manually, or Cancel to try again."
-                      );
-
-                      if (result) {
-                        fallbackToManualInput();
-                      }
-                    }
-
-                    function fallbackToManualInput() {
-                      const userPath = prompt(
-                        "💾 Enter the full path where you want to save results:\n\n" +
-                          "Examples:\n" +
-                          "• C:\\MyProjects\\Results\n" +
-                          "• D:\\Data\\Outputs\n" +
-                          "• C:\\Users\\YourName\\Desktop\\Results\n\n" +
-                          "💡 Tip: You can save anywhere with manual paths!",
-                        "C:\\Results"
-                      );
-                      if (userPath?.trim()) {
-                        onSettingsChange({
-                          output: {
-                            ...settings.output,
-                            directory: userPath.trim().replace(/\\/g, "/"),
-                            namingPattern:
-                              settings.output?.namingPattern ||
-                              "{workflow_name}_{timestamp}",
-                          },
-                        });
-                      }
-                    }
-                  }}
-                  className="px-3 py-2 border border-panel-border rounded-md hover:bg-accent flex items-center gap-1 text-text-light hover:text-text transition-colors"
-                  title="Browse for directory (user folders only) or enter any path manually"
-                >
-                  <FolderOpen className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-xs text-text-light mt-2">
-                Directory where workflow outputs will be saved. Use absolute
-                paths (e.g., C:\Results) or relative paths (e.g., results).
+              <input
+                id={`${fieldId}-output-directory`}
+                type="text"
+                value={settings.output?.directory ?? ""}
+                onChange={(e) =>
+                  updateSection("output", {
+                    directory: e.target.value.replace(/\\/g, "/"),
+                    namingPattern: settings.output?.namingPattern || "{workflow_name}_{timestamp}",
+                  })
+                }
+                placeholder="results"
+                className={INPUT}
+              />
+              <p className={HINT}>
+                Where each run gets its folder: <code>results</code> or a folder inside it (the{" "}
+                <code>results</code> folder next to N-WAVE&apos;s <code>latest.yml</code>). A path on
+                your computer, such as <code>C:\data</code>, can&apos;t be used.
               </p>
-
-              {/* Directory Access Help - Collapsible */}
-              <div className="mt-3">
-                <button
-                  onClick={() => setShowDirectoryHelp(!showDirectoryHelp)}
-                  className="flex items-center gap-2 text-sm text-nextflow-green hover:text-nextflow-green/80 transition-colors"
-                  type="button"
-                >
-                  <HelpCircle className="w-4 h-4" />
-                  Need help saving to custom directories?
-                  {showDirectoryHelp ? (
-                    <ChevronDown className="w-3 h-3" />
-                  ) : (
-                    <ChevronRight className="w-3 h-3" />
-                  )}
-                </button>
-
-                {showDirectoryHelp && (
-                  <div className="mt-2 p-3 bg-panel-background border border-panel-border rounded-md">
-                    <div className="text-xs text-text space-y-2">
-                      <div className="font-medium text-nextflow-green">
-                        💡 Want to save results anywhere on your computer?
-                      </div>
-                      <div className="space-y-2">
-                        <div>
-                          <strong className="text-text">
-                            Method 1 - Manual Path:
-                          </strong>{" "}
-                          Type the full path directly (e.g.,{" "}
-                          <code className="bg-accent px-1 rounded text-text-light">
-                            C:\MyProjects\Results
-                          </code>
-                          )
-                        </div>
-                        <div>
-                          <strong className="text-text">
-                            Method 2 - Use Downloads Folder:
-                          </strong>
-                          <div className="ml-2 mt-1 text-text-light">
-                            Use the folder picker to select your Downloads
-                            folder, then manually specify the full path if
-                            needed.
-                          </div>
-                        </div>
-                        <div className="text-text-light bg-accent/50 p-2 rounded">
-                          <strong className="text-text">
-                            Browser Limitation:
-                          </strong>{" "}
-                          Modern browsers restrict file system access for
-                          security. For full control over output location, use
-                          Method 1 (manual path entry).
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
-            {/* Output Naming Pattern */}
             <div>
-              <label htmlFor={`${fieldId}-output-naming-pattern`} className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-output-naming-pattern`} className={LABEL}>
                 Output Naming Pattern
               </label>
               <input
@@ -600,23 +317,19 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 type="text"
                 value={settings.output?.namingPattern ?? ""}
                 onChange={(e) =>
-                  onSettingsChange({
-                    output: {
-                      ...settings.output,
-                      directory: settings.output?.directory || "results",
-                      namingPattern: e.target.value,
-                    },
+                  updateSection("output", {
+                    directory: settings.output?.directory || "results",
+                    namingPattern: e.target.value,
                   })
                 }
                 placeholder="{workflow_name}_{timestamp}"
-                className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
+                className={INPUT}
               />
-              <p className="text-xs text-text-light mt-2">
-                Naming pattern for output files. Available variables:{" "}
-                <span className="text-nextflow-green">{"{workflow_name}"}</span>
-                , <span className="text-nextflow-green">{"{timestamp}"}</span>,{" "}
-                <span className="text-nextflow-green">{"{date}"}</span>,{" "}
-                <span className="text-nextflow-green">{"{process_name}"}</span>
+              <p className={HINT}>
+                The run folder&apos;s name. Available variables:{" "}
+                <span className="text-nextflow-green">{"{workflow_name}"}</span>,{" "}
+                <span className="text-nextflow-green">{"{timestamp}"}</span>,{" "}
+                <span className="text-nextflow-green">{"{date}"}</span>
               </p>
             </div>
           </div>
@@ -705,18 +418,15 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
       case "advanced":
         return (
           <div className="space-y-6">
-            {/* Nextflow Version */}
             <div>
-              <label htmlFor={`${fieldId}-nextflow-version`} className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-nextflow-version`} className={LABEL}>
                 Nextflow Version
               </label>
               <select
                 id={`${fieldId}-nextflow-version`}
                 value={settings.nextflow?.version || "25.04.4"}
-                onChange={(e) =>
-                  updateSection("nextflow", { version: e.target.value })
-                }
-                className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
+                onChange={(e) => updateSection("nextflow", { version: e.target.value })}
+                className={INPUT}
               >
                 <option value="25.04.4">25.04.4 (Latest Stable)</option>
                 <option value="24.04.4">24.04.4 (LTS)</option>
@@ -724,15 +434,13 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 <option value="23.04.4">23.04.4</option>
                 <option value="22.10.8">22.10.8</option>
               </select>
-              <p className="text-xs text-text-light mt-2">
-                Select the Nextflow version to use for execution. 25.04.4 is
-                recommended for most workflows.
+              <p className={HINT}>
+                The Nextflow runs use. A pipeline that needs a newer one runs with that.
               </p>
             </div>
 
-            {/* Error Strategy */}
             <div>
-              <label htmlFor={`${fieldId}-error-handling-strategy`} className="block text-sm font-medium text-text mb-2">
+              <label htmlFor={`${fieldId}-error-handling-strategy`} className={LABEL}>
                 Error Handling Strategy
               </label>
               <select
@@ -740,83 +448,31 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 value={settings.errorHandling?.strategy ?? "terminate"}
                 onChange={(e) =>
                   updateSection("errorHandling", {
-                    strategy: e.target
-                      .value as ExecutionSettings["errorHandling"]["strategy"],
+                    strategy: e.target.value as ExecutionSettings["errorHandling"]["strategy"],
                   })
                 }
-                className="w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green"
+                className={INPUT}
               >
-                {errorStrategies.map((strategy) => (
-                  <option
-                    key={strategy.value}
-                    value={strategy.value}
-                    className="bg-background text-text"
-                  >
+                {ERROR_STRATEGIES.map((strategy) => (
+                  <option key={strategy.value} value={strategy.value}>
                     {strategy.label}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-text-light mt-2">
-                What Nextflow does when a step fails (its errorStrategy), in runs
-                and in the exported project. Other than the default, it also
-                replaces an nf-core pipeline&apos;s own retries.
+              <p className={HINT}>
+                What Nextflow does when a step fails (its errorStrategy), in runs and in the exported
+                project. Other than the default, it also replaces an nf-core pipeline&apos;s own
+                retries.
               </p>
             </div>
 
-            {/* Cleanup on Failure */}
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <label htmlFor={`${fieldId}-cleanup-on-failure`} className="text-sm font-medium text-text">
-                  Cleanup on Failure
-                </label>
-                <p className="text-xs text-text-light mt-1">
-                  Delete a failed run&apos;s work directory to save disk space.
-                  Resume can&apos;t reuse that run&apos;s finished steps then.
-                </p>
-              </div>
-              <label className="relative inline-flex items-center cursor-pointer ml-4">
-                <input
-                  id={`${fieldId}-cleanup-on-failure`}
-                  type="checkbox"
-                  checked={settings.cleanup?.onFailure ?? false}
-                  onChange={(e) =>
-                    updateSection("cleanup", { onFailure: e.target.checked })
-                  }
-                  className="sr-only peer"
-                />
-                <div className="w-9 h-5 bg-accent peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-nextflow-green/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-nextflow-green" />
-              </label>
-            </div>
-
-            {/* Warning Messages */}
-            {(dockerStatus?.error || nextflowStatus?.error) && (
-              <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-md">
-                <h4 className="text-sm font-medium text-red-400 mb-2 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  System Issues Detected:
-                </h4>
-                {dockerStatus?.error && (
-                  <p className="text-sm text-red-300 mb-1">
-                    Docker: {dockerStatus.error}
-                  </p>
-                )}
-                {nextflowStatus?.error && (
-                  <p className="text-sm text-red-300">
-                    Nextflow: {nextflowStatus.error}
-                  </p>
-                )}
-              </div>
-            )}
-
-            {useDocker && !dockerStatus?.dockerAvailable && (
-              <div className="p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-md">
-                <p className="text-sm text-yellow-300 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" />
-                  Docker execution is enabled but Docker is not available.
-                  Workflows may fail to execute.
-                </p>
-              </div>
-            )}
+            <Toggle
+              id={`${fieldId}-cleanup-on-failure`}
+              label="Cleanup on Failure"
+              help="Delete a failed run's work directory to save disk space. Resume can't reuse that run's finished steps then."
+              checked={settings.cleanup?.onFailure ?? false}
+              onChange={(onFailure) => updateSection("cleanup", { onFailure })}
+            />
           </div>
         );
 
