@@ -350,20 +350,43 @@ const getAllNodeDefinitions = (): NodeDefinition[] => [
 
 export const nodeDefinitions: NodeDefinition[] = getAllNodeDefinitions();
 
+// Installed nf-core modules and custom nodes are registered asynchronously,
+// often after a view has already looked a node up. Views subscribe so they
+// re-read the registry once its dynamic definitions change.
+let nodeDefinitionsVersion = 0;
+const nodeDefinitionsListeners = new Set<() => void>();
+
+const nodeDefinitionsChanged = (): void => {
+  nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
+  nodeDefinitionsVersion += 1;
+  for (const listener of Array.from(nodeDefinitionsListeners)) listener();
+};
+
+/** Bumped each time dynamic definitions are registered or unregistered. */
+export const getNodeDefinitionsVersion = (): number => nodeDefinitionsVersion;
+
+/** Call `listener` whenever dynamic definitions change; returns an unsubscribe. */
+export const subscribeNodeDefinitions = (listener: () => void): (() => void) => {
+  nodeDefinitionsListeners.add(listener);
+  return () => {
+    nodeDefinitionsListeners.delete(listener);
+  };
+};
+
 export const registerDynamicNodeDefinitions = (
   definitions: NodeDefinition[]
 ): void => {
   for (const definition of definitions) {
     dynamicNodeDefinitions.set(definition.id, definition);
   }
-  nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
+  nodeDefinitionsChanged();
 };
 
 export const unregisterDynamicNodeDefinitions = (ids: string[]): void => {
   for (const id of ids) {
     dynamicNodeDefinitions.delete(id);
   }
-  nodeDefinitions.splice(0, nodeDefinitions.length, ...getAllNodeDefinitions());
+  nodeDefinitionsChanged();
 };
 
 export const getNodeDefinitionById = (
