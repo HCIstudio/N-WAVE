@@ -44,7 +44,7 @@ export const ACTIVITY_TYPES = {
   /** `notRunning`: the nodes the preview says won't run with the current values; `conditional`: how many have conditions. */
   "conditions.preview": "The preview of which steps run (by parameter values) changed",
   /** `view`: all, steps or grouped. */
-  "canvas.viewChanged": "The canvas view changed (All, Steps only, Grouped)",
+  "canvas.viewChanged": "The canvas view changed (Editor, Process graph, Groups)",
   /** `steps`: how many; `from`: selection or suggestion (from the analysis). */
   "group.created": "Steps were grouped into a subworkflow",
   /** `steps`: how many it had. */
@@ -60,11 +60,11 @@ export const ACTIVITY_TYPES = {
   "nested.opened": "The steps inside a subworkflow or pipeline were opened",
   undo: "Undo",
   redo: "Redo",
-  /** `format` (nextflow, json). */
+  /** `format` (nextflow, daw-model). */
   "workflow.imported": "A workflow was imported",
   /** `subworkflow`, `workflowId`, `nodes`. */
   "workflow.copiedSubworkflow": "An nf-core subworkflow was copied into a new workflow",
-  /** `kind` (script, project). */
+  /** `kind` (script, project, daw-model). */
   "workflow.exported": "A workflow was exported",
   /** `label`. */
   "test.started": "A marked test started",

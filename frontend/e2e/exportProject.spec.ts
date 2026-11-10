@@ -62,7 +62,7 @@ test.describe("export project", () => {
 
     await page.goto("./");
     await page.getByRole("button", { name: "Import Workflow" }).click();
-    await page.getByLabel("Nextflow File, Project Zip or Folder").setInputFiles(await download.path());
+    await page.getByLabel("Nextflow File, Project Zip, Folder or DAW Model").setInputFiles(await download.path());
     await expect(page.getByText(/\(main\.nf, 3 Nextflow files\)/)).toBeVisible();
     await expect(page.getByLabel("Nextflow Source")).toHaveValue(/workflow \{/);
     await page.getByRole("button", { name: "Import", exact: true }).click();

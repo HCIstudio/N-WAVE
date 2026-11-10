@@ -544,7 +544,7 @@ describe("HomePage", () => {
         "Hello/README.md": strToU8("# Hello"),
       });
       await user.upload(
-        dialog.getByLabelText("Nextflow File, Project Zip or Folder"),
+        dialog.getByLabelText("Nextflow File, Project Zip, Folder or DAW Model"),
         new File([zip], "Hello.zip", { type: "application/zip" }),
       );
       expect(await dialog.findByText("Hello.zip (main.nf, 2 Nextflow files)")).toBeTruthy();
@@ -591,7 +591,7 @@ describe("HomePage", () => {
       const { user } = await setup([]);
       const dialog = await openImport(user);
       await user.upload(
-        dialog.getByLabelText("Nextflow File, Project Zip or Folder"),
+        dialog.getByLabelText("Nextflow File, Project Zip, Folder or DAW Model"),
         new File([helloSource], "hello.nf", { type: "text/plain" }),
       );
 
@@ -612,7 +612,7 @@ describe("HomePage", () => {
       const dialog = await openImport(user);
       await user.type(dialog.getByLabelText("Name"), "Mine");
       await user.upload(
-        dialog.getByLabelText("Nextflow File, Project Zip or Folder"),
+        dialog.getByLabelText("Nextflow File, Project Zip, Folder or DAW Model"),
         new File([helloSource], "hello.nf"),
       );
       expect(await dialog.findByText("hello.nf")).toBeTruthy();

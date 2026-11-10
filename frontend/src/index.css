@@ -79,3 +79,36 @@
   border: 2px solid #1e1e1e;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
+
+/* Read-only canvas views (process graph, groups): a blueprint, so they can't be
+   mistaken for the editor. Light lines on deep blue paper, in either theme. */
+.canvas-blueprint .react-flow {
+  background-color: #10345e;
+}
+.canvas-blueprint .react-flow__edge-path {
+  /* biome-ignore lint/complexity/noImportantStyles: edges set their stroke inline; on a blueprint every line is pale. */
+  stroke: #d6e8ff !important;
+}
+.canvas-blueprint .react-flow__node {
+  box-shadow: 0 0 0 1px rgba(214, 232, 255, 0.55), 0 0 0 4px rgba(16, 52, 94, 0.9);
+  border-radius: 0.5rem;
+}
+.blueprint-title-block {
+  display: flex;
+  flex-direction: column;
+  border: 1.5px solid #d6e8ff;
+  padding: 0.35rem 0.75rem;
+  color: #eaf3ff;
+  background: rgba(16, 52, 94, 0.85);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.blueprint-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.blueprint-subtitle {
+  font-size: 0.65rem;
+  opacity: 0.8;
+}

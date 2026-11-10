@@ -68,6 +68,8 @@ pipeline.
 
 ## See also
 
+- [DAW model](https://github.com/HCIstudio/N-WAVE/wiki/DAW-Model): the workflow in a form
+  that doesn't belong to Nextflow, for other tools
 - [Importing workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows): opening
   an exported project, or any Nextflow script, on the canvas
 - [Running workflows](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows) in N-WAVE

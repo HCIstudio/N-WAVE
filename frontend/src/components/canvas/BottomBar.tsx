@@ -12,6 +12,7 @@ import {
   Container,
   FolderDown,
   Hourglass,
+  Share2,
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
@@ -29,6 +30,8 @@ interface BottomBarProps {
   onDownload: () => void;
   /** Download a runnable project (zip with modules, config and inputs). */
   onExportProject?: () => void;
+  /** Download the workflow as a DAW model (the metamodel's JSON). */
+  onExportDawModel?: () => void;
   isExporting?: boolean;
   onRun?: (settings: ExecutionSettings) => void;
   isSaved: boolean;
@@ -40,7 +43,7 @@ interface BottomBarProps {
   checkControl?: React.ReactNode;
   /** Analyse (the workflow's code and structure), shown before the check. */
   analysisControl?: React.ReactNode;
-  /** The canvas view (All, Steps only), shown before Analyse. */
+  /** The canvas view (Editor, Process graph, Groups), shown before Analyse. */
   viewControl?: React.ReactNode;
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
@@ -65,6 +68,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
   onSave,
   onDownload,
   onExportProject,
+  onExportDawModel,
   isExporting = false,
   onRun,
   isSaved,
@@ -413,7 +417,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
           <Home className="w-4 h-4" />
         </Link>
 
-        <div className="flex-grow text-center">
+        <div className="min-w-0 max-w-[12rem] flex-grow text-center">
           {isEditingName ? (
             <input
               type="text"
@@ -430,8 +434,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
             <button
               type="button"
               onDoubleClick={handleNameDoubleClick}
-              title="Double-click to rename"
-              className="px-2 py-0.5 cursor-pointer text-sm"
+              title={`${workflowName || UNTITLED_WORKFLOW} (double-click to rename)`}
+              className="block w-full truncate px-2 py-0.5 cursor-pointer text-sm"
             >
               {isLoading ? "Loading..." : workflowName || UNTITLED_WORKFLOW}
             </button>
@@ -467,7 +471,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
             While a run goes, the button shows the hourglass and brings the
             run panel back. */}
         {onRun && (
-          <div className="inline-flex items-stretch overflow-hidden rounded-md ring-1 ring-nextflow-green/50">
+          <div className="inline-flex shrink-0 items-stretch overflow-hidden rounded-md ring-1 ring-nextflow-green/50">
             {isRunning ? (
               <button
                 type="button"
@@ -564,6 +568,18 @@ const BottomBar: React.FC<BottomBarProps> = ({
             ) : (
               <FolderDown className="w-4 h-4" />
             )}
+          </button>
+        )}
+
+        {onExportDawModel && (
+          <button
+            type="button"
+            onClick={onExportDawModel}
+            className="p-1.5 text-text hover:bg-accent rounded-md transition-colors"
+            aria-label="Export as DAW model"
+            title="Export as a DAW model (JSON in the workflow metamodel, for other tools)"
+          >
+            <Share2 className="w-4 h-4" />
           </button>
         )}
 

@@ -1,0 +1,396 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/HCIstudio/N-WAVE/blob/main/frontend/src/metamodel/daw-model.schema.json",
+  "title": "N-WAVE DAW model (n-wave-daw/1)",
+  "description": "A data analysis workflow (DAW) as an instance of the consolidated metamodel by Hilbrich et al. (2022, doi:10.1007/978-3-031-19756-7_12). Each element's `type` is a class of the metamodel. `nwave` holds what N-WAVE needs to give its own canvas back; a model without it opens as a skeleton.",
+  "type": "object",
+  "required": [
+    "schema",
+    "daw"
+  ],
+  "properties": {
+    "schema": {
+      "const": "n-wave-daw/1"
+    },
+    "metamodel": {
+      "type": "object"
+    },
+    "generator": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "daw": {
+      "$ref": "#/$defs/daw"
+    },
+    "nwave": {
+      "type": "object",
+      "properties": {
+        "notes": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nwaveNode"
+          }
+        },
+        "executionSettings": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "port": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "nwaveNode": {
+      "description": "N-WAVE's own node: its type, settings and place on the canvas. Other tools leave it out.",
+      "type": "object",
+      "required": [
+        "type",
+        "data",
+        "position",
+        "index"
+      ],
+      "properties": {
+        "type": {
+          "type": "string"
+        },
+        "data": {
+          "type": "object"
+        },
+        "position": {
+          "type": "object",
+          "required": [
+            "x",
+            "y"
+          ],
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          },
+          "additionalProperties": false
+        },
+        "index": {
+          "type": "integer"
+        }
+      },
+      "additionalProperties": false
+    },
+    "executionContext": {
+      "description": "ExecutionContext: what the element needs where it runs.",
+      "type": "object",
+      "properties": {
+        "container": {
+          "type": "string"
+        },
+        "config": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "engine": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "daw": {
+      "description": "DAW: a workflow, or a sub-DAW of one. With `reference` and no parts, a DAW defined elsewhere.",
+      "type": "object",
+      "required": [
+        "id",
+        "name"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "tasks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/task"
+          }
+        },
+        "storages": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/storage"
+          }
+        },
+        "interconnections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/interconnection"
+          }
+        },
+        "daws": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/daw"
+          }
+        },
+        "executionContext": {
+          "$ref": "#/$defs/executionContext"
+        },
+        "nwave": {
+          "$ref": "#/$defs/nwaveNode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "task": {
+      "description": "Task: a solution of a sub-problem. `Task` itself is a solution idea without an implementation yet.",
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "Task",
+            "Executable",
+            "InlineDescription",
+            "Monitor",
+            "SkipTask",
+            "RepeatTask",
+            "FullInterconnectionManipulation"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "implementation": {
+          "type": "object",
+          "required": [
+            "language"
+          ],
+          "properties": {
+            "language": {
+              "type": "string"
+            },
+            "code": {
+              "type": "string"
+            },
+            "reference": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "executionContext": {
+          "$ref": "#/$defs/executionContext"
+        },
+        "nwave": {
+          "$ref": "#/$defs/nwaveNode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "storage": {
+      "description": "Storage: a data source or sink.",
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "type"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "Storage",
+            "FileStorage",
+            "DatabaseStorage",
+            "IntermediateStorage",
+            "InteractiveStorage"
+          ]
+        },
+        "description": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "outputs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "type",
+              "value"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "nwave": {
+          "$ref": "#/$defs/nwaveNode"
+        }
+      },
+      "additionalProperties": false
+    },
+    "interconnection": {
+      "description": "Interconnection: data (or control) passes from one element to another. `port` says where on the element.",
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "from",
+        "to"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "type": {
+          "enum": [
+            "Interconnection",
+            "StreamingInterconnection",
+            "SimpleSendDataInterconnection",
+            "ControlflowInterconnection"
+          ]
+        },
+        "from": {
+          "$ref": "#/$defs/end"
+        },
+        "to": {
+          "$ref": "#/$defs/end"
+        },
+        "nwave": {
+          "type": "object",
+          "required": [
+            "index"
+          ],
+          "properties": {
+            "index": {
+              "type": "integer"
+            },
+            "data": {
+              "type": "object"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "end": {
+      "type": "object",
+      "required": [
+        "element"
+      ],
+      "properties": {
+        "element": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

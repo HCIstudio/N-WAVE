@@ -11,6 +11,7 @@ import {
 import type { ExecutionSettings } from "../../types/execution";
 import { usesImportedSource } from "./runRequest";
 import { logActivity } from "../../activity/activityLog";
+import { serializeDawModel, toDawModel } from "../../metamodel/toDawModel";
 
 /** Save a blob as a file download. */
 export const downloadBlob = (blob: Blob, fileName: string) => {
@@ -75,6 +76,24 @@ export const downloadScript = (source: WorkflowSource) => {
   const { fileName, content } = scriptDownload(source);
   downloadBlob(textBlob(content), fileName);
   logActivity("workflow.exported", { kind: "script" });
+};
+
+/**
+ * Download the workflow as a DAW model: an instance of the consolidated
+ * metamodel of workflow languages, as JSON (metamodel/dawModel.ts).
+ */
+export const downloadDawModel = (source: WorkflowSource, description?: string): string => {
+  const fileName = `${fileBaseName(source.workflowName)}.daw.json`;
+  const model = toDawModel({
+    nodes: source.nodes,
+    edges: source.edges,
+    workflowName: source.workflowName || "Workflow",
+    description,
+    settings: source.settings as unknown as Record<string, unknown>,
+  });
+  downloadBlob(new Blob([serializeDawModel(model)], { type: "application/json;charset=utf-8" }), fileName);
+  logActivity("workflow.exported", { kind: "daw-model" });
+  return fileName;
 };
 
 /** Download the workflow as a zipped, runnable project; returns its file name. */
