@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExecutionSettings } from "../../../types/execution";
 import { DEFAULT_EXECUTION_SETTINGS } from "../../../pages/workflow/executionSettings";
 
@@ -95,29 +95,20 @@ describe("ExecutionSettings", () => {
     it("shows Docker and Nextflow as available", async () => {
       show();
       expect(screen.getByText(/Docker:\s*Checking/)).toBeTruthy();
-      expect(
-        await screen.findByText("Docker: Available (24.0.7)"),
-      ).toBeTruthy();
-      expect(
-        screen.getByText("Nextflow: Available (Local) (25.04.4)"),
-      ).toBeTruthy();
-      expect(screen.getByText("✅ Optimal Setup")).toBeTruthy();
+      expect(await screen.findByText("Docker: Available (24.0.7)")).toBeTruthy();
+      expect(screen.getByText("Nextflow: Available (Local) (25.04.4)")).toBeTruthy();
     });
 
-    it("explains a Docker-only setup", async () => {
+    it("shows Nextflow running in Docker", async () => {
       serve({
         ...allAvailable,
-        "/execute/nextflow-status": {
-          nextflowAvailable: false,
-          dockerNextflowAvailable: true,
-        },
+        "/execute/nextflow-status": { nextflowAvailable: false, dockerNextflowAvailable: true },
       });
       show();
-      expect(await screen.findByText("✅ Docker Setup")).toBeTruthy();
-      expect(screen.getByText("Nextflow: Available (Docker)")).toBeTruthy();
+      expect(await screen.findByText("Nextflow: Available (Docker)")).toBeTruthy();
     });
 
-    it("explains how to start Docker Desktop", async () => {
+    it("says why Docker isn't available, and how to start Docker Desktop", async () => {
       serve({
         ...allAvailable,
         "/execute/docker-status": {
@@ -127,51 +118,28 @@ describe("ExecutionSettings", () => {
         },
       });
       show();
-      expect(await screen.findByText("⚠️ Limited Setup")).toBeTruthy();
-      expect(screen.getByText("Docker: Not Available")).toBeTruthy();
+      expect(await screen.findByText("Docker: Not Available")).toBeTruthy();
       expect(screen.getByText("Cannot connect to the Docker daemon")).toBeTruthy();
-      expect(
-        screen.getByText("Launch Docker Desktop from your Start menu"),
-      ).toBeTruthy();
+      expect(screen.getByText(/Start Docker Desktop/)).toBeTruthy();
     });
 
     it("reports when the status check fails", async () => {
-      const consoleError = vi
-        .spyOn(console, "error")
-        .mockImplementation(() => {});
-      serve({
-        ...allAvailable,
-        "/execute/docker-status": new Error("offline"),
-      });
+      const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+      serve({ ...allAvailable, "/execute/docker-status": new Error("offline") });
       show();
-      expect(
-        await screen.findByText("❌ No Execution Environment"),
-      ).toBeTruthy();
-      expect(screen.getByText("Failed to check Docker status")).toBeTruthy();
+      expect(await screen.findByText("Failed to check Docker status")).toBeTruthy();
       expect(screen.getByText("Nextflow: Not Available")).toBeTruthy();
-      expect(screen.queryByText(/To fix this/)).toBeNull();
-
-      await openTab("Advanced");
-      expect(screen.getByText("System Issues Detected:")).toBeTruthy();
-      expect(
-        screen.getByText("Docker: Failed to check Docker status"),
-      ).toBeTruthy();
-      expect(
-        screen.getByText("Nextflow: Failed to check Nextflow status"),
-      ).toBeTruthy();
-      // Docker is enabled in the settings but not available.
-      expect(
-        screen.getByText(/Docker execution is enabled but Docker is not/),
-      ).toBeTruthy();
+      expect(screen.getByText("Failed to check Nextflow status")).toBeTruthy();
+      expect(screen.queryByText(/Start Docker Desktop/)).toBeNull();
       consoleError.mockRestore();
     });
 
     it("checks the status again on refresh", async () => {
       show();
-      await screen.findByText("✅ Optimal Setup");
+      await screen.findByText("Docker: Available (24.0.7)");
       const before = get.mock.calls.length;
       await userEvent.setup().click(screen.getByTitle("Refresh status"));
-      await screen.findByText("✅ Optimal Setup");
+      await screen.findByText("Docker: Available (24.0.7)");
       expect(get.mock.calls.slice(before).map(([url]) => url)).toEqual([
         "/execute/docker-status",
         "/execute/nextflow-status",
@@ -180,10 +148,8 @@ describe("ExecutionSettings", () => {
 
     it("turns Docker off, keeping the other container settings", async () => {
       const onChange = show();
-      await screen.findByText("✅ Optimal Setup");
-      await userEvent
-        .setup()
-        .click(screen.getByLabelText("Enable Docker/Container execution"));
+      await screen.findByText("Docker: Available (24.0.7)");
+      await userEvent.setup().click(screen.getByLabelText("Enable Docker/Container execution"));
       expect(onChange).toHaveBeenCalledWith({
         container: { ...DEFAULT_EXECUTION_SETTINGS.container, enabled: false },
       });
@@ -191,35 +157,22 @@ describe("ExecutionSettings", () => {
 
     it("hides the image choice when running locally", async () => {
       show(withSettings({ container: { enabled: false } }));
-      await screen.findByText("✅ Optimal Setup");
+      await screen.findByText("Docker: Available (24.0.7)");
       expect(screen.queryByLabelText("Default Container Image")).toBeNull();
       expect(screen.getByText(/Processes run locally/)).toBeTruthy();
     });
 
-    it("picks a listed or custom container image", async () => {
+    it("takes a suggested or any other container image", async () => {
       const onChange = show();
-      await screen.findByText("✅ Optimal Setup");
-      await userEvent
-        .setup()
-        .selectOptions(
-          screen.getByLabelText("Default Container Image"),
-          "python:3.11",
-        );
-      expect(onChange).toHaveBeenLastCalledWith({
-        container: {
-          ...DEFAULT_EXECUTION_SETTINGS.container,
-          defaultImage: "python:3.11",
-        },
-      });
-      fireEvent.change(
-        screen.getByPlaceholderText("Or enter custom container image..."),
-        { target: { value: "quay.io/me/tool:1" } },
+      await screen.findByText("Docker: Available (24.0.7)");
+      const image = screen.getByLabelText("Default Container Image") as HTMLInputElement;
+      const suggestions = document.getElementById(image.getAttribute("list") ?? "");
+      expect([...(suggestions?.querySelectorAll("option") ?? [])].map((option) => option.value)).toContain(
+        "python:3.11",
       );
+      fireEvent.change(image, { target: { value: "quay.io/me/tool:1" } });
       expect(onChange).toHaveBeenLastCalledWith({
-        container: {
-          ...DEFAULT_EXECUTION_SETTINGS.container,
-          defaultImage: "quay.io/me/tool:1",
-        },
+        container: { ...DEFAULT_EXECUTION_SETTINGS.container, defaultImage: "quay.io/me/tool:1" },
       });
     });
   });
@@ -229,13 +182,14 @@ describe("ExecutionSettings", () => {
       output: { ...DEFAULT_EXECUTION_SETTINGS.output, directory },
     });
 
-    it("stores the directory with forward slashes", async () => {
+    it("stores the directory with forward slashes, and says where it can be", async () => {
       const onChange = show();
       await openTab("Output");
       fireEvent.change(screen.getByLabelText("Output Directory"), {
-        target: { value: "C:\\Data\\Out" },
+        target: { value: "results\\run1" },
       });
-      expect(onChange).toHaveBeenCalledWith(outputWith("C:/Data/Out"));
+      expect(onChange).toHaveBeenCalledWith(outputWith("results/run1"));
+      expect(screen.getByText(/can't be used/)).toBeTruthy();
     });
 
     it("fills in defaults for an unset output section", async () => {
@@ -268,129 +222,6 @@ describe("ExecutionSettings", () => {
           ...DEFAULT_EXECUTION_SETTINGS.output,
           namingPattern: "{workflow_name}",
         },
-      });
-    });
-
-    it("toggles the directory help", async () => {
-      show();
-      await openTab("Output");
-      const toggle = screen.getByRole("button", {
-        name: "Need help saving to custom directories?",
-      });
-      await userEvent.setup().click(toggle);
-      expect(screen.getByText("Browser Limitation:")).toBeTruthy();
-      await userEvent.setup().click(toggle);
-      expect(screen.queryByText("Browser Limitation:")).toBeNull();
-    });
-
-    describe("Browse button", () => {
-      const browse = () =>
-        userEvent
-          .setup()
-          .click(screen.getByTitle(/Browse for directory/));
-      const setPicker = (picker: () => Promise<{ name: string }>) =>
-        Object.defineProperty(window, "showDirectoryPicker", {
-          value: picker,
-          configurable: true,
-        });
-
-      afterEach(() => {
-        Reflect.deleteProperty(window, "showDirectoryPicker");
-        vi.restoreAllMocks();
-      });
-
-      it("asks for a path when the browser has no folder picker", async () => {
-        const prompt = vi.spyOn(window, "prompt").mockReturnValue(" D:\\Runs ");
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        expect(prompt).toHaveBeenCalledOnce();
-        expect(onChange).toHaveBeenCalledWith(outputWith("D:/Runs"));
-      });
-
-      it("keeps the directory when the path prompt is cancelled", async () => {
-        vi.spyOn(window, "prompt").mockReturnValue(null);
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        expect(onChange).not.toHaveBeenCalled();
-      });
-
-      it("uses the picked folder's name", async () => {
-        const alert = vi.spyOn(window, "alert").mockImplementation(() => {});
-        setPicker(async () => ({ name: "my-results" }));
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        await waitFor(() =>
-          expect(onChange).toHaveBeenCalledWith(outputWith("my-results")),
-        );
-        expect(alert.mock.calls[0][0]).toContain("Directory selected: my-results");
-      });
-
-      it("calls the root of the picker Downloads", async () => {
-        vi.spyOn(window, "alert").mockImplementation(() => {});
-        setPicker(async () => ({ name: "." }));
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        await waitFor(() =>
-          expect(onChange).toHaveBeenCalledWith(outputWith("Downloads")),
-        );
-      });
-
-      it("does nothing when the picker is cancelled", async () => {
-        const prompt = vi.spyOn(window, "prompt");
-        setPicker(async () => {
-          throw new DOMException("cancelled", "AbortError");
-        });
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        expect(prompt).not.toHaveBeenCalled();
-        expect(onChange).not.toHaveBeenCalled();
-      });
-
-      it("offers a manual path for a blocked system folder", async () => {
-        const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
-        vi.spyOn(window, "prompt").mockReturnValue("C:\\Windows\\Out");
-        setPicker(async () => {
-          throw new DOMException("blocked", "NotAllowedError");
-        });
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        await waitFor(() =>
-          expect(onChange).toHaveBeenCalledWith(outputWith("C:/Windows/Out")),
-        );
-        expect(confirm.mock.calls[0][0]).toContain("Can't access system folder");
-      });
-
-      it("stops when a blocked folder's prompt is declined", async () => {
-        vi.spyOn(window, "confirm").mockReturnValue(false);
-        const prompt = vi.spyOn(window, "prompt");
-        setPicker(async () => {
-          throw new Error("It contains system files");
-        });
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        expect(prompt).not.toHaveBeenCalled();
-        expect(onChange).not.toHaveBeenCalled();
-      });
-
-      it("falls back to a manual path when the picker fails", async () => {
-        vi.spyOn(console, "warn").mockImplementation(() => {});
-        vi.spyOn(window, "prompt").mockReturnValue("/srv/out");
-        setPicker(async () => {
-          throw new Error("SecurityError");
-        });
-        const onChange = show();
-        await openTab("Output");
-        await browse();
-        await waitFor(() =>
-          expect(onChange).toHaveBeenCalledWith(outputWith("/srv/out")),
-        );
       });
     });
   });
@@ -589,16 +420,6 @@ describe("ExecutionSettings", () => {
       expect(onChange).toHaveBeenLastCalledWith({
         cleanup: { ...DEFAULT_EXECUTION_SETTINGS.cleanup, onFailure: true },
       });
-    });
-
-    it("shows no warnings when everything is available", async () => {
-      show();
-      await screen.findByText("✅ Optimal Setup");
-      await openTab("Advanced");
-      expect(screen.queryByText("System Issues Detected:")).toBeNull();
-      expect(
-        screen.queryByText(/Docker execution is enabled but Docker is not/),
-      ).toBeNull();
     });
   });
 

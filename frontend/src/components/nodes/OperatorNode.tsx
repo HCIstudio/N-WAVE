@@ -2,9 +2,9 @@ import { memo, useEffect, useMemo, useCallback } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import BaseNode, { type NodeData } from "./BaseNode";
 import { useWorkflowContext } from "../../context/WorkflowContext";
-import { useOperatorLogic } from "../../hooks";
 import { getIncomingFiles } from "../../utils/workflowConnections";
 import { useLatestRef } from "../../hooks";
+import { useOperatorPreview } from "../../hooks/operator/operatorPreview";
 
 const portsEqual = (
   current: NodeData["inputs"] | NodeData["outputs"],
@@ -52,8 +52,8 @@ const OperatorNode = (props: NodeProps<Node<NodeData>>) => {
   const operatorType =
     data.operatorType || (props.type === "filter" ? "filter" : null);
 
-  // Run operator logic to process files automatically using the registry
-  useOperatorLogic(incomingFiles, data, operatorType, handleOperatorSave);
+  // The preview of what the operator makes of its files (Filter, Map, Merge).
+  useOperatorPreview(incomingFiles, data, operatorType, handleOperatorSave);
 
   useEffect(() => {
     const nextInputs = [{ name: "in" }];

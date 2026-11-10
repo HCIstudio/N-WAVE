@@ -2,7 +2,7 @@ import { memo, useEffect, useMemo } from "react";
 import type { Node, NodeProps } from "@xyflow/react";
 import BaseNode, { type NodeData } from "../BaseNode";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
-import { isOperatorTypeRegistered } from "../../../hooks";
+import { isOperatorType } from "../../../hooks/operator/operatorPreview";
 
 const getNodeLabel = (nodeData: NodeData, fallback: string): string =>
   nodeData.label || nodeData.processType || nodeData.operatorType || fallback;
@@ -45,7 +45,7 @@ const OutputDisplayNode = (props: NodeProps<Node<NodeData>>) => {
     const hasOperatorPreview =
       parentNode.type === "operator" &&
       operatorType &&
-      isOperatorTypeRegistered(operatorType);
+      isOperatorType(operatorType);
 
     if (parentNode.type === "fileInput" || hasOperatorPreview) {
       return {
