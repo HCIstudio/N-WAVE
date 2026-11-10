@@ -25,7 +25,6 @@ import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import { generateOperatorCode } from "../../generators/core/templateEngine";
 import { parseLayoutComment, type LayoutEntry } from "../../generators/core/layoutComment";
 import { inlineGroups, withoutGroupSelectors } from "../../groups/inlineGroups";
-import { directoryOf, normalizePath, relativePath } from "./projectPaths";
 import type { WorkflowParameter } from "../../registry/params";
 import { nodeDefinitions, type NodeDefinition } from "../../registry/nodeDefinitions";
 import {
@@ -59,7 +58,8 @@ import {
   type TopLevelItem,
 } from "./nextflowSource";
 import { autoLayout } from "./autoLayout";
-import { fileByteLength, type FileContent } from "../../utils/fileContent";
+import { createProjectReader, namesCalledIn, readNotes } from "./projectReader";
+import type { FileContent } from "../../utils/fileContent";
 import { lowerSnake, processNamesFor, uniqueName } from "../../generators/core/naming";
 import { CODE_PLACEMENTS, type CodePlacement } from "../../generators/core/placement";
 
@@ -562,10 +562,6 @@ export interface ImportOptions {
   inputs?: Record<string, FileContent>;
 }
 
-/** The names code calls: `FOO(…)`, `helper(…)`. */
-const namesCalledIn = (text: string): Set<string> =>
-  new Set([...maskSource(text, { keepInterpolations: true }).matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)].map((match) => match[1]));
-
 export const importNextflowScript = (original: string, options: ImportOptions = {}): ImportedCanvas => {
   // Groups N-WAVE wrote (#221): their steps back in the workflow, as nodes of their own.
   const { source, groups: groupOfStep } = inlineGroups(original, { files: options.files, path: options.path });
@@ -581,74 +577,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   const settingsFor = configBlocks(config);
   const headerName = source.match(/^\s*\/\/\s*(.+)\n\/\/ Written by N-WAVE/)?.[1]?.trim() ?? null;
 
-  const files = options.files ?? {};
-  const inputs = options.inputs ?? {};
-  /** A File Input's files: from the project when it has them, else names to upload again. */
-  const inputFilesFor = (names: string[]): Partial<NodeData> => {
-    const found = names.every((name) => inputs[name]);
-    const list = names.map((name) => {
-      const input = inputs[name];
-      const fileType = name.split(".").pop() || "txt";
-      if (!input) return { name, size: 0, content: "", fileType };
-      return { name, size: fileByteLength(input), content: input.content, ...(input.encoding ? { encoding: input.encoding } : {}), fileType };
-    });
-    const size = list.reduce((total, file) => total + file.size, 0);
-    return {
-      files: list,
-      subtitle:
-        names.length === 0
-          ? "No files yet"
-          : found
-            ? `Total size: ${(size / 1024).toFixed(2)} KB`
-            : `${names.length} file${names.length === 1 ? "" : "s"} (upload again)`,
-    };
-  };
-  const scriptPath = normalizePath(options.path ?? "main.nf");
-  /** An include's path from the project root (`./modules/nf-core/fastqc/main`). */
-  const rootPath = (from: string, path: string): string =>
-    path.startsWith(".") ? relativePath(directoryOf(scriptPath), normalizePath(`${directoryOf(from)}/${path}`)) : path;
-  /** The file an include reads, among the project's files. */
-  const fileFor = (from: string, path: string): string | null => {
-    if (!path.startsWith(".")) return null;
-    const base = normalizePath(`${directoryOf(from)}/${path}`);
-    return [base, `${base}.nf`, `${base}/main.nf`].find((candidate) => candidate in files) ?? null;
-  };
-  /** A process or workflow a local include brings in, from the project's files. */
-  const readLocalInclude = (
-    from: string,
-    path: string,
-    name: string,
-  ):
-    | { kind: "process"; text: string }
-    | { kind: "workflow"; item: TopLevelItem; file: string }
-    | { kind: "function"; text: string }
-    | null => {
-    const file = fileFor(from, path);
-    if (!file) return null;
-    const item = topLevelItems(files[file]).find(
-      (candidate) => candidate.name === name && ["process", "workflow", "function"].includes(candidate.kind),
-    );
-    if (!item) return null;
-    if (item.kind === "function") return { kind: "function", text: functionsCalled(file, [name]).join("\n\n") };
-    return item.kind === "process" ? { kind: "process", text: item.text } : { kind: "workflow", item, file };
-  };
-  /** The functions of a file that code calling `names` needs (those they call too), as written. */
-  const functionsCalled = (file: string, names: Iterable<string>): string[] => {
-    const functions = topLevelItems(files[file] ?? "").filter((other) => other.kind === "function");
-    const needed = new Set<string>();
-    let reached = [...names];
-    while (reached.length > 0) {
-      const next: string[] = [];
-      for (const name of reached) {
-        const fn = functions.find((other) => other.name === name);
-        if (!fn || needed.has(name)) continue;
-        needed.add(name);
-        next.push(...namesCalledIn(fn.text));
-      }
-      reached = next;
-    }
-    return functions.filter((fn) => needed.has(fn.name)).map((fn) => [...fn.comments, fn.text].join("\n"));
-  };
+  const { files, inputs, scriptPath, inputFilesFor, rootPath, readLocalInclude, functionsCalled } = createProjectReader(options);
   /** Which file each included named workflow comes from. */
   const workflowFiles = new Map<string, string>();
   const params = new Map<string, string>();
@@ -656,13 +585,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   const processes = new Map<string, string>();
   const namedWorkflows = new Map<string, TopLevelItem>();
   let entry: TopLevelItem | null = null;
-  const notes: Array<{ label: string; text: string }> = [];
-  const maskedSource = maskSource(source);
-  for (const note of source.matchAll(/\/\*\s*Note:[ \t]*([^\n]*)\n([\s\S]*?)\n?\*\//g)) {
-    // Only comments (not text in strings).
-    if (maskedSource.slice(note.index ?? 0, (note.index ?? 0) + 2) !== "/*") continue;
-    notes.push({ label: note[1].trim(), text: note[2].replace(/\* \//g, "*/") });
-  }
+  const notes = readNotes(source);
   /** Code kept as written, with where it goes and where it was. */
   const kept: Array<{ placement: CodePlacement; start: number; text: string }> = [];
   const paramItems = new Map<string, TopLevelItem>();
