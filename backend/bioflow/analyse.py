@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import copy
+import gc
 import json
 import os
 import re
@@ -129,10 +130,40 @@ def plugins_included(project: Path) -> list[str]:
     return sorted(plugins)
 
 
+ADDRESS = re.compile(r"\dx\w+")
+
+
+class LiveObjects:
+    """
+    BioFlow-Insight's objects by the ids its graphs give them. The ids are
+    memory addresses (str(object) with "0x..." in it), and its own
+    get_object() reads whatever is at the address with ctypes. An id of an
+    object that has been freed since (get_structure() builds some on the
+    way) then crashes the interpreter now and then. This only returns
+    objects that were alive at the last refresh(), which it keeps alive:
+    it looks the address up among them.
+    """
+
+    def __init__(self) -> None:
+        self.objects: dict[int, object] = {}
+
+    def refresh(self) -> None:
+        self.objects = {id(obj): obj for obj in gc.get_objects() if str(getattr(type(obj), "__module__", "")).startswith("src.")}
+
+    def __call__(self, key) -> object:
+        found = ADDRESS.findall(str(key))
+        if not found:
+            raise LookupError(f"not an object id: {key!r}")
+        address = int(found[0], base=16)
+        if address not in self.objects:
+            raise LookupError(f"no object at {key!r}")
+        return self.objects[address]
+
+
 class Analysis:
-    def __init__(self, workflow, get_object, project: Path, main_file: str):
+    def __init__(self, workflow, project: Path, main_file: str):
         self.workflow = workflow
-        self.get_object = get_object
+        self.get_object = LiveObjects()
         self.project = project
         self.main_file = main_file
         self.subworkflow_ids: list[dict] = []
@@ -143,6 +174,7 @@ class Analysis:
 
     def read_graph(self, graph: dict, doc: dict) -> None:
         """Steps, connections and subworkflows of the process dependency graph."""
+        self.get_object.refresh()
 
         def visit(level: dict, path: list[str], parent: str | None, parent_file: str | None) -> None:
             for node in level["nodes"]:
@@ -231,6 +263,7 @@ class Analysis:
         and the channels between them. Operations get ids `op1`, `op2`, ...
         in the order BioFlow-Insight lists them.
         """
+        self.get_object.refresh()
         nodes: list[dict] = []
         edges = set()
         ids: dict[str, str] = {}
@@ -370,7 +403,7 @@ def analyse(project: Path, entry: str) -> dict:
     # BioFlow-Insight prints (its citation, progress) and writes a results
     # folder; neither may reach N-WAVE's output or the project.
     with tempfile.TemporaryDirectory(prefix="bioflow-") as results, contextlib.redirect_stdout(sys.stderr):
-        from src.workflow import Workflow, get_object  # bioflow-insight's package is called `src`
+        from src.workflow import Workflow  # bioflow-insight's package is called `src`
 
         cwd = os.getcwd()
         try:
@@ -392,7 +425,7 @@ def analyse(project: Path, entry: str) -> dict:
                     workflow = Workflow(str(main), display_info=False, output_dir=results)
                 doc = base_document(engine)
                 doc["dsl"] = dsl
-                analysis = Analysis(workflow, get_object, project, entry)
+                analysis = Analysis(workflow, project, entry)
                 try:
                     if engine == "nls":
                         workflow.initialise_with_language_server()

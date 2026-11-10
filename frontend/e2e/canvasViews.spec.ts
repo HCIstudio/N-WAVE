@@ -27,11 +27,11 @@ test.describe("canvas views", () => {
       page.getByText(/calls “TRIM”, which the canvas doesn't connect to it/),
     ).toBeVisible();
 
-    // Steps only: the channel code is hidden, TRIM reaches ALIGN through it.
+    // The process graph: the channel code is hidden, TRIM reaches ALIGN through it.
     const view = page.getByRole("group", { name: "Canvas view" });
-    await view.getByRole("button", { name: "Steps" }).click();
+    await view.getByRole("button", { name: "Process graph" }).click();
     await expect(
-      page.getByRole("status").filter({ hasText: "Steps only" }),
+      page.getByRole("status").filter({ hasText: "Process graph" }),
     ).toBeVisible();
     const channelCode = page
       .locator(".react-flow__node")
@@ -41,7 +41,8 @@ test.describe("canvas views", () => {
       page.locator(".react-flow__node:visible").filter({ hasText: "TRIM" }),
     ).toBeVisible();
     await expect(page.locator('[data-derived="through"]')).toHaveCount(1);
-    await expect(view.getByRole("button", { name: "Steps" })).toHaveAttribute(
+    await expect(page.getByRole("note", { name: "Read-only view" })).toContainText("Process graph");
+    await expect(view.getByRole("button", { name: "Process graph" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );
@@ -51,7 +52,7 @@ test.describe("canvas views", () => {
       .locator(".react-flow__node:visible")
       .filter({ hasText: "ALIGN" })
       .dblclick();
-    await expect(view.getByRole("button", { name: "All" })).toHaveAttribute(
+    await expect(view.getByRole("button", { name: "Editor" })).toHaveAttribute(
       "aria-pressed",
       "true",
     );

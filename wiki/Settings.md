@@ -138,7 +138,7 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `analysis.structureViewed` | The analysis's structure view was switched | `view` (`steps` or `channels`) |
 | `analysis.downloaded` | The analysed structure was downloaded | `format` (`mermaid` or `dot`), `view` |
 | `conditions.preview` | The steps that won't run with the parameter values changed (after an analysis, or a value's change) | `notRunning` (node IDs), `conditional` (steps with a condition) |
-| `canvas.viewChanged` | The canvas view was switched (**All**, **Steps**, **Grouped**) | `view` (`all`, `steps` or `grouped`) |
+| `canvas.viewChanged` | The canvas view was switched (**Editor**, **Process graph**, **Groups**) | `view` (`all`, `steps` or `grouped`) |
 | `group.created` | Steps were grouped into a subworkflow | `steps` (how many), `from` (`selection` or `suggestion`) |
 | `group.renamed` | A group was renamed | – |
 | `group.removed` | A group was ungrouped | `steps` (how many it had) |

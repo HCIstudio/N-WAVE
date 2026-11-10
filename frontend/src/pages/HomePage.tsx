@@ -1086,6 +1086,9 @@ const HomePage: React.FC = () => {
             <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-4 sm:gap-y-1">
               <span>v{buildInfo.version}</span>
               <span>Built {buildInfo.displayBuildDate}</span>
+              <Link to="/references" className="underline-offset-2 hover:text-text hover:underline">
+                References
+              </Link>
               <a
                 href="https://hcistudio.org/impressum/"
                 target="_blank"
