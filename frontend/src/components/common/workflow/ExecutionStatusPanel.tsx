@@ -7,8 +7,6 @@ import {
   X,
   Clock,
   Hourglass,
-  Cpu,
-  HardDrive,
   Maximize2,
   Minimize2,
   ChevronDown,
@@ -38,13 +36,6 @@ export interface NodeExecutionStatus {
   progress?: number;
   output?: string;
   error?: string;
-  container?: string;
-  resources?: {
-    cpus: number;
-    memory: string;
-    actualCpuUsage?: number;
-    actualMemoryUsage?: number;
-  };
 }
 
 export interface WorkflowExecutionStatus {
@@ -58,7 +49,6 @@ export interface WorkflowExecutionStatus {
   nodeStatuses: NodeExecutionStatus[];
   currentStage?: string;
   overallProgress: number;
-  estimatedTimeRemaining?: number;
   /**
    * The run's Nextflow processes, from its console: those listed plus the
    * "Plus N more processes waiting for tasks…". Unknown until it says.
@@ -356,13 +346,6 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
     )}m`;
   };
 
-  const formatEstimatedTime = (seconds?: number) => {
-    if (!seconds) return "Unknown";
-    if (seconds < 60) return `~${Math.ceil(seconds)}s`;
-    if (seconds < 3600) return `~${Math.ceil(seconds / 60)}m`;
-    return `~${Math.ceil(seconds / 3600)}h`;
-  };
-
   return (
     <>
       {bar}
@@ -576,17 +559,9 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
 
               <StageProgress stages={stages} isRunning={status.isRunning} />
 
-              {/* Time Information */}
-              <div className="flex justify-between text-xs text-gray-800">
-                <span>
-                  Runtime: {formatDuration(status.startTime, status.endTime)}
-                </span>
-                {status.isRunning && status.estimatedTimeRemaining && (
-                  <span>
-                    ETA: {formatEstimatedTime(status.estimatedTimeRemaining)}
-                  </span>
-                )}
-              </div>
+              <p className="text-xs text-gray-800">
+                Runtime: {formatDuration(status.startTime, status.endTime)}
+              </p>
 
               {status.currentStage && (
                 <div className="mt-2 text-sm text-gray-800">
@@ -690,36 +665,6 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                         </div>
                       </div>
                     )}
-
-                  {/* Container and resource info */}
-                  {nodeStatus.container && (
-                    <div className="text-xs text-gray-700 mb-1">
-                      📦 {nodeStatus.container}
-                    </div>
-                  )}
-
-                  {nodeStatus.resources && (
-                    <div className="flex items-center gap-3 text-xs text-gray-700">
-                      <div className="flex items-center gap-1">
-                        <Cpu className="w-3 h-3" />
-                        <span>{nodeStatus.resources.cpus} CPU</span>
-                        {nodeStatus.resources.actualCpuUsage && (
-                          <span className="text-blue-500">
-                            ({nodeStatus.resources.actualCpuUsage}%)
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <HardDrive className="w-3 h-3" />
-                        <span>{nodeStatus.resources.memory}</span>
-                        {nodeStatus.resources.actualMemoryUsage && (
-                          <span className="text-blue-500">
-                            ({nodeStatus.resources.actualMemoryUsage}%)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
 
                   {/* Error message */}
                   {nodeStatus.status === "error" && nodeStatus.error && (

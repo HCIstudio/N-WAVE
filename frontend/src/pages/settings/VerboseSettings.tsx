@@ -13,7 +13,7 @@ import {
   subscribeActivity,
 } from "../../activity/activityLog";
 import { clearActivity, getActivitySummary, listActivity, saveActivitySettings } from "../../api/activity";
-import { downloadBlob } from "../workflow/workflowExport";
+import { downloadBlob } from "../../utils/download";
 import { useFeatures } from "../../settings/useFeatures";
 import { getApiErrorMessage } from "../../utils/errors";
 import { formatBytes } from "../../utils/fileContent";
