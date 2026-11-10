@@ -54,6 +54,8 @@ or has an issue that is explicitly moved to a later release.
       duplicating and deleting work.
 - [ ] The **Help**, **Glossary** and **Roadmap** pages open, and their links (wiki, issues)
       work. The roadmap shows the release under test.
+- [ ] The **References** page opens from the home page's footer; its DOI, website and wiki
+      links work.
 - [ ] Term hover cards on the canvas and in panels show their explanation and docs link.
 - [ ] The [browser demo](https://hcistudio.github.io/N-WAVE/) (after the release): demos open,
       the tutorial works, Analyse shows the recorded analysis, Run says it needs an installation.
