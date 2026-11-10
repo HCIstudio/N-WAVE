@@ -32,3 +32,25 @@ references:
     start: lqae092
     year: 2024
     doi: 10.1093/nargab/lqae092
+  - type: conference-paper
+    title: "A Consolidated View on Specification Languages for Data Analysis Workflows"
+    authors:
+      - family-names: Hilbrich
+        given-names: Marcus
+      - family-names: Müller
+        given-names: Sebastian
+      - family-names: Kulagina
+        given-names: Svetlana
+      - family-names: Lazik
+        given-names: Christopher
+      - family-names: De Mecquenem
+        given-names: Ninon
+      - family-names: Grunske
+        given-names: Lars
+    collection-title: "Leveraging Applications of Formal Methods, Verification and Validation. Software Engineering (ISoLA 2022)"
+    collection-type: proceedings
+    volume: 13702
+    start: 201
+    end: 215
+    year: 2022
+    doi: 10.1007/978-3-031-19756-7_12

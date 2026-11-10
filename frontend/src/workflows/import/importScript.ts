@@ -31,6 +31,7 @@ import { nodeDefinitions, type NodeDefinition } from "../../registry/nodeDefinit
 import {
   createNodeDefinitionFromCustomNode,
   createStoredCustomNode,
+  EMBEDDED_DATES,
   parseCustomNodeSource,
   type StoredCustomNode,
 } from "../../registry/customNodes";
@@ -351,7 +352,7 @@ const stepForProcess = (
     parsed,
     { inputs: parsed.inputs, outputs: parsed.outputs },
   );
-  const local: StoredCustomNode = { ...stored, id: `local-${name.toLowerCase()}`, processType: `local_${name.toLowerCase()}` };
+  const local: StoredCustomNode = { ...stored, id: `local-${name.toLowerCase()}`, processType: `local_${name.toLowerCase()}`, ...EMBEDDED_DATES };
   return { type: "process", data: JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(local).defaults)) };
 };
 
@@ -981,7 +982,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
           parsed,
           { inputs: parsed.inputs, outputs: parsed.outputs },
         );
-        const workflow: StoredCustomNode = { ...stored, id: `local-${name.toLowerCase()}`, processType: `local_${name.toLowerCase()}` };
+        const workflow: StoredCustomNode = { ...stored, id: `local-${name.toLowerCase()}`, processType: `local_${name.toLowerCase()}`, ...EMBEDDED_DATES };
         node = addNode(name, "process", JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(workflow).defaults)), name);
       }
     } else if (local) {

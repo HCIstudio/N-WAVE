@@ -26,6 +26,7 @@ runs it and shows the results.
 | [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles) | Running on a SLURM cluster or AWS Batch |
 | [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects) | Running a workflow without N-WAVE |
 | [Importing workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows) | Opening Nextflow scripts and projects on the canvas |
+| [DAW model](https://github.com/HCIstudio/N-WAVE/wiki/DAW-Model) | Exporting and importing a workflow in a language-neutral form |
 | [Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting) | Failed runs, Docker, paths, the first slow run |
 | [How N-WAVE explains things](https://github.com/HCIstudio/N-WAVE/wiki/How-N-WAVE-Explains-Things) | What each of N-WAVE's explanations is based on, how sure it is and its limits |
 

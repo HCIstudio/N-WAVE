@@ -224,6 +224,13 @@ export const parseCustomNodeSource = (
   };
 };
 
+/**
+ * The dates of a step that lives only in its workflow (imported from a
+ * script or a model): it isn't in the node library, where they are shown,
+ * and importing the same file twice must give the same workflow.
+ */
+export const EMBEDDED_DATES = { createdAt: "1970-01-01T00:00:00.000Z", updatedAt: "1970-01-01T00:00:00.000Z" } as const;
+
 export const createStoredCustomNode = (
   draft: CustomNodeDraft,
   parsed: ParsedCustomNodeSource,

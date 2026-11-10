@@ -28,6 +28,8 @@ import {
   isNfCoreSubworkflowId,
   type NfCoreSubworkflowCatalogEntry,
 } from "../../src/registry/nfcore/subworkflow";
+import { DAW_SCHEMA } from "../../src/metamodel/dawModel";
+import { fromDawModel } from "../../src/metamodel/fromDawModel";
 import { migrateLegacyNfCoreNode } from "../../src/registry/nfcore/legacyNodes";
 import { createNodeDefinitionFromNfCoreManifest } from "../../src/registry/nfcoreModuleAdapters";
 import {
@@ -445,6 +447,53 @@ const demo1 = (): LintFixture => ({
   edges: demoWorkflowSeed.edges as Edge[],
 });
 
+/**
+ * An abstract workflow from a DAW model (#194): tasks without an
+ * implementation open as placeholder steps, a sub-DAW as a group.
+ */
+const dawModelSkeleton = (): LintFixture => {
+  const task = (id: string, name: string) => ({ id, name, type: "Task" as const });
+  const flow = (id: string, from: string, to: string, port?: string) => ({
+    id,
+    type: "StreamingInterconnection" as const,
+    from: { element: from },
+    to: { element: to, ...(port ? { port } : {}) },
+  });
+  const canvas = fromDawModel({
+    schema: DAW_SCHEMA,
+    metamodel: {},
+    daw: {
+      id: "average",
+      name: "Average of values",
+      tasks: [{ ...task("divide", "Divide"), description: "Divide the sum by the count." }],
+      storages: [
+        { id: "values", name: "Values", type: "FileStorage" },
+        { id: "average-out", name: "Average", type: "FileStorage" },
+      ],
+      interconnections: [
+        flow("i1", "values", "sum"),
+        flow("i2", "values", "count"),
+        flow("i3", "sum", "divide", "sum"),
+        flow("i4", "count", "divide", "count"),
+        flow("i5", "divide", "average-out"),
+      ],
+      daws: [
+        { id: "statistics", name: "Statistics", tasks: [task("sum", "Sum"), task("count", "Count")], storages: [], interconnections: [], daws: [] },
+      ],
+    },
+  });
+  return {
+    name: "daw-model-skeleton",
+    description: "An abstract workflow from a DAW model, with placeholder steps",
+    nodes: canvas.nodes.map((candidate) =>
+      candidate.type === "fileInput"
+        ? { ...candidate, data: { ...candidate.data, files: [{ name: "values.txt", size: 6, content: "1\n2\n3\n" }] } }
+        : candidate,
+    ),
+    edges: canvas.edges,
+  };
+};
+
 export const buildLintFixtures = (): LintFixture[] => {
   const starSalmon = rnaseqStarSalmon as unknown as {
     nodes: Node<NodeData>[];
@@ -492,6 +541,7 @@ export const buildLintFixtures = (): LintFixture[] => {
       READ_QC: ["fastqc_raw", "trim_galore"],
       ALIGN_AND_QUANTIFY: ["star_align", "salmon_quant", "bam_sort_stats"],
     }),
+    dawModelSkeleton(),
     grouped(nfCoreSubworkflowChain(), "grouped-subworkflow-chain", "nf-core subworkflows in groups", {
       INDEX: ["nf-core/bwa/index"],
       TRIM_AND_ALIGN: ["nf-core/subworkflows/fastq_trim_fastp_fastqc", "nf-core/subworkflows/fastq_align_bwa"],
