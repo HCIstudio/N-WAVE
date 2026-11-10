@@ -50,7 +50,7 @@ describe("useCanvasView", () => {
     expect(result.current.problems).toEqual([]);
   });
 
-  it("switches to Steps only, and back to All on an edit (recorded in verbose mode)", () => {
+  it("switches to the process graph, and back to the editor on an edit (recorded in verbose mode)", () => {
     startRecording();
     const { result, rerender } = renderHook(
       ({ current }) => useCanvasView(current, imported.edges, "wf"),

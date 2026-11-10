@@ -1,7 +1,7 @@
 {
   "name": "n-wave-frontend",
   "private": true,
-  "version": "1.5.6",
+  "version": "1.5.8",
   "type": "module",
   "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for building, visualizing, and running scientific workflows.",
   "author": "HCIstudio",
@@ -41,6 +41,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/coverage-v8": "2.1.9",
+    "ajv": "8.17.1",
     "autoprefixer": "^10.6.1",
     "jsdom": "^29.1.1",
     "postcss": "^8.5.31",

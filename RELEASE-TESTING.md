@@ -143,16 +143,18 @@ or has an issue that is explicitly moved to a later release.
 - [ ] An imported nf-core style pipeline analyses, including its nf-core modules.
 - [ ] With no network for the containers (unplug, or a firewall): the analysis still works.
 - [ ] `NWAVE_BIOFLOW=off` and `NWAVE_LINT=off`: the panel says which tool isn't available.
-- [ ] **Canvas views**: connections made in code show as dashed lines with a warning; **Steps**
-      hides the channel code and connects the steps through it; an edit goes back to **All**.
+- [ ] **Canvas views**: connections made in code show as dashed lines with a warning; **Process
+      graph** hides the channel code and connects the steps through it, drawn as a blueprint;
+      an edit goes back to the **Editor**.
 - [ ] **When a step runs**: in an imported script with `if (params.aligner == …)`, the steps
       have **if** badges. Changing the parameter's value greys out the other branch straight
       away, and the panel's **When it runs** says which condition holds.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
-      imports back grouped. The **Grouped** view collapses and opens the groups.
-- [ ] **Metamodel**: export a workflow in the metamodel format and import it back (and a file
-      made by another tool, if available).
+      imports back grouped. The **Groups** view collapses and opens the groups.
+- [ ] **DAW model**: **Export as DAW model**, import the file, and get the same canvas (and the
+      same file when exported again). A model written by hand with tasks that have no
+      implementation opens as placeholders, and the workflow check lists them.
 
 ## Global Settings and studies
 

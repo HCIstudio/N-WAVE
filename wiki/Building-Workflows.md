@@ -58,18 +58,23 @@ opens).
 - **Zoom to the failing step** appears next to them after a run failed and goes to the step
   that failed.
 
-## Views: all nodes, the steps, or groups
+## Views: the editor, the process graph, or groups
 
-The switch in the bottom bar (**All** | **Steps** | **Grouped**) chooses what the canvas shows:
+The switch in the bottom bar (**Editor** | **Process graph** | **Groups**) chooses what the
+canvas shows:
 
-- **All**: every node, editable.
-- **Steps**: channel code (channel operator nodes, and code kept from an import) is hidden,
-  and each step connects straight to the steps its data reaches through it (dotted lines).
-  Large imported workflows read as their steps this way. This view can't be edited: editing
-  a node's settings, or any other change, goes back to **All**.
-- **Grouped** (when the workflow has [groups](#groups-of-steps)): each group is one box with
-  its steps listed, connected to the rest. **Open** (or a double-click) goes back to **All**,
-  zoomed to the group's steps. This view can't be edited either.
+- **Editor**: every node, editable.
+- **Process graph**: the processes and how data flows between them. Channel code (channel
+  operator nodes, and code kept from an import) is hidden, and each step connects straight
+  to the steps its data reaches through it (dotted lines). Large imported workflows read as
+  their steps this way.
+- **Groups** (when the workflow has [groups](#groups-of-steps)): each group is one box with
+  its steps listed, connected to the rest. **Open** (or a double-click) goes back to the
+  editor, zoomed to the group's steps.
+
+The process graph and groups are read-only, and drawn as a blueprint (blue paper, a title
+block naming the view) so they can't be mistaken for the editor. Editing a node's settings,
+or any other change, goes back to the editor.
 
 **Connected in code** (orange dashed lines): code in a node can call a step or read another
 node's output that the canvas doesn't connect to it, for example an imported
@@ -90,7 +95,7 @@ the group changes how the code is written and adds a way to see the workflow:
 2. Name it. The name is the subworkflow's in the code (`Read QC` → `READ_QC`); it can't be a
    step's name or another group's.
 3. On the canvas, a frame shows the group's steps, with **Rename** and **Ungroup** (the steps
-   on their own again). **Grouped** in the bottom bar shows each group as one box.
+   on their own again). **Groups** in the bottom bar shows each group as one box.
 
 In the code, the group is a named workflow the workflow calls: what its steps read from the
 other steps becomes its inputs (`take:`), what the other steps read from it its outputs

@@ -5,6 +5,8 @@ import { wikiUrl } from "../docs/links";
 
 /** Gap in px between the banner and the footer (or the viewport bottom). */
 const GAP = 12;
+/** The badge with its icon only: less room than this, and it would cover the bottom bar. */
+const MIN_BADGE_WIDTH = 44;
 
 /**
  * Small, dismissible badge shown only in the backend-less demo build. It tells
@@ -73,6 +75,9 @@ const DemoBanner = () => {
     // shows up as a body size change; plus viewport resize and scroll.
     const resizeObserver = new ResizeObserver(measure);
     resizeObserver.observe(document.body);
+    // The canvas's bottom bar changes width with what it shows (the view switch, the name).
+    const bottomBar = document.querySelector("[data-tutorial-bottom-bar]");
+    if (bottomBar) resizeObserver.observe(bottomBar);
     window.addEventListener("resize", measure);
     window.addEventListener("scroll", measure, { passive: true });
     return () => {
@@ -106,6 +111,10 @@ const DemoBanner = () => {
       <X className="h-4 w-4" />
     </button>
   );
+
+  // No room beside the bottom bar (a narrow window): it would cover the bar's
+  // buttons, so it steps aside; the home page still says so.
+  if (besideControls !== null && maxWidth !== null && maxWidth < MIN_BADGE_WIDTH) return null;
 
   // Below dialogs (z-40/z-50) so it never covers their buttons.
   if (besideControls !== null) {

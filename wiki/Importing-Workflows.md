@@ -51,6 +51,8 @@ helper functions then move to the top of that script.
 
 ## See also
 
+- [DAW model](https://github.com/HCIstudio/N-WAVE/wiki/DAW-Model): importing a workflow that
+  isn't Nextflow code, or was only sketched
 - [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects): what
   the exported code and project look like
 - [Building workflows](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows)
