@@ -17,6 +17,7 @@ import {
 import { ConfirmDialog } from "../common";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
 import type { ExecutionSettings } from "../../types/execution";
+import { readStoredExecutionSettings, storeExecutionSettings } from "../../pages/workflow/executionSettings";
 import {
   nameForEditing,
   nameFromEditing,
@@ -103,48 +104,13 @@ const BottomBar: React.FC<BottomBarProps> = ({
     if (isEditingName) nameInputRef.current?.focus();
   }, [isEditingName]);
 
-  // Load settings from localStorage on component mount
+  // Without settings from the workflow, use those kept in browser storage.
   useEffect(() => {
-    // Only load from localStorage if no settings are provided from parent
-    // This prevents overriding settings loaded from the backend
-    if (!executionSettings || Object.keys(executionSettings).length === 0) {
-      const savedSettings = localStorage.getItem("executionSettings");
-      if (savedSettings) {
-        try {
-          const parsed = JSON.parse(savedSettings);
-          // Merge with default settings to ensure all required properties exist
-          onExecutionSettingsChange({
-            ...parsed,
-            container: {
-              ...parsed.container,
-            },
-            resources: {
-              ...parsed.resources,
-            },
-            output: {
-              ...parsed.output,
-            },
-            nextflow: {
-              ...parsed.nextflow,
-            },
-            errorHandling: {
-              ...parsed.errorHandling,
-            },
-            environment: {
-              ...parsed.environment,
-            },
-            cleanup: {
-              ...parsed.cleanup,
-            },
-            validation: {
-              ...parsed.validation,
-            },
-          });
-          setSettingsSaved(true);
-        } catch (error) {
-          console.error("Failed to load execution settings:", error);
-        }
-      }
+    if (executionSettings && Object.keys(executionSettings).length > 0) return;
+    const stored = readStoredExecutionSettings();
+    if (stored) {
+      onExecutionSettingsChange(stored);
+      setSettingsSaved(true);
     }
   }, [onExecutionSettingsChange, executionSettings]);
 
@@ -212,34 +178,18 @@ const BottomBar: React.FC<BottomBarProps> = ({
   };
 
   const handleSettingsChange = (newSettings: Partial<ExecutionSettings>) => {
-    onExecutionSettingsChange({ ...executionSettings, ...newSettings });
+    const next = { ...executionSettings, ...newSettings };
+    onExecutionSettingsChange(next);
     setSettingsChanged(true);
     setSettingsSaved(false);
-    // Save to localStorage immediately for global sync
-    try {
-      localStorage.setItem(
-        "executionSettings",
-        JSON.stringify({ ...executionSettings, ...newSettings })
-      );
-    } catch (error) {
-      console.error(
-        "Failed to save execution settings to localStorage:",
-        error
-      );
-    }
+    // Kept in browser storage straight away, for other workflows and tabs.
+    storeExecutionSettings(next);
   };
 
   const handleSaveSettings = () => {
-    try {
-      localStorage.setItem(
-        "executionSettings",
-        JSON.stringify(executionSettings)
-      );
-      setSettingsSaved(true);
-      setSettingsChanged(false);
-    } catch (error) {
-      console.error("Failed to save execution settings:", error);
-    }
+    storeExecutionSettings(executionSettings);
+    setSettingsSaved(true);
+    setSettingsChanged(false);
   };
 
   const handleRunAndClose = () => {
