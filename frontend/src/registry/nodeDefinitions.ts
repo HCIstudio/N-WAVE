@@ -1,7 +1,7 @@
 import type React from "react";
 import type { Connection, Edge, Node } from "@xyflow/react";
 import type { NextflowProcessCategory } from "../data/types";
-import type { FileObject, NodeData, PortData } from "../components/nodes/BaseNode";
+import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import NotePanel from "../components/panels/input/NotePanel";
 import ParametersPanel from "../components/panels/input/ParametersPanel";
 import PipelinePanel from "../components/panels/process/PipelinePanel";
@@ -19,9 +19,6 @@ import FilterPanel from "../components/panels/operator/FilterPanel";
 import MapPanel from "../components/panels/operator/MapPanel";
 import MergePanel from "../components/panels/operator/MergePanel";
 import ProcessNodePanel from "../components/panels/process/ProcessNodePanel";
-import { useFilterOperator } from "../hooks/operator/useFilterOperator";
-import { useMapOperator } from "../hooks/operator/useMapOperator";
-import { useMergeOperator } from "../hooks/operator/useMergeOperator";
 import {
   generateFilterNode,
   generateGenericProcessNode,
@@ -43,12 +40,6 @@ export type NodePanelComponent = React.ComponentType<{
   node: Node<NodeData>;
   onSave: (nodeId: string, data: Partial<NodeData>) => void;
 }>;
-
-export type NodePreviewHook = (
-  incomingFiles: FileObject[],
-  nodeData: NodeData,
-  onSave: (data: Partial<NodeData>) => void
-) => unknown;
 
 export interface NodeConnectionValidationContext {
   connection: Connection;
@@ -81,7 +72,6 @@ export interface NodeDefinition {
   operatorType?: string;
   processType?: string;
   panel?: NodePanelComponent;
-  previewHook?: NodePreviewHook;
   executionLabel?: string;
   generateNextflow?: NodeGenerator;
   validateConnection?: NodeConnectionValidator;
@@ -169,7 +159,6 @@ const builtinNodeDefinitions: NodeDefinition[] = [
       { name: "out", isConnectable: true },
     ]),
     panel: FilterPanel,
-    previewHook: useFilterOperator,
     generateNextflow: generateFilterNode,
     executionLabel: "Filter",
   },
@@ -196,7 +185,6 @@ const builtinNodeDefinitions: NodeDefinition[] = [
       [{ name: "out", isConnectable: true }]
     ),
     panel: MapPanel,
-    previewHook: useMapOperator,
     generateNextflow: generateMapNode,
     executionLabel: "Map",
   },
@@ -222,7 +210,6 @@ const builtinNodeDefinitions: NodeDefinition[] = [
       [{ name: "out", isConnectable: true }]
     ),
     panel: MergePanel,
-    previewHook: useMergeOperator,
     generateNextflow: generateMergeNode,
     executionLabel: "Merge",
   },
@@ -421,11 +408,6 @@ export const getNodeDefinitionForNode = (
 
   return nodeDefinitions.find((definition) => definition.type === node.type);
 };
-
-export const getRegisteredOperatorTypes = (): string[] =>
-  nodeDefinitions
-    .filter((definition) => definition.kind === "operator" && definition.operatorType)
-    .map((definition) => definition.operatorType as string);
 
 export const getNodePaletteCategories = (): NextflowProcessCategory[] => {
   const categories = new Map<string, NextflowProcessCategory>();
