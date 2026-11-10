@@ -57,7 +57,6 @@ import NestedView from "../components/canvas/NestedView";
 import AnalysisPanel from "../components/canvas/AnalysisPanel";
 import AnalyseButton from "../components/canvas/AnalyseButton";
 import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
-import type { DiagramFormat } from "../export/diagrams";
 import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
@@ -75,16 +74,8 @@ import { useRunDefaults } from "../settings/useRunDefaults";
 import { useFeature } from "../settings/useFeatures";
 import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
-import {
-  downloadDawModel,
-  downloadScript,
-  copyScript,
-  type DiagramSource,
-  diagramSources,
-  downloadDiagram,
-  exportProject,
-  type WorkflowSource,
-} from "./workflow/workflowExport";
+import type { WorkflowSource } from "./workflow/workflowExport";
+import { useWorkflowExports } from "./workflow/useWorkflowExports";
 
 const WorkflowPageContent: React.FC = () => {
   const {
@@ -348,7 +339,6 @@ const WorkflowPageContent: React.FC = () => {
     isRunning,
     mode: runDefaults.defaults.resume,
   });
-  const [isExporting, setIsExporting] = useState(false);
 
   // Why the last run failed, and the step it failed in, if the log says
   // (unless failure explanations are switched off).
@@ -448,62 +438,12 @@ const WorkflowPageContent: React.FC = () => {
     sourceFormat: workflow.sourceFormat,
   };
 
-  const handleDownloadScript = () => {
-    try {
-      downloadScript(workflowSource);
-    } catch (error) {
-      // e.g. a cycle in the workflow
-      showError(
-        error instanceof Error
-          ? error.message
-          : "An unknown error occurred during script generation."
-      );
-    }
-  };
-
-  const handleCopyScript = async () => {
-    try {
-      await copyScript(workflowSource);
-      showToast("Copied the Nextflow script.", "success");
-    } catch (error) {
-      showError(error instanceof Error ? error.message : "Couldn't copy the script.");
-    }
-  };
-
   // The analysis's graphs, while it is of the workflow's steps as they are.
   const analysedStructure =
     analysis.structureCurrent && analysis.analysis?.bioflow.status === "done"
       ? analysis.analysis.bioflow.result
       : null;
-
-  const handleDiagram = async (which: string, format: DiagramFormat) => {
-    try {
-      const fileName = await downloadDiagram(workflowSource, which as DiagramSource, format, analysedStructure);
-      showToast(`Exported ${fileName}.`, "success");
-    } catch (error) {
-      showError(error instanceof Error ? error.message : "Couldn't draw the diagram.");
-    }
-  };
-
-  const handleExportDawModel = () => {
-    const fileName = downloadDawModel(workflowSource);
-    showToast(`Exported ${fileName}: the workflow as a DAW model. Import it in N-WAVE to get this canvas back.`, "success");
-  };
-
-  const handleExportProject = async () => {
-    setIsExporting(true);
-    try {
-      const fileName = await exportProject(workflowSource);
-      showToast(
-        `Exported ${fileName}. Unzip it and see README.md for how to run it.`,
-        "success"
-      );
-    } catch (error: unknown) {
-      showError(getApiErrorMessage(error, "Failed to export the project."));
-    } finally {
-      setIsExporting(false);
-    }
-  };
+  const { exports, isExporting } = useWorkflowExports(workflowSource, analysedStructure, showToast);
 
   // Interaction flags on the nodes the canvas shows: the node of the panel
   // under the pointer is highlighted, and a run stops editing. Nodes of a
@@ -727,14 +667,7 @@ const WorkflowPageContent: React.FC = () => {
           workflowName={workflow.workflowName}
           onWorkflowNameChange={handleWorkflowNameChange}
           onSave={saveWorkflow}
-          exports={{
-            onDownload: handleDownloadScript,
-            onCopyScript: handleCopyScript,
-            onExportProject: handleExportProject,
-            onExportDawModel: handleExportDawModel,
-            diagramSources: diagramSources(analysedStructure),
-            onDiagram: handleDiagram,
-          }}
+          exports={exports}
           isExporting={isExporting}
           onRun={() => run.run(runSettings, { resume: resume.resume })}
           isSaved={workflow.isSaved}
