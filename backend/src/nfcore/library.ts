@@ -605,21 +605,29 @@ const makeTempRoot = (installRoot: string): string => {
 export const installModule = (entry: NfCoreCatalogEntry, signal?: AbortSignal) =>
 	installOnce(entry.id, (own) => writeModule(entry, own), signal);
 
-const writeModule = async (entry: NfCoreCatalogEntry, signal?: AbortSignal) => {
-	assertInstallable(entry);
+const writeModule = (entry: NfCoreCatalogEntry, signal?: AbortSignal) =>
+	writeComponent(entry, "module", getInstalledModuleRoot(entry), moduleFilePaths(entry), buildAdapterManifest(entry), signal);
 
-	const installRoot = getInstalledModuleRoot(entry);
+/**
+ * Download a module's or subworkflow's files into a temporary folder, write
+ * its manifest there, move the folder into place and record it in the
+ * install index. A failed download leaves nothing behind.
+ */
+const writeComponent = async <Manifest,>(
+	entry: NfCoreCatalogEntry | NfCoreSubworkflowEntry,
+	kind: InstalledModuleIndexEntry["kind"],
+	installRoot: string,
+	files: string[],
+	manifest: Manifest,
+	signal?: AbortSignal,
+) => {
+	assertInstallable(entry);
 	ensureInside(getNwaveDataRoot(), installRoot);
 	const tempRoot = makeTempRoot(installRoot);
 
 	try {
-		await downloadEntryFiles(entry, moduleFilePaths(entry), tempRoot, signal);
-
-		const manifest = buildAdapterManifest(entry);
-		fs.writeFileSync(
-			path.join(tempRoot, ADAPTER_FILE),
-			`${JSON.stringify(manifest, null, 2)}\n`,
-		);
+		await downloadEntryFiles(entry, files, tempRoot, signal);
+		fs.writeFileSync(path.join(tempRoot, ADAPTER_FILE), `${JSON.stringify(manifest, null, 2)}\n`);
 
 		fs.rmSync(installRoot, { recursive: true, force: true });
 		fs.mkdirSync(path.dirname(installRoot), { recursive: true });
@@ -627,7 +635,7 @@ const writeModule = async (entry: NfCoreCatalogEntry, signal?: AbortSignal) => {
 
 		const installed: InstalledModuleIndexEntry = {
 			id: entry.id,
-			kind: "module",
+			kind,
 			installedAt: new Date().toISOString(),
 			moduleDir: installRoot,
 			manifestPath: path.join(installRoot, ADAPTER_FILE),
@@ -704,50 +712,15 @@ export const installSubworkflow = async (
 const writeSubworkflow = (entry: NfCoreSubworkflowEntry, signal?: AbortSignal) =>
 	installOnce(entry.id, (own) => writeSubworkflowFiles(entry, own), signal);
 
-const writeSubworkflowFiles = async (
-	entry: NfCoreSubworkflowEntry,
-	signal?: AbortSignal,
-) => {
-	assertInstallable(entry);
-	const installRoot = getInstalledSubworkflowRoot(entry);
-	ensureInside(getNwaveDataRoot(), installRoot);
-	const tempRoot = makeTempRoot(installRoot);
-
-	try {
-		await downloadEntryFiles(
-			entry,
-			entry.files.paths.filter(isSafeRelativePath),
-			tempRoot,
-			signal,
-		);
-		const manifest = buildSubworkflowManifest(entry);
-		fs.writeFileSync(
-			path.join(tempRoot, ADAPTER_FILE),
-			`${JSON.stringify(manifest, null, 2)}\n`,
-		);
-
-		fs.rmSync(installRoot, { recursive: true, force: true });
-		fs.mkdirSync(path.dirname(installRoot), { recursive: true });
-		fs.renameSync(tempRoot, installRoot);
-
-		const installed: InstalledModuleIndexEntry = {
-			id: entry.id,
-			kind: "subworkflow",
-			installedAt: new Date().toISOString(),
-			moduleDir: installRoot,
-			manifestPath: path.join(installRoot, ADAPTER_FILE),
-			sourceCommit: entry.source.commit,
-			support: entry.support,
-		};
-		const index = loadInstalledIndex();
-		index[entry.id] = installed;
-		writeInstalledIndex(index);
-		return { installed, manifest };
-	} catch (error: unknown) {
-		fs.rmSync(tempRoot, { recursive: true, force: true });
-		throw error;
-	}
-};
+const writeSubworkflowFiles = (entry: NfCoreSubworkflowEntry, signal?: AbortSignal) =>
+	writeComponent(
+		entry,
+		"subworkflow",
+		getInstalledSubworkflowRoot(entry),
+		entry.files.paths.filter(isSafeRelativePath),
+		buildSubworkflowManifest(entry),
+		signal,
+	);
 
 /**
  * Make sure every subworkflow a workflow includes ("bam_stats_samtools") is

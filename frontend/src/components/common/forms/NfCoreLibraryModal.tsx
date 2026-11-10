@@ -70,60 +70,38 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
       .finally(() => setIsLoading(false));
   }, [isOpen]);
 
-  const filteredModules = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const modules = normalizedSearch
-      ? catalog.filter((module) => {
-          const haystack = [
+  const filteredModules = useMemo(
+    () =>
+      catalog
+        .filter((module) =>
+          matchesSearch(searchTerm, [
             module.id,
             module.label,
             module.description,
             module.processName,
             ...module.keywords,
             ...module.tools,
-          ]
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(normalizedSearch);
-        })
-      : catalog;
-
-    return modules
-      .slice()
-      .sort((left, right) => {
-        if (left.installed !== right.installed) return left.installed ? -1 : 1;
-        if (left.support !== right.support) {
-          return supportRank(left.support) - supportRank(right.support);
-        }
-        return left.id.localeCompare(right.id);
-      });
-  }, [catalog, searchTerm]);
-  const filteredSubworkflows = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    return subworkflows
-      .filter(
-        (subworkflow) =>
-          !normalizedSearch ||
-          [
+          ]),
+        )
+        .sort(libraryOrder),
+    [catalog, searchTerm],
+  );
+  const filteredSubworkflows = useMemo(
+    () =>
+      subworkflows
+        .filter((subworkflow) =>
+          matchesSearch(searchTerm, [
             subworkflow.id,
             subworkflow.label,
             subworkflow.description,
             subworkflow.workflowName,
             ...subworkflow.keywords,
             ...subworkflow.components.modules,
-          ]
-            .join(" ")
-            .toLowerCase()
-            .includes(normalizedSearch)
-      )
-      .sort((left, right) => {
-        if (left.installed !== right.installed) return left.installed ? -1 : 1;
-        if (left.support !== right.support) {
-          return supportRank(left.support) - supportRank(right.support);
-        }
-        return left.id.localeCompare(right.id);
-      });
-  }, [subworkflows, searchTerm]);
+          ]),
+        )
+        .sort(libraryOrder),
+    [subworkflows, searchTerm],
+  );
   const matchCount =
     view === "modules" ? filteredModules.length : filteredSubworkflows.length;
   const pageCount = Math.max(1, Math.ceil(matchCount / pageSize));
@@ -388,38 +366,17 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                     </div>
                   )}
                 </div>
-                {isInstalled ? (
-                  <button
-                    type="button"
-                    disabled={isInstalling}
-                    onClick={() => handleUninstall(module)}
-                    aria-label={`Remove ${module.id}`}
-                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isInstalling ? "Removing..." : "Remove"}
-                  </button>
-                ) : isInstalling ? (
-                  <button
-                    type="button"
-                    onClick={() => installAbort.current?.abort()}
-                    aria-label={`Cancel installing ${module.id}`}
-                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent"
-                  >
-                    Installing… Cancel
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={!canInstall || installingId !== null}
-                    onClick={() => handleInstall(module)}
-                    aria-label={
-                      canInstall ? `Install ${module.id}` : undefined
-                    }
-                    className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {canInstall ? "Install" : "Needs config"}
-                  </button>
-                )}
+                <InstallButton
+                  id={module.id}
+                  installed={isInstalled}
+                  installing={isInstalling}
+                  canInstall={canInstall}
+                  busy={installingId !== null}
+                  cannotInstall="Needs config"
+                  onInstall={() => handleInstall(module)}
+                  onRemove={() => handleUninstall(module)}
+                  onCancel={() => installAbort.current?.abort()}
+                />
               </div>
             );
           })}
@@ -488,38 +445,17 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
                       </p>
                     )}
                 </div>
-                {isInstalled ? (
-                  <button
-                    type="button"
-                    disabled={isInstalling}
-                    onClick={() => handleUninstall(subworkflow)}
-                    aria-label={`Remove ${subworkflow.id}`}
-                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isInstalling ? "Removing..." : "Remove"}
-                  </button>
-                ) : isInstalling ? (
-                  <button
-                    type="button"
-                    onClick={() => installAbort.current?.abort()}
-                    aria-label={`Cancel installing ${subworkflow.id}`}
-                    className="self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent"
-                  >
-                    Installing… Cancel
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    disabled={!canInstall || installingId !== null}
-                    onClick={() => handleInstall(subworkflow)}
-                    aria-label={
-                      canInstall ? `Install ${subworkflow.id}` : undefined
-                    }
-                    className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {canInstall ? "Install" : "Unsupported"}
-                  </button>
-                )}
+                <InstallButton
+                  id={subworkflow.id}
+                  installed={isInstalled}
+                  installing={isInstalling}
+                  canInstall={canInstall}
+                  busy={installingId !== null}
+                  cannotInstall="Unsupported"
+                  onInstall={() => handleInstall(subworkflow)}
+                  onRemove={() => handleUninstall(subworkflow)}
+                  onCancel={() => installAbort.current?.abort()}
+                />
               </div>
             );
           })}
@@ -558,6 +494,68 @@ const NfCoreLibraryModal: React.FC<NfCoreLibraryModalProps> = ({
         </div>
       </div>
     </div>
+  );
+};
+
+/** Whether the search (any case) is in one of the fields; an empty search matches everything. */
+const matchesSearch = (search: string, fields: string[]): boolean => {
+  const term = search.trim().toLowerCase();
+  return !term || fields.join(" ").toLowerCase().includes(term);
+};
+
+/** Installed first, then by how well N-WAVE supports it, then by id. */
+const libraryOrder = (
+  left: { installed?: boolean; support: NfCoreCatalogModule["support"]; id: string },
+  right: { installed?: boolean; support: NfCoreCatalogModule["support"]; id: string },
+): number =>
+  Number(Boolean(right.installed)) - Number(Boolean(left.installed)) ||
+  supportRank(left.support) - supportRank(right.support) ||
+  left.id.localeCompare(right.id);
+
+const InstallButton: React.FC<{
+  id: string;
+  installed: boolean;
+  installing: boolean;
+  canInstall: boolean;
+  /** Another component is being installed. */
+  busy: boolean;
+  /** The button's text when it can't be installed. */
+  cannotInstall: string;
+  onInstall: () => void;
+  onRemove: () => void;
+  onCancel: () => void;
+}> = ({ id, installed, installing, canInstall, busy, cannotInstall, onInstall, onRemove, onCancel }) => {
+  const outline = "self-center rounded-md border border-accent px-3 py-1.5 text-sm text-text hover:bg-accent";
+  if (installed) {
+    return (
+      <button
+        type="button"
+        disabled={installing}
+        onClick={onRemove}
+        aria-label={`Remove ${id}`}
+        className={`${outline} disabled:cursor-not-allowed disabled:opacity-50`}
+      >
+        {installing ? "Removing..." : "Remove"}
+      </button>
+    );
+  }
+  if (installing) {
+    return (
+      <button type="button" onClick={onCancel} aria-label={`Cancel installing ${id}`} className={outline}>
+        Installing… Cancel
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      disabled={!canInstall || busy}
+      onClick={onInstall}
+      aria-label={canInstall ? `Install ${id}` : undefined}
+      className="self-center rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {canInstall ? "Install" : cannotInstall}
+    </button>
   );
 };
 
