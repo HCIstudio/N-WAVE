@@ -141,7 +141,7 @@ const CustomNodeModal: React.FC<CustomNodeModalProps> = ({
 
     const storedNode = createStoredCustomNode(
       { label, description, icon, source },
-      buildParsedSourceForSave(parsed),
+      parsed,
       { inputs, outputs },
       node ?? undefined
     );
@@ -318,328 +318,245 @@ const getFileInputs = (inputs: CustomNodeInput[]): CustomNodeInput[] =>
 const getSettings = (inputs: CustomNodeInput[]): CustomNodeInput[] =>
   inputs.filter((input) => input.kind === "val");
 
+const FIELD = "w-full rounded-md border border-accent bg-background p-2 text-sm text-text";
+const CAPTION = "mb-1 block text-[11px] uppercase tracking-wide text-text-light";
+
+/** The list with entry `index` changed. */
+const updateAt = <T,>(list: T[], index: number, change: (entry: T) => T): T[] =>
+  list.map((entry, entryIndex) => (entryIndex === index ? change(entry) : entry));
+
+const TextField: React.FC<{
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+}> = ({ label, value, onChange, placeholder }) => (
+  <label className="block">
+    <span className={CAPTION}>{label}</span>
+    <input value={value} onChange={(event) => onChange(event.target.value)} className={FIELD} placeholder={placeholder} />
+  </label>
+);
+
+/**
+ * An editable list of definitions: a card per entry with a remove button,
+ * and a button that adds one. `keepOne`: the last entry can't be removed.
+ */
+const DefinitionList = <T,>({
+  title,
+  noun,
+  entries,
+  onChange,
+  keepOne,
+  empty,
+  added,
+  children,
+}: {
+  title: string;
+  noun: string;
+  entries: T[];
+  onChange: (entries: T[]) => void;
+  keepOne: boolean;
+  empty?: string;
+  added: T;
+  children: (entry: T, update: (change: (entry: T) => T) => void) => React.ReactNode;
+}) => {
+  const Noun = noun.replace(/\b\w/g, (letter) => letter.toUpperCase());
+  return (
+    <div>
+      <h3 className="mb-2 text-sm font-semibold text-text">{title}</h3>
+      <div className="space-y-2">
+        {entries.map((entry, index) => {
+          const lastOne = keepOne && entries.length <= 1;
+          return (
+            <div
+              // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
+              key={`${noun}-${index}`}
+              className="rounded-md border border-accent bg-background/60 p-3"
+            >
+              <div className="mb-2 flex items-center justify-between">
+                <p className="text-xs font-medium uppercase tracking-wide text-text-light">
+                  {`${Noun} ${index + 1}`}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onChange(entries.filter((_, entryIndex) => entryIndex !== index))}
+                  disabled={lastOne}
+                  className="rounded-md p-1 text-text-light hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-text-light"
+                  title={lastOne ? `At least one ${noun} is required` : `Remove ${noun}`}
+                  aria-label={`Remove ${noun} ${index + 1}`}
+                >
+                  <DynamicIcon name="Trash2" className="h-4 w-4" />
+                </button>
+              </div>
+              {children(entry, (change) => onChange(updateAt(entries, index, change)))}
+            </div>
+          );
+        })}
+        {entries.length === 0 && empty && <p className="text-sm text-text-light">{empty}</p>}
+        <button
+          type="button"
+          onClick={() => onChange([...entries, added])}
+          className="text-sm text-nextflow-green hover:underline"
+        >
+          Add {noun}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const EditableFileInputs: React.FC<{
   inputs: CustomNodeInput[];
   onChange: (inputs: CustomNodeInput[]) => void;
 }> = ({ inputs, onChange }) => (
-  <div>
-    <h3 className="mb-2 text-sm font-semibold text-text">File Inputs</h3>
-    <div className="space-y-2">
-      {inputs.map((input, index) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
-          key={`file-input-${index}`}
-          className="rounded-md border border-accent bg-background/60 p-3"
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-text-light">
-              File Input {index + 1}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                onChange(inputs.filter((_, candidateIndex) => candidateIndex !== index))
-              }
-              disabled={inputs.length <= 1}
-              className="rounded-md p-1 text-text-light hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-text-light"
-              title={
-                inputs.length <= 1
-                  ? "At least one file input is required"
-                  : "Remove file input"
-              }
-              aria-label={`Remove file input ${index + 1}`}
-            >
-              <DynamicIcon name="Trash2" className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Handle
-              </span>
-              <input
-                value={input.name}
-                onChange={(event) =>
-                  onChange(
-                    inputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, name: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="name"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Label
-              </span>
-              <input
-                value={input.label}
-                onChange={(event) =>
-                  onChange(
-                    inputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, label: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-              />
-            </label>
-          </div>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                File Type
-              </span>
-              <input
-                value={input.fileType ?? ""}
-                onChange={(event) =>
-                  onChange(
-                    inputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, fileType: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="FASTQ"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                File Pattern
-              </span>
-              <input
-                value={input.filePattern ?? ""}
-                onChange={(event) =>
-                  onChange(
-                    inputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, filePattern: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="*.fastq.gz"
-              />
-            </label>
-          </div>
+  <DefinitionList
+    title="File Inputs"
+    noun="file input"
+    entries={inputs}
+    onChange={onChange}
+    keepOne
+    empty="No file inputs inferred."
+    added={{ name: "input", label: "Input", kind: "path", fileType: "", filePattern: "" }}
+  >
+    {(input, update) => (
+      <>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <TextField label="Handle" value={input.name} placeholder="name" onChange={(name) => update((i) => ({ ...i, name }))} />
+          <TextField label="Label" value={input.label} onChange={(label) => update((i) => ({ ...i, label }))} />
         </div>
-      ))}
-      {inputs.length === 0 && (
-        <p className="text-sm text-text-light">No file inputs inferred.</p>
-      )}
-      <button
-        type="button"
-        onClick={() =>
-          onChange([
-            ...inputs,
-            {
-              name: "input",
-              label: "Input",
-              kind: "path",
-              fileType: "",
-              filePattern: "",
-            },
-          ])
-        }
-        className="text-sm text-nextflow-green hover:underline"
-      >
-        Add file input
-      </button>
-    </div>
-  </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <TextField
+            label="File Type"
+            value={input.fileType ?? ""}
+            placeholder="FASTQ"
+            onChange={(fileType) => update((i) => ({ ...i, fileType }))}
+          />
+          <TextField
+            label="File Pattern"
+            value={input.filePattern ?? ""}
+            placeholder="*.fastq.gz"
+            onChange={(filePattern) => update((i) => ({ ...i, filePattern }))}
+          />
+        </div>
+      </>
+    )}
+  </DefinitionList>
 );
 
 const EditableSettings: React.FC<{
   settings: CustomNodeInput[];
   onChange: (settings: CustomNodeInput[]) => void;
 }> = ({ settings, onChange }) => (
-  <div>
-    <h3 className="mb-2 text-sm font-semibold text-text">Settings</h3>
-    <div className="space-y-2">
-      {settings.map((setting, index) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
-          key={`setting-${index}`}
-          className="rounded-md border border-accent bg-background/60 p-3"
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-text-light">
-              Setting {index + 1}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                onChange(
-                  settings.filter((_, candidateIndex) => candidateIndex !== index)
-                )
-              }
-              className="rounded-md p-1 text-text-light hover:bg-red-500/10 hover:text-red-400"
-              title="Remove setting"
-              aria-label={`Remove setting ${index + 1}`}
-            >
-              <DynamicIcon name="Trash2" className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Name
-              </span>
-              <input
-                value={setting.name}
-                onChange={(event) =>
-                  onChange(
-                    settings.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, name: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="max_lines"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Label
-              </span>
-              <input
-                value={setting.label}
-                onChange={(event) =>
-                  onChange(
-                    settings.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, label: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="Max Lines"
-              />
-            </label>
-          </div>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Type
-              </span>
-              <select
-                value={setting.settingType ?? "text"}
-                onChange={(event) =>
-                  onChange(
-                    settings.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? {
-                            ...candidate,
-                            settingType: event.target
-                              .value as CustomNodeSettingType,
-                            defaultValue:
-                              event.target.value === "boolean"
-                                ? "false"
-                                : candidate.defaultValue ?? "",
-                            options:
-                              event.target.value === "select"
-                                ? candidate.options ?? ["option_a", "option_b"]
-                                : candidate.options,
-                          }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-              >
-                <option value="text">Text</option>
-                <option value="integer">Integer</option>
-                <option value="float">Float</option>
-                <option value="boolean">Boolean</option>
-                <option value="select">Selection</option>
-                <option value="expression">Groovy expression</option>
-              </select>
-            </label>
-            <fieldset className="block">
-              <legend className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Default Value
-              </legend>
-              <SettingDefaultInput
-                setting={setting}
-                onChange={(value) =>
-                  onChange(
-                    settings.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, defaultValue: value }
-                        : candidate
-                    )
-                  )
-                }
-              />
-            </fieldset>
-          </div>
-          {setting.settingType === "select" && (
-            <fieldset className="mt-2 block">
-              <legend className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Options
-              </legend>
-              <SelectOptionsEditor
-                options={setting.options ?? []}
-                onChange={(options) =>
-                  onChange(
-                    settings.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? {
-                            ...candidate,
-                            options,
-                            defaultValue: options.includes(
-                              candidate.defaultValue ?? ""
-                            )
-                              ? candidate.defaultValue
-                              : options[0] ?? "",
-                          }
-                        : candidate
-                    )
-                  )
-                }
-              />
-              <span className="mt-1 block text-xs text-text-light">
-                Enter one selectable option per line.
-              </span>
-            </fieldset>
-          )}
+  <DefinitionList
+    title="Settings"
+    noun="setting"
+    entries={settings}
+    onChange={onChange}
+    keepOne={false}
+    empty="No settings inferred."
+    added={{ name: "setting", label: "Setting", kind: "val", defaultValue: "", settingType: "text" }}
+  >
+    {(setting, update) => (
+      <>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <TextField label="Name" value={setting.name} placeholder="max_lines" onChange={(name) => update((s) => ({ ...s, name }))} />
+          <TextField
+            label="Label"
+            value={setting.label}
+            placeholder="Max Lines"
+            onChange={(label) => update((s) => ({ ...s, label }))}
+          />
         </div>
-      ))}
-      {settings.length === 0 && (
-        <p className="text-sm text-text-light">No settings inferred.</p>
-      )}
-      <button
-        type="button"
-        onClick={() =>
-          onChange([
-            ...settings,
-            {
-              name: "setting",
-              label: "Setting",
-              kind: "val",
-              defaultValue: "",
-              settingType: "text",
-            },
-          ])
-        }
-        className="text-sm text-nextflow-green hover:underline"
-      >
-        Add setting
-      </button>
-    </div>
-  </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <label className="block">
+            <span className={CAPTION}>Type</span>
+            <select
+              value={setting.settingType ?? "text"}
+              onChange={(event) => {
+                const settingType = event.target.value as CustomNodeSettingType;
+                update((s) => ({
+                  ...s,
+                  settingType,
+                  defaultValue: settingType === "boolean" ? "false" : (s.defaultValue ?? ""),
+                  options: settingType === "select" ? (s.options ?? ["option_a", "option_b"]) : s.options,
+                }));
+              }}
+              className={FIELD}
+            >
+              <option value="text">Text</option>
+              <option value="integer">Integer</option>
+              <option value="float">Float</option>
+              <option value="boolean">Boolean</option>
+              <option value="select">Selection</option>
+              <option value="expression">Groovy expression</option>
+            </select>
+          </label>
+          <fieldset className="block">
+            <legend className={CAPTION}>Default Value</legend>
+            <SettingDefaultInput setting={setting} onChange={(defaultValue) => update((s) => ({ ...s, defaultValue }))} />
+          </fieldset>
+        </div>
+        {setting.settingType === "select" && (
+          <fieldset className="mt-2 block">
+            <legend className={CAPTION}>Options</legend>
+            <SelectOptionsEditor
+              options={setting.options ?? []}
+              onChange={(options) =>
+                update((s) => ({
+                  ...s,
+                  options,
+                  defaultValue: options.includes(s.defaultValue ?? "") ? s.defaultValue : (options[0] ?? ""),
+                }))
+              }
+            />
+            <span className="mt-1 block text-xs text-text-light">Enter one selectable option per line.</span>
+          </fieldset>
+        )}
+      </>
+    )}
+  </DefinitionList>
+);
+
+const EditableOutputs: React.FC<{
+  outputs: CustomNodeOutput[];
+  onChange: (outputs: CustomNodeOutput[]) => void;
+}> = ({ outputs, onChange }) => (
+  <DefinitionList
+    title="Outputs"
+    noun="output"
+    entries={outputs}
+    onChange={onChange}
+    keepOne
+    added={{ name: "out", emit: "out", label: "Output", fileType: "", filePattern: "" }}
+  >
+    {(output, update) => (
+      <>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <TextField label="Handle" value={output.name} placeholder="handle" onChange={(name) => update((o) => ({ ...o, name }))} />
+          <TextField
+            label="Emit Name"
+            value={output.emit}
+            placeholder="emit"
+            onChange={(emit) => update((o) => ({ ...o, emit, label: emit }))}
+          />
+        </div>
+        <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <TextField
+            label="File Type"
+            value={output.fileType ?? ""}
+            placeholder="TXT"
+            onChange={(fileType) => update((o) => ({ ...o, fileType }))}
+          />
+          <TextField
+            label="File Pattern"
+            value={output.filePattern ?? ""}
+            placeholder="*.txt"
+            onChange={(filePattern) => update((o) => ({ ...o, filePattern }))}
+          />
+        </div>
+      </>
+    )}
+  </DefinitionList>
 );
 
 const SelectOptionsEditor: React.FC<{
@@ -662,7 +579,7 @@ const SelectOptionsEditor: React.FC<{
         );
       }}
       rows={3}
-      className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
+      className={FIELD}
       placeholder={"option_a\noption_b\noption_c"}
     />
   );
@@ -745,8 +662,7 @@ const SettingDefaultInput: React.FC<{
   setting: CustomNodeInput;
   onChange: (value: string) => void;
 }> = ({ setting, onChange }) => {
-  const className =
-    "w-full rounded-md border border-accent bg-background p-2 text-sm text-text";
+  const className = FIELD;
   const type = setting.settingType ?? "text";
 
   if (type === "boolean") {
@@ -791,151 +707,5 @@ const SettingDefaultInput: React.FC<{
     />
   );
 };
-
-const buildParsedSourceForSave = (
-  parsed: ParsedCustomNodeSource
-): ParsedCustomNodeSource => parsed;
-
-const EditableOutputs: React.FC<{
-  outputs: CustomNodeOutput[];
-  onChange: (outputs: CustomNodeOutput[]) => void;
-}> = ({ outputs, onChange }) => (
-  <div>
-    <h3 className="mb-2 text-sm font-semibold text-text">Outputs</h3>
-    <div className="space-y-2">
-      {outputs.map((output, index) => (
-        <div
-          // biome-ignore lint/suspicious/noArrayIndexKey: Parsed, editable definitions have no immutable draft ID; index keys preserve the existing editing behavior.
-          key={`output-${index}`}
-          className="rounded-md border border-accent bg-background/60 p-3"
-        >
-          <div className="mb-2 flex items-center justify-between">
-            <p className="text-xs font-medium uppercase tracking-wide text-text-light">
-              Output {index + 1}
-            </p>
-            <button
-              type="button"
-              onClick={() =>
-                onChange(outputs.filter((_, candidateIndex) => candidateIndex !== index))
-              }
-              disabled={outputs.length <= 1}
-              className="rounded-md p-1 text-text-light hover:bg-red-500/10 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-text-light"
-              title={
-                outputs.length <= 1
-                  ? "At least one output is required"
-                  : "Remove output"
-              }
-              aria-label={`Remove output ${index + 1}`}
-            >
-              <DynamicIcon name="Trash2" className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Handle
-              </span>
-              <input
-                value={output.name}
-                onChange={(event) =>
-                  onChange(
-                    outputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, name: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="handle"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                Emit Name
-              </span>
-              <input
-                value={output.emit}
-                onChange={(event) =>
-                  onChange(
-                    outputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? {
-                            ...candidate,
-                            emit: event.target.value,
-                            label: event.target.value,
-                          }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="emit"
-              />
-            </label>
-          </div>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                File Type
-              </span>
-              <input
-                value={output.fileType ?? ""}
-                onChange={(event) =>
-                  onChange(
-                    outputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, fileType: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="TXT"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-[11px] uppercase tracking-wide text-text-light">
-                File Pattern
-              </span>
-              <input
-                value={output.filePattern ?? ""}
-                onChange={(event) =>
-                  onChange(
-                    outputs.map((candidate, candidateIndex) =>
-                      candidateIndex === index
-                        ? { ...candidate, filePattern: event.target.value }
-                        : candidate
-                    )
-                  )
-                }
-                className="w-full rounded-md border border-accent bg-background p-2 text-sm text-text"
-                placeholder="*.txt"
-              />
-            </label>
-          </div>
-        </div>
-      ))}
-      <button
-        type="button"
-        onClick={() =>
-          onChange([
-            ...outputs,
-            {
-              name: "out",
-              emit: "out",
-              label: "Output",
-              fileType: "",
-              filePattern: "",
-            },
-          ])
-        }
-        className="text-sm text-nextflow-green hover:underline"
-      >
-        Add output
-      </button>
-    </div>
-  </div>
-);
 
 export default CustomNodeModal;

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { addNode, connect, expect, fitView, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, fitView, moveNode, test, exportAs } from "./fixtures";
 
 test.describe("canvas flow", () => {
   test("create a workflow, add and connect nodes, generate the script", async ({
@@ -32,7 +32,7 @@ test.describe("canvas flow", () => {
 
     // Generating the script downloads it as <workflow name>.nf
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Download Workflow" }).click();
+    await exportAs(page, "Download script");
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.nf$/);
 

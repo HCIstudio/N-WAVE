@@ -12,7 +12,7 @@ import type {
   WorkflowNode,
 } from "../types/backend";
 import type { ExecutionSettings } from "../types/execution";
-import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
 import { demoWorkflowSeed } from "./demoWorkflow";
 import { rnaseqExampleSeed } from "./rnaseqExample";
 import rnaseqStarSalmonExample from "./rnaseqStarSalmonExample.json";
@@ -83,7 +83,7 @@ const materialize = (stored: StoredWorkflow): WorkflowDescriptor => ({
   description: stored.description ?? "",
   nodes: stored.nodes ?? [],
   edges: stored.edges ?? [],
-  executionSettings: stored.executionSettings ?? defaultExecutionSettings,
+  executionSettings: stored.executionSettings ?? DEFAULT_EXECUTION_SETTINGS,
   rawSource: stored.rawSource ?? null,
   importWarnings: stored.importWarnings ?? [],
   isBuiltin: false,
@@ -106,7 +106,7 @@ const builtinDescriptor = (
     "name" | "description" | "nodes" | "edges"
   > & { id: string },
   sourceKey: string,
-  executionSettings: ExecutionSettings = defaultExecutionSettings,
+  executionSettings: ExecutionSettings = DEFAULT_EXECUTION_SETTINGS,
 ): WorkflowDescriptor => ({
   _id: seed.id,
   name: seed.name,
@@ -131,9 +131,9 @@ const builtinDescriptor = (
 const getBuiltinDescriptors = (): WorkflowDescriptor[] => [
   builtinDescriptor(demoWorkflowSeed, "demo/basic"),
   builtinDescriptor(rnaseqExampleSeed, "examples/rnaseq-pipeline", {
-    ...defaultExecutionSettings,
+    ...DEFAULT_EXECUTION_SETTINGS,
     resources: {
-      ...defaultExecutionSettings.resources,
+      ...DEFAULT_EXECUTION_SETTINGS.resources,
       ...rnaseqExampleSeed.resources,
     },
   }),
@@ -143,9 +143,9 @@ const getBuiltinDescriptors = (): WorkflowDescriptor[] => [
     >[0],
     "examples/rnaseq-star-salmon",
     {
-      ...defaultExecutionSettings,
+      ...DEFAULT_EXECUTION_SETTINGS,
       resources: {
-        ...defaultExecutionSettings.resources,
+        ...DEFAULT_EXECUTION_SETTINGS.resources,
         ...rnaseqStarSalmonExample.resources,
       },
     },
@@ -180,7 +180,7 @@ export const demoStore = {
       description: payload.description ?? "",
       nodes: payload.nodes ?? [],
       edges: payload.edges ?? [],
-      executionSettings: payload.executionSettings ?? defaultExecutionSettings,
+      executionSettings: payload.executionSettings ?? DEFAULT_EXECUTION_SETTINGS,
       rawSource: payload.rawSource ?? null,
       importWarnings: payload.importWarnings ?? [],
       originType: payload.originType ?? "database",

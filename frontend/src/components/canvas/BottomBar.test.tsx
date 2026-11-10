@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ExecutionSettings } from "../../types/execution";
-import { defaultExecutionSettings } from "../../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../../pages/workflow/executionSettings";
 
 // The settings form has its own tests; here it only needs to report a change.
 vi.mock("../common/workflow/ExecutionSettings", () => ({
@@ -16,7 +16,7 @@ vi.mock("../common/workflow/ExecutionSettings", () => ({
       type="button"
       onClick={() =>
         onSettingsChange({
-          resources: { ...defaultExecutionSettings.resources, maxCpus: 2 },
+          resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxCpus: 2 },
         })
       }
     >
@@ -33,10 +33,10 @@ const show = (props: Partial<Props> = {}) => {
     workflowName: "RNA-seq",
     onWorkflowNameChange: vi.fn(),
     onSave: vi.fn(),
-    onDownload: vi.fn(),
+    exports: { onDownload: vi.fn() },
     isSaved: false,
     isSaving: false,
-    executionSettings: defaultExecutionSettings,
+    executionSettings: DEFAULT_EXECUTION_SETTINGS,
     onExecutionSettingsChange: vi.fn(),
     ...props,
   };
@@ -117,16 +117,61 @@ describe("BottomBar", () => {
       );
     });
 
-    it("saves, downloads and exports", async () => {
-      const onExportProject = vi.fn();
-      const { all } = show({ onExportProject });
-      const user = userEvent.setup();
-      await user.click(button("Save Workflow"));
-      await user.click(button("Download Workflow"));
-      await user.click(button("Export Project"));
+    it("saves", async () => {
+      const { all } = show();
+      await userEvent.setup().click(button("Save Workflow"));
       expect(all.onSave).toHaveBeenCalledOnce();
-      expect(all.onDownload).toHaveBeenCalledOnce();
-      expect(onExportProject).toHaveBeenCalledOnce();
+    });
+
+    it("exports from one dialog, which closes after a choice", async () => {
+      const exports = {
+        onDownload: vi.fn(),
+        onCopyScript: vi.fn(),
+        onExportProject: vi.fn(),
+        onExportDawModel: vi.fn(),
+      };
+      show({ exports });
+      const user = userEvent.setup();
+      for (const [name, handler] of [
+        ["Download script", exports.onDownload],
+        ["Copy script", exports.onCopyScript],
+        ["Download project", exports.onExportProject],
+        ["Download DAW model", exports.onExportDawModel],
+      ] as const) {
+        await user.click(button("Export"));
+        const dialog = screen.getByRole("dialog", { name: "Export workflow" });
+        await user.click(within(dialog).getByRole("button", { name }));
+        expect(handler).toHaveBeenCalledOnce();
+        expect(screen.queryByRole("dialog", { name: "Export workflow" })).toBeNull();
+      }
+    });
+
+    it("exports a diagram of the source and in the format chosen", async () => {
+      const onDiagram = vi.fn();
+      show({
+        exports: {
+          onDownload: vi.fn(),
+          onDiagram,
+          diagramSources: [
+            { id: "canvas", label: "The canvas, as drawn" },
+            { id: "steps", label: "Analysis: steps" },
+          ],
+        },
+      });
+      const user = userEvent.setup();
+      await user.click(button("Export"));
+      await user.selectOptions(screen.getByLabelText("Of"), "steps");
+      await user.click(button("Download diagram as SVG"));
+      expect(onDiagram).toHaveBeenCalledWith("steps", "svg");
+    });
+
+    it("offers only the exports it has handlers for", async () => {
+      show();
+      await userEvent.setup().click(button("Export"));
+      const dialog = screen.getByRole("dialog", { name: "Export workflow" });
+      expect(within(dialog).getAllByRole("button", { name: /^(Download|Copy)/ }).map((b) => b.textContent)).toEqual([
+        "Download script",
+      ]);
     });
 
     it("disables save when saved or saving", () => {
@@ -141,18 +186,17 @@ describe("BottomBar", () => {
     });
 
     it("disables export while exporting", () => {
-      show({ onExportProject: vi.fn(), isExporting: true });
-      expect(button("Export Project").disabled).toBe(true);
+      show({ isExporting: true });
+      expect(button("Export").disabled).toBe(true);
     });
 
-    it("hides optional buttons without handlers", () => {
+    it("hides Run without a handler", () => {
       show();
       expect(screen.queryByRole("button", { name: "Run Workflow" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Export Project" })).toBeNull();
     });
 
     it("names the run profile a run goes through", () => {
-      show({ onRun: vi.fn(), executionSettings: { ...defaultExecutionSettings, runProfile: "hpc" } });
+      show({ onRun: vi.fn(), executionSettings: { ...DEFAULT_EXECUTION_SETTINGS, runProfile: "hpc" } });
       expect(button("Run Workflow").title).toBe('Run through the profile "hpc"');
     });
 
@@ -161,13 +205,13 @@ describe("BottomBar", () => {
       show({ onRun });
       expect(button("Run Workflow").title).toBe("Run with Docker");
       await userEvent.setup().click(button("Run Workflow"));
-      expect(onRun).toHaveBeenCalledWith(defaultExecutionSettings);
+      expect(onRun).toHaveBeenCalledWith(DEFAULT_EXECUTION_SETTINGS);
     });
 
     it("says it runs locally when Docker is off", () => {
       const local = {
-        ...defaultExecutionSettings,
-        container: { ...defaultExecutionSettings.container, enabled: false },
+        ...DEFAULT_EXECUTION_SETTINGS,
+        container: { ...DEFAULT_EXECUTION_SETTINGS.container, enabled: false },
       };
       show({ onRun: vi.fn(), executionSettings: local });
       expect(button("Run Workflow").title).toBe("Run locally");
@@ -266,8 +310,8 @@ describe("BottomBar", () => {
     it("summarises the settings", async () => {
       show({
         executionSettings: {
-          ...defaultExecutionSettings,
-          resources: { ...defaultExecutionSettings.resources, maxTime: "PT2H" },
+          ...DEFAULT_EXECUTION_SETTINGS,
+          resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxTime: "PT2H" },
         },
       });
       await open();
@@ -313,8 +357,8 @@ describe("BottomBar", () => {
       const user = await open();
       await user.click(button("Use 2 CPUs"));
       const expected = {
-        ...defaultExecutionSettings,
-        resources: { ...defaultExecutionSettings.resources, maxCpus: 2 },
+        ...DEFAULT_EXECUTION_SETTINGS,
+        resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxCpus: 2 },
       };
       expect(all.onExecutionSettingsChange).toHaveBeenCalledWith(expected);
       expect(JSON.parse(localStorage.getItem("executionSettings") ?? "")).toEqual(
@@ -330,7 +374,7 @@ describe("BottomBar", () => {
       await user.click(button("Save"));
       expect(button("Saved").disabled).toBe(true);
       expect(JSON.parse(localStorage.getItem("executionSettings") ?? "")).toEqual(
-        defaultExecutionSettings,
+        DEFAULT_EXECUTION_SETTINGS,
       );
       await user.click(button("Close"));
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
@@ -357,7 +401,7 @@ describe("BottomBar", () => {
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
       expect(screen.queryByRole("heading", { name: "Execution Settings" })).toBeNull();
       expect(JSON.parse(localStorage.getItem("executionSettings") ?? "")).toEqual(
-        defaultExecutionSettings,
+        DEFAULT_EXECUTION_SETTINGS,
       );
     });
 
@@ -375,7 +419,7 @@ describe("BottomBar", () => {
       const user = await open();
       await user.click(button("Use 2 CPUs"));
       await user.click(screen.getByTitle("Run workflow"));
-      expect(onRun).toHaveBeenCalledWith(defaultExecutionSettings);
+      expect(onRun).toHaveBeenCalledWith(DEFAULT_EXECUTION_SETTINGS);
       expect(screen.queryByRole("heading", { name: "Execution Settings" })).toBeNull();
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
     });
@@ -403,18 +447,18 @@ describe("BottomBar", () => {
     it("loads stored settings when none are given", () => {
       localStorage.setItem(
         "executionSettings",
-        JSON.stringify(defaultExecutionSettings),
+        JSON.stringify(DEFAULT_EXECUTION_SETTINGS),
       );
       const { all } = show({ executionSettings: {} as ExecutionSettings });
       expect(all.onExecutionSettingsChange).toHaveBeenCalledWith(
-        defaultExecutionSettings,
+        DEFAULT_EXECUTION_SETTINGS,
       );
     });
 
     it("ignores stored settings when some are given", () => {
       localStorage.setItem(
         "executionSettings",
-        JSON.stringify(defaultExecutionSettings),
+        JSON.stringify(DEFAULT_EXECUTION_SETTINGS),
       );
       const { all } = show();
       expect(all.onExecutionSettingsChange).not.toHaveBeenCalled();

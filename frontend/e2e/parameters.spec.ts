@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, fitView, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, fitView, moveNode, test, exportAs } from "./fixtures";
 
 test.describe("parameters node", () => {
   test("declares params and connects a reference file", async ({ page }) => {
@@ -36,7 +36,7 @@ test.describe("parameters node", () => {
     await expect(page.locator(".react-flow__edge")).toHaveCount(1);
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export Project" }).click();
+    await exportAs(page, "Download project");
     const entries = unzipSync(
       new Uint8Array(await readFile(await (await downloadPromise).path()))
     );

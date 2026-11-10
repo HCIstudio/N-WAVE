@@ -67,14 +67,14 @@ describe("runNextflowWorkflow setup", () => {
   const run = (
     workflowName: string,
     res = fakeResponse(),
-    extra: { workflowId?: string; resume?: boolean } = {}
+    extra: { workflowId?: string; resume?: boolean; settings?: Record<string, unknown> } = {}
   ) =>
     runNextflowWorkflow(
       {
         nextflowScript: "workflow {}",
         workflowName,
-        settings: { outputDirectory: root, outputNaming: "same" } as never,
         ...extra,
+        settings: { outputDirectory: root, outputNaming: "same", ...extra.settings } as never,
       },
       res as unknown as Response
     ).then(() => res);
@@ -262,5 +262,39 @@ describe("runNextflowWorkflow setup", () => {
     );
     expect(fs.readFileSync(path.join(root, "same", RUN_LOG_FILE), "utf8")).not.toContain("resuming run");
     vi.mocked(startRun).mockReset();
+  });
+
+  it("passes the error strategy to Nextflow, and deletes a failed run's cache when asked", async () => {
+    vi.mocked(prepareScriptRun).mockResolvedValue({ hasNfCoreModules: false, useProcessDocker: false });
+    vi.mocked(startRun).mockImplementationOnce(({ onExit }) => {
+      // Nextflow's work directory and cache, then a failure.
+      fs.mkdirSync(path.join(root, "same", "nextflow", "work", "ab"), { recursive: true });
+      fs.mkdirSync(path.join(root, "same", ".nextflow"), { recursive: true });
+      setTimeout(() => onExit({ code: 1, signal: null, stopReason: null, outputTail: "" }), 5);
+      return { stop: () => {} };
+    });
+
+    const res = await run("f", fakeResponse(), { settings: { errorStrategy: "ignore", cleanupOnFailure: true } });
+    await vi.waitFor(() => expect(res.end).toHaveBeenCalled());
+    const options = vi.mocked(prepareScriptRun).mock.calls.at(-1)?.[3];
+    expect(options?.resourceConfig).toContain("process.errorStrategy = 'ignore'");
+    expect(res.output).toContain("cleanup on failure is on");
+    await vi.waitFor(() => expect(fs.existsSync(path.join(root, "same", "nextflow", "work"))).toBe(false));
+    expect(fs.existsSync(path.join(root, "same", ".nextflow"))).toBe(false);
+  });
+
+  it("keeps a failed run's cache, and Nextflow's own error strategy, by default", async () => {
+    vi.mocked(prepareScriptRun).mockResolvedValue({ hasNfCoreModules: false, useProcessDocker: false });
+    vi.mocked(startRun).mockImplementationOnce(({ onExit }) => {
+      fs.mkdirSync(path.join(root, "same", "nextflow", "work", "ab"), { recursive: true });
+      setTimeout(() => onExit({ code: 1, signal: null, stopReason: null, outputTail: "" }), 5);
+      return { stop: () => {} };
+    });
+
+    const res = await run("g");
+    await vi.waitFor(() => expect(res.end).toHaveBeenCalled());
+    expect(vi.mocked(prepareScriptRun).mock.calls.at(-1)?.[3]?.resourceConfig).not.toContain("errorStrategy");
+    expect(res.output).not.toContain("cleanup on failure");
+    expect(fs.existsSync(path.join(root, "same", "nextflow", "work"))).toBe(true);
   });
 });

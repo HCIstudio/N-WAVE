@@ -12,6 +12,16 @@ import type { ExecutionSettings } from "../../types/execution";
 import { usesImportedSource } from "./runRequest";
 import { logActivity } from "../../activity/activityLog";
 import { serializeDawModel, toDawModel } from "../../metamodel/toDawModel";
+import type { BioflowResult } from "../../analysis/bioflow";
+import { structureGraph } from "../../analysis/structure";
+import {
+  canvasDiagram,
+  DIAGRAM_FORMATS,
+  type Diagram,
+  type DiagramFormat,
+  laidOutDiagram,
+  renderDiagram,
+} from "../../export/diagrams";
 
 /** Save a blob as a file download. */
 export const downloadBlob = (blob: Blob, fileName: string) => {
@@ -78,6 +88,12 @@ export const downloadScript = (source: WorkflowSource) => {
   logActivity("workflow.exported", { kind: "script" });
 };
 
+/** Copy the same script to the clipboard. */
+export const copyScript = async (source: WorkflowSource): Promise<void> => {
+  await navigator.clipboard.writeText(scriptDownload(source).content);
+  logActivity("workflow.exported", { kind: "script-copy" });
+};
+
 /**
  * Download the workflow as a DAW model: an instance of the consolidated
  * metamodel of workflow languages, as JSON (metamodel/dawModel.ts).
@@ -132,8 +148,41 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
     nodes: source.nodes,
     nextflowVersion,
     profiles,
+    errorStrategy: source.settings?.errorHandling?.strategy,
   });
   downloadBlob(blob, fileName);
   logActivity("workflow.exported", { kind: "project" });
+  return fileName;
+};
+
+/** What a diagram shows: the canvas, or one of the analysis's graphs. */
+export type DiagramSource = "canvas" | "steps" | "channels";
+
+/** The diagrams there are: the canvas, and with a current analysis its graphs. */
+export const diagramSources = (bioflow: BioflowResult | null): Array<{ id: DiagramSource; label: string }> => [
+  { id: "canvas", label: "The canvas, as drawn" },
+  ...(bioflow ? [{ id: "steps" as const, label: "Analysis: steps and how data flows between them" }] : []),
+  ...(bioflow?.specification ? [{ id: "channels" as const, label: "Analysis: steps, channel operations and channels" }] : []),
+];
+
+const diagramOf = (source: WorkflowSource, which: DiagramSource, bioflow: BioflowResult | null): Diagram | null => {
+  if (which === "canvas") return canvasDiagram(source.nodes, source.edges);
+  const graph = bioflow ? structureGraph(bioflow, which) : null;
+  return graph ? laidOutDiagram(graph) : null;
+};
+
+/** Download a diagram; returns its file name. */
+export const downloadDiagram = async (
+  source: WorkflowSource,
+  which: DiagramSource,
+  format: DiagramFormat,
+  bioflow: BioflowResult | null,
+): Promise<string> => {
+  const diagram = diagramOf(source, which, bioflow);
+  if (!diagram) throw new Error("There is no analysis of this workflow to draw. Analyse it first.");
+  const extension = DIAGRAM_FORMATS.find((entry) => entry.format === format)?.extension ?? "";
+  const fileName = `${fileBaseName(source.workflowName)}${which === "canvas" ? "" : `.${which}`}${extension}`;
+  downloadBlob(await renderDiagram(diagram, format, source.workflowName || "workflow"), fileName);
+  logActivity("workflow.exported", { kind: "diagram", source: which, format });
   return fileName;
 };

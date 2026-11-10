@@ -2,53 +2,29 @@ export const defaultExecutionSettings = {
   mode: "docker",
   nextflow: {
     version: "25.04.4",
-    forceVersion: false,
-    enableDsl2: true,
-    enableTrace: false,
-    enableTimeline: false,
-    enableReport: false,
   },
   output: {
     directory: "results",
     namingPattern: "{workflow_name}_{timestamp}",
-    overwrite: false,
-    keepWorkDir: false,
   },
   container: {
     enabled: true,
     defaultImage: "ubuntu:22.04",
-    registry: "docker.io",
-    pullPolicy: "if-not-present",
-    customRunOptions: [],
   },
   resources: {
     maxCpus: 4,
     maxMemory: "4.GB",
-    // "" uses the server default (NWAVE_EXECUTION_TIMEOUT, 24 hours).
+    // No limit of its own: the server's default applies (24 h unless set).
     maxTime: "",
     executor: "local",
   },
   errorHandling: {
     strategy: "terminate",
-    maxRetries: 0,
-    backoffStrategy: "exponential",
-    continueOnError: false,
   },
   environment: {
     profile: "standard",
-    customParams: {},
-    environmentVariables: {},
   },
   cleanup: {
-    onSuccess: false,
     onFailure: false,
-    intermediateFiles: false,
-    workDirectory: false,
-  },
-  validation: {
-    requireContainer: false,
-    allowMissingInputs: false,
-    strictChannelTypes: false,
-    enableTypeChecking: false,
   },
 };

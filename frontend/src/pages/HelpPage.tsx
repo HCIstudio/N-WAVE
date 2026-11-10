@@ -19,7 +19,7 @@ const CANVAS_PARTS: { name: string; what: string }[] = [
   { name: "Run and Resume", what: "Run starts it; with Resume on, it reuses the steps an earlier run finished." },
   { name: "Runs", what: "The bar at the bottom right: the run's steps, time and memory per step, log and results, and earlier runs." },
   { name: "Execution settings", what: "Docker or not, where results go, and this workflow's own limits or run profile (the global ones are in Global Settings)." },
-  { name: "Export Project", what: "A folder with the script, config, modules and inputs, to run anywhere." },
+  { name: "Export", what: "The Nextflow script, a runnable project (script, config, modules and inputs), or a DAW model for other tools." },
   { name: "Keyboard shortcuts", what: "Press ? on the canvas: undo, copy, paste, duplicate and more." },
   { name: "Minimap", what: "The map at the bottom left shows the whole canvas, colored by kind, or by what each step did in a run." },
   { name: "Step in", what: "Subworkflow and pipeline nodes are drawn as a stack: Step in shows the steps inside, with what each did in the run." },

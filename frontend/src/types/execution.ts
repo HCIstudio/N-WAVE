@@ -6,7 +6,8 @@ export enum ExecutionMode {
   DOCKER = "docker", // Use Docker containers for processes
 }
 
-// Enhanced execution settings with validation
+// A workflow's execution settings. Saved workflows may still carry fields
+// older versions had (validation, retries, ...); they are ignored.
 export interface ExecutionSettings {
   // Settings format version; settings saved before versions have none.
   version?: number;
@@ -25,26 +26,15 @@ export interface ExecutionSettings {
   // Core execution mode
   mode: ExecutionMode;
 
-  // Nextflow configuration
   nextflow: {
     version: string;
-    forceVersion: boolean; // Override automatic version selection
-    enableDsl2: boolean;
-    enableTrace: boolean;
-    enableTimeline: boolean;
-    enableReport: boolean;
   };
 
-  // Container configuration
   container: {
     enabled: boolean;
     defaultImage: string;
-    registry: string;
-    pullPolicy: "always" | "never" | "if-not-present";
-    customRunOptions: string[];
   };
 
-  // Resource allocation
   resources: {
     /** False: this workflow's own limits below; otherwise those on the Settings page. */
     useDefaults?: boolean;
@@ -55,42 +45,20 @@ export interface ExecutionSettings {
     queue?: string;
   };
 
-  // Output and publishing
   output: {
     directory: string;
     namingPattern: string;
-    overwrite: boolean;
-    keepWorkDir: boolean;
   };
 
-  // Error handling and retry
   errorHandling: {
     strategy: "terminate" | "ignore" | "retry" | "finish";
-    maxRetries: number;
-    backoffStrategy: "exponential" | "linear" | "fixed";
-    continueOnError: boolean;
   };
 
-  // Environment and profiles
   environment: {
     profile: string;
-    customParams: Record<string, unknown>;
-    environmentVariables: Record<string, string>;
   };
 
-  // Cleanup and maintenance
   cleanup: {
-    onSuccess: boolean;
     onFailure: boolean;
-    intermediateFiles: boolean;
-    workDirectory: boolean;
-  };
-
-  // Validation and constraints
-  validation: {
-    requireContainer: boolean;
-    allowMissingInputs: boolean;
-    strictChannelTypes: boolean;
-    enableTypeChecking: boolean;
   };
 }

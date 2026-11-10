@@ -10,6 +10,13 @@ import { isRunDirInUse, listAllRunDirs, listWorkflowRunDirs } from "./runIndex";
 
 const CACHE_PATHS = ["nextflow/work", ".nextflow", "nextflow/.nextflow"];
 
+/** Delete one run folder's cache. */
+export const clearRunCache = async (dir: string): Promise<void> => {
+  for (const cache of CACHE_PATHS) {
+    await fs.promises.rm(path.join(dir, cache), { recursive: true, force: true });
+  }
+};
+
 /** Bytes under `target`, without following symlinks (task inputs are links). */
 const sizeOf = async (target: string): Promise<number> => {
   let stat: fs.Stats;
@@ -77,11 +84,7 @@ export const clearWorkflowCache = async (
   }
   clearing.add(workflowId);
   try {
-    for (const dir of dirs) {
-      for (const cache of CACHE_PATHS) {
-        await fs.promises.rm(path.join(dir, cache), { recursive: true, force: true });
-      }
-    }
+    for (const dir of dirs) await clearRunCache(dir);
   } finally {
     clearing.delete(workflowId);
   }
@@ -100,9 +103,7 @@ export const clearAllCaches = async (isLive: (id: string) => boolean): Promise<n
     }
     if (workflowId) clearing.add(workflowId);
     try {
-      for (const cache of CACHE_PATHS) {
-        await fs.promises.rm(path.join(dir, cache), { recursive: true, force: true });
-      }
+      await clearRunCache(dir);
     } finally {
       if (workflowId) clearing.delete(workflowId);
     }

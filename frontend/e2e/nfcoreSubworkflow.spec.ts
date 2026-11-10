@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import type { Page } from "@playwright/test";
 import { strFromU8, unzipSync } from "fflate";
-import { addNode, connect, expect, moveNode, test } from "./fixtures";
+import { addNode, connect, expect, moveNode, test, exportAs } from "./fixtures";
 
 // The demo fetches nf-core files from GitHub; serve the real
 // bam_sort_stats_samtools main.nf and stand-ins for everything else.
@@ -94,7 +94,7 @@ test.describe("nf-core subworkflow nodes", () => {
 
     // The export holds the subworkflows and every module they include.
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export Project" }).click();
+    await exportAs(page, "Download project");
     const download = await downloadPromise;
     const files = unzipSync(new Uint8Array(await readFile(await download.path())));
     const project = "Untitled_Workflow";

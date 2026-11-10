@@ -26,7 +26,7 @@ const fallbackSettings = (
   executionTimeout: 0,
   errorStrategy: "terminate",
   publishMode: "copy",
-  cleanupOnFailure: true,
+  cleanupOnFailure: false,
 });
 
 export const executeProcess = async (req: Request, res: Response): Promise<void> => {

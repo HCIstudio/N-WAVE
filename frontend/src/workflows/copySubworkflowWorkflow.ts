@@ -8,7 +8,7 @@ import { registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
 import { copySubworkflow } from "./import/copySubworkflow";
 import type { NfCoreCatalogForImport } from "./import/importScript";
 import type { ImportedWorkflowDraft } from "./importNextflowWorkflow";
-import { defaultExecutionSettings } from "./defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
 
 export const buildSubworkflowCopy = async (id: string): Promise<ImportedWorkflowDraft> => {
   const [catalog, source] = await Promise.all([getNfCoreCatalog(), getNfCoreModuleSource(id)]);
@@ -23,7 +23,7 @@ export const buildSubworkflowCopy = async (id: string): Promise<ImportedWorkflow
     description: `The steps of the nf-core subworkflow ${id.replace(/^nf-core\/subworkflows\//, "")}, to change as you like.`,
     nodes: copy.nodes,
     edges: copy.edges,
-    executionSettings: defaultExecutionSettings,
+    executionSettings: DEFAULT_EXECUTION_SETTINGS,
     originType: "imported",
     sourceFormat: "nextflow",
     sourceKey: id,

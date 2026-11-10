@@ -60,7 +60,7 @@ Project** instead to download the workflow as a project you can run anywhere wit
 ## 7. Look behind the scenes (1 minute)
 
 Double-click **Filter** and open its **Code** tab: this is the Nextflow the node adds. The
-whole script is what **Download Workflow** saves. Your workflow is saved automatically.
+whole script is what **Export** → **Download script** saves. Your workflow is saved automatically.
 
 ## Next
 

@@ -1,5 +1,5 @@
 import { readFile } from "node:fs/promises";
-import { expect, test } from "./fixtures";
+import { expect, test, exportAs } from "./fixtures";
 
 // Export and import through the DAW model (#194).
 test.describe("DAW model", () => {
@@ -9,7 +9,7 @@ test.describe("DAW model", () => {
     await expect(nodes).toHaveCount(6);
 
     const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export as DAW model" }).click();
+    await exportAs(page, "Download DAW model");
     const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.daw\.json$/);
     const text = await readFile(await download.path(), "utf8");
@@ -28,7 +28,7 @@ test.describe("DAW model", () => {
     await expect(page.locator(".react-flow__edge")).toHaveCount(6);
     // The same model again.
     const again = page.waitForEvent("download");
-    await page.getByRole("button", { name: "Export as DAW model" }).click();
+    await exportAs(page, "Download DAW model");
     expect(await readFile(await (await again).path(), "utf8")).toBe(text);
   });
 

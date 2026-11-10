@@ -4,7 +4,7 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import { generateNextflowScript } from "../generators/core/generateNextflowScript";
 import { checkWorkflow } from "../pages/workflow/workflowCheck";
 import { makeNode } from "../test/nodes";
-import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
 import { cycleThroughConnection, describeCycle, findCycle } from "./workflowCycles";
 
 const node = (id: string, definition: string, extra: Partial<NodeData> = {}) =>
@@ -43,7 +43,7 @@ describe("loops in a workflow", () => {
     expect(
       checkWorkflow(nodes, loop, {
         missingNfCoreComponents: [],
-        settings: defaultExecutionSettings,
+        settings: DEFAULT_EXECUTION_SETTINGS,
         docker: null,
         nextflow: null,
         limits: null,

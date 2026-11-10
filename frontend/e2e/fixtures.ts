@@ -103,3 +103,9 @@ export const connect = async (
   await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 10 });
   await page.mouse.up();
 };
+
+/** Export from the bottom bar's Export dialog: "Download script", "Download project", ... */
+export const exportAs = async (page: Page, action: string): Promise<void> => {
+  await page.getByRole("button", { name: "Export", exact: true }).click();
+  await page.getByRole("dialog", { name: "Export workflow" }).getByRole("button", { name: action }).click();
+};

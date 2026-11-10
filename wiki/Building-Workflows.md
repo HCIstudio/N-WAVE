@@ -188,7 +188,7 @@ to it, or asks the same question if it has unsaved changes.
 
 ## Getting the Nextflow out
 
-**Download Workflow** saves the script, **Export Project** a runnable project. See
+**Export** in the bottom bar saves the script, a runnable project or a DAW model. See
 [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects).
 
 ## See also

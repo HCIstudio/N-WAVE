@@ -18,7 +18,7 @@ import {
 import { createNodeDefinitionFromNfCoreManifest } from "../registry/nfcoreModuleAdapters";
 import { type NodeDefinition, registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
 import type { ExecutionSettings } from "../types/execution";
-import { defaultExecutionSettings } from "./defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
 
 export interface ImportedDawWorkflowDraft {
   name: string;
@@ -80,7 +80,7 @@ export const importDawWorkflow = async ({
     nodes: canvas.nodes,
     edges: canvas.edges,
     // The model's settings over the defaults, so a setting it doesn't have is still set.
-    executionSettings: { ...defaultExecutionSettings, ...(canvas.executionSettings ?? {}) } as ExecutionSettings,
+    executionSettings: { ...DEFAULT_EXECUTION_SETTINGS, ...(canvas.executionSettings ?? {}) } as ExecutionSettings,
     originType: "imported",
     sourceFormat: "visual",
     sourceKey: sourceKey?.trim() || null,

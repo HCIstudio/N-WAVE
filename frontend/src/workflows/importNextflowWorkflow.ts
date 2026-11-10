@@ -14,7 +14,7 @@ import { getNfCoreCatalog } from "../api/nfcore";
 import { registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
 import type { ExecutionSettings } from "../types/execution";
 import type { FileContent } from "../utils/fileContent";
-import { defaultExecutionSettings } from "./defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
 import { importNextflowScript, type NfCoreCatalogForImport } from "./import/importScript";
 
 interface ImportNextflowWorkflowInput {
@@ -98,7 +98,7 @@ export const importNextflowWorkflow = async ({
       "Imported from a Nextflow script: each process, module and channel step is a node.",
     nodes: imported.nodes,
     edges: imported.edges,
-    executionSettings: defaultExecutionSettings,
+    executionSettings: DEFAULT_EXECUTION_SETTINGS,
     originType: "imported",
     sourceFormat: "nextflow",
     sourceKey: sourceKey?.trim() || null,

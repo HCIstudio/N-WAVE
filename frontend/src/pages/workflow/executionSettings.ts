@@ -22,24 +22,14 @@ export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
   mode: ExecutionMode.DOCKER,
   nextflow: {
     version: "25.04.4",
-    forceVersion: false,
-    enableDsl2: true,
-    enableTrace: false,
-    enableTimeline: false,
-    enableReport: false,
   },
   output: {
     directory: "results",
     namingPattern: "{workflow_name}_{timestamp}",
-    overwrite: false,
-    keepWorkDir: false,
   },
   container: {
     enabled: true,
     defaultImage: "ubuntu:22.04",
-    registry: "docker.io",
-    pullPolicy: "if-not-present",
-    customRunOptions: [],
   },
   resources: {
     maxCpus: 4,
@@ -50,26 +40,12 @@ export const DEFAULT_EXECUTION_SETTINGS: ExecutionSettings = {
   },
   errorHandling: {
     strategy: "terminate",
-    maxRetries: 0,
-    backoffStrategy: "exponential",
-    continueOnError: false,
   },
   environment: {
     profile: "standard",
-    customParams: {},
-    environmentVariables: {},
   },
   cleanup: {
-    onSuccess: false,
     onFailure: false,
-    intermediateFiles: false,
-    workDirectory: false,
-  },
-  validation: {
-    requireContainer: false,
-    allowMissingInputs: false,
-    strictChannelTypes: false,
-    enableTypeChecking: false,
   },
 };
 
@@ -145,6 +121,6 @@ export const flattenExecutionSettings = (settings: ExecutionSettings) => ({
   // Minutes; 0 lets the backend apply its default.
   executionTimeout: isoDurationToMinutes(settings.resources?.maxTime),
   errorStrategy: settings.errorHandling?.strategy ?? "terminate",
-  cleanupOnFailure: settings.cleanup?.onFailure ?? true,
+  cleanupOnFailure: settings.cleanup?.onFailure ?? false,
   nextflowVersion: settings.nextflow?.version ?? "25.04.4",
 });

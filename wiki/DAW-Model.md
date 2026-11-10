@@ -15,8 +15,7 @@ from a workflow that was only sketched: its steps open as placeholders to fill i
 
 ## Export and import
 
-- **Export as DAW model** (the share button in the bottom bar) downloads
-  `<workflow>.daw.json`.
+- **Export** in the bottom bar → **Download DAW model** downloads `<workflow>.daw.json`.
 - **Import Workflow** on the home page takes a DAW model like a Nextflow script: choose the
   file, or paste it.
 

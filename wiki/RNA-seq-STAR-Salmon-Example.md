@@ -42,7 +42,7 @@ When the run finishes, the run panel lists **Results**. Click `multiqc/multiqc_r
 to open the report, or expand **All result files**.
 
 ### Running the exported project
-**Export Project** downloads `main.nf`, `nextflow.config`, the nf-core modules and
+**Export** → **Download project** downloads `main.nf`, `nextflow.config`, the nf-core modules and
 subworkflows it uses, `inputs/samplesheet.csv` and a README. With Nextflow and Docker
 installed:
 
@@ -60,7 +60,7 @@ The results go to `results/`, in the same layout as above.
    samples with FastQC, Cutadapt, STAR, Salmon and SAMtools sections.
 5. In **All result files**, check that `salmon_quantification/<sample>/quant.sf` exists for
    all four samples.
-6. Click **Export Project**, unzip it, run `nextflow run main.nf -profile docker` and check
+6. Click **Export** → **Download project**, unzip it, run `nextflow run main.nf -profile docker` and check
    that `results/multiqc/multiqc_report.html` and the four `quant.sf` files are there.
 
 ### Using your own data

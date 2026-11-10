@@ -4,7 +4,7 @@ scripts written by hand. **Import Workflow** on the home page takes:
 | What | How |
 | --- | --- |
 | A script (`.nf`) | **Choose File**, or paste it into **Nextflow Source** |
-| A project zip | **Choose File** with the zip, for example one from **Export Project** |
+| A project zip | **Choose File** with the zip, for example one from **Export** → **Download project** |
 | A project folder | **Choose Folder** |
 
 For a project, N-WAVE reads `main.nf` (or, without one, the top-most script with a
@@ -39,7 +39,7 @@ right in the order they run.
 
 Export and import give each other's results back: importing what N-WAVE exported gives the
 same canvas, and exporting it again gives the same code. This holds for the single script
-(**Download Workflow**) and for the project (**Export Project**), where processes and named
+(**Download script**) and for the project (**Download project**), where processes and named
 workflows live in `modules/local/` and `subworkflows/local/`. Groups of steps come back as
 groups: the layout line marks their steps (`FASTQC 380,80 "FastQC" @READ_QC`), and their
 steps import as nodes of their own.
