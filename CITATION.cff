@@ -14,6 +14,72 @@ keywords:
   - bioinformatics
 references:
   - type: article
+    title: "Nextflow enables reproducible computational workflows"
+    authors:
+      - family-names: Di Tommaso
+        given-names: Paolo
+      - family-names: Chatzou
+        given-names: Maria
+      - family-names: Floden
+        given-names: Evan W.
+      - family-names: Barja
+        given-names: Pablo Prieto
+      - family-names: Palumbo
+        given-names: Emilio
+      - family-names: Notredame
+        given-names: Cedric
+    journal: "Nature Biotechnology"
+    volume: 35
+    issue: 4
+    start: 316
+    end: 319
+    year: 2017
+    doi: 10.1038/nbt.3820
+  - type: article
+    title: "The nf-core framework for community-curated bioinformatics pipelines"
+    authors:
+      - family-names: Ewels
+        given-names: Philip A.
+      - family-names: Peltzer
+        given-names: Alexander
+      - family-names: Fillinger
+        given-names: Sven
+      - family-names: Patel
+        given-names: Harshil
+      - family-names: Alneberg
+        given-names: Johannes
+      - family-names: Wilm
+        given-names: Andreas
+      - family-names: Garcia
+        given-names: Maxime Ulysse
+      - family-names: Di Tommaso
+        given-names: Paolo
+      - family-names: Nahnsen
+        given-names: Sven
+    journal: "Nature Biotechnology"
+    volume: 38
+    issue: 3
+    start: 276
+    end: 278
+    year: 2020
+    doi: 10.1038/s41587-020-0439-x
+  - type: software
+    title: "nf-core/rnaseq"
+    authors:
+      - family-names: Patel
+        given-names: Harshil
+      - family-names: Ewels
+        given-names: Phil
+      - family-names: Manning
+        given-names: Jonathan
+      - family-names: Garcia
+        given-names: Maxime Ulysse
+      - family-names: Peltzer
+        given-names: Alexander
+    year: 2018
+    doi: 10.5281/zenodo.1400710
+    url: "https://nf-co.re/rnaseq"
+  - type: article
     title: "BioFlow-Insight: facilitating reuse of Nextflow workflows with structure reconstruction and visualization"
     authors:
       - family-names: Marchment
