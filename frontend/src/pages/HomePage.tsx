@@ -30,6 +30,8 @@ import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
 import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
+import { importDawWorkflow } from "../workflows/importDawWorkflow";
+import { looksLikeDawModel } from "../metamodel/dawModel";
 import { type ImportProject, readFolder, readProject, readZip } from "../workflows/import/readProject";
 import { logActivity } from "../activity/activityLog";
 import hcistudioLogo from "../assets/hcistudio-logo.png";
@@ -432,18 +434,27 @@ const HomePage: React.FC = () => {
       setIsImporting(true);
       // Parse the Nextflow source into a visual graph in the browser, then save
       // it through the normal create endpoint (no dedicated import endpoint).
-      const draft = await importNextflowWorkflow({
-        name: importName.trim() || undefined,
-        description: importDescription.trim() || undefined,
-        rawSource: importSource,
-        sourceKey: importFileName || undefined,
-        ...(importProject
-          ? { files: importProject.files, path: importProject.path, config: importProject.config, inputs: importProject.inputs }
-          : {}),
-      });
+      // A DAW model (JSON in the workflow metamodel) or Nextflow, by its content.
+      const isDawModel = !importProject && looksLikeDawModel(importSource);
+      const draft = isDawModel
+        ? await importDawWorkflow({
+            name: importName.trim() || undefined,
+            description: importDescription.trim() || undefined,
+            source: importSource,
+            sourceKey: importFileName || undefined,
+          })
+        : await importNextflowWorkflow({
+            name: importName.trim() || undefined,
+            description: importDescription.trim() || undefined,
+            rawSource: importSource,
+            sourceKey: importFileName || undefined,
+            ...(importProject
+              ? { files: importProject.files, path: importProject.path, config: importProject.config, inputs: importProject.inputs }
+              : {}),
+          });
       const response = await api.post("/workflows", draft);
       logActivity("workflow.imported", {
-        format: "nextflow",
+        format: isDawModel ? "daw-model" : "nextflow",
         workflowId: response.data._id,
         nodes: draft.nodes.length,
         edges: draft.edges.length,
@@ -993,14 +1004,14 @@ const HomePage: React.FC = () => {
             </div>
             <div>
               <label htmlFor={`${fieldId}-nextflow-file`} className="mb-1 block text-sm text-text">
-                Nextflow File, Project Zip or Folder
+                Nextflow File, Project Zip, Folder or DAW Model
               </label>
               <div className="flex gap-2">
                 <input
                   id={`${fieldId}-nextflow-file`}
                   ref={importFileInputRef}
                   type="file"
-                  accept=".nf,.txt,.groovy,.zip"
+                  accept=".nf,.txt,.groovy,.zip,.json"
                   onChange={handleImportFileChange}
                   className="hidden"
                 />
@@ -1043,7 +1054,7 @@ const HomePage: React.FC = () => {
                 value={importSource}
                 onChange={(e) => setImportSource(e.target.value)}
                 className="min-h-[220px] w-full rounded-md border border-gray-600 bg-accent p-2 font-mono text-sm text-text focus:border-nextflow-green focus:outline-none"
-                placeholder="Paste a Nextflow workflow here or load a .nf file."
+                placeholder="Paste a Nextflow workflow (or a DAW model) here, or load a file."
               />
             </div>
           </div>

@@ -60,11 +60,11 @@ export const ACTIVITY_TYPES = {
   "nested.opened": "The steps inside a subworkflow or pipeline were opened",
   undo: "Undo",
   redo: "Redo",
-  /** `format` (nextflow, json). */
+  /** `format` (nextflow, daw-model). */
   "workflow.imported": "A workflow was imported",
   /** `subworkflow`, `workflowId`, `nodes`. */
   "workflow.copiedSubworkflow": "An nf-core subworkflow was copied into a new workflow",
-  /** `kind` (script, project). */
+  /** `kind` (script, project, daw-model). */
   "workflow.exported": "A workflow was exported",
   /** `label`. */
   "test.started": "A marked test started",

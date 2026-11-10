@@ -13,6 +13,7 @@ import type { ExecutionSettings } from "../../types/execution";
 import { getNodeInputFiles, getWorkflowInputFiles, isFileContentMissing } from "../../utils/inputFiles";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
 import { contractedEdges, groupOf, groupTitle } from "../../groups/groups";
+import { isPlaceholder } from "../../metamodel/placeholder";
 
 export type ProblemLevel = "error" | "warning";
 
@@ -213,6 +214,17 @@ const checkWorkflowWide = (
         nodeId: nodes.find((node) => groupOf(node) === group)?.id,
       });
     }
+  }
+
+  // A step from a DAW model that has no implementation yet: it would only fail.
+  for (const node of nodes) {
+    if (!isPlaceholder(node)) continue;
+    problems.push({
+      id: `placeholder:${node.id}`,
+      level: "error",
+      message: `“${String(node.data.label || node.type)}” has no implementation yet. Write its script in its Code tab, or replace it with a node from the library.`,
+      nodeId: node.id,
+    });
   }
 
   // Several connections into a one-connection input (saved before the rule):

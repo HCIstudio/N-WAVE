@@ -151,8 +151,9 @@ or has an issue that is explicitly moved to a later release.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
       imports back grouped. The **Grouped** view collapses and opens the groups.
-- [ ] **Metamodel**: export a workflow in the metamodel format and import it back (and a file
-      made by another tool, if available).
+- [ ] **DAW model**: **Export as DAW model**, import the file, and get the same canvas (and the
+      same file when exported again). A model written by hand with tasks that have no
+      implementation opens as placeholders, and the workflow check lists them.
 
 ## Global Settings and studies
 

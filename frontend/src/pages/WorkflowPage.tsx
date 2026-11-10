@@ -75,6 +75,7 @@ import { useFeature } from "../settings/useFeatures";
 import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
 import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
 import {
+  downloadDawModel,
   downloadScript,
   exportProject,
   type WorkflowSource,
@@ -455,6 +456,11 @@ const WorkflowPageContent: React.FC = () => {
     }
   };
 
+  const handleExportDawModel = () => {
+    const fileName = downloadDawModel(workflowSource);
+    showToast(`Exported ${fileName}: the workflow as a DAW model. Import it in N-WAVE to get this canvas back.`, "success");
+  };
+
   const handleExportProject = async () => {
     setIsExporting(true);
     try {
@@ -693,6 +699,7 @@ const WorkflowPageContent: React.FC = () => {
           onSave={saveWorkflow}
           onDownload={handleDownloadScript}
           onExportProject={handleExportProject}
+          onExportDawModel={handleExportDawModel}
           isExporting={isExporting}
           onRun={() => run.run(runSettings, { resume: resume.resume })}
           isSaved={workflow.isSaved}
