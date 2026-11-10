@@ -1,7 +1,7 @@
 import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
-import { defaultExecutionSettings } from "../../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "./executionSettings";
 import { type CheckContext, checkWorkflow, memoryBytes } from "./workflowCheck";
 
 const node = (id: string, type: string, data: Partial<NodeData> = {}): Node<NodeData> => ({
@@ -20,7 +20,7 @@ const edge = (source: string, target: string, sourceHandle = "out", targetHandle
 
 const context = (change: Partial<CheckContext> = {}): CheckContext => ({
   missingNfCoreComponents: [],
-  settings: defaultExecutionSettings,
+  settings: DEFAULT_EXECUTION_SETTINGS,
   docker: null,
   nextflow: null,
   limits: null,
@@ -143,9 +143,9 @@ describe("checkWorkflow", () => {
       expect.objectContaining({ level: "error", message: expect.stringContaining("Nextflow isn't available") }),
     ]);
     const docker = { dockerAvailable: false, error: "Docker Desktop not running" };
-    const withoutDocker = { ...defaultExecutionSettings, container: { ...defaultExecutionSettings.container, enabled: false } };
+    const withoutDocker = { ...DEFAULT_EXECUTION_SETTINGS, container: { ...DEFAULT_EXECUTION_SETTINGS.container, enabled: false } };
     expect(messages(nodes, chain, { docker, settings: withoutDocker })).toEqual([]);
-    const withDocker = { ...defaultExecutionSettings, container: { ...defaultExecutionSettings.container, enabled: true } };
+    const withDocker = { ...DEFAULT_EXECUTION_SETTINGS, container: { ...DEFAULT_EXECUTION_SETTINGS.container, enabled: true } };
     expect(messages(nodes, chain, { docker, settings: withDocker })).toEqual([
       expect.objectContaining({ level: "error", message: expect.stringContaining("(Docker Desktop not running)") }),
     ]);
@@ -153,8 +153,8 @@ describe("checkWorkflow", () => {
 
   it("warns when the run asks for more than the server allows", () => {
     const settings = {
-      ...defaultExecutionSettings,
-      resources: { ...defaultExecutionSettings.resources, maxCpus: 16, maxMemory: "32.GB" },
+      ...DEFAULT_EXECUTION_SETTINGS,
+      resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxCpus: 16, maxMemory: "32.GB" },
     };
     const limits = { maxCpus: 4, maxMemory: "8 GB", maxMemoryBytes: 8 * 1024 ** 3 };
     expect(messages([input(), filter, output], chain, { settings, limits })).toEqual([

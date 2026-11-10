@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Node } from "@xyflow/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeData, PortData } from "../../nodes/BaseNode";
 
 // The views inside the panel have their own tests; stubs show what they get.
@@ -129,6 +129,7 @@ const header = () =>
 describe("PropertiesPanel", () => {
   afterEach(() => {
     localStorage.clear();
+    vi.restoreAllMocks();
   });
 
   describe("settings", () => {
@@ -309,6 +310,14 @@ describe("PropertiesPanel", () => {
   });
 
   describe("moving and resizing", () => {
+    // The panel follows the mouse once per animation frame: run frames at once.
+    beforeEach(() => {
+      vi.spyOn(window, "requestAnimationFrame").mockImplementation((frame) => {
+        frame(0);
+        return 0;
+      });
+    });
+
     it("reports hover and focus", () => {
       const onMouseEnter = vi.fn();
       const onMouseLeave = vi.fn();

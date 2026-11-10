@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExecutionSettings } from "../../../types/execution";
-import { defaultExecutionSettings } from "../../../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../../../pages/workflow/executionSettings";
 
 const get = vi.fn();
 vi.mock("../../../api", () => ({
@@ -54,7 +54,7 @@ const allAvailable: Responses = {
 /** Settings with limits of the workflow's own. */
 const ownLimits = { useDefaults: false } as const;
 
-const show = (settings: ExecutionSettings = defaultExecutionSettings) => {
+const show = (settings: ExecutionSettings = DEFAULT_EXECUTION_SETTINGS) => {
   const onSettingsChange = vi.fn();
   render(
     <ExecutionSettingsComponent
@@ -68,10 +68,10 @@ const show = (settings: ExecutionSettings = defaultExecutionSettings) => {
 const withSettings = (
   patch: Partial<{ [K in keyof ExecutionSettings]: Partial<ExecutionSettings[K]> }>,
 ): ExecutionSettings => {
-  const result = { ...defaultExecutionSettings } as Record<string, unknown>;
+  const result = { ...DEFAULT_EXECUTION_SETTINGS } as Record<string, unknown>;
   for (const [key, value] of Object.entries(patch)) {
     result[key] = {
-      ...(defaultExecutionSettings[key as keyof ExecutionSettings] as object),
+      ...(DEFAULT_EXECUTION_SETTINGS[key as keyof ExecutionSettings] as object),
       ...(value as object),
     };
   }
@@ -185,7 +185,7 @@ describe("ExecutionSettings", () => {
         .setup()
         .click(screen.getByLabelText("Enable Docker/Container execution"));
       expect(onChange).toHaveBeenCalledWith({
-        container: { ...defaultExecutionSettings.container, enabled: false },
+        container: { ...DEFAULT_EXECUTION_SETTINGS.container, enabled: false },
       });
     });
 
@@ -207,7 +207,7 @@ describe("ExecutionSettings", () => {
         );
       expect(onChange).toHaveBeenLastCalledWith({
         container: {
-          ...defaultExecutionSettings.container,
+          ...DEFAULT_EXECUTION_SETTINGS.container,
           defaultImage: "python:3.11",
         },
       });
@@ -217,7 +217,7 @@ describe("ExecutionSettings", () => {
       );
       expect(onChange).toHaveBeenLastCalledWith({
         container: {
-          ...defaultExecutionSettings.container,
+          ...DEFAULT_EXECUTION_SETTINGS.container,
           defaultImage: "quay.io/me/tool:1",
         },
       });
@@ -226,7 +226,7 @@ describe("ExecutionSettings", () => {
 
   describe("Output tab", () => {
     const outputWith = (directory: string) => ({
-      output: { ...defaultExecutionSettings.output, directory },
+      output: { ...DEFAULT_EXECUTION_SETTINGS.output, directory },
     });
 
     it("stores the directory with forward slashes", async () => {
@@ -239,7 +239,7 @@ describe("ExecutionSettings", () => {
     });
 
     it("fills in defaults for an unset output section", async () => {
-      const settings = { ...defaultExecutionSettings } as Partial<ExecutionSettings>;
+      const settings = { ...DEFAULT_EXECUTION_SETTINGS } as Partial<ExecutionSettings>;
       delete settings.output;
       const onChange = show(settings as ExecutionSettings);
       await openTab("Output");
@@ -265,7 +265,7 @@ describe("ExecutionSettings", () => {
       });
       expect(onChange).toHaveBeenCalledWith({
         output: {
-          ...defaultExecutionSettings.output,
+          ...DEFAULT_EXECUTION_SETTINGS.output,
           namingPattern: "{workflow_name}",
         },
       });
@@ -412,7 +412,7 @@ describe("ExecutionSettings", () => {
       fireEvent.click(toggle);
       expect(onChange).toHaveBeenLastCalledWith({
         resources: {
-          ...defaultExecutionSettings.resources,
+          ...DEFAULT_EXECUTION_SETTINGS.resources,
           useDefaults: false,
           maxCpus: 6,
           maxMemory: "12.GB",
@@ -464,7 +464,7 @@ describe("ExecutionSettings", () => {
     it("changes CPU, memory and timeout", async () => {
       const onChange = show(withSettings({ resources: { ...ownLimits, maxTime: "PT2H" } }));
       await openTab("Resources");
-      const resources = { ...defaultExecutionSettings.resources, ...ownLimits, maxTime: "PT2H" };
+      const resources = { ...DEFAULT_EXECUTION_SETTINGS.resources, ...ownLimits, maxTime: "PT2H" };
 
       expect(
         (screen.getByLabelText("Execution Timeout (minutes)") as HTMLInputElement)
@@ -528,7 +528,7 @@ describe("ExecutionSettings", () => {
     });
 
     it("lets a workflow run on this computer while the global profile is a cluster", async () => {
-      const onChange = show({ ...defaultExecutionSettings, runProfile: "cluster" });
+      const onChange = show({ ...DEFAULT_EXECUTION_SETTINGS, runProfile: "cluster" });
       await openTab("Profiles");
       const select = screen.getByLabelText("Runs of this workflow use") as HTMLSelectElement;
       await waitFor(() => expect(select.value).toBe("cluster"));
@@ -544,7 +544,7 @@ describe("ExecutionSettings", () => {
       const api = (await import("../../../api")).default as unknown as Record<string, unknown>;
       api.put = put;
       const onChange = show({
-        ...defaultExecutionSettings,
+        ...DEFAULT_EXECUTION_SETTINGS,
         runProfiles: [{ name: "old", executor: "local", containerEngine: "docker" }],
       });
       await openTab("Profiles");
@@ -571,7 +571,7 @@ describe("ExecutionSettings", () => {
 
       await user.selectOptions(screen.getByLabelText("Nextflow Version"), "24.04.4");
       expect(onChange).toHaveBeenLastCalledWith({
-        nextflow: { ...defaultExecutionSettings.nextflow, version: "24.04.4" },
+        nextflow: { ...DEFAULT_EXECUTION_SETTINGS.nextflow, version: "24.04.4" },
       });
 
       await user.selectOptions(
@@ -580,14 +580,14 @@ describe("ExecutionSettings", () => {
       );
       expect(onChange).toHaveBeenLastCalledWith({
         errorHandling: {
-          ...defaultExecutionSettings.errorHandling,
+          ...DEFAULT_EXECUTION_SETTINGS.errorHandling,
           strategy: "retry",
         },
       });
 
       await user.click(screen.getByLabelText("Cleanup on Failure"));
       expect(onChange).toHaveBeenLastCalledWith({
-        cleanup: { ...defaultExecutionSettings.cleanup, onFailure: true },
+        cleanup: { ...DEFAULT_EXECUTION_SETTINGS.cleanup, onFailure: true },
       });
     });
 

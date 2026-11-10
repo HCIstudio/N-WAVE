@@ -3,7 +3,7 @@ import type { Edge, Node } from "@xyflow/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { flush, renderHook } from "../../test/renderHook";
-import { defaultExecutionSettings } from "../../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "./executionSettings";
 import type { WorkflowProblem } from "./workflowCheck";
 
 const get = vi.fn();
@@ -63,7 +63,7 @@ describe("useWorkflowCheck", () => {
       initialProps: {
         nodes: [input, output],
         edges,
-        settings: defaultExecutionSettings,
+        settings: DEFAULT_EXECUTION_SETTINGS,
         missingNfCoreComponents: [],
       },
     });
@@ -81,7 +81,7 @@ describe("useWorkflowCheck", () => {
 
   it("asks the server again on request", async () => {
     const { result, unmount } = renderHook(useWorkflowCheck, {
-      initialProps: { nodes: [input, output], edges, settings: defaultExecutionSettings, missingNfCoreComponents: [] },
+      initialProps: { nodes: [input, output], edges, settings: DEFAULT_EXECUTION_SETTINGS, missingNfCoreComponents: [] },
     });
     await flush();
     expect(get).toHaveBeenCalledTimes(3);
@@ -91,7 +91,7 @@ describe("useWorkflowCheck", () => {
   });
 
   describe("as set in Global Settings → Features", () => {
-    const props = { nodes: [input, output], edges, settings: defaultExecutionSettings, missingNfCoreComponents: [] };
+    const props = { nodes: [input, output], edges, settings: DEFAULT_EXECUTION_SETTINGS, missingNfCoreComponents: [] };
     afterEach(() => {
       extraProblems.length = 0;
       resetFeatures();
@@ -146,7 +146,7 @@ describe("useWorkflowCheck in verbose mode", () => {
   afterEach(() => stopRecording());
 
   it("records the check's result each time it changes, not on every render", async () => {
-    const props = { nodes: [input, output], edges, settings: defaultExecutionSettings, missingNfCoreComponents: [] };
+    const props = { nodes: [input, output], edges, settings: DEFAULT_EXECUTION_SETTINGS, missingNfCoreComponents: [] };
     const { rerender, unmount } = renderHook(useWorkflowCheck, { initialProps: props });
     await flush();
     rerender({ ...props });

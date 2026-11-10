@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { ExecutionSettings } from "../../types/execution";
-import { defaultExecutionSettings } from "../../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../../pages/workflow/executionSettings";
 
 // The settings form has its own tests; here it only needs to report a change.
 vi.mock("../common/workflow/ExecutionSettings", () => ({
@@ -16,7 +16,7 @@ vi.mock("../common/workflow/ExecutionSettings", () => ({
       type="button"
       onClick={() =>
         onSettingsChange({
-          resources: { ...defaultExecutionSettings.resources, maxCpus: 2 },
+          resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxCpus: 2 },
         })
       }
     >
@@ -36,7 +36,7 @@ const show = (props: Partial<Props> = {}) => {
     onDownload: vi.fn(),
     isSaved: false,
     isSaving: false,
-    executionSettings: defaultExecutionSettings,
+    executionSettings: DEFAULT_EXECUTION_SETTINGS,
     onExecutionSettingsChange: vi.fn(),
     ...props,
   };
@@ -152,7 +152,7 @@ describe("BottomBar", () => {
     });
 
     it("names the run profile a run goes through", () => {
-      show({ onRun: vi.fn(), executionSettings: { ...defaultExecutionSettings, runProfile: "hpc" } });
+      show({ onRun: vi.fn(), executionSettings: { ...DEFAULT_EXECUTION_SETTINGS, runProfile: "hpc" } });
       expect(button("Run Workflow").title).toBe('Run through the profile "hpc"');
     });
 
@@ -161,13 +161,13 @@ describe("BottomBar", () => {
       show({ onRun });
       expect(button("Run Workflow").title).toBe("Run with Docker");
       await userEvent.setup().click(button("Run Workflow"));
-      expect(onRun).toHaveBeenCalledWith(defaultExecutionSettings);
+      expect(onRun).toHaveBeenCalledWith(DEFAULT_EXECUTION_SETTINGS);
     });
 
     it("says it runs locally when Docker is off", () => {
       const local = {
-        ...defaultExecutionSettings,
-        container: { ...defaultExecutionSettings.container, enabled: false },
+        ...DEFAULT_EXECUTION_SETTINGS,
+        container: { ...DEFAULT_EXECUTION_SETTINGS.container, enabled: false },
       };
       show({ onRun: vi.fn(), executionSettings: local });
       expect(button("Run Workflow").title).toBe("Run locally");
@@ -266,8 +266,8 @@ describe("BottomBar", () => {
     it("summarises the settings", async () => {
       show({
         executionSettings: {
-          ...defaultExecutionSettings,
-          resources: { ...defaultExecutionSettings.resources, maxTime: "PT2H" },
+          ...DEFAULT_EXECUTION_SETTINGS,
+          resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxTime: "PT2H" },
         },
       });
       await open();
@@ -313,8 +313,8 @@ describe("BottomBar", () => {
       const user = await open();
       await user.click(button("Use 2 CPUs"));
       const expected = {
-        ...defaultExecutionSettings,
-        resources: { ...defaultExecutionSettings.resources, maxCpus: 2 },
+        ...DEFAULT_EXECUTION_SETTINGS,
+        resources: { ...DEFAULT_EXECUTION_SETTINGS.resources, maxCpus: 2 },
       };
       expect(all.onExecutionSettingsChange).toHaveBeenCalledWith(expected);
       expect(JSON.parse(localStorage.getItem("executionSettings") ?? "")).toEqual(
@@ -330,7 +330,7 @@ describe("BottomBar", () => {
       await user.click(button("Save"));
       expect(button("Saved").disabled).toBe(true);
       expect(JSON.parse(localStorage.getItem("executionSettings") ?? "")).toEqual(
-        defaultExecutionSettings,
+        DEFAULT_EXECUTION_SETTINGS,
       );
       await user.click(button("Close"));
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
@@ -357,7 +357,7 @@ describe("BottomBar", () => {
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
       expect(screen.queryByRole("heading", { name: "Execution Settings" })).toBeNull();
       expect(JSON.parse(localStorage.getItem("executionSettings") ?? "")).toEqual(
-        defaultExecutionSettings,
+        DEFAULT_EXECUTION_SETTINGS,
       );
     });
 
@@ -375,7 +375,7 @@ describe("BottomBar", () => {
       const user = await open();
       await user.click(button("Use 2 CPUs"));
       await user.click(screen.getByTitle("Run workflow"));
-      expect(onRun).toHaveBeenCalledWith(defaultExecutionSettings);
+      expect(onRun).toHaveBeenCalledWith(DEFAULT_EXECUTION_SETTINGS);
       expect(screen.queryByRole("heading", { name: "Execution Settings" })).toBeNull();
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
     });
@@ -403,18 +403,18 @@ describe("BottomBar", () => {
     it("loads stored settings when none are given", () => {
       localStorage.setItem(
         "executionSettings",
-        JSON.stringify(defaultExecutionSettings),
+        JSON.stringify(DEFAULT_EXECUTION_SETTINGS),
       );
       const { all } = show({ executionSettings: {} as ExecutionSettings });
       expect(all.onExecutionSettingsChange).toHaveBeenCalledWith(
-        defaultExecutionSettings,
+        DEFAULT_EXECUTION_SETTINGS,
       );
     });
 
     it("ignores stored settings when some are given", () => {
       localStorage.setItem(
         "executionSettings",
-        JSON.stringify(defaultExecutionSettings),
+        JSON.stringify(DEFAULT_EXECUTION_SETTINGS),
       );
       const { all } = show();
       expect(all.onExecutionSettingsChange).not.toHaveBeenCalled();

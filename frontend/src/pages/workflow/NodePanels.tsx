@@ -1,11 +1,8 @@
 import type React from "react";
 import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
-import {
-  FloatingPanel,
-  OutputDisplayPanelContent,
-  PropertiesPanel,
-} from "../../components/panels";
+import { Panel } from "../../components/common";
+import { OutputDisplayPanelContent, PropertiesPanel } from "../../components/panels";
 import { LastRunSection } from "../../components/panels/base/NodeRunResults";
 import type { useNodePanels } from "./useNodePanels";
 
@@ -48,12 +45,12 @@ const NodePanels: React.FC<NodePanelsProps> = ({
         };
 
         if (node.type === "outputDisplay" || node.type === "documentation") {
+          if (!panels.isInStack(node.id)) return null;
           return (
-            <FloatingPanel
+            <Panel
               key={node.id}
               panelId={node.id}
               title={node.data.label || "Panel"}
-              isOpen={panels.isInStack(node.id)}
               onDelete={() => onDeleteNode(node)}
               {...shared}
             >
@@ -68,7 +65,7 @@ const NodePanels: React.FC<NodePanelsProps> = ({
                   </fieldset>
                 </div>
               ) : null}
-            </FloatingPanel>
+            </Panel>
           );
         }
         return (

@@ -9,7 +9,7 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import { demoWorkflowSeed } from "../demo/demoWorkflow";
 import { nodeIdForProcess, summarizeNodeRuns } from "../execution/nodeRuns";
 import { generateNextflowScript, generateNextflowScriptWithNames } from "../generators/core/generateNextflowScript";
-import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
 import { checkWorkflow } from "../pages/workflow/workflowCheck";
 import catalog from "../registry/nfcore/catalog.json";
 import { registerDynamicNodeDefinitions } from "../registry/nodeDefinitions";
@@ -123,7 +123,7 @@ describe("a group in the code", () => {
     expect(() => generate(loop, edges)).toThrow(/comes back into it/);
     const problems = checkWorkflow(loop, edges, {
       missingNfCoreComponents: [],
-      settings: defaultExecutionSettings,
+      settings: DEFAULT_EXECUTION_SETTINGS,
       docker: null,
       nextflow: null,
       limits: null,

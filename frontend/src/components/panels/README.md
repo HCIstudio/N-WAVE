@@ -7,7 +7,7 @@ label. Which panel a node gets is decided in `src/pages/workflow/NodePanels.tsx`
 
 | Folder | Panels |
 | --- | --- |
-| `base/` | `PropertiesPanel`, `NodeCodeView` (Code tab), `NodeRunResults` (Results tab), `FloatingPanel` |
+| `base/` | `PropertiesPanel`, `NodeCodeView` (Code tab), `NodeRunResults` (Results tab) |
 | `input/` | File Input, Samplesheet, Parameters, Note |
 | `operator/` | Filter, Map, Merge, Channel Operator (with `BaseOperatorPanel` / `OperatorNodePanel`) |
 | `process/` | nf-core module and subworkflow (with `NfCoreModuleDocs`, `NfCoreValueInputs`, `SaveOutputsToggle`), nf-core Pipeline (`PipelinePanel`, `PipelineResults`), custom and generic processes |

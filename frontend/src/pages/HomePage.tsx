@@ -28,7 +28,7 @@ import PageLayout from "../components/layout/PageLayout";
 import { buildInfo } from "../utils/buildInfo";
 import { Loader } from "lucide-react";
 import type { WorkflowDescriptor } from "../types/backend";
-import { defaultExecutionSettings } from "../workflows/defaultExecutionSettings";
+import { DEFAULT_EXECUTION_SETTINGS } from "./workflow/executionSettings";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import { importDawWorkflow } from "../workflows/importDawWorkflow";
 import { looksLikeDawModel } from "../metamodel/dawModel";
@@ -355,7 +355,7 @@ const HomePage: React.FC = () => {
                 choice.template.id === "empty"
                   ? ""
                   : choice.template.description,
-              executionSettings: defaultExecutionSettings,
+              executionSettings: DEFAULT_EXECUTION_SETTINGS,
             });
       navigate(`/workflow/${response.data._id}`);
     } catch (err) {
