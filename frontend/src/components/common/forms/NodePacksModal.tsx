@@ -1,4 +1,5 @@
 import type React from "react";
+import { downloadText } from "../../../utils/download";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDemoMode } from "../../../api";
 import { refreshCustomNodes } from "../../../api/customNodes";
@@ -38,18 +39,6 @@ interface NodePacksModalProps {
   onChanged: () => void;
 }
 
-const downloadText = (text: string, fileName: string) => {
-  const url = URL.createObjectURL(
-    new Blob([text], { type: "application/json" }),
-  );
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-};
 
 /** The app version; read when needed, as tests don't define it. */
 const appVersion = (): string =>
@@ -653,7 +642,7 @@ const ExportPack: React.FC<{ customNodes: StoredCustomNode[] }> = ({
     ];
     setProblems(issues);
     if (issues.length > 0) return;
-    downloadText(text, nodePackFileName(pack));
+    downloadText(text, nodePackFileName(pack), "application/json");
   };
 
   const ready =

@@ -11,13 +11,20 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
-import { isCommandAvailable } from "../execution/shell";
 import type { AnalysisProject } from "./bioflowProject";
-import { ensureImage, imagePresent, removeContainer, runDocker } from "./dockerRun";
+import {
+  ensureImage,
+  readToolConfig,
+  removeContainer,
+  runDocker,
+  sandboxedRunArgs,
+  type ToolConfig,
+  type ToolStatus,
+  toolStatus,
+} from "./dockerRun";
 import { type BioflowResult, parseBioflowResult } from "./bioflowResult";
 
 export const BIOFLOW_IMAGE_REPOSITORY = "hcistudio/nwave-bioflow";
-const DEFAULT_TIMEOUT_SECONDS = 120;
 
 /** N-WAVE's version, from the backend's package.json. */
 const nwaveVersion = (): string | null => {
@@ -35,69 +42,25 @@ const nwaveVersion = (): string | null => {
   return null;
 };
 
-export interface BioflowConfig {
-  enabled: boolean;
-  image: string;
-  timeoutSeconds: number;
-}
+export type BioflowConfig = ToolConfig;
 
-export const readBioflowConfig = (env: NodeJS.ProcessEnv = process.env): BioflowConfig => {
-  const switchValue = (env.NWAVE_BIOFLOW ?? "").trim().toLowerCase();
-  const timeout = Number(env.NWAVE_BIOFLOW_TIMEOUT);
-  const version = nwaveVersion();
-  return {
-    enabled: !["off", "false", "no", "0"].includes(switchValue),
-    image: env.NWAVE_BIOFLOW_IMAGE?.trim() || `${BIOFLOW_IMAGE_REPOSITORY}:${version ?? "latest"}`,
-    timeoutSeconds: Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TIMEOUT_SECONDS,
-  };
-};
+export const readBioflowConfig = (env: NodeJS.ProcessEnv = process.env): BioflowConfig =>
+  readToolConfig(env, "NWAVE_BIOFLOW", `${BIOFLOW_IMAGE_REPOSITORY}:${nwaveVersion() ?? "latest"}`);
 
 /** The `docker run` arguments for one analysis. */
 export const buildBioflowDockerArgs = (image: string, containerName: string): string[] => [
-  "run",
-  "--rm",
-  "-i",
-  "--name",
-  containerName,
-  "--network",
-  "none",
-  "--read-only",
-  "--tmpfs",
-  "/tmp:rw,size=512m",
-  "--cap-drop",
-  "ALL",
-  "--security-opt",
-  "no-new-privileges",
-  "--memory",
-  "2g",
-  "--cpus",
-  "2",
-  "--pids-limit",
-  "512",
-  "--pull",
-  "never",
+  ...sandboxedRunArgs(containerName),
   image,
   "--stdin",
 ];
 
-export interface BioflowStatus {
-  available: boolean;
-  image: string;
-  /** The image is on this machine (else the first analysis downloads it). */
-  imagePresent: boolean;
-  /** Why the analysis isn't available. */
-  reason?: string;
-}
+export type BioflowStatus = ToolStatus;
 
-export const getBioflowStatus = async (config = readBioflowConfig()): Promise<BioflowStatus> => {
-  if (!config.enabled) {
-    return { available: false, image: config.image, imagePresent: false, reason: "The analysis is switched off on this installation (NWAVE_BIOFLOW=off)." };
-  }
-  if (!(await isCommandAvailable("docker info"))) {
-    return { available: false, image: config.image, imagePresent: false, reason: "The analysis runs in Docker, and Docker is not available." };
-  }
-  return { available: true, image: config.image, imagePresent: await imagePresent(config.image) };
-};
+export const getBioflowStatus = (config = readBioflowConfig()): Promise<BioflowStatus> =>
+  toolStatus(config, {
+    off: "The analysis is switched off on this installation (NWAVE_BIOFLOW=off).",
+    name: "The analysis",
+  });
 
 export class BioflowUnavailableError extends Error {}
 

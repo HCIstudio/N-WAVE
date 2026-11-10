@@ -9,32 +9,26 @@
 //   NWAVE_LINT_TIMEOUT=120       time limit in seconds
 
 import { randomUUID } from "node:crypto";
-import { isCommandAvailable } from "../execution/shell";
 import type { AnalysisProject } from "./bioflowProject";
-import { ensureImage, imagePresent, removeContainer, runDocker } from "./dockerRun";
+import {
+  ensureImage,
+  readToolConfig,
+  removeContainer,
+  runDocker,
+  sandboxedRunArgs,
+  type ToolConfig,
+  toolStatus,
+} from "./dockerRun";
 
 /**
  * The Nextflow whose lint N-WAVE uses (the CI lint job uses the same). 25.04
  * has lint too, but its JSON output fails, and the concise one is read here.
  */
 export const DEFAULT_LINT_IMAGE = "nextflow/nextflow:25.10.4";
-const DEFAULT_TIMEOUT_SECONDS = 120;
+export type LintConfig = ToolConfig;
 
-export interface LintConfig {
-  enabled: boolean;
-  image: string;
-  timeoutSeconds: number;
-}
-
-export const readLintConfig = (env: NodeJS.ProcessEnv = process.env): LintConfig => {
-  const switchValue = (env.NWAVE_LINT ?? "").trim().toLowerCase();
-  const timeout = Number(env.NWAVE_LINT_TIMEOUT);
-  return {
-    enabled: !["off", "false", "no", "0"].includes(switchValue),
-    image: env.NWAVE_LINT_IMAGE?.trim() || DEFAULT_LINT_IMAGE,
-    timeoutSeconds: Number.isFinite(timeout) && timeout > 0 ? timeout : DEFAULT_TIMEOUT_SECONDS,
-  };
-};
+export const readLintConfig = (env: NodeJS.ProcessEnv = process.env): LintConfig =>
+  readToolConfig(env, "NWAVE_LINT", DEFAULT_LINT_IMAGE);
 
 export interface LintProblem {
   level: "error" | "warning";
@@ -99,28 +93,7 @@ export const filesToLint = (project: AnalysisProject): string[] =>
     .sort((a, b) => (a === project.entry ? -1 : b === project.entry ? 1 : a.localeCompare(b)));
 
 export const buildLintDockerArgs = (image: string, containerName: string, files: string[]): string[] => [
-  "run",
-  "--rm",
-  "-i",
-  "--name",
-  containerName,
-  "--network",
-  "none",
-  "--read-only",
-  "--tmpfs",
-  "/tmp:rw,size=512m",
-  "--cap-drop",
-  "ALL",
-  "--security-opt",
-  "no-new-privileges",
-  "--memory",
-  "2g",
-  "--cpus",
-  "2",
-  "--pids-limit",
-  "512",
-  "--pull",
-  "never",
+  ...sandboxedRunArgs(containerName),
   "-e",
   "HOME=/tmp",
   "-e",
@@ -139,15 +112,11 @@ export const buildLintDockerArgs = (image: string, containerName: string, files:
 
 export class LintUnavailableError extends Error {}
 
-export const getLintStatus = async (config = readLintConfig()) => {
-  if (!config.enabled) {
-    return { available: false, image: config.image, imagePresent: false, reason: "Nextflow's lint is switched off on this installation (NWAVE_LINT=off)." };
-  }
-  if (!(await isCommandAvailable("docker info"))) {
-    return { available: false, image: config.image, imagePresent: false, reason: "Nextflow's lint runs in Docker, and Docker is not available." };
-  }
-  return { available: true, image: config.image, imagePresent: await imagePresent(config.image) };
-};
+export const getLintStatus = (config = readLintConfig()) =>
+  toolStatus(config, {
+    off: "Nextflow's lint is switched off on this installation (NWAVE_LINT=off).",
+    name: "Nextflow's lint",
+  });
 
 export const runNextflowLint = async (project: AnalysisProject, config = readLintConfig()): Promise<LintResult> => {
   const status = await getLintStatus(config);

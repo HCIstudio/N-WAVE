@@ -2,6 +2,7 @@
 // BioFlow-Insight found in its code, and its structure as BioFlow-Insight
 // reads it, read-only, with metrics and downloads.
 
+import { downloadText } from "../../utils/download";
 import {
   Background,
   type Edge,
@@ -101,14 +102,6 @@ StructureNode.displayName = "StructureNode";
 const nodeTypes = { structure: StructureNode };
 const ignoreClick = () => {};
 
-const download = (text: string, fileName: string, type: string) => {
-  const url = URL.createObjectURL(new Blob([text], { type }));
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-};
 
 const fileBase = (name: string) =>
   name.trim().replace(/[^\w.-]+/g, "_") || "workflow";
@@ -504,7 +497,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                       key={format}
                       type="button"
                       onClick={() => {
-                        download(
+                        downloadText(
                           make(),
                           `${fileBase(workflowName)}-${view}${extension}`,
                           type,

@@ -16,7 +16,7 @@ vi.mock("../../api", () => ({
   isDemoMode: false,
 }));
 const downloadBlob = vi.fn();
-vi.mock("../workflow/workflowExport", () => ({
+vi.mock("../../utils/download", () => ({
   downloadBlob: (...args: unknown[]) => downloadBlob(...args),
 }));
 
