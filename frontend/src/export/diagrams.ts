@@ -20,8 +20,8 @@ export interface Diagram {
   positions: Map<string, { x: number; y: number }>;
 }
 
-/** Nodes that are no step of the workflow: notes, and the frames of groups. */
-const isDrawn = (node: Node<NodeData>) => node.type !== "note" && !node.type?.startsWith("group");
+/** Nodes that are no step of the workflow: notes, and the frames drawn around groups. */
+const isDrawn = (node: Node<NodeData>) => node.type !== "note" && node.type !== "groupFrame";
 
 /** The canvas as drawn: its nodes where they are, operators rounded. */
 export const canvasDiagram = (nodes: Node<NodeData>[], edges: Edge[]): Diagram => {
@@ -32,7 +32,8 @@ export const canvasDiagram = (nodes: Node<NodeData>[], edges: Edge[]): Diagram =
       nodes: drawn.map((node) => ({
         id: node.id,
         kind: node.type === "operator" || node.type === "channelOperator" ? "operation" : "step",
-        label: String(node.data.label || node.type || node.id),
+        // A group box (Groups view) is named by its title.
+        label: String(node.data.label || (node.data as { title?: unknown }).title || node.type || node.id),
         subworkflow: null,
       })),
       // One arrow per pair of steps, however many of their ports connect.

@@ -6,6 +6,7 @@ import type { BioflowResult } from "../../analysis/bioflow";
 import type { ExportActions } from "../../components/canvas/ExportDialog";
 import type { DiagramFormat } from "../../export/diagrams";
 import { getApiErrorMessage } from "../../utils/errors";
+import { groupsOf } from "../../groups/groups";
 import {
   copyScript,
   type DiagramSource,
@@ -62,7 +63,7 @@ export const useWorkflowExports = (
           (fileName) => `Exported ${fileName}: the workflow as a DAW model. Import it in N-WAVE to get this canvas back.`,
           "Failed to export the DAW model.",
         ),
-      diagramSources: diagramSources(analysed),
+      diagramSources: diagramSources(analysed, groupsOf(source.nodes).size > 0),
       onDiagram: (which: string, format: DiagramFormat) =>
         void attempt(
           () => downloadDiagram(source, which as DiagramSource, format, analysed),

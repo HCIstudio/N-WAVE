@@ -44,9 +44,9 @@ describe("useWorkflowExports", () => {
     expect(showToast).toHaveBeenCalledWith("The workflow has a cycle.", "error");
   });
 
-  it("offers the canvas diagram without an analysis", () => {
+  it("offers the canvas's views without an analysis", () => {
     const showToast = vi.fn();
     const { result } = renderHook(() => useWorkflowExports(source, null, showToast));
-    expect(result.current.exports.diagramSources?.map((entry) => entry.id)).toEqual(["canvas"]);
+    expect(result.current.exports.diagramSources?.map((entry) => entry.id)).toEqual(["canvas", "process-graph"]);
   });
 });

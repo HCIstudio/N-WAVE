@@ -59,6 +59,16 @@ const edgeTypes = {
   derived: DerivedEdge,
 };
 
+
+/** How a view other than the editor looks, and what its title block says. */
+export interface CanvasViewLook {
+  title: string;
+  subtitle: string;
+  help: React.ReactNode;
+  style: "blueprint" | "tinted";
+  onBack: () => void;
+}
+
 interface CanvasProps {
   nodes: Node[];
   edges: Edge[];
@@ -79,10 +89,11 @@ interface CanvasProps {
   /** Zooms to the step that failed in the last run; none: nothing failed. */
   onZoomToFailed?: () => void;
   /**
-   * A read-only view (the process graph, groups), drawn as a blueprint so it
-   * can't be mistaken for the editor: its name is in the title block.
+   * A view other than the editor, drawn so it can't be mistaken for it (the
+   * process graph as a blueprint, groups on a tinted canvas), with a title
+   * block: its name, what it shows and the way back to the editor.
    */
-  blueprint?: string;
+  view?: CanvasViewLook;
   /** A view that can't be edited (Steps only): no connecting or deleting. */
   readOnly?: boolean;
 }
@@ -120,7 +131,7 @@ const Canvas: FC<CanvasProps> = ({
   onShowShortcuts,
   onZoomToFailed,
   readOnly = false,
-  blueprint,
+  view,
 }) => {
   const reactFlowWrapper = React.useRef<HTMLDivElement>(null);
   useFitViewWhenMeasured();
@@ -129,8 +140,8 @@ const Canvas: FC<CanvasProps> = ({
 
   return (
     <div
-      className={clsx("flex-grow h-full", blueprint && "canvas-blueprint")}
-      data-blueprint={blueprint ? "true" : undefined}
+      className={clsx("flex-grow h-full", view && `canvas-${view.style}`)}
+      data-view-style={view?.style}
       ref={reactFlowWrapper}
     >
       <ReactFlow
@@ -151,10 +162,10 @@ const Canvas: FC<CanvasProps> = ({
         connectionMode={ConnectionMode.Loose}
         nodesConnectable={!readOnly}
         deleteKeyCode={readOnly ? null : ["Backspace", "Delete"]}
-        className={blueprint ? "" : "bg-background"}
+        className={view ? "" : "bg-background"}
         proOptions={{ hideAttribution: true }}
       >
-        {blueprint ? (
+        {view?.style === "blueprint" ? (
           <>
             {/* Blueprint paper: a fine grid, and a major line every fifth. */}
             <Background id="blueprint-minor" variant={BackgroundVariant.Lines} gap={24} lineWidth={0.5} color="rgba(186, 220, 255, 0.16)" />
@@ -169,13 +180,24 @@ const Canvas: FC<CanvasProps> = ({
           onZoomToFailed={onZoomToFailed}
         />
         {minimapOn && <CanvasMinimap />}
-        {blueprint && (
-          // The title block of a drawing: which view this is.
+        {view && (
+          // The title block of a drawing: which view this is, and what it is for.
           <Panel position="top-left">
-            <div role="note" aria-label="Read-only view" className="blueprint-title-block">
-              <span className="blueprint-title">{blueprint}</span>
-              <span className="blueprint-subtitle">Read-only view</span>
-            </div>
+            <section
+              aria-label={`${view.title} view`}
+              className={view.style === "blueprint" ? "blueprint-title-block" : "view-title-block"}
+            >
+              <span className="blueprint-title">{view.title}</span>
+              <span className="blueprint-subtitle">{view.subtitle}</span>
+              <p className="blueprint-help">{view.help}</p>
+              <button
+                type="button"
+                onClick={view.onBack}
+                className="mt-2 self-start rounded border border-current px-2 py-0.5 text-xs normal-case tracking-normal hover:bg-white/10"
+              >
+                Back to the editor
+              </button>
+            </section>
           </Panel>
         )}
       </ReactFlow>

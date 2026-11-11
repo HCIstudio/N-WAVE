@@ -3,6 +3,7 @@
 
 import { Handle, type NodeProps, Position } from "@xyflow/react";
 import { Layers } from "lucide-react";
+import clsx from "clsx";
 import type React from "react";
 import { createContext, useContext } from "react";
 import type { GroupNodeData } from "../../canvas/canvasViews";
@@ -25,10 +26,29 @@ export const GroupActionsContext = createContext<GroupActions>({
 
 const stepCount = (steps: string[]) => `${steps.length} ${steps.length === 1 ? "step" : "steps"}`;
 
+/** The group's name; clicked, it opens the group's editor (name, ungroup). */
+const GroupName: React.FC<{ group: string; title: string; className?: string }> = ({ group, title, className }) => {
+  const actions = useContext(GroupActionsContext);
+  if (!actions.editable) return <span className={clsx("font-semibold text-sky-300", className)}>{title}</span>;
+  return (
+    <button
+      type="button"
+      onClick={() => actions.rename(group)}
+      aria-label={`Edit group “${title}”`}
+      title="Rename or ungroup"
+      className={clsx(
+        "nodrag rounded px-1 font-semibold text-sky-300 underline decoration-dotted underline-offset-2 hover:bg-sky-500/15",
+        className,
+      )}
+    >
+      {title}
+    </button>
+  );
+};
+
 /** The frame around a group's steps; only its header takes clicks. */
 export const GroupFrameNode: React.FC<NodeProps> = ({ data }) => {
   const { group, title, steps } = data as GroupNodeData;
-  const actions = useContext(GroupActionsContext);
   return (
     <section
       aria-label={`Group “${title}”`}
@@ -40,26 +60,8 @@ export const GroupFrameNode: React.FC<NodeProps> = ({ data }) => {
         className="pointer-events-auto flex items-center gap-2 whitespace-nowrap px-2 py-1 text-xs"
       >
         <Layers className="h-3.5 w-3.5 shrink-0 text-sky-500" aria-hidden />
-        <span className="font-semibold text-sky-700 dark:text-sky-300">{title}</span>
+        <GroupName group={group} title={title} />
         <span className="truncate text-text-light">{stepCount(steps)}</span>
-        {actions.editable && (
-          <span className="ml-auto flex shrink-0 gap-1">
-            <button
-              type="button"
-              className="nodrag rounded border border-panel-border bg-panel-background px-1.5 py-0.5 text-text hover:bg-accent"
-              onClick={() => actions.rename(group)}
-            >
-              Rename
-            </button>
-            <button
-              type="button"
-              className="nodrag rounded border border-panel-border bg-panel-background px-1.5 py-0.5 text-text hover:bg-accent"
-              onClick={() => actions.ungroup(group)}
-            >
-              Ungroup
-            </button>
-          </span>
-        )}
       </header>
     </section>
   );
@@ -78,7 +80,9 @@ export const GroupBoxNode: React.FC<NodeProps> = ({ data }) => {
       <Handle type="target" position={Position.Left} isConnectable={false} />
       <div className="flex items-center gap-2">
         <Layers className="h-4 w-4 text-sky-600" aria-hidden />
-        <h3 className="text-sm font-semibold">{title}</h3>
+        <h3 className="text-sm">
+          <GroupName group={group} title={title} />
+        </h3>
       </div>
       <p className="mt-0.5 text-xs text-text-light">
         Subworkflow {group} · {stepCount(steps)}
