@@ -40,7 +40,7 @@ const { default: HomePage } = await import("./HomePage");
 const { resetFeatures } = await import("../settings/useFeatures");
 const { recorded, startRecording, stopRecording } = await import("../activity/activityTesting");
 
-const TUTORIAL_DONE = ["nwave.demoTutorial.completed", "custom-nodes-v3"] as const;
+const TUTORIAL_DONE = ["nwave.demoTutorial.completed", "tour-v4"] as const;
 
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 86_400_000).toISOString();
@@ -652,29 +652,40 @@ describe("HomePage", () => {
       localStorage.clear();
     });
 
-    it("highlights the demo until the tutorial is skipped", async () => {
+    it("tours the home page, with Next and Back, until it is skipped", async () => {
       const { user } = await setup([demo]);
       const tutorial = screen.getByRole("region", { name: "Tutorial" });
-      expect(tutorial.textContent).toContain("Getting started");
-      expect(within(card("Basic demo")).queryByRole("button")).toBeNull();
+      expect(tutorial.textContent).toContain("Welcome to N-WAVE");
+      expect(tutorial.textContent).toContain("1 of 8");
+      expect(within(tutorial).queryByRole("button", { name: "Back" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Retake Tutorial" })).toBeNull();
 
-      await user.click(within(tutorial).getByRole("button", { name: "skip the tutorial" }));
+      await user.click(within(tutorial).getByRole("button", { name: "Next" }));
+      expect(tutorial.textContent).toContain("built-in demos");
+      await user.click(within(tutorial).getByRole("button", { name: "Back" }));
+      expect(tutorial.textContent).toContain("Welcome to N-WAVE");
+
+      await user.click(within(tutorial).getByRole("button", { name: "Skip tutorial" }));
       expect(localStorage.getItem(TUTORIAL_DONE[0])).toBe(TUTORIAL_DONE[1]);
       expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
       expect(within(card("Basic demo")).getByRole("button", { name: "Duplicate" })).toBeTruthy();
 
       await user.click(button("Retake Tutorial"));
       expect(localStorage.getItem(TUTORIAL_DONE[0])).toBeNull();
-      expect(screen.getByRole("region", { name: "Tutorial" })).toBeTruthy();
+      expect(screen.getByRole("region", { name: "Tutorial" }).textContent).toContain("Welcome to N-WAVE");
     });
 
-    it("starts the tutorial when the demo is opened", async () => {
+    it("ends the tour with the user's own copy of Demo 1, where it goes on", async () => {
+      post.mockResolvedValue({ data: { _id: "copy-1" } });
       const { user } = await setup([demo]);
-      await user.click(screen.getByRole("heading", { name: "Basic demo" }));
-      expect(sessionStorage.getItem("nwave.demoTutorial.active")).toBe("true");
+      const tutorial = screen.getByRole("region", { name: "Tutorial" });
+      for (let step = 1; step < 8; step++) await user.click(within(tutorial).getByRole("button", { name: "Next" }));
+      expect(tutorial.textContent).toContain("duplicate Demo 1");
+      await user.click(within(tutorial).getByRole("button", { name: "Duplicate Demo 1" }));
+      expect(post).toHaveBeenCalledWith("/workflows/builtin:demo-basic/duplicate");
+      expect(sessionStorage.getItem("nwave.demoTutorial.active")).toBe("canvas");
       expect(sessionStorage.getItem("nwave.demoTutorial.step")).toBe("0");
-      expect(await screen.findByText("Opened builtin:demo-basic")).toBeTruthy();
+      expect(await screen.findByText("Opened copy-1")).toBeTruthy();
     });
 
     it("isn't shown without the demo workflow", async () => {

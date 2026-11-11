@@ -48,7 +48,9 @@ or has an issue that is explicitly moved to a later release.
 
 ## Home page, help and demo
 
-- [ ] The tutorial starts on the first visit, can be skipped, and doesn't come back after that.
+- [ ] The tutorial starts on the first visit with a tour of the home page (**Next**, **Back**,
+      **Skip tutorial**). Its last step duplicates Demo 1 and goes on on that copy's canvas
+      (changing Map, adding a node). Skipped or finished, it doesn't come back.
 - [ ] Each built-in demo opens read-only; duplicating it gives an editable copy.
 - [ ] Workflow cards show the last run and its result. Editing the name and description,
       duplicating and deleting work.

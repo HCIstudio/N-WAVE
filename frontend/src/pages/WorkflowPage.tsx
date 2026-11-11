@@ -151,12 +151,7 @@ const WorkflowPageContent: React.FC = () => {
     );
     navigate(location.pathname, { replace: true, state: null });
   }, [copied, showToast, navigate, location.pathname]);
-  const tutorial = useWorkflowTutorial({
-    workflowId,
-    readOnly,
-    requestCopy,
-    showError,
-  });
+  const tutorial = useWorkflowTutorial();
   const run = useWorkflowRun({
     nodes,
     edges,
@@ -368,8 +363,8 @@ const WorkflowPageContent: React.FC = () => {
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
       if (blockedByRun()) return;
-      // The tutorial's add-node step may continue in a copy instead.
-      if (onAddNode()) return;
+      // The tutorial's add-node step moves on when a node is added.
+      onAddNode();
       if (readOnly) {
         void requestCopy();
         return;
