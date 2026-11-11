@@ -1,4 +1,5 @@
 import type React from "react";
+import { fileInputData } from "../../../utils/inputFiles";
 import { useState, useCallback, useMemo, useEffect } from "react";
 import type { Node } from "@xyflow/react";
 import { File, X, UploadCloud, Trash2, Plus } from "lucide-react";
@@ -121,16 +122,7 @@ const FileInputPanel: React.FC<{
         }
 
         // Update node data with new files (content stays in browser)
-        updateNodeData(node.id, {
-          files: updatedFiles,
-          label: `${updatedFiles.length} file${
-            updatedFiles.length > 1 ? "s" : ""
-          } selected`,
-          subtitle: `Total size: ${(
-            updatedFiles.reduce((acc, f) => acc + f.size, 0) / 1024
-          ).toFixed(2)} KB`,
-          outputs: [{ name: "ch_files_out", isConnectable: true }],
-        });
+        updateNodeData(node.id, fileInputData(updatedFiles));
       } catch (err) {
         setError(
           err instanceof UploadRefusedError
@@ -152,20 +144,7 @@ const FileInputPanel: React.FC<{
 
   const handleRemoveFile = async (fileName: string) => {
     const newFiles = nodeFiles.filter((f) => f.name !== fileName);
-    updateNodeData(node.id, {
-      files: newFiles,
-      label:
-        newFiles.length > 0
-          ? `${newFiles.length} file${newFiles.length > 1 ? "s" : ""} selected`
-          : "Select File(s)",
-      subtitle:
-        newFiles.length > 0
-          ? `Total size: ${(
-              newFiles.reduce((acc, f) => acc + f.size, 0) / 1024
-            ).toFixed(2)} KB`
-          : undefined,
-      outputs: [{ name: "ch_files_out", isConnectable: newFiles.length > 0 }],
-    });
+    updateNodeData(node.id, fileInputData(newFiles));
 
     // Clear from selection if it was selected
     setSelectedForRemoval((prev) => {
@@ -180,22 +159,7 @@ const FileInputPanel: React.FC<{
 
     try {
       const newFiles = nodeFiles.filter((f) => !selectedForRemoval.has(f.name));
-      updateNodeData(node.id, {
-        files: newFiles,
-        label:
-          newFiles.length > 0
-            ? `${newFiles.length} file${
-                newFiles.length > 1 ? "s" : ""
-              } selected`
-            : "Select File(s)",
-        subtitle:
-          newFiles.length > 0
-            ? `Total size: ${(
-                newFiles.reduce((acc, f) => acc + f.size, 0) / 1024
-              ).toFixed(2)} KB`
-            : undefined,
-        outputs: [{ name: "ch_files_out", isConnectable: newFiles.length > 0 }],
-      });
+      updateNodeData(node.id, fileInputData(newFiles));
       setSelectedForRemoval(new Set());
     } finally {
       setIsRemoving(false);

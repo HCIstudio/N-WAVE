@@ -90,3 +90,17 @@ export const getWorkflowInputFiles = (
   }
   return Array.from(files.values());
 };
+
+/** The File Input's one output; connections to it are made before or after files are added. */
+export const FILE_INPUT_OUTPUT = "ch_files_out";
+
+/** A File Input's data for its files: the files, label, size and its output. */
+export const fileInputData = (files: NonNullable<NodeData["files"]>): Partial<NodeData> => ({
+  files,
+  label: files.length > 0 ? `${files.length} file${files.length > 1 ? "s" : ""} selected` : "Select File(s)",
+  subtitle:
+    files.length > 0
+      ? `Total size: ${(files.reduce((total, file) => total + (file.size ?? 0), 0) / 1024).toFixed(2)} KB`
+      : undefined,
+  outputs: [{ name: FILE_INPUT_OUTPUT, isConnectable: true }],
+});

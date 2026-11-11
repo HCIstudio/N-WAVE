@@ -1,4 +1,5 @@
 import type React from "react";
+import { FILE_INPUT_OUTPUT } from "../utils/inputFiles";
 import type { Connection, Edge, Node } from "@xyflow/react";
 import type { NextflowProcessCategory } from "../data/types";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
@@ -98,9 +99,9 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     description: "Provides a file as a channel.",
     type: "fileInput",
     icon: "FolderOpen",
-    outputs: [{ name: "out", isConnectable: true }],
+    outputs: [{ name: FILE_INPUT_OUTPUT, isConnectable: true }],
     defaults: {
-      outputs: [{ name: "out", isConnectable: true }],
+      outputs: [{ name: FILE_INPUT_OUTPUT, isConnectable: true }],
     },
     panel: FileInputPanel,
     executionLabel: "File Input",
