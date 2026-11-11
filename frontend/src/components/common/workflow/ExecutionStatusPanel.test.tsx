@@ -323,6 +323,20 @@ describe("ExecutionStatusPanel", () => {
     expect(container.textContent).not.toContain("%");
   });
 
+  it("shows progress by step, and no other bar, once the run's steps are known", () => {
+    render({
+      status: { ...idle, isRunning: true, startTime: new Date(), totalProcesses: 40, finishedProcesses: 10 },
+      runId: "run-1",
+      minimized: false,
+      stages: [
+        { id: "a", label: "FastQC", status: "succeeded", done: 1, total: 1 },
+        { id: "b", label: "STAR", status: "running", done: 0, total: 2 },
+      ],
+    });
+    expect(container.querySelector('[aria-label="Progress by step"]')).not.toBeNull();
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
   it("renders nothing when hidden", () => {
     render({ isVisible: false });
     expect(container.innerHTML).toBe("");

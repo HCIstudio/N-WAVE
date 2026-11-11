@@ -493,7 +493,9 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                 </div>
               </div>
 
-              {/* Progress: how far isn't known until Nextflow is done. */}
+              {/* Progress by step when the run's steps are known (every run
+                  with steps); before that, a count of what Nextflow reported. */}
+              {stages.length === 0 && (
               <div className="mb-2">
                 <div className="flex justify-between text-xs text-gray-800 mb-1">
                   <span>Progress</span>
@@ -556,6 +558,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                   </p>
                 )}
               </div>
+              )}
 
               <StageProgress stages={stages} isRunning={status.isRunning} />
 
