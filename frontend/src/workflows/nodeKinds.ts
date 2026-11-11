@@ -22,6 +22,8 @@ export const nodeKindOf = (node: {
 
 export interface NodeKindStyle {
   label: string;
+  /** On the node's top strip. */
+  short: string;
   description: string;
   color: string;
   /** Inputs are pill-shaped, nf-core steps solid, other steps outlined. */
@@ -31,18 +33,21 @@ export interface NodeKindStyle {
 export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
   input: {
     label: "Inputs",
+    short: "Input",
     description: "Where data enters: File Input, Samplesheet, Parameters",
     color: "#7dd3fc",
     shape: "pill",
   },
   nfcore: {
     label: "nf-core steps",
+    short: "nf-core",
     description: "Modules, subworkflows and pipelines from nf-core",
     color: "#00A878",
     shape: "solid",
   },
   step: {
     label: "Other steps",
+    short: "Step",
     description: "Operators, custom processes and outputs",
     color: "#a3a3a3",
     shape: "outline",

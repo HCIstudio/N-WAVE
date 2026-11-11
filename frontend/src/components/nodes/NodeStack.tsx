@@ -8,11 +8,12 @@ export type StackTone = "default" | "nfcore" | "selected" | "error" | "warning" 
 export const STACK_BORDER: Record<StackTone, string> = {
   default: "border-gray-500",
   nfcore: "border-nextflow-green",
-  selected: "border-nextflow-green",
+  selected: "border-blue-500",
   error: "border-red-500",
   warning: "border-yellow-500",
   running: "border-yellow-400",
-  success: "border-green-500",
+  // A run that went well shows on the node's label, not its border.
+  success: "border-gray-500",
   cached: "border-sky-500",
 };
 
@@ -23,7 +24,7 @@ const BACKGROUND: Record<StackTone, string> = {
   error: "bg-red-50",
   warning: "bg-yellow-50",
   running: "bg-yellow-50",
-  success: "bg-green-50",
+  success: "bg-gray-100",
   cached: "bg-sky-50",
 };
 

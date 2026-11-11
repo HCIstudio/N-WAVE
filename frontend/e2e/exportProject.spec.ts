@@ -70,10 +70,15 @@ test.describe("export project", () => {
     await expect(page.locator(".react-flow__node")).toHaveCount(6);
     // The same steps, Merge and Display Output read back from modules/local,
     // and the File Input has its file back from inputs/ (its own subtitle isn't in the code).
-    const withoutFileInput = (texts: string[]) => texts.filter((text) => !text.startsWith("File Input")).sort();
+    // Each node's text without its kind (the top strip: INPUT, STEP).
+    const withoutKind = (texts: string[]) => texts.map((text) => text.replace(/^[A-Z-]+\n/, ""));
+    const withoutFileInput = (texts: string[]) =>
+      withoutKind(texts)
+        .filter((text) => !text.startsWith("File Input"))
+        .sort();
     const imported = await page.locator(".react-flow__node").allInnerTexts();
     expect(withoutFileInput(imported)).toEqual(withoutFileInput(labels));
-    expect(imported.find((text) => text.startsWith("File Input"))).toMatch(/Total size: 0\.\d+ KB/);
+    expect(withoutKind(imported).find((text) => text.startsWith("File Input"))).toMatch(/Total size: 0\.\d+ KB/);
   });
 
   test("exports the run profiles of the Settings page for -profile", async ({ page }) => {
