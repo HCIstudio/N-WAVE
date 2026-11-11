@@ -41,7 +41,8 @@ const CanvasMinimap: React.FC = () => {
       pannable
       zoomable
       position="bottom-left"
-      className="!bottom-14 !left-0 !m-4 !mb-0 !bg-background !border !border-accent"
+      // On narrow windows the bottom bar moves up into its place.
+      className="!bottom-14 !left-0 !m-4 !mb-0 !bg-background !border !border-accent max-[860px]:!hidden"
       maskColor="rgba(0, 0, 0, 0.35)"
     />
   );
