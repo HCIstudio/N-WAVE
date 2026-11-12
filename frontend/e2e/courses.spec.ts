@@ -1,19 +1,26 @@
 import { expect, test } from "@playwright/test";
-import { addNode, connect, fitView } from "./fixtures";
+import { addNode, connect } from "./fixtures";
 
 // A fresh browser: the courses haven't been offered yet.
 test.describe("courses", () => {
-  test("the basics: a tour of the home page, then tasks in the user's own copy of Demo 1", async ({ page }) => {
+  test("the home page, then the canvas: the user makes a workflow from Demo 1 and works in it", async ({ page }) => {
     await page.goto("./");
     const offer = page.getByRole("region", { name: "Tutorial" });
-    await offer.getByRole("button", { name: "Start the basics course" }).click();
-    for (let step = 2; step < 8; step++) await offer.getByRole("button", { name: "Next" }).click();
-    await offer.getByRole("button", { name: "Duplicate Demo 1" }).click();
+    await offer.getByRole("button", { name: "Start the first course" }).click();
+    for (let step = 1; step < 6; step++) await offer.getByRole("button", { name: "Next" }).click();
 
-    // An editable copy, not the read-only demo; the course goes on there, docked.
+    // The last task: New Workflow, then Demo 1 in its dialog.
+    await expect(offer).toContainText("click New Workflow");
+    await page.getByRole("button", { name: "New Workflow" }).click();
+    const dialog = page.getByRole("dialog", { name: "Start a new workflow" });
+    await expect(dialog.getByRole("status")).toContainText("Choose Demo 1 - Text basics");
+    await dialog.getByRole("button", { name: "Demo 1 - Text basics" }).click();
+
+    // An editable copy, not the read-only demo; the canvas course starts there, docked.
     await expect(page).toHaveURL(/\/workflow\//);
     await expect(page).not.toHaveURL(/builtin:demo-basic/);
     const card = page.getByRole("region", { name: "Course" });
+    await expect(card).toContainText("The canvas");
     await expect(card).toContainText("your copy");
     await card.getByRole("button", { name: "Next" }).click();
 
@@ -36,9 +43,10 @@ test.describe("courses", () => {
     await expect(card).toContainText("Pick Filter");
     await page.getByRole("button", { name: /^Filter/ }).first().click();
 
+    // The canvas moved to show the new node.
     await expect(card).toContainText("Connect it");
-    await fitView(page);
     const added = page.locator('.react-flow__node:not([data-id^="demo-"])');
+    await expect(added).toBeInViewport();
     await connect(page, node("demo-file-input"), added);
     await expect(card).toContainText("connect the new Filter to Merge");
     await connect(page, added, node("demo-merge"));
@@ -51,9 +59,19 @@ test.describe("courses", () => {
 
     // Done, on the courses page; the offer isn't made again.
     await expect(page).toHaveURL(/\/courses$/);
-    await expect(page.getByRole("listitem", { name: "N-WAVE basics" })).toContainText("Done");
+    await expect(page.getByRole("listitem", { name: "The home page" })).toContainText("Done");
+    await expect(page.getByRole("listitem", { name: "The canvas" })).toContainText("Done");
     await page.goto("./");
     await expect(offer).toHaveCount(0);
+  });
+
+  test("the canvas course started on its own makes its copy of Demo 1", async ({ page }) => {
+    await page.goto("./courses");
+    await page.getByRole("listitem", { name: "The canvas" }).getByRole("button", { name: "Start" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    await expect(page).not.toHaveURL(/builtin:demo-basic/);
+    await expect(page.getByRole("region", { name: "Course" })).toContainText("your copy");
+    await expect(page.locator('.react-flow__node[data-id="demo-map-uppercase"]')).toBeVisible();
   });
 
   test("the nf-core course starts in an empty workflow made for it", async ({ page }) => {
@@ -75,7 +93,7 @@ test.describe("courses", () => {
     await page.getByRole("region", { name: "Tutorial" }).getByRole("button", { name: "Not now" }).click();
     await page.getByRole("link", { name: "Courses" }).click();
     await expect(page.getByRole("heading", { name: "Courses", level: 1 })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(2);
+    await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(3);
     await expect(page.getByRole("region", { name: "Install N-WAVE" })).toContainText("How to install N-WAVE");
     const advanced = page.getByRole("region", { name: "Advanced" });
     await expect(advanced).toContainText("Needs a full install of N-WAVE.");

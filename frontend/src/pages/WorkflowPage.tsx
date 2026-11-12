@@ -110,7 +110,7 @@ const WorkflowPageContent: React.FC = () => {
     [showToast]
   );
   const { id: workflowId } = useParams<{ id: string }>();
-  const { screenToFlowPosition, getNodes, fitView } = useReactFlow();
+  const { screenToFlowPosition, getNodes, fitView, getZoom } = useReactFlow();
 
   const workflow = useWorkflowDocument({
     workflowId,
@@ -385,12 +385,26 @@ const WorkflowPageContent: React.FC = () => {
       };
       setNodes((current) => current.concat(newNode));
       setIsDirty(true);
+      // It goes where there is room, which can be off screen (right of
+      // everything): the canvas then fits the whole workflow, the new node
+      // with what it is to be connected to, never zooming in.
+      const topLeft = screenToFlowPosition({ x: 0, y: 0 });
+      const bottomRight = screenToFlowPosition({ x: window.innerWidth, y: window.innerHeight });
+      const { x, y } = newNode.position;
+      const size = { width: 220, height: 140 };
+      const inView =
+        x >= topLeft.x && y >= topLeft.y && x + size.width <= bottomRight.x && y + size.height <= bottomRight.y;
+      if (!inView) {
+        window.setTimeout(() => void fitView({ maxZoom: getZoom(), duration: 300 }), 50);
+      }
     },
     [
       blockedByRun,
       readOnly,
       requestCopy,
       screenToFlowPosition,
+      fitView,
+      getZoom,
       getNodes,
       setNodes,
       setIsDirty,

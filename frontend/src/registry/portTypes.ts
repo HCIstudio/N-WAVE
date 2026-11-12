@@ -94,6 +94,13 @@ export const targetContents = (node: Node<NodeData>, handle: string): PortConten
   return pattern ? { kind: "file", patterns: [baseName(pattern)] } : null;
 };
 
+/**
+ * An input that takes files of any kind (a file input with no pattern, like
+ * MultiQC's `multiqc_files`): any file output fits it.
+ */
+export const takesAnyFile = (node: Node<NodeData>, handle: string): boolean =>
+  definitionPort(node, handle, "inputs")?.kind === "file" && targetContents(node, handle) === null;
+
 /** `{a,b}` alternatives, expanded (at most a few dozen). */
 const expandBraces = (pattern: string): string[] => {
   const match = pattern.match(/\{([^{}]*)\}/);

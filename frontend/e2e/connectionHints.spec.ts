@@ -36,6 +36,10 @@ test.describe("connection hints", () => {
       "title",
       /expects annotation \(GTF\/GFF\).*gives FASTA sequences/,
     );
+    // Every input says what it is while the line is drawn, inside its node.
+    await expect(handle(page, "star_index", "target", "gtf").locator("xpath=following-sibling::div[1]")).toBeVisible();
+    // MultiQC takes files of any kind: it fits too.
+    await expect(handle(page, "multiqc", "target", "multiqc_files")).toHaveAttribute("data-fit", "fits");
     await page.mouse.up();
 
     const dragConnect = async (from: Locator, to: Locator) => {

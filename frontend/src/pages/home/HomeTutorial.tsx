@@ -1,8 +1,8 @@
-// The basics course's first part, on the home page (courses/): what its
-// parts are for. On a first visit it is an offer in the page, between the
-// title and the demos; once started, each step points at a part of the page.
-// Its last step makes the user's own copy of Demo 1, where the course goes on
-// (courses/courseSteps.tsx), on a canvas they can change.
+// The home page course (courses/): what the page's parts are for. On a first
+// visit it is an offer in the page, between the title and the demos; once
+// started, each step points at a part of the page. It ends with the user
+// making a workflow of their own: New Workflow, then Demo 1 in its dialog
+// (which says so). That workflow opens with the canvas course.
 
 import type React from "react";
 import TutorialCallout, { TUTORIAL_BOX_CLASS, TutorialBadge } from "../../components/tutorial/TutorialCallout";
@@ -16,6 +16,8 @@ interface HomeStep {
   /** `data-tutorial` of what it points at; none: the box in the page (the first step). */
   target?: string;
   placement: Placement;
+  /** A task: the page moves on when it is done (no Next). */
+  task?: boolean;
 }
 
 export const HOME_TUTORIAL_STEPS: HomeStep[] = [
@@ -23,8 +25,8 @@ export const HOME_TUTORIAL_STEPS: HomeStep[] = [
     text: (
       <>
         Welcome to <strong>N-WAVE</strong>: build Nextflow workflows on a canvas, run them, and take them
-        out as code. New here? The <strong>basics course</strong> (5 minutes) shows you the home page, then
-        lets you change, add and connect nodes in your own copy of a demo. More courses follow from there.
+        out as code. New here? The <strong>first course</strong> (3 minutes) shows you around this page and
+        ends with a workflow of your own; the next ones go on from there.
       </>
     ),
     placement: "center",
@@ -33,7 +35,7 @@ export const HOME_TUTORIAL_STEPS: HomeStep[] = [
     text: (
       <>
         The <strong>built-in demos</strong>, from simple text processing to a complete nf-core pipeline.
-        They are read-only: duplicate one to change it.
+        They are read-only: make a workflow from one to change it.
       </>
     ),
     target: "demos",
@@ -42,20 +44,11 @@ export const HOME_TUTORIAL_STEPS: HomeStep[] = [
   {
     text: (
       <>
-        <strong>Your workflows</strong>, each with its last run. Click a card to open it; its buttons
-        rename, duplicate or delete it.
+        <strong>Your workflows</strong>, each with its last run. Click a card to open it; the buttons at its
+        foot rename, duplicate or delete it.
       </>
     ),
     target: "own",
-    placement: "above",
-  },
-  {
-    text: (
-      <>
-        <strong>New Workflow</strong> starts from a template, an empty canvas, or a copy of a demo.
-      </>
-    ),
-    target: "new-workflow",
     placement: "above",
   },
   {
@@ -71,8 +64,8 @@ export const HOME_TUTORIAL_STEPS: HomeStep[] = [
   {
     text: (
       <>
-        The <strong>Wiki</strong>, <strong>Help</strong> (every term N-WAVE uses, explained) and the{" "}
-        <strong>Roadmap</strong>.
+        The <strong>Wiki</strong>, <strong>Help</strong> (every term N-WAVE uses, explained), the{" "}
+        <strong>Courses</strong> and the <strong>Roadmap</strong>.
       </>
     ),
     target: "help",
@@ -91,32 +84,46 @@ export const HOME_TUTORIAL_STEPS: HomeStep[] = [
   {
     text: (
       <>
-        Now try it: <strong>duplicate Demo 1</strong> to get your own copy. The tour goes on there, on a
-        canvas you can change and run.
+        Now make a <strong>workflow of your own</strong>: click <strong>New Workflow</strong>.
       </>
     ),
-    target: "demo-1",
-    placement: "right",
+    target: "new-workflow",
+    placement: "above",
+    task: true,
+  },
+  {
+    // Shown in the New Workflow dialog (courseHint), not over it.
+    text: null,
+    placement: "center",
+    task: true,
   },
 ];
 
-const LAST = HOME_TUTORIAL_STEPS.length - 1;
+/** The step that asks for New Workflow, and the one in its dialog. */
+export const NEW_WORKFLOW_STEP = 6;
+export const CHOOSE_DEMO_STEP = NEW_WORKFLOW_STEP + 1;
+
+/** What the New Workflow dialog says while the course asks to choose Demo 1. */
+export const CHOOSE_DEMO_HINT = (
+  <>
+    <strong>Choose Demo 1 - Text basics</strong> (outlined): it becomes a workflow of your own, which you can
+    change. It opens with the next course, <strong>The canvas</strong>.
+  </>
+);
 
 const HomeTutorial: React.FC<{
   step: number;
   onStep: (step: number | null) => void;
-  /** Make the copy of Demo 1 and open it; the tutorial goes on there. */
-  onDuplicateDemo: () => void;
-}> = ({ step, onStep, onDuplicateDemo }) => {
-  const current = HOME_TUTORIAL_STEPS[Math.min(step, LAST)];
-  if (!current) return null;
+}> = ({ step, onStep }) => {
+  const current = HOME_TUTORIAL_STEPS[Math.min(step, HOME_TUTORIAL_STEPS.length - 1)];
+  if (!current || step === CHOOSE_DEMO_STEP) return null;
   const go = (next: number) => {
-    setActiveCourse({ course: "basics", part: "home", step: next });
+    setActiveCourse({ course: "home", part: "home", step: next });
     onStep(next);
   };
   // The offer turned down, or the course left: it isn't offered again.
   const skip = () => {
-    endCourse("basics", false);
+    endCourse("home", false);
     onStep(null);
   };
   // Not started yet: an offer in the page that doesn't cover anything.
@@ -131,7 +138,7 @@ const HomeTutorial: React.FC<{
             onClick={() => go(1)}
             className="rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
           >
-            Start the basics course
+            Start the first course
           </button>
           <Link to="/courses" onClick={dismissIntro} className="rounded-md px-2 py-1.5 text-sm text-text hover:bg-accent">
             All courses
@@ -148,11 +155,11 @@ const HomeTutorial: React.FC<{
       text={current.text}
       targetSelector={current.target ? `[data-tutorial="${current.target}"]` : undefined}
       placement={current.placement}
-      progress={`${step + 1} of ${HOME_TUTORIAL_STEPS.length}`}
-      canGoBack={step > 0}
-      forwardLabel={step === LAST ? "Duplicate Demo 1" : "Next"}
+      progress={`${step} of ${CHOOSE_DEMO_STEP}`}
+      canGoBack={step > 1}
+      canGoForward={!current.task}
       onBack={() => go(step - 1)}
-      onForward={() => (step === LAST ? onDuplicateDemo() : go(step + 1))}
+      onForward={() => go(step + 1)}
       skipLabel="Leave course"
       onSkip={skip}
     />

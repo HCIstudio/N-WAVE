@@ -8,7 +8,7 @@ import CoursesPage from "../pages/CoursesPage";
 import CourseCard from "./CourseCard";
 import { COURSE_STEPS } from "./courseSteps";
 import type { CourseContext } from "./courses";
-import { completedCourses } from "./courseState";
+import { completedCourses, setActiveCourse } from "./courseState";
 import { DONE_PAUSE_MS, useCourse } from "./useCourse";
 
 const demo = demoWorkflowSeed as unknown as { nodes: Node<NodeData>[]; edges: Edge[] };
@@ -37,7 +37,7 @@ describe("a course on the canvas", () => {
   afterEach(() => vi.useRealTimers());
 
   it("waits for the user to do a task, ticks it, and goes on by itself", () => {
-    startAt("basics", 1);
+    startAt("canvas", 1);
     const { rerender } = render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
     expect(card().textContent).toContain("Double-click the Map node");
     expect(card().textContent).toContain("Your turn");
@@ -54,7 +54,7 @@ describe("a course on the canvas", () => {
   });
 
   it("goes on when the control a step asks for is clicked", () => {
-    startAt("basics", 4);
+    startAt("canvas", 4);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
     expect(card().textContent).toContain("Open the + menu");
     fireEvent.click(screen.getByRole("button", { name: "Add node" }));
@@ -65,7 +65,7 @@ describe("a course on the canvas", () => {
   });
 
   it("lets a task be skipped, and an explanation go on with Next", () => {
-    startAt("basics", 0);
+    startAt("canvas", 0);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
     fireEvent.click(within(card()).getByRole("button", { name: "Next" }));
     fireEvent.click(within(card()).getByRole("button", { name: "Skip this step" }));
@@ -73,17 +73,17 @@ describe("a course on the canvas", () => {
   });
 
   it("is marked done at its end, and offers the next course", () => {
-    startAt("basics", COURSE_STEPS.basics.length - 1);
+    startAt("canvas", COURSE_STEPS.canvas.length - 1);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
     expect(within(card()).getByRole("button", { name: "Next course: Build with nf-core modules" })).toBeTruthy();
     fireEvent.click(within(card()).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("region", { name: "Course" })).toBeNull();
-    expect(completedCourses().has("basics")).toBe(true);
+    expect(completedCourses().has("canvas")).toBe(true);
     expect(sessionStorage.getItem("nwave.course.active")).toBeNull();
   });
 
   it("is left without being marked done", () => {
-    startAt("basics", 0);
+    startAt("canvas", 0);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
     fireEvent.click(within(card()).getByRole("button", { name: "Leave course" }));
     expect(screen.queryByRole("region", { name: "Course" })).toBeNull();
@@ -98,8 +98,8 @@ const ctx = (nodes: Array<Partial<Node<NodeData>>>, edges: Array<[string, string
   clicked: new Set(),
 });
 
-describe("the basics course's tasks", () => {
-  const [, , lowercase, remove, , pick, connectIn, connectOut] = COURSE_STEPS.basics;
+describe("the canvas course's tasks", () => {
+  const [, , lowercase, remove, , pick, connectIn, connectOut] = COURSE_STEPS.canvas;
 
   it("follow the user's copy of Demo 1", () => {
     const map = (data: Record<string, unknown>) => ({ id: "demo-map-uppercase", data: data as NodeData });
@@ -143,15 +143,16 @@ describe("CoursesPage", () => {
     localStorage.clear();
   });
 
-  it("lists the basics, then the advanced courses to come, and starts the basics on the home page", () => {
-    localStorage.setItem("nwave.courses.completed", JSON.stringify(["basics"]));
+  it("lists the basics, then the advanced courses to come, and starts the first on the home page", () => {
+    localStorage.setItem("nwave.courses.completed", JSON.stringify(["home"]));
     render(
       <MemoryRouter>
         <CoursesPage />
       </MemoryRouter>,
     );
     const basics = screen.getByRole("region", { name: "Basics" });
-    const first = within(basics).getByRole("listitem", { name: "N-WAVE basics" });
+    const first = within(basics).getByRole("listitem", { name: "The home page" });
+    expect(within(basics).getByRole("listitem", { name: "The canvas" })).toBeTruthy();
     expect(first.textContent).toContain("Done");
     expect(within(basics).getByRole("listitem", { name: "Build with nf-core modules" })).toBeTruthy();
     const advanced = screen.getByRole("region", { name: "Advanced" });
@@ -160,9 +161,23 @@ describe("CoursesPage", () => {
 
     fireEvent.click(within(first).getByRole("button", { name: "Take it again" }));
     expect(JSON.parse(sessionStorage.getItem("nwave.course.active") ?? "null")).toEqual({
-      course: "basics",
+      course: "home",
       part: "home",
       step: 1,
     });
+  });
+});
+
+describe("a course started while its page is open", () => {
+  beforeEach(() => {
+    sessionStorage.clear();
+    vi.useRealTimers();
+  });
+
+  it("shows on the canvas at once (the next course opens another workflow on the same page)", () => {
+    render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
+    expect(screen.queryByRole("region", { name: "Course" })).toBeNull();
+    act(() => setActiveCourse({ course: "nfcore-modules", part: "canvas", step: 0 }));
+    expect(card().textContent).toContain("Build with nf-core modules");
   });
 });

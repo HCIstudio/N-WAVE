@@ -168,7 +168,7 @@ export const demoWorkflowSeed = {
   id: DEMO_WORKFLOW_ID,
   name: "Demo 1 - Text basics",
   description:
-    "Start here: filter the Bee Movie script for two words, uppercase one branch, then merge and display the result. The tutorial walks you through it.",
+    "Start here: filter the Bee Movie script for two words, uppercase one branch, then merge and display the result. The courses The home page and The canvas walk you through it.",
   nodes: demoGraphNodes,
   edges: demoGraphEdges,
 };

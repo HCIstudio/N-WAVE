@@ -1,3 +1,4 @@
+import clsx from "clsx";
 import type React from "react";
 import { useId } from "react";
 import { Loader } from "lucide-react";
@@ -17,6 +18,10 @@ const choiceKey = (choice: NewWorkflowChoice): string =>
 interface NewWorkflowDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  /** What a running course asks for here, shown at the top. */
+  courseHint?: React.ReactNode;
+  /** The choice the course asks for (`copy:<id>`, `template:<id>`): outlined. */
+  highlightKey?: string;
   /** The built-in demos, offered as editable copies. */
   demos: WorkflowDescriptor[];
   onChoose: (choice: NewWorkflowChoice) => void;
@@ -24,7 +29,15 @@ interface NewWorkflowDialogProps {
   pendingKey: string | null;
 }
 
-const NewWorkflowDialog: React.FC<NewWorkflowDialogProps> = ({ isOpen, onClose, demos, onChoose, pendingKey }) => {
+const NewWorkflowDialog: React.FC<NewWorkflowDialogProps> = ({
+  isOpen,
+  onClose,
+  demos,
+  onChoose,
+  pendingKey,
+  courseHint,
+  highlightKey,
+}) => {
   const idPrefix = useId();
   const choices: Array<{ choice: NewWorkflowChoice; name: string; description: string; detail?: string }> = [
     ...WORKFLOW_TEMPLATES.map((template) => ({
@@ -42,6 +55,15 @@ const NewWorkflowDialog: React.FC<NewWorkflowDialogProps> = ({ isOpen, onClose, 
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Start a new workflow" wide>
+      {courseHint && (
+        <p
+          role="status"
+          className="mb-4 rounded-md border border-l-4 border-panel-border border-l-sky-400 bg-panel-background p-3 text-sm text-text"
+        >
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-sky-300">Course</span>
+          {courseHint}
+        </p>
+      )}
       <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
         {choices.map(({ choice, name, description, detail }) => {
           const key = choiceKey(choice);
@@ -55,7 +77,10 @@ const NewWorkflowDialog: React.FC<NewWorkflowDialogProps> = ({ isOpen, onClose, 
                 disabled={pendingKey !== null}
                 aria-labelledby={`${idPrefix}${key}-name`}
                 aria-describedby={`${detail ? `${idPrefix}${key}-detail ` : ""}${idPrefix}${key}-description`}
-                className="flex h-full w-full flex-col rounded-lg border border-panel-border bg-accent p-3 text-left transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-nextflow-green disabled:cursor-wait disabled:opacity-70"
+                className={clsx(
+                  "flex h-full w-full flex-col rounded-lg border border-panel-border bg-accent p-3 text-left transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-nextflow-green disabled:cursor-wait disabled:opacity-70",
+                  key === highlightKey && "tutorial-target",
+                )}
               >
                 <WorkflowPreview nodes={nodes} edges={edges} />
                 <span id={`${idPrefix}${key}-name`} className="mt-2 flex items-center gap-2 font-semibold text-nextflow-green">

@@ -37,7 +37,7 @@ const TARGET_CLASS = "tutorial-target";
 /** Small label at the top of a tutorial box: the course it is part of. */
 export const TutorialBadge: React.FC = () => (
   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
-    Course · N-WAVE basics
+    Course · The home page
   </p>
 );
 

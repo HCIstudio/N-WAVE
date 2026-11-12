@@ -1,7 +1,7 @@
-// The canvas part of each course: what it explains, and what it asks the user
-// to do (a step with `done` goes on once that holds). The basics course
-// starts on the home page (pages/home/HomeTutorial.tsx) and goes on here in
-// the user's copy of Demo 1; the nf-core course starts here, in an empty
+// The courses on the canvas: what each step explains, and what it asks the
+// user to do (a step with `done` goes on once that holds). The canvas course
+// runs in the user's copy of Demo 1 (made at the end of the home page course,
+// or when it is started from the courses); the nf-core course in an empty
 // workflow made for it.
 
 import type { Node } from "@xyflow/react";
@@ -21,7 +21,7 @@ const added = ({ nodes }: CourseContext) => nodes.filter((entry) => !isDemoNode(
 const connected = ({ edges }: CourseContext, source: (id: string) => boolean, target: (id: string) => boolean) =>
   edges.some((edge) => source(edge.source) && target(edge.target));
 
-const BASICS: CourseStep[] = [
+const CANVAS: CourseStep[] = [
   {
     text: (
       <>
@@ -84,8 +84,8 @@ const BASICS: CourseStep[] = [
     text: (
       <>
         <strong>Connect it</strong>: drag from the File Input&apos;s output dot (on its right) to the new
-        Filter&apos;s input dot (on its left). New nodes go where there is room: if you don&apos;t see it,{" "}
-        <strong>Fit view</strong> (bottom left) shows everything.
+        Filter&apos;s input dot (on its left). New nodes go where there is room; the canvas zooms out to
+        show it.
       </>
     ),
     target: NEW_NODE,
@@ -123,7 +123,7 @@ const BASICS: CourseStep[] = [
   {
     text: (
       <>
-        <strong>That&apos;s the basics.</strong> This copy is yours, under Your workflows. Next: build a workflow
+        <strong>That&apos;s the canvas.</strong> This copy is yours, under Your workflows. Next: build a workflow
         from nf-core tools, from scratch.
       </>
     ),
@@ -218,7 +218,7 @@ const NFCORE: CourseStep[] = [
         that runs with plain Nextflow, anywhere.
       </>
     ),
-    target: BOTTOM_BAR,
+    target: 'button[aria-label="Export"]',
     done: ({ clicked }) => clicked.has("Export"),
   },
   {
@@ -231,7 +231,8 @@ const NFCORE: CourseStep[] = [
   },
 ];
 
-export const COURSE_STEPS: Record<CourseId, CourseStep[]> = {
-  basics: BASICS,
+/** The canvas part of each course (the home page course has none: pages/home/HomeTutorial.tsx). */
+export const COURSE_STEPS: Record<Exclude<CourseId, "home">, CourseStep[]> = {
+  canvas: CANVAS,
   "nfcore-modules": NFCORE,
 };

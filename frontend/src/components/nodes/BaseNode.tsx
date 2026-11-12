@@ -20,7 +20,7 @@ import { useFeature } from "../../settings/useFeatures";
 import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
 import NodeStack, { STACK_BORDER, type StackTone } from "./NodeStack";
 import { useOpenNestedView } from "../../workflows/nested/NestedViewContext";
-import { checkPortFit, portSummary, sourceContents, targetContents } from "../../registry/portTypes";
+import { checkPortFit, portSummary, sourceContents, takesAnyFile, targetContents } from "../../registry/portTypes";
 import type { SelectedFile } from "../../data/types";
 import type { FileEncoding } from "../../utils/fileContent";
 
@@ -131,8 +131,15 @@ const BaseNode = ({
     const self = { id, type, position: { x: 0, y: 0 }, data } as Node<NodeData>;
     const hint = checkPortFit(from, fromHandle, self, portName);
     if (hint) return { fits: false, message: hint.message };
-    return sourceContents(from, fromHandle) && targetContents(self, portName) ? { fits: true } : null;
+    const given = sourceContents(from, fromHandle);
+    if (given && targetContents(self, portName)) return { fits: true };
+    // An input that takes any files (MultiQC's) fits any file output.
+    if (given && given.kind !== "directory" && takesAnyFile(self, portName))
+      return { fits: true, message: "Takes any files" };
+    return null;
   };
+  // A connection is being drawn from another node: its inputs show their names.
+  const dragging = hintsOn && dragFrom !== "" && dragFrom.split("\n")[0] !== id;
   const portKey = [...(data.inputs ?? []), ...(data.outputs ?? [])]
     .map((port) => port.name)
     .join("|");
@@ -312,11 +319,20 @@ const BaseNode = ({
             isConnectable={isConnectable}
             onMouseDown={onMouseDown}
           />
-          {(port.label || many) && (
+          {(port.label || many || dragging) && (
             // Hovering the node names each port in one short line, so the
             // labels of a node with many ports don't overlap; hovering a
-            // port also shows what it takes.
-            <div className={clsx(PORT_LABEL_CLASS, "right-3")}>
+            // port also shows what it takes. While a connection is drawn,
+            // every input says what it is, inside the node, where the line
+            // coming in from the left doesn't run, colored by whether it fits.
+            <div
+              className={clsx(
+                PORT_LABEL_CLASS,
+                dragging ? "left-3 !opacity-100" : "right-3",
+                dragging && fit?.fits === true && "!border-nextflow-green",
+                dragging && fit?.fits === false && "!border-yellow-400",
+              )}
+            >
               <div className="text-[10px] leading-tight text-gray-600">{port.label || port.name}</div>
               {detail && <div className={PORT_DETAIL_CLASS}>{detail}</div>}
               <div className={PORT_DETAIL_CLASS}>

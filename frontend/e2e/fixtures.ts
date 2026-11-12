@@ -4,7 +4,7 @@ import { test as base, expect, type Locator, type Page } from "@playwright/test"
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.addInitScript(() => {
-      localStorage.setItem("nwave.demoTutorial.completed", "courses-v1");
+      localStorage.setItem("nwave.demoTutorial.completed", "courses-v2");
     });
     await use(page);
   },
@@ -92,6 +92,8 @@ export const connect = async (
   from: Locator,
   to: Locator
 ): Promise<void> => {
+  // A node just added out of view makes the canvas zoom out to it, shortly after.
+  await page.waitForTimeout(100);
   await canvasSettled(page);
   const source = from.locator(".react-flow__handle.source").first();
   const target = to.locator(".react-flow__handle.target").first();

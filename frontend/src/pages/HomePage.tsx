@@ -50,8 +50,8 @@ import {
   nameFromEditing,
   UNTITLED_WORKFLOW,
 } from "../utils/workflowName";
-import HomeTutorial, { HOME_TUTORIAL_STEPS } from "./home/HomeTutorial";
-import { courseStep, introDone, setActiveCourse } from "../courses/courseState";
+import HomeTutorial, { CHOOSE_DEMO_HINT, CHOOSE_DEMO_STEP, NEW_WORKFLOW_STEP } from "./home/HomeTutorial";
+import { courseStep, endCourse, introDone, setActiveCourse } from "../courses/courseState";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 
@@ -59,7 +59,6 @@ const HEADER_BUTTON = "inline-flex items-center gap-2 rounded-lg border border-a
 const FOOTER_LINK = "underline-offset-2 hover:text-text hover:underline";
 const LOGO_LINK = "shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md";
 
-const REVEAL_ON_HOVER = "opacity-0 group-hover:opacity-100 transition-opacity";
 
 const PILL_CLASS =
   "rounded-full bg-background px-2 py-0.5 text-xs text-text-light";
@@ -143,23 +142,17 @@ const HomePage: React.FC = () => {
   // which starts from one), and New Workflow starts empty.
   const templatesOn = useFeature("templates");
   const glossaryOn = useFeature("glossary");
-  // The basics course's home page tour (pages/home/HomeTutorial.tsx): offered
-  // on the first visit, and started from the courses.
+  // The home page course (pages/home/HomeTutorial.tsx): offered on the
+  // first visit, and started from the courses.
   const [homeTutorialStep, setHomeTutorialStep] = useState<number | null>(() => {
     const running = courseStep("home");
-    if (running) return running.course === "basics" ? running.step : null;
+    if (running) return running.course === "home" ? running.step : null;
     return introDone() || courseStep("canvas") ? null : 0;
   });
-  /** The tour's last step: the user's own copy of Demo 1, where the course goes on. */
-  const duplicateDemoForTutorial = async () => {
-    setActiveCourse({ course: "basics", part: "canvas", step: 0 });
-    try {
-      const response = await api.post(`/workflows/${DEMO_WORKFLOW_ID}/duplicate`);
-      navigate(`/workflow/${response.data._id}`);
-    } catch (err) {
-      setActiveCourse({ course: "basics", part: "home", step: HOME_TUTORIAL_STEPS.length - 1 });
-      reportActionError("Failed to duplicate the demo.", err);
-    }
+  /** Moves the home page course to `step`. */
+  const homeCourseTo = (step: number) => {
+    setActiveCourse({ course: "home", part: "home", step });
+    setHomeTutorialStep(step);
   };
 
   const reportActionError = (message: string, err: unknown) => {
@@ -318,6 +311,14 @@ const HomePage: React.FC = () => {
 
   const handleNewWorkflow = async (choice: NewWorkflowChoice) => {
     if (pendingAction) return;
+    // The home page course's last task: a workflow of the user's own. Made
+    // from Demo 1, it opens with the canvas course.
+    if (homeTutorialStep === CHOOSE_DEMO_STEP) {
+      endCourse("home", true);
+      if (choice.kind === "copy" && choice.workflow._id === DEMO_WORKFLOW_ID)
+        setActiveCourse({ course: "canvas", part: "canvas", step: 0 });
+      setHomeTutorialStep(null);
+    }
     setPendingAction(
       choice.kind === "template"
         ? `create:template:${choice.template.id}`
@@ -454,6 +455,7 @@ const HomePage: React.FC = () => {
       return;
     }
     setIsNewWorkflowOpen(true);
+    if (homeTutorialStep === NEW_WORKFLOW_STEP) homeCourseTo(CHOOSE_DEMO_STEP);
   };
   const userWorkflows = workflows.filter((wf) => !isBuiltinWorkflow(wf));
   const hasUserWorkflows = userWorkflows.length > 0;
@@ -462,24 +464,16 @@ const HomePage: React.FC = () => {
     const isEditing = editingId === wf._id;
     const isReadOnly = wf.isReadOnly || wf.origin?.readOnly;
     const showDuplicate = Boolean(wf.origin?.canDuplicate);
-    const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
     // Built-in demos change with each release of N-WAVE.
     const changedAt =
       wf.updatedAt ?? (isBuiltinWorkflow(wf) ? buildInfo.buildDate : undefined);
     const lastRun = runsOverview.lastRuns.get(wf._id);
     const isDuplicating = pendingAction === `duplicate:${wf._id}`;
 
-    const cardContent = (
+    // Always shown, at the card's foot next to its facts: what can be done
+    // with it is clear at a glance, and they cover nothing.
+    const actions = (
       <>
-        {/* The buttons sit over the preview: they get a backdrop of their own
-            whenever they show. */}
-        <div
-          className={`absolute top-4 right-2 z-10 flex items-center gap-1 rounded-md border border-transparent transition-colors group-hover:border-panel-border group-hover:bg-panel-background group-hover:shadow-sm ${
-            isDuplicating
-              ? "border-panel-border bg-panel-background shadow-sm"
-              : ""
-          }`}
-        >
           {isEditing ? (
             <button
               type="button"
@@ -498,8 +492,9 @@ const HomePage: React.FC = () => {
               <button
                 type="button"
                 onClick={(e) => handleEditClick(e, wf)}
-                className={`p-1 text-text-light hover:text-white ${REVEAL_ON_HOVER}`}
+                className="rounded p-1 text-text-light hover:bg-background hover:text-white"
                 aria-label="Edit"
+                title="Rename, or change the description"
               >
                 <Pencil size={16} />
               </button>
@@ -510,10 +505,9 @@ const HomePage: React.FC = () => {
               type="button"
               onClick={(e) => handleDuplicate(e, wf._id)}
               disabled={pendingAction !== null}
-              className={`p-1 text-text-light hover:text-white transition-opacity disabled:cursor-wait ${
-                isDuplicating ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-              }`}
+              className="rounded p-1 text-text-light hover:bg-background hover:text-white disabled:cursor-wait"
               aria-label="Duplicate"
+              title="Make a copy of your own"
             >
               {isDuplicating ? <Loader size={16} className="animate-spin" aria-hidden /> : <Copy size={16} />}
             </button>
@@ -522,13 +516,20 @@ const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={(e) => handleDeleteClick(e, wf._id)}
-              className={`p-1 text-text-light hover:text-red-500 ${isEditing ? "" : REVEAL_ON_HOVER}`}
+              className="rounded p-1 text-text-light hover:bg-background hover:text-red-500"
               aria-label="Delete"
+              title="Delete"
             >
               <Trash2 size={16} />
             </button>
           )}
-        </div>
+      </>
+    );
+
+    const cardContent = (
+      <>
+        {/* While editing, Save (and Delete) at the top right, over nothing. */}
+        {isEditing && <div className="absolute top-4 right-2 z-10 flex items-center gap-1">{actions}</div>}
         {isEditing ? (
           <>
             <div className="pr-12">
@@ -564,7 +565,7 @@ const HomePage: React.FC = () => {
         ) : (
           <>
             <WorkflowPreview nodes={wf.nodes ?? []} edges={wf.edges ?? []} />
-            <h2 className="mt-3 line-clamp-2 pr-16 text-lg font-semibold text-nextflow-green">
+            <h2 className="mt-3 line-clamp-2 text-lg font-semibold text-nextflow-green">
               {wf.name}
             </h2>
             <p className="mt-1 line-clamp-3 min-h-[3.75rem] text-sm leading-5 text-text-light">
@@ -572,9 +573,10 @@ const HomePage: React.FC = () => {
                 <span className="text-gray-500 italic">No description</span>
               )}
             </p>
+            <div className="mt-auto flex items-end justify-between gap-2 pt-3">
             <ul
               aria-label="About this workflow"
-              className="mt-auto flex flex-wrap gap-1.5 pt-3"
+              className="flex flex-wrap gap-1.5"
             >
               <li className={PILL_CLASS}>
                 {countNodes(wf.nodes ?? [])}{" "}
@@ -591,6 +593,8 @@ const HomePage: React.FC = () => {
               )}
               {lastRun && <LastRunPill run={lastRun} />}
             </ul>
+            <div className="flex shrink-0 items-center gap-0.5">{actions}</div>
+            </div>
           </>
         )}
       </>
@@ -612,12 +616,7 @@ const HomePage: React.FC = () => {
       <Link
         key={wf._id}
         to={`/workflow/${wf._id}`}
-        data-tutorial={isDemoWorkflow ? "demo-1" : undefined}
-        className={`group relative flex flex-col bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 ${
-          isDemoWorkflow && homeTutorialStep === HOME_TUTORIAL_STEPS.length - 1
-            ? "ring-2 ring-sky-400 ring-offset-2 ring-offset-background"
-            : ""
-        }`}
+        className="group relative flex flex-col bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
       >
         {cardContent}
       </Link>
@@ -688,7 +687,6 @@ const HomePage: React.FC = () => {
             <HomeTutorial
               step={homeTutorialStep}
               onStep={setHomeTutorialStep}
-              onDuplicateDemo={() => void duplicateDemoForTutorial()}
             />
           )}
 
@@ -758,8 +756,13 @@ const HomePage: React.FC = () => {
         <NewWorkflowDialog
           isOpen={isNewWorkflowOpen}
           onClose={() => {
-            if (!pendingAction) setIsNewWorkflowOpen(false);
+            if (pendingAction) return;
+            setIsNewWorkflowOpen(false);
+            // Closed without choosing: the course asks for New Workflow again.
+            if (homeTutorialStep === CHOOSE_DEMO_STEP) homeCourseTo(NEW_WORKFLOW_STEP);
           }}
+          courseHint={homeTutorialStep === CHOOSE_DEMO_STEP ? CHOOSE_DEMO_HINT : undefined}
+          highlightKey={homeTutorialStep === CHOOSE_DEMO_STEP ? `copy:${DEMO_WORKFLOW_ID}` : undefined}
           demos={builtinWorkflows}
           onChoose={handleNewWorkflow}
           pendingKey={

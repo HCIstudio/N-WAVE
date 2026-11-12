@@ -48,12 +48,17 @@ or has an issue that is explicitly moved to a later release.
 
 ## Home page, help and demo
 
-- [ ] On the first visit, a box between the title and the demos offers the basics course
-      (**Start the basics course**, **All courses**, **Not now**). The course tours the home
-      page, duplicates Demo 1, and goes on in a card on the canvas: each task (open Map, set it
-      to lowercase, remove a Filter, add it from the + menu, connect it) goes on once done.
-      **Courses** lists the basics and the advanced courses (greyed in the demo); the nf-core
-      course builds Samplesheet → FastQC → MultiQC. A finished course is marked done.
+- [ ] On the first visit, a box between the title and the demos offers the first course
+      (**Start the first course**, **All courses**, **Not now**). It tours the home page and
+      ends with the user's own **New Workflow** from Demo 1 (the dialog says so); that workflow
+      opens with **The canvas** course, in a card on the canvas: each task (open Map, set it to
+      lowercase, remove a Filter, add it from the + menu, connect it) goes on once done.
+      **Courses** lists the basics and the advanced courses (greyed in the demo); the canvas
+      course started there makes its own copy; **Next course** starts the nf-core course,
+      which builds Samplesheet → FastQC → MultiQC. A finished course is marked done.
+- [ ] Workflow cards show their buttons (rename, duplicate, delete) without hovering.
+- [ ] A node added from the + menu is in view; while a connection is drawn, the other nodes'
+      inputs show their names, and the ones that fit (MultiQC's files too) are green.
 - [ ] Each built-in demo opens read-only; duplicating it gives an editable copy.
 - [ ] Workflow cards show the last run and its result. Editing the name and description,
       duplicating and deleting work.
