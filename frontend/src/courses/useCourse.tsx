@@ -1,15 +1,16 @@
-// The course running on the canvas (courseState.ts): its step, kept for the
-// tab; a task step goes on by itself once the user has done what it asks,
-// judged from the canvas, the open panels and the controls clicked since the
-// step began. Shown by CourseCard, docked so it covers nothing to work with.
+// The course running in the card (courseState.ts), on any page: its step,
+// kept for the tab; a task step goes on by itself once the user has done what
+// it asks, judged from the canvas (courseStage.ts), the open panels, the
+// controls clicked since the step began, the page, and N-WAVE's own state
+// (checked again every moment). Shown by CourseCard (CourseRunner).
 
-import type { Edge, Node } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useLocation } from "react-router";
 import { describeClick } from "../activity/useClickRecorder";
-import type { NodeData } from "../components/nodes/BaseNode";
+import { courseStage, subscribeCourseStage } from "./courseStage";
+import { COURSE_CHANGED, type CourseId, courseStep, endCourse, setActiveCourse } from "./courseState";
 import { COURSE_STEPS } from "./courseSteps";
 import { courseInfo } from "./courses";
-import { COURSE_CHANGED, type CourseId, courseStep, endCourse, setActiveCourse } from "./courseState";
 
 type CanvasCourse = Exclude<CourseId, "home">;
 
@@ -18,22 +19,23 @@ const runningOnCanvas = (): { course: CanvasCourse; step: number } | null => {
   const found = courseStep("canvas");
   if (!found || found.course === "home") return null;
   const course = found.course as CanvasCourse;
-  return { course, step: Math.min(found.step, COURSE_STEPS[course].length - 1) };
+  return {
+    course,
+    step: Math.min(found.step, COURSE_STEPS[course].length - 1),
+  };
 };
 
 /** How long a done task shows its tick before the next step. */
 export const DONE_PAUSE_MS = 900;
 
-export const useCourse = ({
-  nodes,
-  edges,
-  openPanels,
-}: {
-  nodes: Node<NodeData>[];
-  edges: Edge[];
-  openPanels: string[];
-}) => {
+/** How often a task is checked again for what isn't on the canvas (settings, verbose mode). */
+const CHECK_MS = 500;
+
+export const useCourse = () => {
+  const { nodes, edges, openPanels } = useSyncExternalStore(subscribeCourseStage, courseStage);
+  const path = useLocation().pathname;
   const [state, setState] = useState(runningOnCanvas);
+  const [tick, setTick] = useState(0);
   const [clicked, setClicked] = useState<Set<string>>(() => new Set());
   const [justDone, setJustDone] = useState(false);
   const steps = state ? COURSE_STEPS[state.course] : [];
@@ -44,9 +46,7 @@ export const useCourse = ({
   useEffect(() => {
     const follow = () => {
       const found = runningOnCanvas();
-      setState((current) =>
-        current?.course === found?.course && current?.step === found?.step ? current : found,
-      );
+      setState((current) => (current?.course === found?.course && current?.step === found?.step ? current : found));
     };
     window.addEventListener(COURSE_CHANGED, follow);
     return () => window.removeEventListener(COURSE_CHANGED, follow);
@@ -78,10 +78,19 @@ export const useCourse = ({
     return () => document.removeEventListener("click", onClick, true);
   }, [running]);
 
+  // A task is checked again every moment, for what it reads outside the canvas.
+  const waiting = Boolean(step?.done);
+  useEffect(() => {
+    if (!waiting) return;
+    const timer = window.setInterval(() => setTick((value) => value + 1), CHECK_MS);
+    return () => window.clearInterval(timer);
+  }, [waiting]);
+
   // A task done: a moment to see the tick, then the next step.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: tick re-checks what the task reads elsewhere.
   const done = useMemo(
-    () => Boolean(step?.done?.({ nodes, edges, openPanels, clicked })),
-    [step, nodes, edges, openPanels, clicked],
+    () => Boolean(step?.done?.({ nodes, edges, openPanels, clicked, path })),
+    [step, nodes, edges, openPanels, clicked, path, tick],
   );
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {

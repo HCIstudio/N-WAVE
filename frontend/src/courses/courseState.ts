@@ -3,7 +3,14 @@
 // survives opening a workflow; which courses are finished, and whether the
 // first-visit offer was answered, kept in this browser.
 
-export type CourseId = "home" | "canvas" | "nfcore-modules";
+export type CourseId =
+  | "home"
+  | "canvas"
+  | "nfcore-modules"
+  | "import-export"
+  | "own-steps"
+  | "large-workflows"
+  | "studies";
 export type CoursePart = "home" | "canvas";
 
 export interface ActiveCourse {

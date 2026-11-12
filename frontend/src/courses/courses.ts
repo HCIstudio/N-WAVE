@@ -8,7 +8,12 @@ import type React from "react";
 import type { NodeData } from "../components/nodes/BaseNode";
 import type { CourseId } from "./courseState";
 
-/** What a task step can see: the canvas, the open panels, what was clicked since the step began. */
+/**
+ * What a task step can see: the canvas (while a workflow is open), the open
+ * panels, what was clicked since the step began, and the page. A task may
+ * also read N-WAVE's own state (feature switches, verbose mode): tasks are
+ * checked again every moment.
+ */
 export interface CourseContext {
   nodes: Node<NodeData>[];
   edges: Edge[];
@@ -16,10 +21,17 @@ export interface CourseContext {
   openPanels: string[];
   /** Names of the controls clicked since the step began (their labels). */
   clicked: ReadonlySet<string>;
+  /** The page's path, e.g. `/settings` or `/workflow/…`. */
+  path: string;
 }
+
+/** The page a step happens on; the card says where to go when the user is elsewhere. */
+export type CoursePage = "workflow" | "home" | "settings";
 
 export interface CourseStep {
   text: React.ReactNode;
+  /** Where it happens (default: the workflow's canvas). */
+  page?: CoursePage;
   /** What it is about (a CSS selector): outlined while the step shows. */
   target?: string;
   /** A task for the user: the course goes on once this holds. Without one: Next. */
@@ -75,44 +87,48 @@ export const COURSES: CourseInfo[] = [
     minutes: 8,
     level: "basics",
     topics: ["Inputs", "The nf-core Library", "Connecting tools", "The workflow check", "Exporting"],
+    next: "import-export",
   },
-  // Planned (#241): each names its issue; the Courses page shows them as coming soon.
   {
     id: "import-export",
+    course: "import-export",
     title: "Import and export",
     summary: "Take a workflow out as a script, a project or a DAW model, and bring Nextflow pipelines in.",
     minutes: 8,
     level: "basics",
     topics: ["Export", "Import", "Round trip", "DAW model"],
-    issue: 242,
+    next: "own-steps",
   },
   {
     id: "own-steps",
+    course: "own-steps",
     title: "Your own steps",
     summary: "Write a custom process, read its code, and share your nodes as a node pack.",
     minutes: 8,
     level: "basics",
     topics: ["Custom processes", "The Code tab", "Node packs"],
-    issue: 243,
+    next: "large-workflows",
   },
   {
     id: "large-workflows",
+    course: "large-workflows",
     title: "Large workflows",
     summary: "Find your way in a large workflow: the minimap, the steps inside a subworkflow, and groups.",
     minutes: 8,
     level: "basics",
     topics: ["Minimap", "Nested views", "Groups"],
-    issue: 244,
+    next: "studies",
   },
   {
     id: "studies",
+    course: "studies",
     title: "N-WAVE for studies",
     summary: "Switch help features on and off, and record what happens in N-WAVE for a study.",
     minutes: 5,
     level: "basics",
     topics: ["Feature switches", "Verbose mode"],
-    issue: 245,
   },
+  // Planned (#241): each names its issue; the Courses page shows them as coming soon.
   {
     id: "run",
     title: "Run a workflow",

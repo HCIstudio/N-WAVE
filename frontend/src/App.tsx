@@ -6,6 +6,7 @@ import DemoBanner from "./demo/DemoBanner";
 import { setNotificationNavigator } from "./notifications/notifications";
 import { useBackendMonitor } from "./notifications/useBackendMonitor";
 import RecordingIndicator from "./activity/RecordingIndicator";
+import CourseRunner from "./courses/CourseRunner";
 import { useClickRecorder } from "./activity/useClickRecorder";
 
 const App: React.FC = () => {
@@ -38,6 +39,7 @@ const App: React.FC = () => {
   return (
     <>
       <Outlet />
+      <CourseRunner />
       <RecordingIndicator />
       {isDemoMode && <DemoBanner />}
     </>
