@@ -497,8 +497,11 @@ const BaseNode = ({
             type="source"
             position={Position.Right}
             id={port.name}
-            // A stack's cards reach 12px past its right edge: its outputs sit beyond them.
-            className={clsx("!w-3 !h-3 !bg-gray-400", hasStepsInside ? "!-right-[26px]" : "!-right-1.5")}
+            // A stack's cards reach 14px past the node's inner edge (its 2px
+            // border, then 12px). Its outputs touch the outer card's border
+            // from outside (the handle is centred on its offset), so they
+            // look attached without covering the cards.
+            className={clsx("!w-3 !h-3 !bg-gray-400", hasStepsInside ? "!-right-[19px]" : "!-right-1.5")}
             isConnectable={port.isConnectable ?? true}
             onMouseDown={onMouseDown}
           />
