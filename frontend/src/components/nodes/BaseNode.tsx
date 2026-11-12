@@ -367,7 +367,8 @@ const BaseNode = ({
       {/* Execution Status Indicator */}
       {status && status !== "disabled" && (
         <div className="absolute top-2 right-2">
-          {status === "error" && (
+          {/* A failed run says so in its label below; the dot only for a stored failure without one. */}
+          {status === "error" && !run && (
             <div className="w-3 h-3 bg-red-500 rounded-full" title="Failed" />
           )}
           {status === "waiting" && (

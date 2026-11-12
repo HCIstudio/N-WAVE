@@ -1,4 +1,132 @@
 {
+ "385adc6fa99ac1939a2f6d3a29937f62478b9c90d9e39e5e0d0813d5ab4da151": {
+  "lint": {
+   "status": "done",
+   "result": {
+    "tool": {
+     "name": "nextflow lint",
+     "image": "nextflow/nextflow:25.10.4"
+    },
+    "files": [
+     "main.nf"
+    ],
+    "problems": [
+     {
+      "level": "warning",
+      "file": "main.nf",
+      "line": 61,
+      "column": 5,
+      "message": "Variable was declared but not used"
+     },
+     {
+      "level": "warning",
+      "file": "main.nf",
+      "line": 69,
+      "column": 5,
+      "message": "Variable was declared but not used"
+     },
+     {
+      "level": "warning",
+      "file": "main.nf",
+      "line": 70,
+      "column": 5,
+      "message": "Variable was declared but not used"
+     }
+    ]
+   }
+  },
+  "bioflow": {
+   "status": "done",
+   "result": {
+    "schema": "n-wave-bioflow/1",
+    "tool": {
+     "name": "BioFlow-Insight",
+     "version": "2.1.1",
+     "engine": "nls"
+    },
+    "dsl": "DSL2",
+    "error": null,
+    "notes": [],
+    "steps": [],
+    "connections": [],
+    "subworkflows": [],
+    "conditions": [],
+    "groups": {
+     "condition": [],
+     "dominator": [],
+     "parallel": []
+    },
+    "specification": {
+     "nodes": [
+      {
+       "id": "op1",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "samplesheet"
+      },
+      {
+       "id": "op2",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "gtf"
+      },
+      {
+       "id": "op3",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "fasta"
+      },
+      {
+       "id": "op4",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_samplesheet"
+      },
+      {
+       "id": "op5",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_fasta"
+      },
+      {
+       "id": "op6",
+       "kind": "operation",
+       "subworkflow": null,
+       "code": "ch_gtf"
+      }
+     ],
+     "edges": [
+      {
+       "from": "op1",
+       "to": "op4",
+       "label": ""
+      },
+      {
+       "from": "op2",
+       "to": "op6",
+       "label": ""
+      },
+      {
+       "from": "op3",
+       "to": "op5",
+       "label": ""
+      }
+     ]
+    },
+    "metrics": {
+     "steps": 0,
+     "processes": 0,
+     "connections": 0,
+     "subworkflow_calls": 0,
+     "subworkflow_depth": 0,
+     "conditions": 0,
+     "conditional_steps": 0,
+     "files": 1,
+     "lines": 73
+    }
+   }
+  }
+ },
  "51bb194b2faf63a675d1f87730bc4d32ca63b42b93bd154f67229632cf7ddff5": {
   "lint": {
    "status": "done",
@@ -198,134 +326,6 @@
      "conditional_steps": 0,
      "files": 1,
      "lines": 169
-    }
-   }
-  }
- },
- "54c61c293c1286b8f25f2ec23baad7ecf48a59e42431d5aad352ae69e91e407a": {
-  "lint": {
-   "status": "done",
-   "result": {
-    "tool": {
-     "name": "nextflow lint",
-     "image": "nextflow/nextflow:25.10.4"
-    },
-    "files": [
-     "main.nf"
-    ],
-    "problems": [
-     {
-      "level": "warning",
-      "file": "main.nf",
-      "line": 61,
-      "column": 5,
-      "message": "Variable was declared but not used"
-     },
-     {
-      "level": "warning",
-      "file": "main.nf",
-      "line": 69,
-      "column": 5,
-      "message": "Variable was declared but not used"
-     },
-     {
-      "level": "warning",
-      "file": "main.nf",
-      "line": 70,
-      "column": 5,
-      "message": "Variable was declared but not used"
-     }
-    ]
-   }
-  },
-  "bioflow": {
-   "status": "done",
-   "result": {
-    "schema": "n-wave-bioflow/1",
-    "tool": {
-     "name": "BioFlow-Insight",
-     "version": "2.1.1",
-     "engine": "nls"
-    },
-    "dsl": "DSL2",
-    "error": null,
-    "notes": [],
-    "steps": [],
-    "connections": [],
-    "subworkflows": [],
-    "conditions": [],
-    "groups": {
-     "condition": [],
-     "dominator": [],
-     "parallel": []
-    },
-    "specification": {
-     "nodes": [
-      {
-       "id": "op1",
-       "kind": "operation",
-       "subworkflow": null,
-       "code": "samplesheet"
-      },
-      {
-       "id": "op2",
-       "kind": "operation",
-       "subworkflow": null,
-       "code": "gtf"
-      },
-      {
-       "id": "op3",
-       "kind": "operation",
-       "subworkflow": null,
-       "code": "fasta"
-      },
-      {
-       "id": "op4",
-       "kind": "operation",
-       "subworkflow": null,
-       "code": "ch_samplesheet"
-      },
-      {
-       "id": "op5",
-       "kind": "operation",
-       "subworkflow": null,
-       "code": "ch_fasta"
-      },
-      {
-       "id": "op6",
-       "kind": "operation",
-       "subworkflow": null,
-       "code": "ch_gtf"
-      }
-     ],
-     "edges": [
-      {
-       "from": "op1",
-       "to": "op4",
-       "label": ""
-      },
-      {
-       "from": "op2",
-       "to": "op6",
-       "label": ""
-      },
-      {
-       "from": "op3",
-       "to": "op5",
-       "label": ""
-      }
-     ]
-    },
-    "metrics": {
-     "steps": 0,
-     "processes": 0,
-     "connections": 0,
-     "subworkflow_calls": 0,
-     "subworkflow_depth": 0,
-     "conditions": 0,
-     "conditional_steps": 0,
-     "files": 1,
-     "lines": 73
     }
    }
   }

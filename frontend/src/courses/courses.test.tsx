@@ -66,6 +66,31 @@ describe("a course on the canvas", () => {
     expect(JSON.parse(sessionStorage.getItem("nwave.course.active") ?? "null")).toMatchObject({ step: 2 });
   });
 
+  it("shows a step done before again with Back, to read, and goes on only with Next", () => {
+    startAt("canvas", 1);
+    const opened = <Harness nodes={demo.nodes} edges={demo.edges} openPanels={["demo-map-uppercase"]} />;
+    const { rerender } = render(opened);
+    act(() => {
+      vi.advanceTimersByTime(DONE_PAUSE_MS);
+    });
+    expect(card().textContent).toContain("Case to Lowercase");
+
+    // Back: the task of step 2 still holds (the panel is open), but it is read, not done again.
+    fireEvent.click(within(card()).getByRole("button", { name: "Back" }));
+    rerender(opened);
+    act(() => {
+      vi.advanceTimersByTime(DONE_PAUSE_MS * 3);
+    });
+    expect(card().textContent).toContain("Double-click the Map node");
+    expect(card().textContent).not.toContain("Your turn");
+    expect(card().textContent).not.toContain("Done");
+
+    // Next comes back to where the course was.
+    fireEvent.click(within(card()).getByRole("button", { name: "Next" }));
+    expect(card().textContent).toContain("Case to Lowercase");
+    expect(card().textContent).toContain("Your turn");
+  });
+
   it("goes on when the control a step asks for is clicked", () => {
     startAt("canvas", 4);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);

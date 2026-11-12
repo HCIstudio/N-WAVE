@@ -431,7 +431,10 @@ const BottomBar: React.FC<BottomBarProps> = ({
             While a run goes, the button shows the hourglass and brings the
             run panel back. */}
         {onRun && (
-          <div className="inline-flex shrink-0 items-stretch overflow-hidden rounded-md ring-1 ring-nextflow-green/50">
+          <div
+            data-run-controls
+            className="inline-flex shrink-0 items-stretch overflow-hidden rounded-md ring-1 ring-nextflow-green/50"
+          >
             {isRunning ? (
               <button
                 type="button"

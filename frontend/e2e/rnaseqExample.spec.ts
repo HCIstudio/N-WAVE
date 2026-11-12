@@ -35,12 +35,12 @@ test.describe("nf-core/rnaseq example", () => {
       "7 samples, 4 paired-end"
     );
 
-    // The pipeline is set to rnaseq 3.27.0 with the test profile.
+    // The pipeline is set to rnaseq 3.27.0; its test data comes from the input nodes, not the test profile.
     await page.locator(".react-flow__node-pipeline").dblclick();
-    await expect(page.getByLabel(/test profile/)).toBeChecked();
+    await expect(page.getByLabel(/test profile/)).not.toBeChecked();
     await expect(page.getByLabel("Pipeline problems")).toHaveCount(0);
     await expect(page.getByLabel("Launch command", { exact: true })).toContainText(
-      "nextflow run nf-core/rnaseq -r 3.27.0 -profile test,docker -params-file params.json --outdir results"
+      "nextflow run nf-core/rnaseq -r 3.27.0 -profile docker -params-file params.json --outdir results"
     );
     await page.keyboard.press("Escape");
     // Inspecting doesn't turn the example into a copy.
@@ -69,7 +69,7 @@ test.describe("nf-core/rnaseq example", () => {
       "WT_REP1,https://raw.githubusercontent.com/nf-core/test-datasets/rnaseq/testdata/GSE110004/SRR6357070_1.fastq.gz"
     );
     expect(files["run.sh"]).toContain(
-      "nextflow run nf-core/rnaseq -r 3.27.0 -profile test,docker -params-file params.json --outdir results"
+      "nextflow run nf-core/rnaseq -r 3.27.0 -profile docker -params-file params.json --outdir results"
     );
   });
 

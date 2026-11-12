@@ -56,22 +56,34 @@ describe("the run course's tasks", () => {
 });
 
 describe("the failures course's tasks", () => {
-  const [, , failed, evidence, , fix, resumed, settings, clear] = COURSE_STEPS.failures;
+  const [, , failed, evidence, , fix, resumed, full, cache] = COURSE_STEPS.failures;
   const shout = (source: string) =>
     [{ id: "n-shout", data: { customNodeDefinition: { source } } as NodeData }] as Node<NodeData>[];
 
-  it("follow the failure, the fix and the resumed run", () => {
+  it("follow the failure, the fixed typo, the resumed run and a full run", () => {
     expect(failed.done?.(context({ run: run({ runId: "r1", steps: { "n-say_hello": "succeeded" } }) }))).toBe(false);
     expect(failed.done?.(context({ run: run({ runId: "r1", steps: { "n-shout": "failed" } }) }))).toBe(true);
     expect(failed.done?.(context({ run: run({ runId: "r1", explained: true }) }))).toBe(true);
     expect(evidence.done?.(clicks("Show line 12 in the log"))).toBe(true);
-    expect(fix.done?.(context({ nodes: shout("cowsay < ${greeting} > shout.txt") }))).toBe(false);
+    expect(fix.target).toBe("[data-edit-custom-node]");
+    expect(fix.done?.(context({ nodes: shout("trr a-z A-Z < ${greeting} > shout.txt") }))).toBe(false);
     expect(fix.done?.(context({ nodes: shout("tr a-z A-Z < ${greeting} > shout.txt") }))).toBe(true);
+    // Resumed: the first step from the cache.
     const cached = run({ runId: "r2", steps: { "n-say_hello": "cached", "n-shout": "succeeded" } });
     expect(resumed.done?.(context({ run: run({ runId: "r2", steps: { "n-say_hello": "succeeded" } }) }))).toBe(false);
     expect(resumed.done?.(context({ run: cached }))).toBe(true);
-    expect(settings.done?.(clicks("Execution Settings"))).toBe(true);
-    expect(clear.done?.(clicks("Clear cache"))).toBe(true);
+    // Resume off: every step ran (the resumed run, and the failed one, don't count).
+    expect(full.done?.(context({ run: cached }))).toBe(false);
+    expect(
+      full.done?.(context({ run: run({ runId: "r1", steps: { "n-say_hello": "succeeded", "n-shout": "failed" } }) })),
+    ).toBe(false);
+    expect(
+      full.done?.(
+        context({ run: run({ runId: "r3", steps: { "n-say_hello": "succeeded", "n-shout": "succeeded" } }) }),
+      ),
+    ).toBe(true);
+    // The cache: explained, not a task (clearing isn't needed for a full run).
+    expect(cache.done).toBeUndefined();
   });
 });
 
@@ -183,7 +195,7 @@ describe("starting an advanced course", () => {
     expect(draft.nodes.map((entry) => entry.id).sort()).toEqual(["n-say_hello", "n-shout"]);
     expect(draft.edges).toHaveLength(1);
     const shout = draft.nodes.find((entry) => entry.id === "n-shout");
-    expect((shout?.data.customNodeDefinition as { source?: string } | undefined)?.source).toContain("cowsay");
+    expect((shout?.data.customNodeDefinition as { source?: string } | undefined)?.source).toContain("trr a-z A-Z");
   });
 
   it("imports the workflow with two aligners, its parameter and the nodes the course names", async () => {

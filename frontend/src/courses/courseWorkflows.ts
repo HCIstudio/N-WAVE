@@ -2,7 +2,7 @@
 // the course starts: one whose second step fails (When a run fails), and one
 // with a choice between two aligners (Read a workflow's structure).
 
-/** Two steps; SHOUT calls `cowsay`, which the container doesn't have. */
+/** Two steps; SHOUT has a typo (`trr` for `tr`), a program that doesn't exist. */
 export const FAILING_SCRIPT = `process SAY_HELLO {
     output:
     path 'greeting.txt'
@@ -22,7 +22,7 @@ process SHOUT {
 
     script:
     """
-    cowsay < \${greeting} > shout.txt
+    trr a-z A-Z < \${greeting} > shout.txt
     """
 }
 

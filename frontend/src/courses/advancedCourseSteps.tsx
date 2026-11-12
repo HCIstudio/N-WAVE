@@ -8,7 +8,8 @@ import { currentRunDefaults } from "../settings/useRunDefaults";
 import type { CourseContext, CourseStep } from "./courses";
 
 const node = (id: string) => `.react-flow__node[data-id="${id}"]`;
-const RUN = 'button[aria-label="Run Workflow"]';
+/** Run and its Resume switch (the button itself sits clipped inside their frame). */
+const RUN = "[data-run-controls]";
 const RUN_PANEL = '[aria-label="Run panel"]';
 const EXPORT = 'button[aria-label="Export"]';
 const EXECUTION_SETTINGS = 'button[aria-label="Execution Settings"]';
@@ -193,8 +194,8 @@ const FAILURES: CourseStep[] = [
   {
     text: (
       <>
-        The step that failed is marked on the canvas: SHOUT calls <code>cowsay</code>, a program its container
-        doesn&apos;t have.
+        The step that failed is marked on the canvas: SHOUT runs <code>trr</code>, a program that doesn&apos;t exist. A
+        typo: it should be <code>tr</code>, which puts the text in capitals.
       </>
     ),
     target: node("n-shout"),
@@ -202,14 +203,15 @@ const FAILURES: CourseStep[] = [
   {
     text: (
       <>
-        Fix it: double-click <strong>SHOUT</strong>, open its <strong>Code</strong> tab, and replace <code>cowsay</code>{" "}
-        with <code>tr a-z A-Z</code> (it puts the text in capitals).
+        Fix it: double-click <strong>SHOUT</strong>, open its <strong>Code</strong> tab and{" "}
+        <strong>Edit custom node</strong> (the code shown in the tab is read-only). Change <code>trr</code> to{" "}
+        <code>tr</code> and <strong>Save Node</strong>.
       </>
     ),
-    target: node("n-shout"),
+    target: "[data-edit-custom-node]",
     done: (context) => {
       const source = sourceOf(context, "n-shout");
-      return source !== "" && !source.includes("cowsay");
+      return source.includes("tr a-z A-Z") && !source.includes("trr");
     },
   },
   {
@@ -225,22 +227,25 @@ const FAILURES: CourseStep[] = [
   {
     text: (
       <>
-        SAY_HELLO is <strong>cached</strong> (it didn&apos;t run again), SHOUT ran. The cache is in{" "}
-        <strong>Execution Settings</strong>: open them and find <strong>Run cache</strong>, with its size.
+        SAY_HELLO is <strong>cached</strong> (it didn&apos;t run again), SHOUT ran. For a full run, switch{" "}
+        <strong>Resume</strong> off and <strong>Run</strong> again: every step runs, the cache stays.
       </>
     ),
-    target: EXECUTION_SETTINGS,
-    done: ({ clicked }) => clicked.has("Execution Settings"),
+    target: RUN,
+    done: (context) =>
+      ended(context) &&
+      context.run.steps["n-say_hello"] === "succeeded" &&
+      context.run.steps["n-shout"] === "succeeded",
   },
   {
     text: (
       <>
-        <strong>Clear</strong> the cache: the next run starts from scratch. (Global Settings clears every
-        workflow&apos;s cache at once.)
+        Both steps ran. The cache is in <strong>Execution Settings</strong> → <strong>Run cache</strong>, with its size.
+        It needs no clearing for a full run (Resume off does that); <strong>Clear cache</strong> is there if a run ever
+        reuses results it shouldn&apos;t, or to free the space.
       </>
     ),
-    target: '[aria-label="Run cache"]',
-    done: (context) => clickedStart(context, "Clear"),
+    target: EXECUTION_SETTINGS,
   },
   {
     text: (
@@ -257,8 +262,8 @@ const PIPELINE: CourseStep[] = [
   {
     text: (
       <>
-        Your copy of Demo 2: the whole nf-core/rnaseq pipeline as one <strong>Pipeline node</strong>, with its test
-        data. The run takes 15 to 30 minutes and at least 6 GB of memory.
+        Your copy of Demo 2: the whole nf-core/rnaseq pipeline as one <strong>Pipeline node</strong>, fed small test
+        data by the nodes on its left. The run takes 15 to 30 minutes and at least 6 GB of memory.
       </>
     ),
   },
@@ -274,8 +279,9 @@ const PIPELINE: CourseStep[] = [
   {
     text: (
       <>
-        Every parameter of the pipeline, from its schema, with its help: <strong>Filter parameters</strong> finds one.
-        The <strong>test profile</strong> is on: it brings small test data, so no inputs are needed.
+        Every parameter of the pipeline, from its schema, with its help. Its inputs come from the nodes on the left: the{" "}
+        <strong>Samplesheet</strong> with the test reads (<code>--input</code>) and the{" "}
+        <strong>Reference genome</strong> (<code>--fasta</code>, <code>--gtf</code>).
       </>
     ),
   },
@@ -320,8 +326,8 @@ const PIPELINE: CourseStep[] = [
   {
     text: (
       <>
-        <strong>That&apos;s an nf-core pipeline in N-WAVE.</strong> Turn the test profile off and connect your own
-        samplesheet and genome to run it on your data.
+        <strong>That&apos;s an nf-core pipeline in N-WAVE.</strong> Put your own samples in the Samplesheet and your
+        genome in Reference genome to run it on your data.
       </>
     ),
   },

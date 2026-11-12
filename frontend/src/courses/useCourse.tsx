@@ -15,13 +15,15 @@ import { courseInfo } from "./courses";
 type CanvasCourse = Exclude<CourseId, "home">;
 
 /** The course running on the canvas, as kept for the tab. */
-const runningOnCanvas = (): { course: CanvasCourse; step: number } | null => {
+const runningOnCanvas = (): { course: CanvasCourse; step: number; reached: number } | null => {
   const found = courseStep("canvas");
   if (!found || found.course === "home") return null;
   const course = found.course as CanvasCourse;
+  const last = COURSE_STEPS[course].length - 1;
   return {
     course,
-    step: Math.min(found.step, COURSE_STEPS[course].length - 1),
+    step: Math.min(found.step, last),
+    reached: Math.min(found.reached, last),
   };
 };
 
@@ -47,7 +49,11 @@ export const useCourse = () => {
   useEffect(() => {
     const follow = () => {
       const found = runningOnCanvas();
-      setState((current) => (current?.course === found?.course && current?.step === found?.step ? current : found));
+      setState((current) =>
+        current?.course === found?.course && current?.step === found?.step && current?.reached === found?.reached
+          ? current
+          : found,
+      );
     };
     window.addEventListener(COURSE_CHANGED, follow);
     return () => window.removeEventListener(COURSE_CHANGED, follow);
@@ -59,11 +65,16 @@ export const useCourse = () => {
     setJustDone(false);
   }, [state?.course, state?.step]);
 
-  const go = useCallback((course: CanvasCourse, next: number) => {
+  // The pause after a task is done, before the next step.
+  const timer = useRef<number | undefined>(undefined);
+  // Going on reaches further; going back keeps how far the course got.
+  const go = useCallback((course: CanvasCourse, next: number, reached: number) => {
+    window.clearTimeout(timer.current);
     setClicked(new Set());
     setJustDone(false);
-    setActiveCourse({ course, part: "canvas", step: next });
-    setState({ course, step: next });
+    const furthest = Math.max(reached, next);
+    setActiveCourse({ course, part: "canvas", step: next, reached: furthest });
+    setState({ course, step: next, reached: furthest });
   }, []);
 
   // The controls clicked during a step (what a task can ask for, like "open the + menu"),
@@ -79,8 +90,11 @@ export const useCourse = () => {
     return () => document.removeEventListener("click", onClick, true);
   }, [running]);
 
+  // A step before the furthest one reached is read again: its task isn't asked
+  // again (it may hold still, and would go straight on), Next goes on.
+  const reviewing = state !== null && state.step < state.reached;
   // A task is checked again every moment, for what it reads outside the canvas.
-  const waiting = Boolean(step?.done);
+  const waiting = Boolean(step?.done) && !reviewing;
   useEffect(() => {
     if (!waiting) return;
     const timer = window.setInterval(() => setTick((value) => value + 1), CHECK_MS);
@@ -91,6 +105,7 @@ export const useCourse = () => {
   // biome-ignore lint/correctness/useExhaustiveDependencies: tick re-checks what the task reads elsewhere.
   const done = useMemo(
     () =>
+      !reviewing &&
       Boolean(
         step?.done?.({
           nodes,
@@ -105,13 +120,12 @@ export const useCourse = () => {
           runProfile: stage.runProfile,
         }),
       ),
-    [step, stage, nodes, edges, openPanels, clicked, path, tick],
+    [step, reviewing, stage, nodes, edges, openPanels, clicked, path, tick],
   );
-  const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (!state || !done || justDone) return;
     setJustDone(true);
-    timer.current = window.setTimeout(() => go(state.course, state.step + 1), DONE_PAUSE_MS);
+    timer.current = window.setTimeout(() => go(state.course, state.step + 1, state.reached), DONE_PAUSE_MS);
   }, [state, done, justDone, go]);
   useEffect(() => () => window.clearTimeout(timer.current), []);
 
@@ -119,14 +133,17 @@ export const useCourse = () => {
   const last = state.step === steps.length - 1;
   return {
     course: courseInfo(state.course),
-    step,
+    /** The step as shown: a task only while it is still to do (not when read again). */
+    step: reviewing ? { ...step, done: undefined } : step,
+    /** A step before the furthest reached, read again. */
+    reviewing,
     index: state.step,
     count: steps.length,
     last,
     /** The task of this step is done (the next step comes in a moment). */
     justDone,
-    back: () => go(state.course, Math.max(state.step - 1, 0)),
-    next: () => (last ? null : go(state.course, state.step + 1)),
+    back: () => go(state.course, Math.max(state.step - 1, 0), state.reached),
+    next: () => (last ? null : go(state.course, state.step + 1, state.reached)),
     /** Finished: marked done. */
     finish: () => {
       endCourse(state.course, true);

@@ -71,8 +71,8 @@ const CourseCard: React.FC<{ course: CourseState }> = ({ course }) => {
   const next = course.course.next ? courseInfo(course.course.next) : null;
   const backTo = stepPage === "home" ? "/" : stepPage === "settings" ? "/settings" : stage.path;
 
-  // On a graph view (not the editor), the card steps aside for its title block.
-  if (page === "workflow" && !stage.editor) return null;
+  // On a graph view (not the editor), the card moves down: its title block is at the top left.
+  const graphView = page === "workflow" && !stage.editor;
 
   return (
     <section
@@ -82,7 +82,7 @@ const CourseCard: React.FC<{ course: CourseState }> = ({ course }) => {
         // Docked where it covers nothing a step asks for: on the canvas, top left
         // (the + menu is top right, panels open on the right); elsewhere, bottom right.
         "fixed z-[75]",
-        page === "workflow" ? "left-4 top-4" : "bottom-4 right-4",
+        graphView ? "bottom-20 left-4" : page === "workflow" ? "left-4 top-4" : "bottom-4 right-4",
       )}
     >
       <div className="w-80 rounded-md border border-l-4 border-panel-border border-l-sky-400 bg-panel-background p-4 text-text shadow-[0_12px_40px_rgba(0,0,0,0.6)] ring-1 ring-sky-400/60">

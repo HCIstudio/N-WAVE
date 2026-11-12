@@ -62,11 +62,11 @@ describe("the nf-core/rnaseq example", () => {
     expect(references.data.subtitle).toBe(summarizeParameters(parameters));
   });
 
-  it("launches nf-core/rnaseq 3.27.0 with the test profile and its inputs", () => {
+  it("launches nf-core/rnaseq 3.27.0 on its input nodes' test data, without the test profile", () => {
     expect(getPipelineLaunchIssues(nodes, edges)).toEqual([]);
     const launch = buildPipelineLaunch(nodes, edges);
     expect(launch?.command).toBe(
-      "nextflow run nf-core/rnaseq -r 3.27.0 -profile test,docker -params-file params.json --outdir results",
+      "nextflow run nf-core/rnaseq -r 3.27.0 -profile docker -params-file params.json --outdir results",
     );
     expect(launch?.params).toEqual({
       input: "inputs/samplesheet.csv",

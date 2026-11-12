@@ -235,6 +235,7 @@ const NodeCodeView: React.FC<NodeCodeViewProps> = ({
         <button
           type="button"
           onClick={() => onEditCustomNode(customNodeId)}
+          data-edit-custom-node
           className="inline-flex items-center gap-2 rounded-md bg-nextflow-green px-4 py-2 text-sm text-white hover:bg-nextflow-green-dark"
         >
           <Pencil size={16} aria-hidden />

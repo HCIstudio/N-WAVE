@@ -82,8 +82,9 @@ or has an issue that is explicitly moved to a later release.
       for studies** (in Global Settings: a feature switch, verbose mode, a test, the ZIP). On a
       page other than the step's, the card says where to go.
 - [ ] The advanced courses on the installation, each from start to end: **Run a workflow**,
-      **When a run fails** (the run fails, its explanation, the fix, Resume with the first step
-      cached, clearing the cache), **Run an nf-core pipeline** (a full test run),
+      **When a run fails** (the run fails, its explanation, the typo fixed in Edit custom node,
+      Resume with the first step cached, a full run with Resume off),
+      **Run an nf-core pipeline** (a full run on the test data from its input nodes),
       **Run limits and clusters** (a SLURM profile saved and in the exported project) and
       **Read a workflow's structure** (Analyse, an error and its fix, both graph views, the
       **if** badges, a group).
@@ -120,8 +121,8 @@ or has an issue that is explicitly moved to a later release.
 - [ ] A module node's docs (inputs, outputs, links) and value settings.
 - [ ] A **subworkflow** node: its nested view opens with a breadcrumb; **Copy into new workflow**
       gives an editable workflow with its takes as inputs and emits as outputs.
-- [ ] A **Pipeline** node (nf-core/rnaseq with its `test` profile): the schema form, a run, and
-      its results.
+- [ ] A **Pipeline** node (Demo 2: nf-core/rnaseq fed the test data by its Samplesheet and
+      Reference genome nodes, without the test profile): the schema form, a run, and its results.
 - [ ] **Custom nodes**: create one, edit its code in the Code tab, convert an nf-core node into a
       custom node, reload the page and find it again.
 - [ ] **Node packs**: export your custom nodes as a pack, import it from a file and from a URL,

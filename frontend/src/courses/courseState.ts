@@ -22,6 +22,8 @@ export interface ActiveCourse {
   course: CourseId;
   part: CoursePart;
   step: number;
+  /** The furthest step reached: the steps before it are read again (Back), not done again. */
+  reached?: number;
 }
 
 const ACTIVE_KEY = "nwave.course.active";
@@ -55,10 +57,16 @@ export const activeCourse = (): ActiveCourse | null => {
   }
 };
 
-/** The step of `part` of the running course, or null when none runs there. */
-export const courseStep = (part: CoursePart): { course: CourseId; step: number } | null => {
+/** The step of `part` of the running course (and the furthest reached), or null when none runs there. */
+export const courseStep = (part: CoursePart): { course: CourseId; step: number; reached: number } | null => {
   const active = activeCourse();
-  return active?.part === part ? { course: active.course, step: active.step } : null;
+  return active?.part === part
+    ? {
+        course: active.course,
+        step: active.step,
+        reached: Math.max(active.step, Number.isInteger(active.reached) ? (active.reached as number) : 0),
+      }
+    : null;
 };
 
 /** Sent when the running course changes, so a page already open follows it. */

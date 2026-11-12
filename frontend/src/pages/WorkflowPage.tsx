@@ -381,7 +381,8 @@ const WorkflowPageContent: React.FC = () => {
       analysis: analysis.current ? { problems: analysis.problems.length } : null,
       view: canvasView.view,
       nested: nestedNodeId,
-      runProfile: runSettings.runProfile ?? null,
+      // The workflow's own choice ("" is this computer; unset, Global Settings' default).
+      runProfile: executionSettings.runProfile || null,
     });
   }, [
     nodes,
@@ -397,7 +398,7 @@ const WorkflowPageContent: React.FC = () => {
     analysis.current,
     analysis.problems.length,
     nestedNodeId,
-    runSettings.runProfile,
+    executionSettings.runProfile,
   ]);
   useEffect(() => () => publishCourseStage(null), []);
 
@@ -913,12 +914,19 @@ const WorkflowPageContent: React.FC = () => {
   );
 };
 
-const WorkflowPage: React.FC = () => (
-  <ReactFlowProvider>
-    <WorkflowProvider>
-      <WorkflowPageContent />
-    </WorkflowProvider>
-  </ReactFlowProvider>
-);
+/**
+ * A page per workflow: opening another one (the next course, a copied
+ * subworkflow) starts afresh, without the last one's run, log or panels.
+ */
+const WorkflowPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <ReactFlowProvider key={id}>
+      <WorkflowProvider>
+        <WorkflowPageContent />
+      </WorkflowProvider>
+    </ReactFlowProvider>
+  );
+};
 
 export default WorkflowPage;
