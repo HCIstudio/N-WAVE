@@ -43,11 +43,13 @@ links there.
   - **Run a workflow**: in a copy of Demo 1, run it and follow it in the run panel (Steps, Log),
     minimize and expand the panel, read a step's Results and Display Output, find the run in
     History, cancel a run, and see the runs on the home page.
-  - **When a run fails**: a workflow imported for the course fails in a step. Read why (the
-    explanation and its evidence in the log), fix the step's code, resume (the finished step
-    comes from the cache), and clear the run cache.
+  - **When a run fails**: a workflow imported for the course fails in a step with a typo. Read
+    why (the explanation and its evidence in the log), fix the typo with **Edit custom node**,
+    resume (the finished step comes from the cache), run in full with Resume off, and where the
+    run cache is.
   - **Run an nf-core pipeline**: in a copy of Demo 2, nf-core/rnaseq as one Pipeline node: its
-    form and test profile, a run on the test data, its reports, and its steps inside.
+    form, the test data it gets from the Samplesheet and Reference genome nodes, a run, its
+    reports, and its steps inside.
   - **Run limits and clusters**: a workflow's resources and the run limits in Global Settings,
     a SLURM run profile, choosing it for the workflow, and the profile in the exported project.
     No cluster is needed.

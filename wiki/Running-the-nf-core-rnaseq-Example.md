@@ -9,7 +9,7 @@ The workflow has three nodes plus notes that explain them:
 | --- | --- |
 | **Samplesheet** | The pipeline's test samplesheet: 7 sequencing runs of yeast RNA-seq (GSE110004), 4 paired-end and 3 single-end. The reads are downloaded from the nf-core test-datasets repository during the run. |
 | **Reference genome** (Parameters) | `fasta` (genome sequence) and `gtf` (gene annotation) from the nf-core test data. |
-| **nf-core/rnaseq** (Pipeline) | nf-core/rnaseq 3.27.0 with **Use the pipeline's test profile** ticked. The samplesheet is connected to `--input`, the references to `--fasta` and `--gtf`. |
+| **nf-core/rnaseq** (Pipeline) | nf-core/rnaseq 3.27.0. The samplesheet is connected to `--input`, the references to `--fasta` and `--gtf`: the test data reaches the pipeline through them (**Use the pipeline's test profile** is off). |
 
 The pipeline runs with its default settings: read QC (FastQC), trimming (Trim Galore), alignment
 with STAR and quantification with Salmon (`--aligner star_salmon`), followed by a MultiQC report.
@@ -17,7 +17,7 @@ with STAR and quantification with Salmon (`--aligner star_salmon`), followed by 
 N-WAVE launches it as
 
 ```bash
-nextflow run nf-core/rnaseq -r 3.27.0 -profile test,docker -params-file params.json --outdir results
+nextflow run nf-core/rnaseq -r 3.27.0 -profile docker -params-file params.json --outdir results
 ```
 
 with `params.json` pointing `input` at the samplesheet and `fasta`/`gtf` at the reference URLs.
@@ -58,9 +58,7 @@ page, so duplicate it first if you want to keep them with the workflow.
    server, or the names of files uploaded to a **File Input** node.
 3. In the **Reference genome** node, set `fasta` and `gtf` to your organism's files (for example
    from Ensembl or GENCODE).
-4. In the **nf-core/rnaseq** node, untick **Use the pipeline's test profile**: it also sets
-   test-only parameters (a test Salmon index, BBSplit references, a Kraken database, ...).
-5. Raise **Maximum CPU Cores** and **Maximum Memory** in *Execution Settings → Resources*. A human
+4. Raise **Maximum CPU Cores** and **Maximum Memory** in *Execution Settings → Resources*. A human
    or mouse genome needs about 40 GB of memory for the STAR index.
 
 ### Running it outside N-WAVE

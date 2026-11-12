@@ -1,5 +1,6 @@
-// Built-in example: nf-core/rnaseq 3.27.0 as a Pipeline node, preset to the
-// pipeline's own small test data, with notes on the canvas that explain it.
+// Built-in example: nf-core/rnaseq 3.27.0 as a Pipeline node, fed the
+// pipeline's own small test data by its input nodes (not its test profile, so
+// the data's way into the pipeline shows), with notes on the canvas.
 //
 // The backend serves the same workflow from
 // backend/src/workflows/library/assets/rnaseq_pipeline_example.json; a unit
@@ -51,7 +52,7 @@ const rnaseqExampleNodes = [
     [
       "This workflow runs the complete nf-core/rnaseq 3.27.0 pipeline: read QC, trimming, alignment with STAR, quantification with Salmon, and a MultiQC report.",
       "",
-      "It is preset to the pipeline's small test data (yeast reads, downloaded on the fly), so it runs as it is. Duplicate it to change anything.",
+      "It runs on the pipeline's small test data (yeast reads, downloaded on the fly): the Samplesheet and Reference genome nodes on the left hold it and feed it into the pipeline. Duplicate it to change anything.",
     ].join("\n"),
   ),
   {
@@ -110,7 +111,7 @@ const rnaseqExampleNodes = [
       subtitle: "nf-core/rnaseq 3.27.0",
       pipelineName: "rnaseq",
       pipelineVersion: "3.27.0",
-      pipelineTestProfile: true,
+      pipelineTestProfile: false,
       pipelineValues: {},
       inputs: [port("input"), port("fasta"), port("gtf")],
       outputs: [],
@@ -141,7 +142,7 @@ const rnaseqExampleNodes = [
     { x: 480, y: 440 },
     "Pipeline settings",
     [
-      "Double-click the pipeline to see all its parameters. 'Use the pipeline's test profile' is on: it fills in the test data's other settings. Turn it off when you use your own samples and genome.",
+      "Double-click the pipeline to see all its parameters. Its inputs come from the nodes on the left: the samplesheet (--input) and the reference genome (--fasta, --gtf). Replace their contents to run it on your own samples and genome.",
       "",
       "The default aligner is STAR with Salmon quantification (--aligner star_salmon).",
     ].join("\n"),

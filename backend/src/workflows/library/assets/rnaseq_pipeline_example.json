@@ -13,7 +13,7 @@
       "data": {
         "label": "Start here: nf-core/rnaseq example",
         "icon": "StickyNote",
-        "noteText": "This workflow runs the complete nf-core/rnaseq 3.27.0 pipeline: read QC, trimming, alignment with STAR, quantification with Salmon, and a MultiQC report.\n\nIt is preset to the pipeline's small test data (yeast reads, downloaded on the fly), so it runs as it is. Duplicate it to change anything.",
+        "noteText": "This workflow runs the complete nf-core/rnaseq 3.27.0 pipeline: read QC, trimming, alignment with STAR, quantification with Salmon, and a MultiQC report.\n\nIt runs on the pipeline's small test data (yeast reads, downloaded on the fly): the Samplesheet and Reference genome nodes on the left hold it and feed it into the pipeline. Duplicate it to change anything.",
         "inputs": [],
         "outputs": []
       }
@@ -97,7 +97,7 @@
         "subtitle": "nf-core/rnaseq 3.27.0",
         "pipelineName": "rnaseq",
         "pipelineVersion": "3.27.0",
-        "pipelineTestProfile": true,
+        "pipelineTestProfile": false,
         "pipelineValues": {},
         "inputs": [
           {
@@ -159,7 +159,7 @@
       "data": {
         "label": "Pipeline settings",
         "icon": "StickyNote",
-        "noteText": "Double-click the pipeline to see all its parameters. 'Use the pipeline's test profile' is on: it fills in the test data's other settings. Turn it off when you use your own samples and genome.\n\nThe default aligner is STAR with Salmon quantification (--aligner star_salmon).",
+        "noteText": "Double-click the pipeline to see all its parameters. Its inputs come from the nodes on the left: the samplesheet (--input) and the reference genome (--fasta, --gtf). Replace their contents to run it on your own samples and genome.\n\nThe default aligner is STAR with Salmon quantification (--aligner star_salmon).",
         "inputs": [],
         "outputs": []
       }

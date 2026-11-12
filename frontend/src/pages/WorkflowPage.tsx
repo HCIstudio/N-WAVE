@@ -142,13 +142,14 @@ const WorkflowPageContent: React.FC = () => {
   // A fresh copy of an example says so once it's open.
   const location = useLocation();
   const navigate = useNavigate();
-  const copied = location.state as CopiedFromState | null;
+  // A notice the page that opened this one left for it (a new page per workflow).
+  const copied = location.state as (CopiedFromState & { notice?: string }) | null;
   useEffect(() => {
-    if (!copied?.copiedFrom) return;
-    showToast(
-      `You're editing “${copied.copyName}”, your own copy. The example “${copied.copiedFrom}” is unchanged.`,
-      "success",
-    );
+    const notice = copied?.copiedFrom
+      ? `You're editing “${copied.copyName}”, your own copy. The example “${copied.copiedFrom}” is unchanged.`
+      : copied?.notice;
+    if (!notice) return;
+    showToast(notice, "success");
     navigate(location.pathname, { replace: true, state: null });
   }, [copied, showToast, navigate, location.pathname]);
   const run = useWorkflowRun({
@@ -268,8 +269,10 @@ const WorkflowPageContent: React.FC = () => {
         const response = await api.post("/workflows", draft);
         logActivity("workflow.copiedSubworkflow", { subworkflow: id, workflowId: response.data._id, nodes: draft.nodes.length });
         setNestedNodeId(null);
-        navigate(`/workflow/${response.data._id}`);
-        showToast(`“${draft.name}” is a new workflow with the subworkflow's steps. The original is unchanged.`, "success");
+        // The new workflow's page shows it (this page closes).
+        navigate(`/workflow/${response.data._id}`, {
+          state: { notice: `“${draft.name}” is a new workflow with the subworkflow's steps. The original is unchanged.` },
+        });
       } catch (caught) {
         showToast(getApiErrorMessage(caught, "The subworkflow couldn't be copied."), "error");
       }
@@ -381,7 +384,8 @@ const WorkflowPageContent: React.FC = () => {
       analysis: analysis.current ? { problems: analysis.problems.length } : null,
       view: canvasView.view,
       nested: nestedNodeId,
-      runProfile: runSettings.runProfile ?? null,
+      // The workflow's own choice ("" is this computer; unset, Global Settings' default).
+      runProfile: executionSettings.runProfile || null,
     });
   }, [
     nodes,
@@ -397,7 +401,7 @@ const WorkflowPageContent: React.FC = () => {
     analysis.current,
     analysis.problems.length,
     nestedNodeId,
-    runSettings.runProfile,
+    executionSettings.runProfile,
   ]);
   useEffect(() => () => publishCourseStage(null), []);
 
@@ -913,12 +917,19 @@ const WorkflowPageContent: React.FC = () => {
   );
 };
 
-const WorkflowPage: React.FC = () => (
-  <ReactFlowProvider>
-    <WorkflowProvider>
-      <WorkflowPageContent />
-    </WorkflowProvider>
-  </ReactFlowProvider>
-);
+/**
+ * A page per workflow: opening another one (the next course, a copied
+ * subworkflow) starts afresh, without the last one's run, log or panels.
+ */
+const WorkflowPage: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  return (
+    <ReactFlowProvider key={id}>
+      <WorkflowProvider>
+        <WorkflowPageContent />
+      </WorkflowProvider>
+    </ReactFlowProvider>
+  );
+};
 
 export default WorkflowPage;

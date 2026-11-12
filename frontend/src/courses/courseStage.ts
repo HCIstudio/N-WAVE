@@ -35,7 +35,7 @@ export interface CourseStage {
   view: CanvasView;
   /** The node whose steps are shown (nested view), if any. */
   nested: string | null;
-  /** The run profile the workflow runs through, if any. */
+  /** The run profile the workflow itself chose in Execution Settings (not this computer, not the default). */
   runProfile: string | null;
 }
 

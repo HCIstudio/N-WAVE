@@ -136,7 +136,7 @@ describe("/api/workflows", () => {
     expect(pipeline.data).toMatchObject({
       pipelineName: "rnaseq",
       pipelineVersion: "3.27.0",
-      pipelineTestProfile: true,
+      pipelineTestProfile: false,
     });
     expect(response.body.edges).toHaveLength(3);
     await request(app)
