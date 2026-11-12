@@ -4,6 +4,7 @@ import { NODE_KIND_ORDER, NODE_KINDS, type NodeKind } from "../../../workflows/n
 /** A node kind's mark, drawn as in the workflow previews. */
 export const NodeKindSwatch: React.FC<{ kind: NodeKind }> = ({ kind }) => {
   const { color, shape } = NODE_KINDS[kind];
+  const filled = shape === "pill" || shape === "solid";
   return (
     <svg viewBox="0 0 16 10" className="h-2.5 w-4 shrink-0" aria-hidden="true">
       <rect
@@ -11,10 +12,11 @@ export const NodeKindSwatch: React.FC<{ kind: NodeKind }> = ({ kind }) => {
         y={1}
         width={14}
         height={8}
-        rx={shape === "pill" ? 4 : 1.5}
-        fill={shape === "outline" ? "none" : color}
+        rx={shape === "pill" || shape === "pill-outline" ? 4 : 1.5}
+        fill={filled ? color : "none"}
         stroke={color}
-        strokeWidth={shape === "outline" ? 1.5 : 0}
+        strokeWidth={filled ? 0 : 1.5}
+        strokeDasharray={shape === "dashed" ? "2.5 1.5" : undefined}
       />
     </svg>
   );

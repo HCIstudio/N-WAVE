@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CircleHelp,
   BookOpen,
+  GraduationCap,
   Copy,
   Pencil,
   Plus,
@@ -50,12 +51,7 @@ import {
   UNTITLED_WORKFLOW,
 } from "../utils/workflowName";
 import HomeTutorial, { HOME_TUTORIAL_STEPS } from "./home/HomeTutorial";
-import {
-  restartTutorial,
-  setTutorialStep,
-  tutorialDone,
-  tutorialStep,
-} from "../components/tutorial/tutorialState";
+import { courseStep, introDone, setActiveCourse } from "../courses/courseState";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 
@@ -147,22 +143,21 @@ const HomePage: React.FC = () => {
   // which starts from one), and New Workflow starts empty.
   const templatesOn = useFeature("templates");
   const glossaryOn = useFeature("glossary");
-  // The tutorial's home page tour: on the first visit, and when retaken.
-  const [homeTutorialStep, setHomeTutorialStep] = useState<number | null>(() =>
-    tutorialDone() ? null : (tutorialStep("home") ?? (tutorialStep("canvas") === null ? 0 : null)),
-  );
-  const retakeTutorial = () => {
-    restartTutorial();
-    setHomeTutorialStep(0);
-  };
-  /** The tour's last step: the user's own copy of Demo 1, where the tutorial goes on. */
+  // The basics course's home page tour (pages/home/HomeTutorial.tsx): offered
+  // on the first visit, and started from the courses.
+  const [homeTutorialStep, setHomeTutorialStep] = useState<number | null>(() => {
+    const running = courseStep("home");
+    if (running) return running.course === "basics" ? running.step : null;
+    return introDone() || courseStep("canvas") ? null : 0;
+  });
+  /** The tour's last step: the user's own copy of Demo 1, where the course goes on. */
   const duplicateDemoForTutorial = async () => {
-    setTutorialStep("canvas", 0);
+    setActiveCourse({ course: "basics", part: "canvas", step: 0 });
     try {
       const response = await api.post(`/workflows/${DEMO_WORKFLOW_ID}/duplicate`);
       navigate(`/workflow/${response.data._id}`);
     } catch (err) {
-      setTutorialStep("home", HOME_TUTORIAL_STEPS.length - 1);
+      setActiveCourse({ course: "basics", part: "home", step: HOME_TUTORIAL_STEPS.length - 1 });
       reportActionError("Failed to duplicate the demo.", err);
     }
   };
@@ -639,15 +634,10 @@ const HomePage: React.FC = () => {
               <NodeKindLegend className="mt-2" />
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              {!isHomeTutorialActive && templatesOn && (
-                <button
-                  type="button"
-                  onClick={retakeTutorial}
-                  className={HEADER_BUTTON}
-                >
-                  Retake Tutorial
-                </button>
-              )}
+              <Link to="/courses" className={HEADER_BUTTON}>
+                <GraduationCap size={16} aria-hidden />
+                <span>Courses</span>
+              </Link>
               <a
                 href="https://github.com/HCIstudio/N-WAVE/wiki"
                 target="_blank"

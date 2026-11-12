@@ -34,10 +34,10 @@ const FLOATING_CLASS = "ring-1 ring-sky-400/60 shadow-[0_12px_40px_rgba(0,0,0,0.
 /** Marks what a step points at (index.css): outlined while the step shows. */
 const TARGET_CLASS = "tutorial-target";
 
-/** Small "Tutorial" label at the top of a tutorial box. */
+/** Small label at the top of a tutorial box: the course it is part of. */
 export const TutorialBadge: React.FC = () => (
   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
-    Tutorial
+    Course · N-WAVE basics
   </p>
 );
 

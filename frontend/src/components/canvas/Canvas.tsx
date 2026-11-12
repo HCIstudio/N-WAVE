@@ -135,6 +135,7 @@ const Canvas: FC<CanvasProps> = ({
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         connectionMode={ConnectionMode.Loose}
+        deleteKeyCode={["Backspace", "Delete"]}
         className="bg-background"
         proOptions={{ hideAttribution: true }}
       >

@@ -100,7 +100,7 @@ describe("GraphView", () => {
     const { view } = show({ analysis: null, structureCurrent: false });
     await act(async () => {});
     expect(view.analyse).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("status").textContent).toContain("BioFlow-Insight is reading the workflow's code");
+    expect(screen.getByText("BioFlow-Insight is reading the workflow's code")).toBeTruthy();
   });
 
   it("is greyed out in the demo, saying a full install is needed", () => {

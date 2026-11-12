@@ -22,7 +22,7 @@ describe("minimapColor", () => {
   it("colors nodes by kind as in the legend, notes apart", () => {
     expect(minimapColor(step, {}, false)).toBe(NODE_KINDS.nfcore.color);
     expect(minimapColor(input, {}, false)).toBe(NODE_KINDS.input.color);
-    expect(minimapColor({ id: "n", type: "note", data: {} }, {}, false)).not.toBe(NODE_KINDS.step.color);
+    expect(minimapColor({ id: "n", type: "note", data: {} }, {}, false)).not.toBe(NODE_KINDS.operator.color);
   });
 
   it("colors steps by what the run did while there is one", () => {

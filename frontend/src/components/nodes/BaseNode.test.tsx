@@ -16,7 +16,7 @@ const show = (data: Partial<NodeData>, extra: Partial<NodeProps<Node<NodeData>>>
 describe("BaseNode", () => {
   it("says what kind of node it is on its top strip", () => {
     const { container } = show({});
-    expect(container.querySelector('[data-kind="step"]')?.textContent).toBe("Step");
+    expect(container.querySelector('[data-kind="custom"]')?.textContent).toBe("Custom step");
   });
 
   it("marks a step that ran without errors with a label, not a green border", () => {
@@ -24,6 +24,16 @@ describe("BaseNode", () => {
     expect(screen.getByRole("status", { name: "Last run: succeeded" }).textContent).toBe("Done");
     const card = container.firstElementChild as HTMLElement;
     expect(card.className).not.toMatch(/border-green|bg-green/);
+  });
+
+  it("marks a running step with a yellow label, not a yellow border or dot", () => {
+    const { container } = show({ status: "running" } as Partial<NodeData>);
+    const label = screen.getByRole("status", { name: "Last run: running" });
+    expect(label.textContent).toBe("Running");
+    expect(label.className).toContain("bg-yellow-100");
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.className).not.toMatch(/yellow|animate-pulse/);
+    expect(container.querySelector('[title="Running"]')).toBeNull();
   });
 
   it("is outlined in blue when selected", () => {

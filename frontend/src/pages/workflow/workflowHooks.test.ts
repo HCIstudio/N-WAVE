@@ -12,9 +12,6 @@ vi.mock("../../api/runs", () => ({
 
 const { useNodePanels } = await import("./useNodePanels");
 const { RUN_TASKS_POLL_MS, useRunTasks } = await import("./useRunTasks");
-const { tutorialSteps, useWorkflowTutorial } = await import(
-  "./useWorkflowTutorial"
-);
 const { scriptDownload } = await import("./workflowExport");
 
 describe("useNodePanels", () => {
@@ -69,55 +66,6 @@ describe("useRunTasks", () => {
     });
     expect(listRunTasks).toHaveBeenCalledTimes(4);
     unmount();
-  });
-});
-
-describe("useWorkflowTutorial", () => {
-  beforeEach(() => {
-    sessionStorage.clear();
-    localStorage.clear();
-  });
-
-  it("isn't shown unless the home page tour handed over to the canvas", () => {
-    const hook = renderHook(() => useWorkflowTutorial());
-    expect(hook.result.current.stepIndex).toBeNull();
-    hook.unmount();
-  });
-
-  it("resumes where the user was and steps through", () => {
-    sessionStorage.setItem("nwave.demoTutorial.active", "canvas");
-    sessionStorage.setItem("nwave.demoTutorial.step", "2");
-    const hook = renderHook(() => useWorkflowTutorial());
-    expect(hook.result.current.stepIndex).toBe(2);
-    act(() => void hook.result.current.forward());
-    expect(hook.result.current.stepIndex).toBe(3);
-    expect(sessionStorage.getItem("nwave.demoTutorial.step")).toBe("3");
-    act(() => void hook.result.current.back());
-    expect(hook.result.current.stepIndex).toBe(2);
-    hook.unmount();
-  });
-
-  it("moves on when a node is added at the add-node step", () => {
-    sessionStorage.setItem("nwave.demoTutorial.active", "canvas");
-    sessionStorage.setItem("nwave.demoTutorial.step", "3");
-    const hook = renderHook(() => useWorkflowTutorial());
-    act(() => hook.result.current.onAddNode());
-    expect(hook.result.current.stepIndex).toBe(4);
-    // At any other step, adding a node doesn't move it.
-    act(() => hook.result.current.onAddNode());
-    expect(hook.result.current.stepIndex).toBe(4);
-    hook.unmount();
-  });
-
-  it("is done after its last step, and keeps the user's copy", () => {
-    sessionStorage.setItem("nwave.demoTutorial.active", "canvas");
-    sessionStorage.setItem("nwave.demoTutorial.step", String(tutorialSteps.length - 1));
-    const hook = renderHook(() => useWorkflowTutorial());
-    act(() => void hook.result.current.forward());
-    expect(hook.result.current.stepIndex).toBeNull();
-    expect(localStorage.getItem("nwave.demoTutorial.completed")).toBe("tour-v4");
-    expect(sessionStorage.getItem("nwave.demoTutorial.active")).toBeNull();
-    hook.unmount();
   });
 });
 

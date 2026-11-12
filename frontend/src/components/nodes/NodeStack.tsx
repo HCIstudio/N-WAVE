@@ -11,7 +11,8 @@ export const STACK_BORDER: Record<StackTone, string> = {
   selected: "border-blue-500",
   error: "border-red-500",
   warning: "border-yellow-500",
-  running: "border-yellow-400",
+  // Running and done show on the node's label, not its border.
+  running: "border-gray-500",
   // A run that went well shows on the node's label, not its border.
   success: "border-gray-500",
   cached: "border-sky-500",
@@ -23,7 +24,7 @@ const BACKGROUND: Record<StackTone, string> = {
   selected: "bg-gray-100",
   error: "bg-red-50",
   warning: "bg-yellow-50",
-  running: "bg-yellow-50",
+  running: "bg-gray-100",
   success: "bg-gray-100",
   cached: "bg-sky-50",
 };

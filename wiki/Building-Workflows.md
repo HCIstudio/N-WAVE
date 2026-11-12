@@ -29,16 +29,18 @@ bottom bar saves at once).
 - **Delete** a node with its panel's delete button, the **Delete** key, or by dragging it onto
   the bin in the bottom-right corner. Hover a connection and click **×** to remove it.
 
-Node colors show their kind: **inputs** light blue, **nf-core steps** green, **other steps**
-grey (the legend is on the home page and on the Help page, which the canvas's **?** button
-opens).
+The strip on top of each node says its kind, in its color: **Input** (light blue, where data
+enters), **nf-core** (green, tested nf-core tools), **Custom step** (violet, processes written
+by hand), **Operator** (grey, Filter, Map, Merge and channel code: they reshape the data
+between steps and run no tool) and **Output** (yellow, where results come out). The legend
+is on the home page and on the Help page, which the canvas's **?** button opens.
 
 ## Finding your way on a large canvas
 
 - **Fit view** (the first button at the bottom left) zooms to fit the whole workflow; the
   buttons next to it zoom in and out.
 - **Minimap**: a small map of the whole canvas sits at the bottom left, above the zoom
-  buttons, colored like the legend (inputs, nf-core steps, other steps). During and after a run
+  buttons, colored like the legend. During and after a run
   it colors the steps by what they did: running, done, failed, reused from the cache, or not run
   yet. Drag the map or click it to move the canvas. It can be switched off for everyone in
   [Global Settings → Features](https://github.com/HCIstudio/N-WAVE/wiki/Settings#features).

@@ -123,3 +123,39 @@
   outline-offset: 4px;
   border-radius: 6px;
 }
+
+/* The stage an analysis is at (AnalysisProgress): a light sweeping across it. */
+.analysis-progress-current {
+  background-image: linear-gradient(90deg, transparent 0%, rgba(13, 192, 157, 0.9) 50%, transparent 100%);
+  background-size: 50% 100%;
+  background-repeat: no-repeat;
+  animation: analysis-progress-sweep 1.4s ease-in-out infinite;
+}
+@keyframes analysis-progress-sweep {
+  from {
+    background-position: -50% 0;
+  }
+  to {
+    background-position: 150% 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .analysis-progress-current {
+    animation: none;
+    background-image: none;
+  }
+}
+/* A course step's target pulses gently, so it is found at a glance. */
+.tutorial-target {
+  animation: tutorial-target-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tutorial-target-pulse {
+  50% {
+    outline-color: rgba(56, 189, 248, 0.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-target {
+    animation: none;
+  }
+}
