@@ -69,18 +69,21 @@ const WorkflowPreview: React.FC<{
         if (!b || !kind) return null;
         const { color, shape } = NODE_KINDS[kind];
         const stroke = Math.max(6, width / 120);
+        const filled = shape === "pill" || shape === "solid";
+        const inset = filled ? 0 : stroke / 2;
         return (
           <rect
             key={node.id}
             data-kind={kind}
-            x={b.x + (shape === "outline" ? stroke / 2 : 0)}
-            y={b.y + (shape === "outline" ? stroke / 2 : 0)}
-            width={b.width - (shape === "outline" ? stroke : 0)}
-            height={b.height - (shape === "outline" ? stroke : 0)}
-            rx={shape === "pill" ? b.height / 2 : 12}
-            fill={shape === "outline" ? "none" : color}
+            x={b.x + inset}
+            y={b.y + inset}
+            width={b.width - 2 * inset}
+            height={b.height - 2 * inset}
+            rx={shape === "pill" || shape === "pill-outline" ? b.height / 2 : 12}
+            fill={filled ? color : "none"}
             stroke={color}
-            strokeWidth={shape === "outline" ? stroke : 0}
+            strokeWidth={filled ? 0 : stroke}
+            strokeDasharray={shape === "dashed" ? `${stroke * 2} ${stroke * 1.2}` : undefined}
           />
         );
       })}

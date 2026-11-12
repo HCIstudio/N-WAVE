@@ -9,9 +9,11 @@ describe("nodeKindOf", () => {
     ["process", "nfcore_fastqc", "nfcore"],
     ["process", "nfcore_subworkflow_bam_stats", "nfcore"],
     ["pipeline", undefined, "nfcore"],
-    ["process", "custom_tool", "step"],
-    ["operator", undefined, "step"],
-    ["outputDisplay", undefined, "step"],
+    ["process", "custom_tool", "custom"],
+    ["operator", undefined, "operator"],
+    ["filter", undefined, "operator"],
+    ["channelOperator", undefined, "operator"],
+    ["outputDisplay", undefined, "output"],
   ])("puts a %s node (%s) among %s", (type, processType, kind) => {
     expect(nodeKindOf({ type, data: { processType } })).toBe(kind);
   });
@@ -25,7 +27,7 @@ describe("NODE_KINDS", () => {
   it("tells every kind apart by its shape as well as its color", () => {
     const shapes = NODE_KIND_ORDER.map((kind) => NODE_KINDS[kind].shape);
     const colors = NODE_KIND_ORDER.map((kind) => NODE_KINDS[kind].color);
-    expect(new Set(shapes).size).toBe(3);
-    expect(new Set(colors).size).toBe(3);
+    expect(new Set(shapes).size).toBe(NODE_KIND_ORDER.length);
+    expect(new Set(colors).size).toBe(NODE_KIND_ORDER.length);
   });
 });

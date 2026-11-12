@@ -276,11 +276,8 @@ const BaseNode = ({
           <div
             data-kind={kind}
             title={NODE_KINDS[kind].label}
-            className={clsx(
-              "flex h-4 items-center justify-center text-[9px] font-semibold uppercase leading-none tracking-wider",
-              kind === "nfcore" ? "text-white" : "text-gray-800",
-            )}
-            style={{ backgroundColor: NODE_KINDS[kind].color }}
+            className="flex h-4 items-center justify-center text-[9px] font-semibold uppercase leading-none tracking-wider"
+            style={{ backgroundColor: NODE_KINDS[kind].color, color: NODE_KINDS[kind].text }}
           >
             {NODE_KINDS[kind].short}
           </div>

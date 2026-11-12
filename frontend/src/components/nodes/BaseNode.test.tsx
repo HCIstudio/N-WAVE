@@ -16,7 +16,7 @@ const show = (data: Partial<NodeData>, extra: Partial<NodeProps<Node<NodeData>>>
 describe("BaseNode", () => {
   it("says what kind of node it is on its top strip", () => {
     const { container } = show({});
-    expect(container.querySelector('[data-kind="step"]')?.textContent).toBe("Step");
+    expect(container.querySelector('[data-kind="custom"]')?.textContent).toBe("Custom step");
   });
 
   it("marks a step that ran without errors with a label, not a green border", () => {
