@@ -91,7 +91,7 @@ test.describe("courses", () => {
   test("the courses page: the basics in the browser, then the advanced ones with an installation", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("region", { name: "Tutorial" }).getByRole("button", { name: "Not now" }).click();
-    await page.getByRole("link", { name: "Courses" }).click();
+    await page.getByRole("link", { name: "Courses", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Courses", level: 1 })).toBeVisible();
     await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(3);
     await expect(page.getByRole("region", { name: "Install N-WAVE" })).toContainText("How to install N-WAVE");
