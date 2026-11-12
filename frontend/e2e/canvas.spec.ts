@@ -203,6 +203,8 @@ test.describe("canvas flow", () => {
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
     await expect(page.locator('[data-id="demo-file-input"] [data-kind="input"]')).toHaveCount(1);
     await expect(page.locator('[data-id="demo-output"] [data-kind="step"]')).toHaveCount(1);
+    // The strip says it in words too.
+    await expect(page.locator('[data-id="demo-file-input"] [data-kind="input"]')).toHaveText("Input");
     // The canvas explains them on the Help page, opened from its ? button.
     const [help] = await Promise.all([
       page.context().waitForEvent("page"),

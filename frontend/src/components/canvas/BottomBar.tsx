@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { ConfirmDialog } from "../common";
 import ExportDialog, { type ExportActions } from "./ExportDialog";
+import { useBarPlacement } from "./useBarPlacement";
 import ExecutionSettingsComponent from "../common/workflow/ExecutionSettings";
 import type { ExecutionSettings } from "../../types/execution";
 import { readStoredExecutionSettings, storeExecutionSettings } from "../../pages/workflow/executionSettings";
@@ -92,6 +93,8 @@ const BottomBar: React.FC<BottomBarProps> = ({
   const [exportOpen, setExportOpen] = useState(false);
   const navigate = useNavigate();
   const modalRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const placement = useBarPlacement(barRef);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
   // Focus the name field when it switches into edit mode.
@@ -346,8 +349,14 @@ const BottomBar: React.FC<BottomBarProps> = ({
       )}
 
       <div
-        className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-background text-text rounded-lg border border-accent flex items-center justify-between p-1 space-x-2 shadow-lg z-10"
+        ref={barRef}
+        // In the bottom row between the canvas controls and Runs, or one row up when it doesn't fit.
+        className={`absolute max-w-[calc(100vw-2rem)] bg-background text-text rounded-lg border border-accent flex items-center justify-between p-1 space-x-2 shadow-lg z-10 ${
+          placement.row === "bottom" ? "bottom-4 -translate-x-1/2" : "bottom-[4.25rem] right-4"
+        }`}
+        style={placement.row === "bottom" ? { left: placement.center || "50%" } : undefined}
         data-tutorial-bottom-bar
+        data-row={placement.row}
       >
         <Link
           to="/"

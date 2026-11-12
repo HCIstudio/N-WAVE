@@ -38,9 +38,12 @@ const DemoBanner = () => {
           .querySelector("[data-canvas-controls]")
           ?.getBoundingClientRect();
         if (controls) {
-          const bottomBar = document
-            .querySelector("[data-tutorial-bottom-bar]")
-            ?.getBoundingClientRect();
+          // The bar beside the controls; moved up a row, it leaves the row to the badge.
+          const bar = document.querySelector("[data-tutorial-bottom-bar]");
+          const bottomBar =
+            bar?.getAttribute("data-row") === "above"
+              ? document.querySelector('section[aria-label="Runs"]')?.getBoundingClientRect()
+              : bar?.getBoundingClientRect();
           setBesideControls(controls.right + GAP);
           setBottomOffset(window.innerHeight - controls.bottom);
           setMaxWidth(

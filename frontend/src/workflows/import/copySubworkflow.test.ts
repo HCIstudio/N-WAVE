@@ -64,7 +64,7 @@ describe("copying an nf-core subworkflow into a workflow", () => {
     expect(join?.data.channelOperatorCode).toContain(".join(");
     expect(into(sort, "BAM_STATS_SAMTOOLS")).toEqual(["Fasta fai.ch_fasta_fai -> ch_fasta_fai", `${join?.data.label}.ch_bam_bai -> ch_bam_bai`]);
     // A module's tuple input takes the files port by port.
-    expect(into(sort, "SAMTOOLS_SORT")).toEqual(["Bam.out -> bam", "Parameters.fai -> fai", "Parameters.fasta -> fasta"]);
+    expect(into(sort, "SAMTOOLS_SORT")).toEqual(["Bam.ch_files_out -> bam", "Parameters.fai -> fai", "Parameters.fasta -> fasta"]);
     expect(into(sort, "Stats output")).toEqual(["BAM_STATS_SAMTOOLS.stats -> in"]);
   });
 

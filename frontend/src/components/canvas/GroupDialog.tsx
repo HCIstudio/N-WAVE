@@ -1,5 +1,6 @@
-// Naming a group of steps (#221), new or renamed: the name its subworkflow
-// has in the code, checked as it is typed.
+// Naming a group of steps (#221), new or existing: the name its subworkflow
+// has in the code, checked as it is typed. An existing group can also be
+// ungrouped here.
 
 import type React from "react";
 import { useEffect, useId, useState } from "react";
@@ -8,7 +9,7 @@ import Modal from "../common/dialogs/Modal";
 
 interface GroupDialogProps {
   isOpen: boolean;
-  /** "Group" for new steps, "Rename" for a group. */
+  /** "group" for new steps, "rename" to edit a group. */
   mode: "group" | "rename";
   initialName: string;
   /** The steps it groups (labels). */
@@ -16,10 +17,21 @@ interface GroupDialogProps {
   /** Why the name (or the steps) can't be used, or null. */
   problemFor: (name: string) => string | null;
   onConfirm: (name: string) => void;
+  /** An existing group: its steps go back on their own. */
+  onUngroup?: () => void;
   onClose: () => void;
 }
 
-const GroupDialog: React.FC<GroupDialogProps> = ({ isOpen, mode, initialName, steps, problemFor, onConfirm, onClose }) => {
+const GroupDialog: React.FC<GroupDialogProps> = ({
+  isOpen,
+  mode,
+  initialName,
+  steps,
+  problemFor,
+  onConfirm,
+  onUngroup,
+  onClose,
+}) => {
   const inputId = useId();
   const [text, setText] = useState(initialName);
   // biome-ignore lint/correctness/useExhaustiveDependencies: a new dialog starts from its name.
@@ -33,9 +45,18 @@ const GroupDialog: React.FC<GroupDialogProps> = ({ isOpen, mode, initialName, st
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={mode === "group" ? "Group into a subworkflow" : "Rename the group"}
+      title={mode === "group" ? "Group into a subworkflow" : "Edit the group"}
       footer={
-        <div className="flex gap-2">
+        <div className="flex w-full gap-2">
+          {mode === "rename" && onUngroup && (
+            <button
+              type="button"
+              onClick={onUngroup}
+              className="mr-auto rounded border border-red-500/60 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400"
+            >
+              Ungroup
+            </button>
+          )}
           <button type="button" onClick={onClose} className="rounded border border-panel-border px-3 py-1.5 text-sm hover:bg-accent">
             Cancel
           </button>
@@ -45,7 +66,7 @@ const GroupDialog: React.FC<GroupDialogProps> = ({ isOpen, mode, initialName, st
             disabled={Boolean(problem)}
             className="rounded bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
           >
-            {mode === "group" ? "Group" : "Rename"}
+            {mode === "group" ? "Group" : "Save"}
           </button>
         </div>
       }
@@ -60,7 +81,7 @@ const GroupDialog: React.FC<GroupDialogProps> = ({ isOpen, mode, initialName, st
         <p>
           {mode === "group"
             ? "These steps become one subworkflow in the code: what they read from the other steps becomes its inputs (take:), what the other steps read from them its outputs (emit:). Each step keeps its node and settings."
-            : "The subworkflow's name in the code."}
+            : "Its steps become one subworkflow of this name in the code. Ungroup puts them back on their own; each keeps its node and settings."}
         </p>
         <ul className="list-disc pl-5 text-text-light">
           {steps.map((step) => (

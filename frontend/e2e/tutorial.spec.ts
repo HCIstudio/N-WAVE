@@ -1,44 +1,49 @@
 import { expect, test } from "@playwright/test";
 
 // A fresh browser: the tutorial hasn't been done yet.
-test.describe("home tutorial", () => {
-  test("points at the demo and can be skipped from its text", async ({ page }) => {
+test.describe("tutorial", () => {
+  test("tours the home page and can be skipped", async ({ page }) => {
     await page.goto("./");
     const box = page.getByRole("region", { name: "Tutorial" });
-    await expect(box).toContainText(
-      "Click on the highlighted demo to open it and start the tutorial, or skip the tutorial."
-    );
-    // No green scrim over the page any more.
-    await expect(page.locator(".fixed.inset-0")).toHaveCount(0);
+    await expect(box).toContainText("Welcome to N-WAVE");
+    await box.getByRole("button", { name: "Next" }).click();
+    await expect(box).toContainText("built-in demos");
 
-    await box.getByRole("button", { name: "skip the tutorial" }).click();
+    await box.getByRole("button", { name: "Skip tutorial" }).click();
     await expect(box).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Retake Tutorial" })).toBeVisible();
   });
 
-  test("opening the demo starts the tutorial on the canvas", async ({ page }) => {
+  test("goes on in the user's own copy of Demo 1, where they can try things", async ({ page }) => {
     await page.goto("./");
-    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
-    await expect(page.getByRole("region", { name: "Tutorial" })).toBeVisible();
-  });
-
-  test("the add-node step asks before copying the demo", async ({ page }) => {
-    await page.goto("./");
-    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
     const box = page.getByRole("region", { name: "Tutorial" });
-    const next = box.getByRole("button", { name: "Next tutorial step" });
-    for (let step = 0; step < 4; step++) await next.click();
-    await expect(box).toContainText("you'll be asked to make your own copy");
+    const next = box.getByRole("button", { name: "Next" });
+    for (let step = 1; step < 8; step++) await next.click();
+    await box.getByRole("button", { name: "Duplicate Demo 1" }).click();
 
-    const dialog = page.getByRole("dialog", { name: "Make your own copy to edit" });
-    await next.click();
-    await dialog.getByRole("button", { name: "Just look" }).click();
-    await expect(page).toHaveURL(/builtin:demo-basic/);
-    await expect(box).toContainText("expand the workflow");
-
-    await next.click();
-    await dialog.getByRole("button", { name: "Make a copy" }).click();
+    // An editable copy, not the read-only demo.
+    await expect(page).toHaveURL(/\/workflow\//);
     await expect(page).not.toHaveURL(/builtin:demo-basic/);
-    await expect(box).toContainText("double-click it");
+    await expect(box).toContainText("your copy");
+    await next.click();
+    await expect(box).toContainText("double-click Map");
+    await next.click();
+    await next.click();
+    await expect(box).toContainText("Add a node");
+
+    // Adding a node moves on.
+    await page.getByRole("button", { name: "Add node" }).click();
+    await page.getByPlaceholder(/Search/).first().fill("Filter");
+    await page.getByRole("button", { name: /^Filter/ }).first().click();
+    await expect(box).toContainText("bottom bar");
+    await next.click();
+    await next.click();
+    await box.getByRole("button", { name: "Finish" }).click();
+    await expect(box).toHaveCount(0);
+
+    // Done: not shown again.
+    await page.goto("./");
+    await expect(page.getByRole("button", { name: "Retake Tutorial" })).toBeVisible();
+    await expect(box).toHaveCount(0);
   });
 });

@@ -5,8 +5,9 @@ You need N-WAVE open: the [browser demo](https://hcistudio.github.io/N-WAVE/) to
 your [own installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation) to also run it.
 Have any small text file at hand (a `.txt` file of a few lines is enough).
 
-> Prefer to be shown around first? Open **Demo 1 - Text basics** on the home page: its
-> tutorial walks through the same parts in seven steps.
+> Prefer to be shown around first? The tutorial starts on your first visit (or with
+> **Retake Tutorial** on the home page): a tour of the home page, then your own copy of
+> **Demo 1 - Text basics**, where it shows the canvas and lets you try things.
 
 ## 1. Start a workflow (1 minute)
 

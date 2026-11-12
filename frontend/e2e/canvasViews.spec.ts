@@ -30,9 +30,10 @@ test.describe("canvas views", () => {
     // The process graph: the channel code is hidden, TRIM reaches ALIGN through it.
     const view = page.getByRole("group", { name: "Canvas view" });
     await view.getByRole("button", { name: "Process graph" }).click();
-    await expect(
-      page.getByRole("status").filter({ hasText: "Process graph" }),
-    ).toBeVisible();
+    // A blueprint, with a title block that says what it shows.
+    const titleBlock = page.getByRole("region", { name: "Process graph view" });
+    await expect(titleBlock).toContainText("channel code between them is hidden");
+    await expect(page.locator('[data-view-style="blueprint"]')).toBeVisible();
     const channelCode = page
       .locator(".react-flow__node")
       .filter({ hasText: "Channel code" });
@@ -41,7 +42,7 @@ test.describe("canvas views", () => {
       page.locator(".react-flow__node:visible").filter({ hasText: "TRIM" }),
     ).toBeVisible();
     await expect(page.locator('[data-derived="through"]')).toHaveCount(1);
-    await expect(page.getByRole("note", { name: "Read-only view" })).toContainText("Process graph");
+    await expect(titleBlock).toContainText("Read-only view");
     await expect(view.getByRole("button", { name: "Process graph" })).toHaveAttribute(
       "aria-pressed",
       "true",

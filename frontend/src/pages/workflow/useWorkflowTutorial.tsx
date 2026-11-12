@@ -1,25 +1,19 @@
-// The demo tutorial on the canvas: its steps, where the user is in it
-// (kept in session storage across the copy a read-only demo needs, which
-// the user is asked for like any other), and the callout.
+// The tutorial's second part, on the canvas of the user's own copy of
+// Demo 1 (the home page tour makes it): the parts of a workflow, and things
+// to try on a canvas that can be changed and run. Its step is kept for the
+// tab (components/tutorial/tutorialState.ts).
 
 import type React from "react";
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router";
-import api from "../../api";
 import TutorialCallout from "../../components/tutorial/TutorialCallout";
-import type { CopyOptions } from "./useWorkflowDocument";
-
-const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
-const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
-const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
-const TUTORIAL_COPY_ID_KEY = "nwave.demoTutorial.copyId";
-const TUTORIAL_VERSION = "custom-nodes-v3";
+import { completeTutorial, setTutorialStep, tutorialStep } from "../../components/tutorial/tutorialState";
 
 export const tutorialSteps = [
   {
     text: (
       <>
-        <strong>Input nodes</strong> hold files to process in the workflow.
+        This is <strong>your copy</strong> of Demo 1: change anything, the demo stays as it is.{" "}
+        <strong>Input nodes</strong> bring data in; this File Input holds a sample text file.
       </>
     ),
     targetSelector: '.react-flow__node[data-id="demo-file-input"]',
@@ -28,8 +22,8 @@ export const tutorialSteps = [
   {
     text: (
       <>
-        <strong>Processing nodes</strong> take one or more inputs to alter and
-        output the results.
+        <strong>Steps</strong> process what they get. Try it: double-click <strong>Map</strong> and
+        change its case to lowercase. The nodes after it show the result straight away.
       </>
     ),
     targetSelector: '.react-flow__node[data-id="demo-map-uppercase"]',
@@ -38,9 +32,8 @@ export const tutorialSteps = [
   {
     text: (
       <>
-        <strong>Display nodes</strong> display the input they receive for better
-        monitoring. All data going into a Display node will be written as
-        workflow result files.
+        <strong>Display Output</strong> shows what reaches it. In a run, everything that goes into it is
+        saved as the workflow's results.
       </>
     ),
     targetSelector: '.react-flow__node[data-id="demo-output"]',
@@ -49,19 +42,8 @@ export const tutorialSteps = [
   {
     text: (
       <>
-        Here you can <strong>rename</strong>, <strong>run</strong>,{" "}
-        <strong>save</strong> or <strong>download</strong> your workflow.
-      </>
-    ),
-    targetSelector: "[data-tutorial-bottom-bar]",
-    placement: "above" as const,
-  },
-  {
-    text: (
-      <>
-        To <strong>expand the workflow</strong> click here to see a collection of
-        all available nodes. Feel free to select one. The example itself
-        stays as it is: you'll be asked to make your own copy to change.
+        <strong>Add a node</strong>: the + opens the library (nf-core tools, operators, your own
+        processes). Connect it by dragging from an output dot to an input dot.
       </>
     ),
     targetSelector: "[data-tutorial-add-node]",
@@ -70,135 +52,61 @@ export const tutorialSteps = [
   {
     text: (
       <>
-        To <strong>edit</strong> or <strong>delete</strong> a node or view its
-        current configuration, simply double-click it.
+        The <strong>bottom bar</strong>: rename the workflow, switch between the editor and the process
+        graph, check it, <strong>run</strong> it, <strong>export</strong> it as code or a diagram, and
+        save it.
       </>
     ),
-    targetSelector: '.react-flow__node[data-id="demo-map-uppercase"]',
+    targetSelector: "[data-tutorial-bottom-bar]",
     placement: "above" as const,
   },
   {
-    text: "That covers the basics of N-Wave. Feel free to explore the application. If you have further questions click the home button on the bottom to return to the main page. There you can always retake the tutorial or access our wiki for a more extensive explanation on workflow and node functionality.",
+    text: (
+      <>
+        Zoom, undo and redo, the keyboard shortcuts, and <strong>Help</strong>, where every term is
+        explained.
+      </>
+    ),
+    targetSelector: "[data-canvas-controls]",
+    placement: "above" as const,
+  },
+  {
+    text: "That's the basics. This copy is yours to try things in; you'll find it under Your workflows. Retake the tutorial from the home page at any time, and see the wiki for more.",
     placement: "center" as const,
   },
 ];
 
-/** The step that asks the user to add a node. */
-const ADD_NODE_STEP = 4;
+/** The step that asks the user to add a node: adding one moves on. */
+const ADD_NODE_STEP = 3;
 
-const markCompleted = () => {
-  sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
-  sessionStorage.removeItem(TUTORIAL_STEP_KEY);
-  localStorage.setItem(TUTORIAL_COMPLETED_KEY, TUTORIAL_VERSION);
-};
+export const useWorkflowTutorial = () => {
+  const [stepIndex, setStepIndex] = useState(() => {
+    const step = tutorialStep("canvas");
+    return step === null ? null : Math.min(step, tutorialSteps.length - 1);
+  });
 
-const storedStep = (): number | null => {
-  if (sessionStorage.getItem(TUTORIAL_ACTIVE_KEY) !== "true") return null;
-  const step = Number(sessionStorage.getItem(TUTORIAL_STEP_KEY) ?? "0");
-  return Number.isFinite(step)
-    ? Math.min(Math.max(step, 0), tutorialSteps.length - 1)
-    : 0;
-};
-
-interface Options {
-  workflowId: string | undefined;
-  readOnly: boolean;
-  requestCopy: (options?: CopyOptions) => Promise<boolean>;
-  showError: (message: string) => void;
-}
-
-export const useWorkflowTutorial = ({
-  workflowId,
-  readOnly,
-  requestCopy,
-  showError,
-}: Options) => {
-  const navigate = useNavigate();
-  const [stepIndex, setStepIndex] = useState(storedStep);
-
-  const setStep = useCallback((step: number | null) => {
-    if (step === null) {
-      markCompleted();
+  const go = useCallback((step: number | null) => {
+    if (step === null || step >= tutorialSteps.length) {
+      completeTutorial();
       setStepIndex(null);
       return;
     }
-    sessionStorage.setItem(TUTORIAL_ACTIVE_KEY, "true");
-    sessionStorage.setItem(TUTORIAL_STEP_KEY, String(step));
+    setTutorialStep("canvas", step);
     setStepIndex(step);
   }, []);
 
-  /** Copy the read-only demo, remembering the copy to remove it at the end. */
-  const duplicateForTutorial = useCallback(
-    () =>
-      requestCopy({
-        onCopied: (copyId) =>
-          sessionStorage.setItem(TUTORIAL_COPY_ID_KEY, copyId),
-      }),
-    [requestCopy],
-  );
-
-  /**
-   * Adding a node completes the add-node step. In a read-only demo the
-   * node can't be added: the tutorial continues in an editable copy, if
-   * the user wants one. Returns whether the tutorial took over (the caller
-   * adds nothing).
-   */
+  /** Adding a node completes the add-node step (the node is added as usual). */
   const onAddNode = useCallback(() => {
-    if (stepIndex !== ADD_NODE_STEP) return false;
-    setStep(ADD_NODE_STEP + 1);
-    if (!readOnly) return false;
-    void duplicateForTutorial().then((duplicated) => {
-      if (!duplicated) setStep(ADD_NODE_STEP);
-    });
-    return true;
-  }, [stepIndex, readOnly, setStep, duplicateForTutorial]);
+    if (stepIndex === ADD_NODE_STEP) go(ADD_NODE_STEP + 1);
+  }, [stepIndex, go]);
 
-  const back = useCallback(() => {
-    setStepIndex((current) => {
-      if (current === null) return current;
-      const previous = Math.max(current - 1, 0);
-      sessionStorage.setItem(TUTORIAL_STEP_KEY, String(previous));
-      return previous;
-    });
-  }, []);
-
-  const forward = useCallback(() => {
-    if (stepIndex === ADD_NODE_STEP && readOnly) {
-      setStep(ADD_NODE_STEP + 1);
-      void duplicateForTutorial().then((duplicated) => {
-        if (!duplicated) setStep(ADD_NODE_STEP);
-      });
-      return;
-    }
-    setStepIndex((current) => {
-      if (current === null) return current;
-      if (current >= tutorialSteps.length - 1) {
-        markCompleted();
-        return null;
-      }
-      const next = current + 1;
-      sessionStorage.setItem(TUTORIAL_STEP_KEY, String(next));
-      return next;
-    });
-  }, [stepIndex, readOnly, setStep, duplicateForTutorial]);
-
-  /** End the tutorial and remove the copy it made. */
-  const finish = useCallback(async () => {
-    const copyId = sessionStorage.getItem(TUTORIAL_COPY_ID_KEY);
-    markCompleted();
-    sessionStorage.removeItem(TUTORIAL_COPY_ID_KEY);
-    setStepIndex(null);
-    if (!copyId) return;
-    try {
-      await api.delete(`/workflows/${copyId}`);
-      if (workflowId === copyId) navigate("/");
-    } catch (error) {
-      showError("Failed to remove tutorial workflow copy.");
-      console.error(error);
-    }
-  }, [navigate, workflowId, showError]);
-
-  return { stepIndex, onAddNode, back, forward, finish };
+  return {
+    stepIndex,
+    onAddNode,
+    back: () => stepIndex !== null && go(Math.max(stepIndex - 1, 0)),
+    forward: () => stepIndex !== null && go(stepIndex + 1),
+    finish: () => go(null),
+  };
 };
 
 export const WorkflowTutorial: React.FC<{
@@ -213,14 +121,13 @@ export const WorkflowTutorial: React.FC<{
       text={step.text}
       targetSelector={"targetSelector" in step ? step.targetSelector : undefined}
       placement={step.placement}
+      progress={`${stepIndex + 1} of ${tutorialSteps.length}`}
       canGoBack={stepIndex > 0}
-      canGoForward={!isLast}
-      skipLabel={isLast ? "Finish Tutorial" : "Skip Tutorial"}
+      forwardLabel={isLast ? "Finish" : "Next"}
+      skipLabel={isLast ? "Close" : "Skip tutorial"}
       onBack={tutorial.back}
       onForward={tutorial.forward}
-      onSkip={() => {
-        void tutorial.finish();
-      }}
+      onSkip={tutorial.finish}
     />
   );
 };

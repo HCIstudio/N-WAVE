@@ -1,4 +1,5 @@
 import { Loader } from "lucide-react";
+import { moveGroupBoxes } from "../canvas/canvasViews";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -60,7 +61,8 @@ import { useWorkflowAnalysis } from "../analysis/useWorkflowAnalysis";
 import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
-import CanvasViewSwitch, { VIEW_LABELS } from "../components/canvas/CanvasViewSwitch";
+import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
+import { viewLook } from "../components/canvas/viewLooks";
 import GroupDialog from "../components/canvas/GroupDialog";
 import { GroupActionsContext } from "../components/canvas/GroupNodes";
 import { useGroups } from "./workflow/useGroups";
@@ -149,12 +151,7 @@ const WorkflowPageContent: React.FC = () => {
     );
     navigate(location.pathname, { replace: true, state: null });
   }, [copied, showToast, navigate, location.pathname]);
-  const tutorial = useWorkflowTutorial({
-    workflowId,
-    readOnly,
-    requestCopy,
-    showError,
-  });
+  const tutorial = useWorkflowTutorial();
   const run = useWorkflowRun({
     nodes,
     edges,
@@ -366,8 +363,8 @@ const WorkflowPageContent: React.FC = () => {
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
       if (blockedByRun()) return;
-      // The tutorial's add-node step may continue in a copy instead.
-      if (onAddNode()) return;
+      // The tutorial's add-node step moves on when a node is added.
+      onAddNode();
       if (readOnly) {
         void requestCopy();
         return;
@@ -521,13 +518,14 @@ const WorkflowPageContent: React.FC = () => {
               nodes={canvasNodes}
               edges={canvasView.edges}
               readOnly={canvasView.view !== "all"}
-              blueprint={canvasView.view === "all" ? undefined : VIEW_LABELS[canvasView.view]}
-              onNodesChange={guards.handleNodesChange}
+              view={viewLook(canvasView.view, () => canvasView.setView("all"))}
+              onNodesChange={(changes) => guards.handleNodesChange(moveGroupBoxes(changes, nodes))}
               onEdgesChange={guards.handleEdgesChange}
               onConnect={guards.handleConnect}
-              onNodeDragStart={deletion.onNodeDragStart}
-              onNodeDrag={deletion.onNodeDrag}
-              onNodeDragStop={deletion.onNodeDragStop}
+              // A group box isn't deleted by dropping it on the bin.
+              onNodeDragStart={(_, node) => node.type !== "groupBox" && deletion.onNodeDragStart()}
+              onNodeDrag={(event, node) => node.type !== "groupBox" && deletion.onNodeDrag(event, node)}
+              onNodeDragStop={(event, node) => node.type !== "groupBox" && deletion.onNodeDragStop(event, node)}
               onNodeDoubleClick={(_, node) => {
                 if (node.type === "groupBox") {
                   openGroup(String((node.data as { group?: unknown }).group));
@@ -562,21 +560,6 @@ const WorkflowPageContent: React.FC = () => {
               </button>
             </div>
           )}
-          {canvasView.view === "grouped" && (
-            <div
-              role="status"
-              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
-            >
-              Groups: each group of steps is one box. Open one to see and edit its steps.
-              <button
-                type="button"
-                onClick={() => canvasView.setView("all")}
-                className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
-              >
-                Back to the editor
-              </button>
-            </div>
-          )}
           {grouping.dialog && (
             <GroupDialog
               isOpen
@@ -585,24 +568,17 @@ const WorkflowPageContent: React.FC = () => {
               steps={grouping.dialogSteps}
               problemFor={grouping.problemFor}
               onConfirm={(name) => void grouping.confirm(name)}
+              onUngroup={
+                grouping.dialog.group
+                  ? () => {
+                      const group = grouping.dialog?.group;
+                      grouping.closeDialog();
+                      if (group) void grouping.ungroup(group);
+                    }
+                  : undefined
+              }
               onClose={grouping.closeDialog}
             />
-          )}
-          {canvasView.view === "steps" && (
-            <div
-              role="status"
-              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
-            >
-              Process graph: the processes and how data flows between them. Channel code is
-              hidden; dotted lines go through it. Read-only.
-              <button
-                type="button"
-                onClick={() => canvasView.setView("all")}
-                className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
-              >
-                Back to the editor
-              </button>
-            </div>
           )}
           <WorkflowTutorial tutorial={tutorial} />
           {nestedNode && nestedEntry && (

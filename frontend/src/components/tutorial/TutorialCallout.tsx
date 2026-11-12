@@ -1,8 +1,7 @@
 import type React from "react";
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
-type AnchorPlacement = "above" | "left" | "left-start" | "right" | "center";
+type AnchorPlacement = "above" | "below" | "left" | "left-start" | "right" | "center";
 
 interface TutorialCalloutProps {
   text: React.ReactNode;
@@ -11,6 +10,10 @@ interface TutorialCalloutProps {
   canGoBack?: boolean;
   canGoForward?: boolean;
   skipLabel?: string;
+  /** The main button's text: Next, or what the step does. */
+  forwardLabel?: string;
+  /** Where the user is, e.g. "3 of 8". */
+  progress?: string;
   onBack?: () => void;
   onForward?: () => void;
   onSkip?: () => void;
@@ -35,7 +38,9 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
   placement = "above",
   canGoBack = true,
   canGoForward = true,
-  skipLabel = "Skip Tutorial",
+  skipLabel = "Skip tutorial",
+  forwardLabel = "Next",
+  progress,
   onBack,
   onForward,
   onSkip,
@@ -61,6 +66,9 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
         return;
       }
 
+      // Out of view (further down the home page): scrolled to first.
+      const before = target.getBoundingClientRect();
+      if (before.bottom < 0 || before.top > window.innerHeight) target.scrollIntoView({ block: "center" });
       const rect = target.getBoundingClientRect();
       const viewportPadding = 16;
       const left =
@@ -70,7 +78,9 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
             ? rect.left - CALLOUT_WIDTH - 12
             : rect.left + rect.width / 2 - CALLOUT_WIDTH / 2;
       const top =
-        placement === "left-start"
+        placement === "below"
+          ? rect.bottom + 12
+          : placement === "left-start"
           ? rect.top
           : placement === "right" || placement === "left"
           ? rect.top + rect.height / 2
@@ -102,7 +112,7 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
       ? "translate(-50%, -50%)"
       : placement === "above"
         ? "translateY(-100%)"
-        : placement === "left-start"
+        : placement === "left-start" || placement === "below"
           ? "none"
         : "translateY(-50%)";
 
@@ -113,33 +123,27 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
       className={`fixed z-50 w-[320px] p-4 ${TUTORIAL_BOX_CLASS}`}
       style={{ top: position.top, left: position.left, transform }}
     >
-      <TutorialBadge />
+      <div className="flex items-baseline justify-between">
+        <TutorialBadge />
+        {progress && <span className="text-xs text-text-light">{progress}</span>}
+      </div>
       <p className="text-sm leading-5">{text}</p>
-      <div className="mt-3 flex items-center justify-between">
-        <button
-          type="button"
-          onClick={onBack}
-          disabled={!canGoBack}
-          className="rounded-md p-1.5 text-text hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
-          aria-label="Previous tutorial step"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <button
-          type="button"
-          onClick={onSkip}
-          className="rounded-md px-3 py-1.5 text-sm text-sky-300 hover:bg-accent"
-        >
+      <div className="mt-3 flex items-center gap-2">
+        {canGoBack && (
+          <button type="button" onClick={onBack} className="rounded-md px-2 py-1.5 text-sm text-text hover:bg-accent">
+            Back
+          </button>
+        )}
+        <button type="button" onClick={onSkip} className="rounded-md px-2 py-1.5 text-xs text-sky-300 hover:bg-accent">
           {skipLabel}
         </button>
         {canGoForward && (
           <button
             type="button"
             onClick={onForward}
-            className="rounded-md p-1.5 text-text hover:bg-accent"
-            aria-label="Next tutorial step"
+            className="ml-auto rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
           >
-            <ChevronRight size={18} />
+            {forwardLabel}
           </button>
         )}
       </div>

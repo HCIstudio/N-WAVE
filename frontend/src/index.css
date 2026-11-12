@@ -80,8 +80,8 @@
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
-/* Read-only canvas views (process graph, groups): a blueprint, so they can't be
-   mistaken for the editor. Light lines on deep blue paper, in either theme. */
+/* The process graph: a blueprint, so it can't be mistaken for the editor.
+   Light lines on deep blue paper, in either theme. */
 .canvas-blueprint .react-flow {
   background-color: #10345e;
 }
@@ -104,6 +104,15 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+.blueprint-help {
+  margin-top: 0.35rem;
+  max-width: 22rem;
+  font-family: inherit;
+  font-size: 0.7rem;
+  line-height: 1.35;
+  letter-spacing: normal;
+  text-transform: none;
+}
 .blueprint-title {
   font-size: 0.8rem;
   font-weight: 700;
@@ -111,4 +120,24 @@
 .blueprint-subtitle {
   font-size: 0.65rem;
   opacity: 0.8;
+}
+
+/* The Groups view: the editor's canvas on a blue-grey tint, so it is told
+   apart from the editor without looking like the read-only process graph. */
+.canvas-tinted .react-flow {
+  background-color: #1c2533;
+}
+.view-title-block {
+  display: flex;
+  flex-direction: column;
+  max-width: 24rem;
+  border: 1px solid rgba(125, 211, 252, 0.6);
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  color: #e5eef8;
+  background: rgba(28, 37, 51, 0.92);
+}
+.view-title-block .blueprint-title {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }

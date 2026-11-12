@@ -10,7 +10,7 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
-import { AlertTriangle, ArrowDownToDot, GitBranch, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowDownToDot, CheckCircle2, GitBranch, XCircle } from "lucide-react";
 import { useNodeConditions } from "../../execution/NodeConditionsContext";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
@@ -170,7 +170,8 @@ const BaseNode = ({
     "items-center",
     "justify-center",
     // The Step in bar takes the bottom of a stacked node: its content stays above it.
-    hasStepsInside ? "px-4 pt-4 pb-11" : "p-4",
+    // The top strip (what kind of node) takes the first 16px.
+    hasStepsInside ? "px-4 pt-6 pb-11" : "px-4 pt-6 pb-4",
     "relative",
     "transition-all",
     "duration-300", // Smoother transitions for status changes
@@ -208,7 +209,7 @@ const BaseNode = ({
       nodeClasses.push("shadow-lg", "shadow-yellow-500/50");
     }
   } else if (selected || data.isHighlight) {
-    nodeClasses.push("ring-2", "ring-nextflow-green", "border-transparent");
+    nodeClasses.push("ring-2", "ring-blue-500", "border-transparent");
   } else {
     nodeClasses.push("border-gray-600"); // Default border
   }
@@ -220,8 +221,6 @@ const BaseNode = ({
       "animate-pulse",
       "bg-yellow-50"
     );
-  } else if (status === "success") {
-    nodeClasses.push("border-green-500", "border-2", "bg-green-50");
   } else if (status === "error") {
     nodeClasses.push("border-red-500", "border-2", "bg-red-50");
   } else if (status === "waiting") {
@@ -259,20 +258,33 @@ const BaseNode = ({
   return (
     <div
       className={clsx(cardClasses, {
-        "shadow-lg shadow-nextflow-green/50": selected || data.isHighlight,
+        "shadow-lg shadow-blue-500/40": selected || data.isHighlight,
       })}
       style={{ minHeight: dynamicMinHeight, minWidth: dynamicMinWidth }}
     >
       {hasStepsInside && <NodeStack tone={stackTone} insideBorder />}
       {/* What kind of node this is, in the colors of the workflow previews. */}
+      {/* Clipped by a layer with the node's own shape, so its corners are the node's. */}
       {kind && (
         <div
           aria-hidden="true"
-          data-kind={kind}
-          title={NODE_KINDS[kind].label}
-          className="absolute inset-x-0 top-0 h-1.5 rounded-t-lg"
-          style={{ backgroundColor: NODE_KINDS[kind].color }}
-        />
+          className={clsx(
+            "pointer-events-none absolute overflow-hidden rounded-lg",
+            cardClasses.includes("border-2") ? "-inset-0.5" : "inset-0",
+          )}
+        >
+          <div
+            data-kind={kind}
+            title={NODE_KINDS[kind].label}
+            className={clsx(
+              "flex h-4 items-center justify-center text-[9px] font-semibold uppercase leading-none tracking-wider",
+              kind === "nfcore" ? "text-white" : "text-gray-800",
+            )}
+            style={{ backgroundColor: NODE_KINDS[kind].color }}
+          >
+            {NODE_KINDS[kind].short}
+          </div>
+        </div>
       )}
 
       {/* Input Handles */}
@@ -354,12 +366,6 @@ const BaseNode = ({
               title="Running"
             />
           )}
-          {status === "success" && (
-            <div
-              className="w-3 h-3 bg-green-500 rounded-full"
-              title="Completed"
-            />
-          )}
           {status === "error" && (
             <div className="w-3 h-3 bg-red-500 rounded-full" title="Failed" />
           )}
@@ -414,11 +420,13 @@ const BaseNode = ({
       )}
 
       {/* What the last run did here; double-click shows its results. */}
-      {run && (
+      {(run || status === "success") && (
         <output
-          aria-label={`Last run: ${run.status}`}
+          aria-label={`Last run: ${run?.status ?? "succeeded"}`}
           title={
-            run.status === "running"
+            !run
+              ? "This step ran without errors"
+              : run.status === "running"
               ? "This step is running"
               : ignoredErrors > 0
                 ? "Some tasks failed, but the pipeline is set to go on without them. Double-click to see which."
@@ -428,18 +436,24 @@ const BaseNode = ({
             "absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-sm",
             // Below the stack of a node with steps inside.
             hasStepsInside ? "-bottom-7" : "-bottom-3",
-            run.status === "running" &&
+            "inline-flex items-center gap-1",
+            run?.status === "running" &&
               "border-yellow-400 bg-yellow-100 text-yellow-900",
-            run.status === "succeeded" &&
+            (!run || run.status === "succeeded") &&
               ignoredErrors === 0 &&
-              "border-green-500 bg-green-100 text-green-900",
+              "border-nextflow-green bg-emerald-50 text-nextflow-green-dark",
             ignoredErrors > 0 && "border-amber-500 bg-amber-100 text-amber-900",
-            run.status === "cached" &&
+            run?.status === "cached" &&
               "border-sky-500 bg-sky-100 text-sky-900",
-            run.status === "failed" && "border-red-500 bg-red-100 text-red-900"
+            run?.status === "failed" && "border-red-500 bg-red-100 text-red-900"
           )}
         >
-          {run.status === "running"
+          {(!run || run.status === "succeeded") && ignoredErrors === 0 && (
+            <CheckCircle2 className="h-3 w-3" aria-hidden />
+          )}
+          {!run
+            ? "Done"
+            : run.status === "running"
             ? `Running${run.total > 1 ? ` ${run.done}/${run.total}` : ""}`
             : run.status === "failed"
               ? `Failed${run.total > 1 ? ` ${run.failed}/${run.total}` : ""}`
@@ -483,12 +497,16 @@ const BaseNode = ({
             type="source"
             position={Position.Right}
             id={port.name}
-            className="!w-3 !h-3 !-right-1.5 !bg-gray-400"
+            // A stack's cards reach 14px past the node's inner edge (its 2px
+            // border, then 12px). Its outputs touch the outer card's border
+            // from outside (the handle is centred on its offset), so they
+            // look attached without covering the cards.
+            className={clsx("!w-3 !h-3 !bg-gray-400", hasStepsInside ? "!-right-[19px]" : "!-right-1.5")}
             isConnectable={port.isConnectable ?? true}
             onMouseDown={onMouseDown}
           />
           {port.label && (
-            <div className={clsx(PORT_LABEL_CLASS, "left-3")}>
+            <div className={clsx(PORT_LABEL_CLASS, hasStepsInside ? "left-8" : "left-3")}>
               <div className="text-[10px] leading-tight text-gray-600">{port.label}</div>
               {(port.fileType || port.filePattern || portSummary({ type, data }, port.name, "outputs")) && (
                 <div className={PORT_DETAIL_CLASS}>

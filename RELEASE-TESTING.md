@@ -48,7 +48,9 @@ or has an issue that is explicitly moved to a later release.
 
 ## Home page, help and demo
 
-- [ ] The tutorial starts on the first visit, can be skipped, and doesn't come back after that.
+- [ ] The tutorial starts on the first visit with a tour of the home page (**Next**, **Back**,
+      **Skip tutorial**). Its last step duplicates Demo 1 and goes on on that copy's canvas
+      (changing Map, adding a node). Skipped or finished, it doesn't come back.
 - [ ] Each built-in demo opens read-only; duplicating it gives an editable copy.
 - [ ] Workflow cards show the last run and its result. Editing the name and description,
       duplicating and deleting work.
@@ -161,7 +163,8 @@ or has an issue that is explicitly moved to a later release.
       away, and the panel's **When it runs** says which condition holds.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
-      imports back grouped. The **Groups** view collapses and opens the groups.
+      imports back grouped. The **Groups** view shows each group as one box: moving a box moves its
+      steps, clicking a group's name renames or ungroups it, **Open** shows its steps.
 - [ ] **DAW model**: **Export** → **Download DAW model**, import the file, and get the same canvas (and the
       same file when exported again). A model written by hand with tasks that have no
       implementation opens as placeholders, and the workflow check lists them.

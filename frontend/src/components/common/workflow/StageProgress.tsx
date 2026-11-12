@@ -3,7 +3,7 @@ import clsx from "clsx";
 import { countStages, type RunStage, type StageStatus } from "../../../execution/runStages";
 
 const COLORS: Record<StageStatus, string> = {
-  succeeded: "bg-green-600",
+  succeeded: "bg-nextflow-green",
   cached: "bg-sky-500",
   running: "bg-yellow-400 animate-pulse motion-reduce:animate-none",
   failed: "bg-red-500",

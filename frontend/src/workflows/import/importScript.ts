@@ -20,6 +20,7 @@
 // Positions come from the `// N-WAVE layout:` line when there is one,
 // otherwise the steps are laid out left to right by dependency.
 
+import { FILE_INPUT_OUTPUT } from "../../utils/inputFiles";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import { generateOperatorCode } from "../../generators/core/templateEngine";
@@ -1083,7 +1084,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
         },
         param === "files" ? "File Input" : param,
       );
-      sources.set(variable, { nodeId: node.id, port: "out" });
+      sources.set(variable, { nodeId: node.id, port: FILE_INPUT_OUTPUT });
       return true;
     }
     const sheet = isNwaveSamplesheet(text) ? text.match(/^(ch_\w+) = channel\.fromPath\(params\.(\w+), checkIfExists: true\)\s*\.splitCsv\(/) : null;

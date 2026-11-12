@@ -20,7 +20,8 @@ test.describe("templates and glossary", () => {
     await expect(page.locator(".react-flow__edge")).toHaveCount(2);
 
     // The samplesheet's panel explains its terms.
-    await page.locator(".react-flow__node").filter({ hasText: "Samplesheet" }).first().dblclick();
+    // Its top: the minimap (bottom left) can cover the rest of it.
+    await page.locator(".react-flow__node-samplesheet").dblclick({ position: { x: 40, y: 30 } });
     const tuple = page.getByRole("button", { name: "About “Tuple”" });
     await tuple.hover();
     const card = page.getByRole("dialog", { name: "Tuple" });

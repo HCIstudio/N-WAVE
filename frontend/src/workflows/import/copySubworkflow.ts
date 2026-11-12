@@ -4,6 +4,7 @@
 // channel operators); its inputs (take:) become input nodes and its outputs
 // (emit:) Display Output nodes.
 
+import { FILE_INPUT_OUTPUT } from "../../utils/inputFiles";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import type { NfCoreSubworkflowCatalogEntry } from "../../registry/nfcore/subworkflow";
@@ -199,7 +200,7 @@ export const copySubworkflow = (
         ? newNode("samplesheet", id, { label: title(take.name), subtitle: "Upload a samplesheet" })
         : newNode("fileInput", id, { label: title(take.name), subtitle: "No files yet" }),
     );
-    replacements.set(take.name, { nodeId: id, ports: [kind === "samplesheet" ? "samples" : "out"] });
+    replacements.set(take.name, { nodeId: id, ports: [kind === "samplesheet" ? "samples" : FILE_INPUT_OUTPUT] });
     if (kind === "files" && filesOf(take).length > 1) {
       warnings.push(`${take.name} takes several files per item (${filesOf(take).join(", ")}); its File Input gives one.`);
     }

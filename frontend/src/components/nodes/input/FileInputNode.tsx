@@ -6,7 +6,7 @@ import BaseNode, { type FileObject, type NodeData } from "../BaseNode";
 import { detectFileType } from "../../common";
 import clsx from "clsx";
 import { readUploadedFile, UploadRefusedError } from "../../../utils/fileContent";
-import { isFileContentMissing } from "../../../utils/inputFiles";
+import { FILE_INPUT_OUTPUT, fileInputData, isFileContentMissing } from "../../../utils/inputFiles";
 
 
 const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
@@ -24,10 +24,7 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
   // Older workflows saved it as not connectable.
   useEffect(() => {
     if (data.outputs?.[0]?.isConnectable !== true) {
-      updateNodeData(id, {
-        ...data,
-        outputs: [{ name: "ch_files_out", isConnectable: true }],
-      });
+      updateNodeData(id, { ...data, outputs: [{ name: FILE_INPUT_OUTPUT, isConnectable: true }] });
     }
   }, [id, data, updateNodeData]);
 
@@ -65,17 +62,7 @@ const FileInputNode: React.FC<NodeProps<Node<NodeData>>> = (props) => {
             }
           }
 
-          updateNodeData(id, {
-            ...data,
-            files: updatedFiles,
-            label: `${updatedFiles.length} file${
-              updatedFiles.length > 1 ? "s" : ""
-            } selected`,
-            subtitle: `Total size: ${(
-              updatedFiles.reduce((acc, f) => acc + f.size, 0) / 1024
-            ).toFixed(2)} KB`,
-            outputs: [{ name: "ch_files_out", isConnectable: true }],
-          });
+          updateNodeData(id, { ...data, ...fileInputData(updatedFiles) });
         })
         .catch((error) => {
           console.error("[FileInputNode] Error loading files:", error);

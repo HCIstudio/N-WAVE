@@ -48,16 +48,15 @@ import {
   nameFromEditing,
   UNTITLED_WORKFLOW,
 } from "../utils/workflowName";
+import HomeTutorial, { HOME_TUTORIAL_STEPS } from "./home/HomeTutorial";
 import {
-  TUTORIAL_BOX_CLASS,
-  TutorialBadge,
-} from "../components/tutorial/TutorialCallout";
+  restartTutorial,
+  setTutorialStep,
+  tutorialDone,
+  tutorialStep,
+} from "../components/tutorial/tutorialState";
 
 const DEMO_WORKFLOW_ID = "builtin:demo-basic";
-const TUTORIAL_COMPLETED_KEY = "nwave.demoTutorial.completed";
-const TUTORIAL_ACTIVE_KEY = "nwave.demoTutorial.active";
-const TUTORIAL_STEP_KEY = "nwave.demoTutorial.step";
-const TUTORIAL_VERSION = "custom-nodes-v3";
 
 const HEADER_BUTTON = "inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors";
 const FOOTER_LINK = "underline-offset-2 hover:text-text hover:underline";
@@ -147,27 +146,24 @@ const HomePage: React.FC = () => {
   // which starts from one), and New Workflow starts empty.
   const templatesOn = useFeature("templates");
   const glossaryOn = useFeature("glossary");
-  const [isTutorialIntroVisible, setIsTutorialIntroVisible] = useState(() => {
-    return localStorage.getItem(TUTORIAL_COMPLETED_KEY) !== TUTORIAL_VERSION;
-  });
-
-  const skipTutorial = () => {
-    localStorage.setItem(TUTORIAL_COMPLETED_KEY, TUTORIAL_VERSION);
-    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
-    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
-    setIsTutorialIntroVisible(false);
-  };
-
-  const startTutorial = () => {
-    sessionStorage.setItem(TUTORIAL_ACTIVE_KEY, "true");
-    sessionStorage.setItem(TUTORIAL_STEP_KEY, "0");
-  };
-
+  // The tutorial's home page tour: on the first visit, and when retaken.
+  const [homeTutorialStep, setHomeTutorialStep] = useState<number | null>(() =>
+    tutorialDone() ? null : (tutorialStep("home") ?? (tutorialStep("canvas") === null ? 0 : null)),
+  );
   const retakeTutorial = () => {
-    localStorage.removeItem(TUTORIAL_COMPLETED_KEY);
-    sessionStorage.removeItem(TUTORIAL_ACTIVE_KEY);
-    sessionStorage.removeItem(TUTORIAL_STEP_KEY);
-    setIsTutorialIntroVisible(true);
+    restartTutorial();
+    setHomeTutorialStep(0);
+  };
+  /** The tour's last step: the user's own copy of Demo 1, where the tutorial goes on. */
+  const duplicateDemoForTutorial = async () => {
+    setTutorialStep("canvas", 0);
+    try {
+      const response = await api.post(`/workflows/${DEMO_WORKFLOW_ID}/duplicate`);
+      navigate(`/workflow/${response.data._id}`);
+    } catch (err) {
+      setTutorialStep("home", HOME_TUTORIAL_STEPS.length - 1);
+      reportActionError("Failed to duplicate the demo.", err);
+    }
   };
 
   const reportActionError = (message: string, err: unknown) => {
@@ -451,7 +447,7 @@ const HomePage: React.FC = () => {
   ];
 
   const hasDemoWorkflow = templatesOn && workflows.some((wf) => wf._id === DEMO_WORKFLOW_ID);
-  const isHomeTutorialActive = isTutorialIntroVisible && hasDemoWorkflow;
+  const isHomeTutorialActive = homeTutorialStep !== null && hasDemoWorkflow;
   const isBuiltinWorkflow = (wf: WorkflowDescriptor) =>
     wf._id === DEMO_WORKFLOW_ID || Boolean(wf.isBuiltin);
   const builtinWorkflows = templatesOn ? workflows.filter(isBuiltinWorkflow) : [];
@@ -471,7 +467,6 @@ const HomePage: React.FC = () => {
     const isReadOnly = wf.isReadOnly || wf.origin?.readOnly;
     const showDuplicate = Boolean(wf.origin?.canDuplicate);
     const isDemoWorkflow = wf._id === DEMO_WORKFLOW_ID;
-    const hideCardButtons = isHomeTutorialActive && isDemoWorkflow;
     // Built-in demos change with each release of N-WAVE.
     const changedAt =
       wf.updatedAt ?? (isBuiltinWorkflow(wf) ? buildInfo.buildDate : undefined);
@@ -480,9 +475,8 @@ const HomePage: React.FC = () => {
 
     const cardContent = (
       <>
-        {!hideCardButtons && (
-        // The buttons sit over the preview: they get a backdrop of their own
-        // whenever they show.
+        {/* The buttons sit over the preview: they get a backdrop of their own
+            whenever they show. */}
         <div
           className={`absolute top-4 right-2 z-10 flex items-center gap-1 rounded-md border border-transparent transition-colors group-hover:border-panel-border group-hover:bg-panel-background group-hover:shadow-sm ${
             isDuplicating
@@ -539,7 +533,6 @@ const HomePage: React.FC = () => {
             </button>
           )}
         </div>
-        )}
         {isEditing ? (
           <>
             <div className="pr-12">
@@ -623,13 +616,9 @@ const HomePage: React.FC = () => {
       <Link
         key={wf._id}
         to={`/workflow/${wf._id}`}
-        onClick={() => {
-          if (isDemoWorkflow && isHomeTutorialActive) {
-            startTutorial();
-          }
-        }}
+        data-tutorial={isDemoWorkflow ? "demo-1" : undefined}
         className={`group relative flex flex-col bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 ${
-          isDemoWorkflow && isHomeTutorialActive
+          isDemoWorkflow && homeTutorialStep === HOME_TUTORIAL_STEPS.length - 1
             ? "ring-2 ring-sky-400 ring-offset-2 ring-offset-background"
             : ""
         }`}
@@ -662,6 +651,7 @@ const HomePage: React.FC = () => {
                 href="https://github.com/HCIstudio/N-WAVE/wiki"
                 target="_blank"
                 rel="noreferrer"
+                data-tutorial="help"
                 className={HEADER_BUTTON}
               >
                 <BookOpen size={16} />
@@ -687,6 +677,7 @@ const HomePage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setIsImportModalOpen(true)}
+                data-tutorial="import"
                 className={HEADER_BUTTON}
               >
                 <Upload size={16} />
@@ -694,6 +685,7 @@ const HomePage: React.FC = () => {
               </button>
               <Link
                 to="/settings"
+                data-tutorial="settings"
                 className={HEADER_BUTTON}
               >
                 <Settings size={16} aria-hidden />
@@ -701,35 +693,19 @@ const HomePage: React.FC = () => {
               </Link>
             </div>
           </div>
-          {isHomeTutorialActive && (
-            <section
-              aria-label="Tutorial"
-              className={`mb-8 max-w-3xl p-4 text-sm ${TUTORIAL_BOX_CLASS}`}
-            >
-              <TutorialBadge />
-              <p>
-                Getting started: the first demo below explains the
-                fundamentals of N-WAVE.
-              </p>
-              <p className="mt-2 text-text-light">
-                Click on the highlighted demo to open it and start the
-                tutorial, or{" "}
-                <button
-                  type="button"
-                  onClick={skipTutorial}
-                  className="text-sky-300 underline underline-offset-2 hover:text-sky-200"
-                >
-                  skip the tutorial
-                </button>
-                .
-              </p>
-            </section>
+          {isHomeTutorialActive && homeTutorialStep !== null && (
+            <HomeTutorial
+              step={homeTutorialStep}
+              onStep={setHomeTutorialStep}
+              onDuplicateDemo={() => void duplicateDemoForTutorial()}
+            />
           )}
 
           {builtinWorkflows.length > 0 && (
             <section aria-labelledby={`${fieldId}-examples`} className="mb-10">
               <h2
                 id={`${fieldId}-examples`}
+                data-tutorial="demos"
                 className="text-xl font-semibold text-text"
               >
                 Built-in demos
@@ -747,7 +723,7 @@ const HomePage: React.FC = () => {
           )}
 
           <section aria-labelledby={`${fieldId}-own`}>
-            <h2 id={`${fieldId}-own`} className="text-xl font-semibold text-text">
+            <h2 id={`${fieldId}-own`} data-tutorial="own" className="text-xl font-semibold text-text">
               Your workflows
             </h2>
             {!hasUserWorkflows && (
@@ -763,6 +739,7 @@ const HomePage: React.FC = () => {
               <button
                 type="button"
                 onClick={startNewWorkflow}
+                data-tutorial="new-workflow"
                 disabled={pendingAction !== null}
                 className="flex min-h-[12rem] items-center justify-center p-6 bg-transparent border-2 border-dashed border-accent rounded-lg text-nextflow-green hover:bg-accent transition-colors disabled:cursor-wait disabled:opacity-70"
               >

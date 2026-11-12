@@ -9,9 +9,12 @@ test.describe("diagrams", () => {
     const exportButton = page.getByRole("button", { name: "Export", exact: true });
     const dialog = page.getByRole("dialog", { name: "Export workflow" });
 
-    // Before an analysis, only the canvas.
+    // Before an analysis, the canvas's views (the demo has no groups).
     await exportButton.click();
-    await expect(dialog.getByLabel("Of")).toHaveCount(0);
+    await expect(dialog.getByLabel("Of").locator("option")).toHaveText([
+      "Editor: the canvas as drawn",
+      "Process graph: the steps, channel code hidden",
+    ]);
     let download = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Download diagram as SVG" }).click();
     const svg = await download;
@@ -33,7 +36,7 @@ test.describe("diagrams", () => {
     await expect(analysis.getByText("Steps", { exact: true }).first()).toBeVisible();
     await page.keyboard.press("Escape");
     await exportButton.click();
-    await dialog.getByLabel("Of").selectOption({ label: "Analysis: steps and how data flows between them" });
+    await dialog.getByLabel("Of").selectOption({ label: "BioFlow-Insight analysis: steps and how data flows" });
     download = page.waitForEvent("download");
     await dialog.getByRole("button", { name: "Download diagram as Mermaid" }).click();
     const mermaid = await download;

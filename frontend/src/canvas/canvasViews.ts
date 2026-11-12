@@ -7,7 +7,7 @@
 //   - "Grouped": each group of steps (#221) as one box, connected to the
 //     rest; and in All, a frame around each group's steps.
 
-import { type Edge, type Node, Position } from "@xyflow/react";
+import { type Edge, type Node, type NodeChange, Position } from "@xyflow/react";
 import type { LineOwners } from "../analysis/scriptLines";
 import { groupsOf, groupTitle } from "../groups/groups";
 import { maskSource, topLevelItems } from "../workflows/import/nextflowSource";
@@ -276,7 +276,8 @@ export const groupedView = (nodes: Node[], edges: Edge[]): { nodes: Node[]; edge
       { type: "source" as const, position: Position.Right, x: GROUP_BOX_WIDTH - 4, y: groupBoxHeight(members.length) / 2 - 4, width: 8, height: 8 },
     ],
     selectable: false,
-    draggable: false,
+    // Moving it moves its steps (moveGroupBoxes); it is placed from theirs.
+    draggable: true,
     connectable: false,
     deletable: false,
     data: { group, title: groupTitle(group), steps: stepLabels(members) },
@@ -311,4 +312,27 @@ export const groupedView = (nodes: Node[], edges: Edge[]): { nodes: Node[]; edge
     nodes: [...nodes.map((node) => (boxOf.has(node.id) ? { ...node, hidden: true } : node)), ...boxes],
     edges: [...shown.values()],
   };
+};
+
+/**
+ * A group box (Grouped view) stands for its steps: moving it moves them by
+ * as much. Other changes pass as they are.
+ */
+export const moveGroupBoxes = (changes: NodeChange[], nodes: Node[]): NodeChange[] => {
+  const groups = groupsOf(nodes);
+  return changes.flatMap((change) => {
+    if (change.type !== "position" || !change.id.startsWith("group:") || !change.position) return [change];
+    const members = groups.get(change.id.slice("group:".length)) ?? [];
+    if (members.length === 0) return [];
+    const dx = change.position.x - Math.min(...members.map((member) => member.position.x));
+    const dy = change.position.y - Math.min(...members.map((member) => member.position.y));
+    return members.map(
+      (member): NodeChange => ({
+        type: "position",
+        id: member.id,
+        dragging: change.dragging,
+        position: { x: member.position.x + dx, y: member.position.y + dy },
+      }),
+    );
+  });
 };

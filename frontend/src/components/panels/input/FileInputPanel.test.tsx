@@ -200,7 +200,8 @@ describe("FileInputPanel", () => {
       files: [],
       label: "Select File(s)",
       subtitle: undefined,
-      outputs: [{ name: "ch_files_out", isConnectable: false }],
+      // Still connectable: a File Input is connected before or after its files are added.
+      outputs: [{ name: "ch_files_out", isConnectable: true }],
     });
     expect(screen.getByText("No files have been added.")).toBeTruthy();
   });

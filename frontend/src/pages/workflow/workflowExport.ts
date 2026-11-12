@@ -12,6 +12,7 @@ import type { ExecutionSettings } from "../../types/execution";
 import { usesImportedSource } from "./runRequest";
 import { logActivity } from "../../activity/activityLog";
 import { serializeDawModel, toDawModel } from "../../metamodel/toDawModel";
+import { groupedView, stepsOnlyView } from "../../canvas/canvasViews";
 import type { BioflowResult } from "../../analysis/bioflow";
 import { structureGraph } from "../../analysis/structure";
 import {
@@ -145,18 +146,32 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
   return fileName;
 };
 
-/** What a diagram shows: the canvas, or one of the analysis's graphs. */
-export type DiagramSource = "canvas" | "steps" | "channels";
+/**
+ * What a diagram shows: one of the canvas's views (as the view switch names
+ * them), or one of the graphs of BioFlow-Insight's analysis.
+ */
+export type DiagramSource = "canvas" | "process-graph" | "groups" | "steps" | "channels";
 
-/** The diagrams there are: the canvas, and with a current analysis its graphs. */
-export const diagramSources = (bioflow: BioflowResult | null): Array<{ id: DiagramSource; label: string }> => [
-  { id: "canvas", label: "The canvas, as drawn" },
-  ...(bioflow ? [{ id: "steps" as const, label: "Analysis: steps and how data flows between them" }] : []),
-  ...(bioflow?.specification ? [{ id: "channels" as const, label: "Analysis: steps, channel operations and channels" }] : []),
+/** The diagrams there are: the canvas's views, and with a current analysis its graphs. */
+export const diagramSources = (
+  bioflow: BioflowResult | null,
+  hasGroups = false,
+): Array<{ id: DiagramSource; label: string }> => [
+  { id: "canvas", label: "Editor: the canvas as drawn" },
+  { id: "process-graph", label: "Process graph: the steps, channel code hidden" },
+  ...(hasGroups ? [{ id: "groups" as const, label: "Groups: each group of steps as one box" }] : []),
+  ...(bioflow ? [{ id: "steps" as const, label: "BioFlow-Insight analysis: steps and how data flows" }] : []),
+  ...(bioflow?.specification
+    ? [{ id: "channels" as const, label: "BioFlow-Insight analysis: steps, channel operations and channels" }]
+    : []),
 ];
 
 const diagramOf = (source: WorkflowSource, which: DiagramSource, bioflow: BioflowResult | null): Diagram | null => {
   if (which === "canvas") return canvasDiagram(source.nodes, source.edges);
+  if (which === "process-graph" || which === "groups") {
+    const view = which === "groups" ? groupedView(source.nodes, source.edges) : stepsOnlyView(source.nodes, source.edges);
+    return canvasDiagram(view.nodes as Node<NodeData>[], view.edges);
+  }
   const graph = bioflow ? structureGraph(bioflow, which) : null;
   return graph ? laidOutDiagram(graph) : null;
 };

@@ -12,7 +12,8 @@ runs it and shows the results.
    with Docker to run workflows.
 2. **Build your first workflow** in 10 minutes:
    [First workflow](https://github.com/HCIstudio/N-WAVE/wiki/First-Workflow). Or open
-   **Demo 1** on the home page and follow its tutorial.
+   follow the tutorial: a tour of the home page, then your own copy of **Demo 1** to try
+   things in (**Retake Tutorial** on the home page starts it again).
 
 ## Guides
 

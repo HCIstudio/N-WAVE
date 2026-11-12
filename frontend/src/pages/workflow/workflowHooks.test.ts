@@ -9,16 +9,6 @@ const listRunTasks = vi.fn(async (_runId: string) => [] as unknown[]);
 vi.mock("../../api/runs", () => ({
   listRunTasks: (runId: string) => listRunTasks(runId),
 }));
-const apiDelete = vi.fn(async () => ({}));
-vi.mock("../../api", () => ({
-  default: { delete: (...args: unknown[]) => apiDelete(...(args as [])) },
-  isDemoMode: false,
-}));
-const navigate = vi.fn();
-vi.mock("react-router", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("react-router")>()),
-  useNavigate: () => navigate,
-}));
 
 const { useNodePanels } = await import("./useNodePanels");
 const { RUN_TASKS_POLL_MS, useRunTasks } = await import("./useRunTasks");
@@ -86,88 +76,48 @@ describe("useWorkflowTutorial", () => {
   beforeEach(() => {
     sessionStorage.clear();
     localStorage.clear();
-    vi.clearAllMocks();
   });
 
-  const start = (step: number, readOnly: boolean, accepts = true) => {
-    sessionStorage.setItem("nwave.demoTutorial.active", "true");
-    sessionStorage.setItem("nwave.demoTutorial.step", String(step));
-    const requestCopy = vi.fn(
-      async (options?: { onCopied?: (id: string) => void }) => {
-        if (!accepts) return false;
-        options?.onCopied?.("copy1");
-        return true;
-      },
-    );
-    const hook = renderHook(useWorkflowTutorial, {
-      initialProps: {
-        workflowId: "copy1",
-        readOnly,
-        requestCopy,
-        showError: vi.fn(),
-      },
-    });
-    return { ...hook, requestCopy };
-  };
+  it("isn't shown unless the home page tour handed over to the canvas", () => {
+    const hook = renderHook(() => useWorkflowTutorial());
+    expect(hook.result.current.stepIndex).toBeNull();
+    hook.unmount();
+  });
 
   it("resumes where the user was and steps through", () => {
-    const { result, unmount } = start(1, false);
-    expect(result.current.stepIndex).toBe(1);
-    act(() => result.current.forward());
-    expect(result.current.stepIndex).toBe(2);
-    expect(sessionStorage.getItem("nwave.demoTutorial.step")).toBe("2");
-    act(() => result.current.back());
-    expect(result.current.stepIndex).toBe(1);
-    unmount();
+    sessionStorage.setItem("nwave.demoTutorial.active", "canvas");
+    sessionStorage.setItem("nwave.demoTutorial.step", "2");
+    const hook = renderHook(() => useWorkflowTutorial());
+    expect(hook.result.current.stepIndex).toBe(2);
+    act(() => void hook.result.current.forward());
+    expect(hook.result.current.stepIndex).toBe(3);
+    expect(sessionStorage.getItem("nwave.demoTutorial.step")).toBe("3");
+    act(() => void hook.result.current.back());
+    expect(hook.result.current.stepIndex).toBe(2);
+    hook.unmount();
   });
 
-  it("continues the add-node step in a copy of a read-only demo", async () => {
-    const { result, requestCopy, unmount } = start(4, true);
-    let tookOver = false;
-    act(() => {
-      tookOver = result.current.onAddNode();
-    });
-    await flush();
-    expect(tookOver).toBe(true);
-    expect(result.current.stepIndex).toBe(5);
-    expect(requestCopy).toHaveBeenCalled();
-    expect(sessionStorage.getItem("nwave.demoTutorial.copyId")).toBe("copy1");
-    unmount();
+  it("moves on when a node is added at the add-node step", () => {
+    sessionStorage.setItem("nwave.demoTutorial.active", "canvas");
+    sessionStorage.setItem("nwave.demoTutorial.step", "3");
+    const hook = renderHook(() => useWorkflowTutorial());
+    act(() => hook.result.current.onAddNode());
+    expect(hook.result.current.stepIndex).toBe(4);
+    // At any other step, adding a node doesn't move it.
+    act(() => hook.result.current.onAddNode());
+    expect(hook.result.current.stepIndex).toBe(4);
+    hook.unmount();
   });
 
-  it("stays at the add-node step when the user just looks", async () => {
-    const { result, unmount } = start(4, true, false);
-    act(() => {
-      result.current.onAddNode();
-    });
-    await flush();
-    expect(result.current.stepIndex).toBe(4);
-    expect(sessionStorage.getItem("nwave.demoTutorial.copyId")).toBeNull();
-    unmount();
-  });
-
-  it("lets the node be added in an editable workflow", () => {
-    const { result, unmount } = start(4, false);
-    let tookOver = true;
-    act(() => {
-      tookOver = result.current.onAddNode();
-    });
-    expect(tookOver).toBe(false);
-    expect(result.current.stepIndex).toBe(5);
-    unmount();
-  });
-
-  it("finishes by removing its copy and leaving it", async () => {
-    sessionStorage.setItem("nwave.demoTutorial.copyId", "copy1");
-    const { result, unmount } = start(tutorialSteps.length - 1, false);
-    await act(async () => {
-      await result.current.finish();
-    });
-    expect(result.current.stepIndex).toBeNull();
-    expect(localStorage.getItem("nwave.demoTutorial.completed")).toBeTruthy();
-    expect(apiDelete).toHaveBeenCalledWith("/workflows/copy1");
-    expect(navigate).toHaveBeenCalledWith("/");
-    unmount();
+  it("is done after its last step, and keeps the user's copy", () => {
+    sessionStorage.setItem("nwave.demoTutorial.active", "canvas");
+    sessionStorage.setItem("nwave.demoTutorial.step", String(tutorialSteps.length - 1));
+    const hook = renderHook(() => useWorkflowTutorial());
+    act(() => void hook.result.current.forward());
+    expect(hook.result.current.stepIndex).toBeNull();
+    expect(localStorage.getItem("nwave.demoTutorial.completed")).toBe("tour-v4");
+    expect(sessionStorage.getItem("nwave.demoTutorial.active")).toBeNull();
+    hook.unmount();
   });
 });
 

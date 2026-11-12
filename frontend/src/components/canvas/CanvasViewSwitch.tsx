@@ -24,7 +24,7 @@ const VIEWS: Array<{ id: CanvasView; label: string; title: string }> = [
   {
     id: "grouped",
     label: VIEW_LABELS.grouped,
-    title: "Each group of steps as one box (read-only)",
+    title: "Each group of steps as one box: move, rename or ungroup groups",
   },
 ];
 
