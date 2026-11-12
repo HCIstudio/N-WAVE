@@ -96,10 +96,12 @@ const CourseCard: React.FC<{ course: CourseState }> = ({ course }) => {
           </span>
         </div>
         <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-accent" aria-hidden>
+          {/* The steps done; the last step is the course's end, so the bar is full there. */}
           <div
+            data-course-progress
             className="h-full bg-sky-400 transition-all"
             style={{
-              width: `${((index + (justDone ? 1 : 0)) / count) * 100}%`,
+              width: `${((last ? count : index + (justDone ? 1 : 0)) / count) * 100}%`,
             }}
           />
         </div>
