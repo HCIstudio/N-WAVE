@@ -157,8 +157,8 @@ const CoursesPage: React.FC = () => {
               <CourseCard
                 key={info.id}
                 info={info}
-                done={false}
-                starting={false}
+                done={Boolean(info.course && done.has(info.course))}
+                starting={starter.starting}
                 locked={info.course ? (isDemoMode ? "Needs a full install" : undefined) : "Coming soon"}
                 onStart={() => info.course && void starter.start(info.course)}
               />

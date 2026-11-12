@@ -81,6 +81,12 @@ or has an issue that is explicitly moved to a later release.
       pack), **Large workflows** (in a copy of Demo 3: Fit view, Step in, a group) and **N-WAVE
       for studies** (in Global Settings: a feature switch, verbose mode, a test, the ZIP). On a
       page other than the step's, the card says where to go.
+- [ ] The advanced courses on the installation, each from start to end: **Run a workflow**,
+      **When a run fails** (the run fails, its explanation, the fix, Resume with the first step
+      cached, clearing the cache), **Run an nf-core pipeline** (a full test run),
+      **Run limits and clusters** (a SLURM profile saved and in the exported project) and
+      **Read a workflow's structure** (Analyse, an error and its fix, both graph views, the
+      **if** badges, a group).
 
 ## Building a workflow
 

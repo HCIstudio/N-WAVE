@@ -6,15 +6,16 @@
 import type { Edge, Node } from "@xyflow/react";
 import type React from "react";
 import type { NodeData } from "../components/nodes/BaseNode";
+import type { CourseStage } from "./courseStage";
 import type { CourseId } from "./courseState";
 
 /**
  * What a task step can see: the canvas (while a workflow is open), the open
- * panels, what was clicked since the step began, and the page. A task may
- * also read N-WAVE's own state (feature switches, verbose mode): tasks are
- * checked again every moment.
+ * panels, the workflow's runs and analysis, what was clicked since the step
+ * began, and the page. A task may also read N-WAVE's own state (feature
+ * switches, verbose mode, run defaults): tasks are checked again every moment.
  */
-export interface CourseContext {
+export interface CourseContext extends Pick<CourseStage, "run" | "analysis" | "view" | "nested" | "runProfile"> {
   nodes: Node<NodeData>[];
   edges: Edge[];
   /** Nodes whose settings panel is open. */
@@ -128,52 +129,55 @@ export const COURSES: CourseInfo[] = [
     level: "basics",
     topics: ["Feature switches", "Verbose mode"],
   },
-  // Planned (#241): each names its issue; the Courses page shows them as coming soon.
   {
     id: "run",
+    course: "run",
     title: "Run a workflow",
     summary: "Run a workflow, follow it live, read its log and results, and find earlier runs.",
     minutes: 10,
     level: "advanced",
     topics: ["Running", "The run panel", "Results"],
-    issue: 246,
+    next: "failures",
   },
   {
     id: "failures",
+    course: "failures",
     title: "When a run fails",
     summary: "Read a failure explanation and its evidence, fix the step, and resume the run.",
     minutes: 10,
     level: "advanced",
     topics: ["Failure explanations", "Resume", "The run cache"],
-    issue: 247,
+    next: "pipeline",
   },
   {
     id: "pipeline",
+    course: "pipeline",
     title: "Run an nf-core pipeline",
     summary: "Run nf-core/rnaseq on its test data as one Pipeline node, then open its steps.",
     minutes: 15,
     level: "advanced",
     topics: ["Pipeline node", "Profiles", "Reports"],
-    issue: 248,
+    next: "clusters",
   },
   {
     id: "clusters",
+    course: "clusters",
     title: "Run limits and clusters",
     summary: "Set how much a run may use, and run on a cluster through a run profile.",
     minutes: 8,
     level: "advanced",
     topics: ["Run limits", "Run profiles"],
-    issue: 249,
+    next: "structure",
   },
   {
     id: "structure",
+    course: "structure",
     title: "Read a workflow's structure",
     summary:
       "Analyse a workflow's code, read its specification graph and process dependency graph, and see what a change affects.",
     minutes: 10,
     level: "advanced",
     topics: ["Analyse", "Specification graph", "Process dependency graph"],
-    issue: 250,
   },
 ];
 

@@ -38,9 +38,22 @@ links there.
     subworkflow, and grouping steps into a subworkflow of your own.
   - **N-WAVE for studies**: in Global Settings, switch a help feature off and on, turn on
     verbose mode, set a participant ID, mark a test and download the recording.
-- **Advanced**, with an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation):
-  running workflows, when a run fails, nf-core pipelines, run limits and clusters, and reading
-  a workflow's structure. They are on their way.
+- **Advanced**, with an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation)
+  (greyed out in the online demo):
+  - **Run a workflow**: in a copy of Demo 1, run it and follow it in the run panel (Steps, Log),
+    minimize and expand the panel, read a step's Results and Display Output, find the run in
+    History, cancel a run, and see the runs on the home page.
+  - **When a run fails**: a workflow imported for the course fails in a step. Read why (the
+    explanation and its evidence in the log), fix the step's code, resume (the finished step
+    comes from the cache), and clear the run cache.
+  - **Run an nf-core pipeline**: in a copy of Demo 2, nf-core/rnaseq as one Pipeline node: its
+    form and test profile, a run on the test data, its reports, and its steps inside.
+  - **Run limits and clusters**: a workflow's resources and the run limits in Global Settings,
+    a SLURM run profile, choosing it for the workflow, and the profile in the exported project.
+    No cluster is needed.
+  - **Read a workflow's structure**: in a workflow imported for the course, Analyse (and an
+    error it finds), the Specification and Dependencies views, the **if** badges of a
+    parameter's choice, and a suggested group.
 
 Every major feature gets a course: the plan is in
 [#241](https://github.com/HCIstudio/N-WAVE/issues/241), and each release from v1.7 on brings

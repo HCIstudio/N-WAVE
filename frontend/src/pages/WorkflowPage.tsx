@@ -308,17 +308,6 @@ const WorkflowPageContent: React.FC = () => {
     onShowShortcuts: () => setShowShortcuts(true),
   });
   const panels = useNodePanels();
-  // A course's tasks (CourseRunner, at the app level) watch the canvas.
-  useEffect(() => {
-    publishCourseStage({
-      nodes,
-      edges,
-      openPanels: panels.openIds,
-      editor: canvasView.view === "editor",
-      path: location.pathname,
-    });
-  }, [nodes, edges, panels.openIds, canvasView.view, location.pathname]);
-  useEffect(() => () => publishCourseStage(null), []);
   const deletion = useNodeDeletion({
     readOnly,
     requestCopy,
@@ -368,6 +357,49 @@ const WorkflowPageContent: React.FC = () => {
   const nestedNode = nestedNodeId ? nodes.find((node) => node.id === nestedNodeId) : undefined;
   const nestedEntry = nestedNode ? nestedEntryOf(nestedNode, getProcessNameForNode(nestedNode, nodes)) : null;
   const showFailedStep = failedNodeId ? () => showNode(failedNodeId) : undefined;
+
+  // A course's tasks (CourseRunner, at the app level) watch the page: the canvas,
+  // the open panels, the view, the runs and the analysis.
+  const runStepStates = useMemo(
+    () => Object.fromEntries(Object.entries(runTasks.nodeRuns).map(([id, nodeRun]) => [id, nodeRun.status])),
+    [runTasks.nodeRuns],
+  );
+  useEffect(() => {
+    publishCourseStage({
+      nodes,
+      edges,
+      openPanels: panels.openIds,
+      editor: canvasView.view === "editor",
+      path: location.pathname,
+      run: {
+        running: isRunning,
+        runId: run.lastRunId,
+        steps: runStepStates,
+        explained: failure !== null,
+        panelOpen: !run.panelMinimized,
+      },
+      analysis: analysis.current ? { problems: analysis.problems.length } : null,
+      view: canvasView.view,
+      nested: nestedNodeId,
+      runProfile: runSettings.runProfile ?? null,
+    });
+  }, [
+    nodes,
+    edges,
+    panels.openIds,
+    canvasView.view,
+    location.pathname,
+    isRunning,
+    run.lastRunId,
+    runStepStates,
+    failure,
+    run.panelMinimized,
+    analysis.current,
+    analysis.problems.length,
+    nestedNodeId,
+    runSettings.runProfile,
+  ]);
+  useEffect(() => () => publishCourseStage(null), []);
 
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {

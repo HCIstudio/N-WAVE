@@ -8,7 +8,7 @@ import { demoWorkflowSeed } from "../demo/demoWorkflow";
 import CoursesPage from "../pages/CoursesPage";
 import { resetFeatures } from "../settings/useFeatures";
 import CourseRunner from "./CourseRunner";
-import { publishCourseStage } from "./courseStage";
+import { NO_RUN, publishCourseStage } from "./courseStage";
 import { completedCourses, setActiveCourse } from "./courseState";
 import { COURSE_STEPS } from "./courseSteps";
 import type { CourseContext } from "./courses";
@@ -120,6 +120,11 @@ const ctx = (nodes: Array<Partial<Node<NodeData>>>, edges: Array<[string, string
   openPanels: [],
   clicked: new Set(),
   path: "/workflow/w1",
+  run: NO_RUN,
+  analysis: null,
+  view: "editor",
+  nested: null,
+  runProfile: null,
 });
 
 describe("the canvas course's tasks", () => {
@@ -178,7 +183,7 @@ describe("CoursesPage", () => {
     localStorage.clear();
   });
 
-  it("lists the basics, then the advanced courses to come, and starts the first on the home page", () => {
+  it("lists the basics, then the advanced courses, and starts the first on the home page", () => {
     localStorage.setItem("nwave.courses.completed", JSON.stringify(["home"]));
     render(
       <MemoryRouter>
@@ -196,9 +201,7 @@ describe("CoursesPage", () => {
         name: "Build with nf-core modules",
       }),
     ).toBeTruthy();
-    const advanced = screen.getByRole("region", { name: "Advanced" });
-    expect(within(advanced).getAllByText("Coming soon").length).toBeGreaterThan(0);
-    expect(within(advanced).queryByRole("button", { name: "Start" })).toBeNull();
+    expect(screen.getByRole("region", { name: "Advanced" })).toBeTruthy();
 
     fireEvent.click(within(first).getByRole("button", { name: "Take it again" }));
     expect(JSON.parse(sessionStorage.getItem("nwave.course.active") ?? "null")).toEqual({
