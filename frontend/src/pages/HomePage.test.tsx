@@ -40,7 +40,7 @@ const { default: HomePage } = await import("./HomePage");
 const { resetFeatures } = await import("../settings/useFeatures");
 const { recorded, startRecording, stopRecording } = await import("../activity/activityTesting");
 
-const TUTORIAL_DONE = ["nwave.demoTutorial.completed", "courses-v1"] as const;
+const TUTORIAL_DONE = ["nwave.demoTutorial.completed", "courses-v2"] as const;
 
 const daysAgo = (days: number) =>
   new Date(Date.now() - days * 86_400_000).toISOString();
@@ -652,7 +652,7 @@ describe("HomePage", () => {
       localStorage.clear();
     });
 
-    it("offers the basics course in the page, then tours it, with Next and Back, until it is left", async () => {
+    it("offers the first course in the page, then tours it, with Next and Back, until it is left", async () => {
       const { user } = await setup([demo]);
       const tutorial = () => screen.getByRole("region", { name: "Tutorial" });
       expect(tutorial().textContent).toContain("Welcome to N-WAVE");
@@ -661,12 +661,12 @@ describe("HomePage", () => {
       // In the page, not over it, until the course is started.
       expect(tutorial().className).not.toContain("fixed");
 
-      await user.click(within(tutorial()).getByRole("button", { name: "Start the basics course" }));
+      await user.click(within(tutorial()).getByRole("button", { name: "Start the first course" }));
       expect(tutorial().textContent).toContain("built-in demos");
-      expect(tutorial().textContent).toContain("2 of 8");
+      expect(tutorial().textContent).toContain("1 of 7");
       expect(tutorial().className).toContain("fixed");
       expect(JSON.parse(sessionStorage.getItem("nwave.course.active") ?? "null")).toEqual({
-        course: "basics",
+        course: "home",
         part: "home",
         step: 1,
       });
@@ -679,6 +679,7 @@ describe("HomePage", () => {
       expect(localStorage.getItem(TUTORIAL_DONE[0])).toBe(TUTORIAL_DONE[1]);
       expect(sessionStorage.getItem("nwave.course.active")).toBeNull();
       expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
+      // A card's buttons show without hovering it.
       expect(within(card("Basic demo")).getByRole("button", { name: "Duplicate" })).toBeTruthy();
     });
 
@@ -689,20 +690,28 @@ describe("HomePage", () => {
       expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
     });
 
-    it("ends the tour with the user's own copy of Demo 1, where the course goes on", async () => {
+    it("ends with the user making a workflow from Demo 1 themselves, which opens with the canvas course", async () => {
       post.mockResolvedValue({ data: { _id: "copy-1" } });
       const { user } = await setup([demo]);
       const tutorial = () => screen.getByRole("region", { name: "Tutorial" });
-      await user.click(within(tutorial()).getByRole("button", { name: "Start the basics course" }));
-      for (let step = 2; step < 8; step++) await user.click(within(tutorial()).getByRole("button", { name: "Next" }));
-      expect(tutorial().textContent).toContain("duplicate Demo 1");
-      await user.click(within(tutorial()).getByRole("button", { name: "Duplicate Demo 1" }));
+      await user.click(within(tutorial()).getByRole("button", { name: "Start the first course" }));
+      for (let step = 1; step < 6; step++) await user.click(within(tutorial()).getByRole("button", { name: "Next" }));
+      // A task: no Next, the user clicks New Workflow.
+      expect(tutorial().textContent).toContain("click New Workflow");
+      expect(within(tutorial()).queryByRole("button", { name: "Next" })).toBeNull();
+      await user.click(button("New Workflow"));
+      const dialog = screen.getByRole("dialog", { name: "Start a new workflow" });
+      expect(within(dialog).getByRole("status").textContent).toContain("Choose Demo 1 - Text basics");
+      const choice = within(dialog).getByRole("button", { name: "Basic demo" });
+      expect(choice.className).toContain("tutorial-target");
+      await user.click(choice);
       expect(post).toHaveBeenCalledWith("/workflows/builtin:demo-basic/duplicate");
       expect(JSON.parse(sessionStorage.getItem("nwave.course.active") ?? "null")).toEqual({
-        course: "basics",
+        course: "canvas",
         part: "canvas",
         step: 0,
       });
+      expect(JSON.parse(localStorage.getItem("nwave.courses.completed") ?? "[]")).toEqual(["home"]);
       expect(await screen.findByText("Opened copy-1")).toBeTruthy();
     });
 

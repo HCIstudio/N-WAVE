@@ -5,9 +5,10 @@ You need N-WAVE open: the [browser demo](https://hcistudio.github.io/N-WAVE/) to
 your [own installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation) to also run it.
 Have any small text file at hand (a `.txt` file of a few lines is enough).
 
-> Prefer to be shown around first? Take the **N-WAVE basics** course (offered on your first
-> visit, and under **Courses** on the home page): a tour of the home page, then your own copy of
-> **Demo 1 - Text basics**, where you change, remove, add and connect nodes yourself. See
+> Prefer to be shown around first? Take the courses **The home page** and **The canvas**
+> (offered on your first visit, and under **Courses** on the home page): a tour of the home
+> page, then your own copy of **Demo 1 - Text basics**, where you change, remove, add and
+> connect nodes yourself. See
 > [Courses](https://github.com/HCIstudio/N-WAVE/wiki/Home#courses).
 
 ## 1. Start a workflow (1 minute)

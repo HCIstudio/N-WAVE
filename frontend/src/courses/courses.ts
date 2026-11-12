@@ -43,14 +43,25 @@ export interface CourseInfo {
 
 export const COURSES: CourseInfo[] = [
   {
-    id: "basics",
-    course: "basics",
-    title: "N-WAVE basics",
+    id: "home",
+    course: "home",
+    title: "The home page",
     summary:
-      "A tour of the home page, then your own copy of Demo 1: change a step, remove a node, add it back and connect it.",
+      "What is where: the demos, your workflows, importing, help and settings. Ends with a workflow of your own, made from Demo 1.",
+    minutes: 3,
+    level: "basics",
+    topics: ["Demos", "Your workflows", "New Workflow", "Help and settings"],
+    next: "canvas",
+  },
+  {
+    id: "canvas",
+    course: "canvas",
+    title: "The canvas",
+    summary:
+      "In your own copy of Demo 1: open a node's settings and change it, remove a node, add it back from the + menu and connect it.",
     minutes: 5,
     level: "basics",
-    topics: ["The home page", "Nodes and their settings", "Adding and connecting nodes", "The bottom bar"],
+    topics: ["Nodes and their settings", "Adding and connecting nodes", "The bottom bar"],
     next: "nfcore-modules",
   },
   {

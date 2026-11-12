@@ -20,15 +20,19 @@ runs it and shows the results.
 something or asks you to do it (open a panel, add a node, connect it), and goes on once you
 have. A card at the top left of the canvas says what to do; what it is about is outlined.
 
-- **Basics**, in the browser (the online demo too): **N-WAVE basics** (the home page, then
-  nodes, their settings, adding and connecting them in your own copy of Demo 1) and **Build
-  with nf-core modules** (a Samplesheet, FastQC and MultiQC from the nf-core Library,
-  connected and exported).
+- **Basics**, in the browser (the online demo too):
+  - **The home page**: what is where. It ends with you making a workflow of your own (**New
+    Workflow**, then Demo 1), which opens with the next course.
+  - **The canvas**: in your copy of Demo 1, open a node's settings and change it, remove a
+    node, add it back from the + menu and connect it. Started from **Courses**, it makes the
+    copy itself.
+  - **Build with nf-core modules**: a Samplesheet, FastQC and MultiQC from the nf-core
+    Library, connected and exported.
 - **Advanced**, with an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation):
   running workflows, reading their structure, nf-core pipelines and your own code. They are
   on their way.
 
-On your first visit, the home page offers the basics course. A course can be left at any time
+On your first visit, the home page offers the first course. A course can be left at any time
 and taken again from **Courses**.
 
 ## Guides

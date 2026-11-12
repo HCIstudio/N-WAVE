@@ -3,7 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { NodeData } from "../components/nodes/BaseNode";
 import star from "../demo/rnaseqStarSalmonExample.json";
 import { registerNfCoreNodes } from "../../scripts/lint/fixtures";
-import { checkPortFit, connectionHints, sourceContents, targetContents } from "./portTypes";
+import { checkPortFit, connectionHints, sourceContents, takesAnyFile, targetContents } from "./portTypes";
 
 // Demo 3, the nf-core/rnaseq route rebuilt from library nodes.
 const nodes = (star as unknown as { nodes: Node<NodeData>[] }).nodes;
@@ -35,6 +35,12 @@ describe("port contents", () => {
     expect(targetContents(node("star_index"), "fasta")?.patterns[0]).toContain("fasta");
     // "reads" may be FASTQ, FASTA or BAM, depending on the tool: anything goes.
     expect(targetContents(node("fastqc_raw"), "reads")).toBeNull();
+  });
+
+  it("know an input that takes files of any kind, like MultiQC's", () => {
+    expect(takesAnyFile(node("multiqc"), "multiqc_files")).toBe(true);
+    // A pattern, or a folder: not any file.
+    expect(takesAnyFile(node("star_index"), "fasta")).toBe(false);
   });
 });
 

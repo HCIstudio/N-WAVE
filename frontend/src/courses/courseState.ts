@@ -3,7 +3,7 @@
 // survives opening a workflow; which courses are finished, and whether the
 // first-visit offer was answered, kept in this browser.
 
-export type CourseId = "basics" | "nfcore-modules";
+export type CourseId = "home" | "canvas" | "nfcore-modules";
 export type CoursePart = "home" | "canvas";
 
 export interface ActiveCourse {
@@ -16,7 +16,7 @@ const ACTIVE_KEY = "nwave.course.active";
 const COMPLETED_KEY = "nwave.courses.completed";
 const INTRO_KEY = "nwave.demoTutorial.completed";
 /** A new version offers the courses again on the home page to everyone. */
-export const INTRO_VERSION = "courses-v1";
+export const INTRO_VERSION = "courses-v2";
 
 const read = (storage: () => Storage, key: string): string | null => {
   try {
@@ -49,8 +49,13 @@ export const courseStep = (part: CoursePart): { course: CourseId; step: number }
   return active?.part === part ? { course: active.course, step: active.step } : null;
 };
 
-export const setActiveCourse = (active: ActiveCourse | null): void =>
+/** Sent when the running course changes, so a page already open follows it. */
+export const COURSE_CHANGED = "nwave:course-changed";
+
+export const setActiveCourse = (active: ActiveCourse | null): void => {
   write(() => sessionStorage, ACTIVE_KEY, active ? JSON.stringify(active) : null);
+  window.dispatchEvent(new Event(COURSE_CHANGED));
+};
 
 /** The first-visit offer on the home page was taken or turned down. */
 export const introDone = (): boolean => read(() => localStorage, INTRO_KEY) === INTRO_VERSION;

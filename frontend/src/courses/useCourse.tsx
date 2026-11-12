@@ -9,7 +9,17 @@ import { describeClick } from "../activity/useClickRecorder";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { COURSE_STEPS } from "./courseSteps";
 import { courseInfo } from "./courses";
-import { type CourseId, courseStep, endCourse, setActiveCourse } from "./courseState";
+import { COURSE_CHANGED, type CourseId, courseStep, endCourse, setActiveCourse } from "./courseState";
+
+type CanvasCourse = Exclude<CourseId, "home">;
+
+/** The course running on the canvas, as kept for the tab. */
+const runningOnCanvas = (): { course: CanvasCourse; step: number } | null => {
+  const found = courseStep("canvas");
+  if (!found || found.course === "home") return null;
+  const course = found.course as CanvasCourse;
+  return { course, step: Math.min(found.step, COURSE_STEPS[course].length - 1) };
+};
 
 /** How long a done task shows its tick before the next step. */
 export const DONE_PAUSE_MS = 900;
@@ -23,16 +33,32 @@ export const useCourse = ({
   edges: Edge[];
   openPanels: string[];
 }) => {
-  const [state, setState] = useState(() => {
-    const found = courseStep("canvas");
-    return found ? { ...found, step: Math.min(found.step, COURSE_STEPS[found.course].length - 1) } : null;
-  });
+  const [state, setState] = useState(runningOnCanvas);
   const [clicked, setClicked] = useState<Set<string>>(() => new Set());
   const [justDone, setJustDone] = useState(false);
   const steps = state ? COURSE_STEPS[state.course] : [];
   const step = state ? steps[state.step] : undefined;
 
-  const go = useCallback((course: CourseId, next: number) => {
+  // A course started while this page is open (the next course, from the card's
+  // end, opens another workflow on the same page).
+  useEffect(() => {
+    const follow = () => {
+      const found = runningOnCanvas();
+      setState((current) =>
+        current?.course === found?.course && current?.step === found?.step ? current : found,
+      );
+    };
+    window.addEventListener(COURSE_CHANGED, follow);
+    return () => window.removeEventListener(COURSE_CHANGED, follow);
+  }, []);
+  // A new step: nothing clicked yet, nothing done.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset on each step.
+  useEffect(() => {
+    setClicked(new Set());
+    setJustDone(false);
+  }, [state?.course, state?.step]);
+
+  const go = useCallback((course: CanvasCourse, next: number) => {
     setClicked(new Set());
     setJustDone(false);
     setActiveCourse({ course, part: "canvas", step: next });
