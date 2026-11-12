@@ -82,7 +82,7 @@ test.describe("node packs", () => {
       baseURL: testInfo.project.use.baseURL,
     });
     await context.addInitScript(() => {
-      localStorage.setItem("nwave.demoTutorial.completed", "tour-v4");
+      localStorage.setItem("nwave.demoTutorial.completed", "courses-v1");
     });
     const other = await context.newPage();
     await other.goto("./");

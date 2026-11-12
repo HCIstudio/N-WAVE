@@ -145,3 +145,17 @@
     background-image: none;
   }
 }
+/* A course step's target pulses gently, so it is found at a glance. */
+.tutorial-target {
+  animation: tutorial-target-pulse 1.6s ease-in-out infinite;
+}
+@keyframes tutorial-target-pulse {
+  50% {
+    outline-color: rgba(56, 189, 248, 0.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-target {
+    animation: none;
+  }
+}

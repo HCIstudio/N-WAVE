@@ -1,0 +1,49 @@
+// Starting a course: the basics begin with the home page tour; the nf-core
+// course in an empty workflow made for it.
+
+import { useCallback, useState } from "react";
+import { useNavigate } from "react-router";
+import api from "../api";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
+import { getApiErrorMessage } from "../utils/errors";
+import { type CourseId, setActiveCourse } from "./courseState";
+
+/** The name of the workflow the nf-core course builds. */
+export const NFCORE_COURSE_WORKFLOW = "My nf-core quality check";
+
+export const useStartCourse = () => {
+  const navigate = useNavigate();
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const start = useCallback(
+    async (course: CourseId) => {
+      setError(null);
+      if (course === "basics") {
+        // The tour's first step after the welcome box.
+        setActiveCourse({ course, part: "home", step: 1 });
+        navigate("/");
+        return;
+      }
+      setStarting(true);
+      try {
+        const { data } = await api.post<{ _id: string }>("/workflows", {
+          name: NFCORE_COURSE_WORKFLOW,
+          nodes: [],
+          edges: [],
+          description: "Built in the course Build with nf-core modules.",
+          executionSettings: DEFAULT_EXECUTION_SETTINGS,
+        });
+        setActiveCourse({ course, part: "canvas", step: 0 });
+        navigate(`/workflow/${data._id}`);
+      } catch (caught) {
+        setError(getApiErrorMessage(caught, "The course's workflow couldn't be made."));
+      } finally {
+        setStarting(false);
+      }
+    },
+    [navigate],
+  );
+
+  return { start, starting, error };
+};

@@ -75,7 +75,8 @@ import { applyRunDefaults } from "../settings/effectiveSettings";
 import { useRunDefaults } from "../settings/useRunDefaults";
 import { useFeature } from "../settings/useFeatures";
 import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
-import { useWorkflowTutorial, WorkflowTutorial } from "./workflow/useWorkflowTutorial";
+import { useCourse } from "../courses/useCourse";
+import CourseCard from "../courses/CourseCard";
 import type { WorkflowSource } from "./workflow/workflowExport";
 import { useWorkflowExports } from "./workflow/useWorkflowExports";
 
@@ -151,7 +152,6 @@ const WorkflowPageContent: React.FC = () => {
     );
     navigate(location.pathname, { replace: true, state: null });
   }, [copied, showToast, navigate, location.pathname]);
-  const tutorial = useWorkflowTutorial();
   const run = useWorkflowRun({
     nodes,
     edges,
@@ -308,8 +308,9 @@ const WorkflowPageContent: React.FC = () => {
     onFitView: () => void fitView({ duration: 200 }),
     onShowShortcuts: () => setShowShortcuts(true),
   });
-  const { onAddNode } = tutorial;
   const panels = useNodePanels();
+  // A course running on the canvas: its task steps watch what the user does.
+  const course = useCourse({ nodes, edges, openPanels: panels.openIds });
   const deletion = useNodeDeletion({
     readOnly,
     requestCopy,
@@ -363,8 +364,6 @@ const WorkflowPageContent: React.FC = () => {
   const handleProcessSelect = useCallback(
     (process: NextflowProcess) => {
       if (blockedByRun()) return;
-      // The tutorial's add-node step moves on when a node is added.
-      onAddNode();
       if (readOnly) {
         void requestCopy();
         return;
@@ -389,7 +388,6 @@ const WorkflowPageContent: React.FC = () => {
     },
     [
       blockedByRun,
-      onAddNode,
       readOnly,
       requestCopy,
       screenToFlowPosition,
@@ -588,7 +586,7 @@ const WorkflowPageContent: React.FC = () => {
               onClose={grouping.closeDialog}
             />
           )}
-          <WorkflowTutorial tutorial={tutorial} />
+          {course && canvasView.view === "editor" && <CourseCard course={course} />}
           {nestedNode && nestedEntry && (
             <NestedView
               title={String(nestedNode.data.label || nestedNode.type)}

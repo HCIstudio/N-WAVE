@@ -48,9 +48,12 @@ or has an issue that is explicitly moved to a later release.
 
 ## Home page, help and demo
 
-- [ ] On the first visit, the tutorial is a box between the title and the demos; **Start the
-      tour** points at the home page's parts, one at a time (**Next**, **Back**, **Skip tutorial**). Its last step duplicates Demo 1 and goes on on that copy's canvas
-      (changing Map, adding a node). Skipped or finished, it doesn't come back.
+- [ ] On the first visit, a box between the title and the demos offers the basics course
+      (**Start the basics course**, **All courses**, **Not now**). The course tours the home
+      page, duplicates Demo 1, and goes on in a card on the canvas: each task (open Map, set it
+      to lowercase, remove a Filter, add it from the + menu, connect it) goes on once done.
+      **Courses** lists the basics and the advanced courses (greyed in the demo); the nf-core
+      course builds Samplesheet → FastQC → MultiQC. A finished course is marked done.
 - [ ] Each built-in demo opens read-only; duplicating it gives an editable copy.
 - [ ] Workflow cards show the last run and its result. Editing the name and description,
       duplicating and deleting work.

@@ -1,12 +1,13 @@
-// The tutorial's first part, on the home page: what its parts are for. It
-// starts as a box in the page, between the title and the demos; once the user
-// starts the tour, each step points at a part of the page. Its last step makes
-// the user's own copy of Demo 1, where the tutorial goes on
-// (useWorkflowTutorial), on a canvas they can change and run.
+// The basics course's first part, on the home page (courses/): what its
+// parts are for. On a first visit it is an offer in the page, between the
+// title and the demos; once started, each step points at a part of the page.
+// Its last step makes the user's own copy of Demo 1, where the course goes on
+// (courses/courseSteps.tsx), on a canvas they can change.
 
 import type React from "react";
 import TutorialCallout, { TUTORIAL_BOX_CLASS, TutorialBadge } from "../../components/tutorial/TutorialCallout";
-import { completeTutorial, setTutorialStep } from "../../components/tutorial/tutorialState";
+import { Link } from "react-router";
+import { dismissIntro, endCourse, setActiveCourse } from "../../courses/courseState";
 
 type Placement = React.ComponentProps<typeof TutorialCallout>["placement"];
 
@@ -22,7 +23,8 @@ export const HOME_TUTORIAL_STEPS: HomeStep[] = [
     text: (
       <>
         Welcome to <strong>N-WAVE</strong>: build Nextflow workflows on a canvas, run them, and take them
-        out as code. This short tour shows the home page, then goes on in your own copy of a demo.
+        out as code. New here? The <strong>basics course</strong> (5 minutes) shows you the home page, then
+        lets you change, add and connect nodes in your own copy of a demo. More courses follow from there.
       </>
     ),
     placement: "center",
@@ -109,29 +111,33 @@ const HomeTutorial: React.FC<{
   const current = HOME_TUTORIAL_STEPS[Math.min(step, LAST)];
   if (!current) return null;
   const go = (next: number) => {
-    setTutorialStep("home", next);
+    setActiveCourse({ course: "basics", part: "home", step: next });
     onStep(next);
   };
+  // The offer turned down, or the course left: it isn't offered again.
   const skip = () => {
-    completeTutorial();
+    endCourse("basics", false);
     onStep(null);
   };
-  // Not started yet: a box in the page that doesn't cover anything.
+  // Not started yet: an offer in the page that doesn't cover anything.
   if (step === 0) {
     return (
       <section aria-label="Tutorial" className={`mb-8 max-w-3xl p-4 text-sm ${TUTORIAL_BOX_CLASS}`}>
         <TutorialBadge />
         <p className="leading-5">{current.text}</p>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => go(1)}
             className="rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
           >
-            Start the tour
+            Start the basics course
           </button>
+          <Link to="/courses" onClick={dismissIntro} className="rounded-md px-2 py-1.5 text-sm text-text hover:bg-accent">
+            All courses
+          </Link>
           <button type="button" onClick={skip} className="rounded-md px-2 py-1.5 text-xs text-sky-300 hover:bg-accent">
-            Skip tutorial
+            Not now
           </button>
         </div>
       </section>
@@ -147,6 +153,7 @@ const HomeTutorial: React.FC<{
       forwardLabel={step === LAST ? "Duplicate Demo 1" : "Next"}
       onBack={() => go(step - 1)}
       onForward={() => (step === LAST ? onDuplicateDemo() : go(step + 1))}
+      skipLabel="Leave course"
       onSkip={skip}
     />
   );

@@ -4,7 +4,7 @@ import { test as base, expect, type Locator, type Page } from "@playwright/test"
 export const test = base.extend({
   page: async ({ page }, use) => {
     await page.addInitScript(() => {
-      localStorage.setItem("nwave.demoTutorial.completed", "tour-v4");
+      localStorage.setItem("nwave.demoTutorial.completed", "courses-v1");
     });
     await use(page);
   },
