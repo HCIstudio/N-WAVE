@@ -86,7 +86,8 @@ or has an issue that is explicitly moved to a later release.
       Resume with the first step cached, a full run with Resume off),
       **Run an nf-core pipeline** (a full run on the test data from its input nodes),
       **Run limits and clusters** (a SLURM profile saved and in the exported project) and
-      **Read a workflow's structure** (Analyse, an error and its fix, both graph views, the
+      **Read a workflow's structure** (the Branch node and its parameter, Analyse, an error
+      and its fix, both graph views, the
       **if** badges, a group).
 
 ## Building a workflow
@@ -193,6 +194,12 @@ or has an issue that is explicitly moved to a later release.
 - [ ] **When a step runs**: in an imported script with `if (params.aligner == …)`, the steps
       have **if** badges. Changing the parameter's value greys out the other branch straight
       away, and the panel's **When it runs** says which condition holds.
+- [ ] **Branches (if/else)**: an imported `if (params.x == …) { … } else { … }` whose arms
+      call steps is a Branch node with its condition, a lane per arm and dashed lines to the
+      arms' steps; the step after it reads either arm. Switching the parameter changes which
+      arm runs (on the node, and greyed out) without a warning in the workflow check. Both
+      arms run as chosen, the export passes `nextflow lint`, and import, export, import gives
+      the same script.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
       imports back grouped. Clicking a group's name renames or ungroups it; in the graph views

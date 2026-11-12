@@ -7,6 +7,8 @@
 //   - a frame around each group of steps (#221).
 
 import type { Edge, Node } from "@xyflow/react";
+import { type BranchArm, branchesOf, paramsRead } from "../branches/branches";
+import { getNodeParameters } from "../registry/params";
 import type { LineOwners } from "../analysis/scriptLines";
 import { groupsOf, groupTitle } from "../groups/groups";
 import { maskSource, topLevelItems } from "../workflows/import/nextflowSource";
@@ -53,6 +55,11 @@ export const codeConnections = (
       `${edge.target}|${edge.source}`,
     ]),
   );
+  // A branch's code names its own steps (it chooses them): shown by its lines to them.
+  for (const node of nodes) {
+    const branch = (node.data as { branch?: { id?: unknown } } | undefined)?.branch;
+    if (typeof branch?.id === "string") connected.add(`${branch.id}|${node.id}`).add(`${node.id}|${branch.id}`);
+  }
   const found = new Map<string, CodeConnection>();
   // Masked (no strings or comments), with the script's own line breaks:
   // masking blanks those inside multi-line strings.
@@ -140,3 +147,97 @@ export const groupFrames = (nodes: Node[]): Node<GroupNodeData>[] =>
       data: { group, title: groupTitle(group), steps: stepLabels(members) },
     };
   });
+
+/** What a branch's lane shows: one arm of the branch, around its steps. */
+export interface BranchLaneData extends Record<string, unknown> {
+  arm: BranchArm;
+  condition: string;
+  steps: string[];
+}
+
+/**
+ * A lane around each arm of each branch: "if" (the condition holds) and
+ * "else", around the arm's steps. Not part of the workflow.
+ */
+export const branchLanes = (nodes: Node[]): Node<BranchLaneData>[] =>
+  [...branchesOf(nodes as Array<Node & { data: Record<string, unknown> }>)].flatMap(([id, branch]) =>
+    (["if", "else"] as const).flatMap((arm) => {
+      const members = branch[arm];
+      if (members.length === 0) return [];
+      // Tight: two arms one row apart don't overlap.
+      const side = 14;
+      const header = 20;
+      const below = 6;
+      const left = Math.min(...members.map((member) => member.position.x)) - side;
+      const top = Math.min(...members.map((member) => member.position.y)) - header;
+      const right = Math.max(...members.map((member) => member.position.x + sizeOf(member).width)) + side;
+      const bottom = Math.max(...members.map((member) => member.position.y + sizeOf(member).height)) + below;
+      return [
+        {
+          id: `lane:${id}:${arm}`,
+          type: "branchLane",
+          position: { x: left, y: top },
+          style: { width: right - left, height: bottom - top },
+          width: right - left,
+          height: bottom - top,
+          zIndex: -1,
+          selectable: false,
+          draggable: false,
+          connectable: false,
+          deletable: false,
+          focusable: false,
+          data: { arm, condition: branch.condition, steps: stepLabels(members) },
+        },
+      ];
+    }),
+  );
+
+/**
+ * The lines a branch draws, not the user: from its arm to each step of the
+ * arm, and from the Parameters node it reads to the branch. Dashed, not editable.
+ */
+export const branchEdges = (nodes: Node[]): Edge[] => {
+  const typed = nodes as Array<Node & { data: Record<string, unknown> }>;
+  const edges: Edge[] = [];
+  for (const [id, branch] of branchesOf(typed)) {
+    for (const arm of ["if", "else"] as const) {
+      for (const member of branch[arm]) {
+        edges.push({
+          id: `branch:${id}:${member.id}`,
+          source: id,
+          sourceHandle: arm,
+          target: member.id,
+          targetHandle: "branch",
+          type: "derived",
+          deletable: false,
+          selectable: false,
+          focusable: false,
+          data: {
+            kind: "branch",
+            arm,
+            label: arm === "if" ? `Runs when ${branch.condition}` : `Runs when not ${branch.condition}`,
+          },
+        });
+      }
+    }
+    const read = new Set(paramsRead(branch.condition));
+    for (const node of typed) {
+      if (node.type !== "parameters") continue;
+      const names = getNodeParameters(node.data).map((parameter) => parameter.name).filter((name) => read.has(name));
+      if (names.length === 0) continue;
+      edges.push({
+        id: `branch-params:${node.id}:${id}`,
+        source: node.id,
+        sourceHandle: "branch-params",
+        target: id,
+        targetHandle: "params",
+        type: "derived",
+        deletable: false,
+        selectable: false,
+        focusable: false,
+        data: { kind: "branch-params", label: `${names.join(", ")} chooses the arm` },
+      });
+    }
+  }
+  return edges;
+};

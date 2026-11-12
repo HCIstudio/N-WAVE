@@ -53,9 +53,9 @@ links there.
   - **Run limits and clusters**: a workflow's resources and the run limits in Global Settings,
     a SLURM run profile, choosing it for the workflow, and the profile in the exported project.
     No cluster is needed.
-  - **Read a workflow's structure**: in a workflow imported for the course, Analyse (and an
-    error it finds), the Specification and Dependencies views, the **if** badges of a
-    parameter's choice, and a suggested group.
+  - **Read a workflow's structure**: in a workflow imported for the course, a Branch node
+    (if/else) that a parameter switches between two aligners, Analyse (and an error it
+    finds), the Specification and Dependencies views, and a group.
 
 Every major feature gets a course: the plan is in
 [#241](https://github.com/HCIstudio/N-WAVE/issues/241), and each release from v1.7 on brings

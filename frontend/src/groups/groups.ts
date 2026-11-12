@@ -7,6 +7,7 @@
 // steps outside read its outputs as `GROUP.out.<emit>`
 // (generateNextflowScript.ts). Its name is the workflow's name in the code.
 
+import { branchOf } from "../branches/branches";
 import type { Edge, Node } from "@xyflow/react";
 import { placementOf } from "../generators/core/placement";
 import { upperSnake } from "../generators/core/naming";
@@ -91,6 +92,11 @@ export const groupProblem = (
   const other = chosen.find((node) => !isGroupable(node));
   if (other) {
     return `“${String((other.data as { label?: unknown }).label || other.type)}” is not a step: inputs, outputs, notes and code placed outside the workflow stay outside groups.`;
+  }
+  // A branch's steps are written in their arm (if/else), not in a group.
+  const branched = chosen.find((node) => branchOf(node, nodes) !== null);
+  if (branched) {
+    return `“${String((branched.data as { label?: unknown }).label || branched.type)}” is in an arm of a branch (if/else): its steps stay in their arm.`;
   }
   const grouped = nodes.map((node) => (ids.includes(node.id) ? { ...node, data: { ...node.data, group: name } } : node));
   if (findCycle(contractedEdges(grouped, edges))) {

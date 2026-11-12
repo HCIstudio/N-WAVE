@@ -32,7 +32,11 @@ workflow {
 }
 `;
 
-/** Trimming, a check, one of two aligners (by params.aligner) and a report. */
+/**
+ * Trimming, a check, one of two aligners (by params.aligner) and a report of
+ * whichever ran: the way nf-core pipelines choose a tool (a channel set in
+ * each arm of an if/else). It imports as a Branch node with the aligners in it.
+ */
 export const STRUCTURE_SCRIPT = `params.aligner = 'star'
 
 process TRIM {
@@ -101,12 +105,14 @@ process REPORT {
 workflow {
     TRIM()
     QC(TRIM.out)
+    ch_aligned = channel.empty()
     if (params.aligner == 'star') {
         ALIGN_STAR(TRIM.out)
-        REPORT(ALIGN_STAR.out, QC.out)
+        ch_aligned = ALIGN_STAR.out
     } else {
         ALIGN_HISAT(TRIM.out)
-        REPORT(ALIGN_HISAT.out, QC.out)
+        ch_aligned = ALIGN_HISAT.out
     }
+    REPORT(ch_aligned, QC.out)
 }
 `;

@@ -69,7 +69,10 @@ describe("codeConnections", () => {
     const { nodes, edges } = importNextflowScript(conditions);
     const id = (label: string) =>
       nodes.find((node) => node.data.label === label)?.id;
-    const block = nodes.find((node) => node.type === "channelOperator")?.id;
+    // The if/else that passes a channel from outside stays code.
+    const block = nodes.find(
+      (node) => node.type === "channelOperator" && String(node.data.channelOperatorCode).includes("params.trim"),
+    )?.id;
     const found = connectionsOf(nodes, edges).map(({ from, to, kind }) => ({
       from,
       to,
@@ -77,11 +80,13 @@ describe("codeConnections", () => {
     }));
     expect(found).toEqual(
       expect.arrayContaining([
-        { from: block, to: id("QC"), kind: "calls" },
         { from: block, to: id("TRIM"), kind: "calls" },
         { from: id("TRIM"), to: block, kind: "reads" },
       ]),
     );
+    // `if (params.qc) { QC(ch_reads) }` is a branch: QC is connected, and in it.
+    expect(found.some((connection) => connection.to === id("QC") || connection.from === id("QC"))).toBe(false);
+    expect(nodes.find((node) => node.data.label === "QC")?.data.branch).toMatchObject({ arm: "if" });
     // ALIGN is connected on the canvas.
     expect(
       found.some(

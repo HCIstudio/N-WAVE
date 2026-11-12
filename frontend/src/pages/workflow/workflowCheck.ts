@@ -123,8 +123,17 @@ const checkNodes = (
     }
 
     // Parameters are used by name in scripts, without connections; a
-    // pipeline runs on its own (it checks its inputs below).
-    if (!connected && node.type !== "parameters" && node.type !== "pipeline") {
+    // pipeline runs on its own (it checks its inputs below); a branch
+    // (if/else) chooses its arms' steps, which hold its connections.
+    if (node.type === "branch") {
+      if (!String(node.data.condition ?? "").trim()) {
+        add(node, "branch-condition", "error", `“${label}” has no condition, so it can't choose between its arms.`);
+      } else if (!nodes.some((other) => (other.data.branch as { id?: unknown } | undefined)?.id === node.id)) {
+        add(node, "branch-steps", "warning", `“${label}” has no steps in its arms, so it chooses nothing.`);
+      }
+      continue;
+    }
+    if (!connected && node.type !== "parameters" && node.type !== "pipeline" && node.type !== "branch") {
       add(node, "unconnected", "warning", `“${label}” isn't connected to anything, so it won't take part in the run.`);
       continue;
     }

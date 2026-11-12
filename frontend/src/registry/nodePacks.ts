@@ -103,6 +103,7 @@ export const RESERVED_NODE_IDS = [
   "pipeline",
   "note",
   "outputDisplay",
+  "branch",
 ];
 const RESERVED_NODE_ID_KEYS = new Set(
   RESERVED_NODE_IDS.map((id) => id.toLowerCase()),

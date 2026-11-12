@@ -479,3 +479,33 @@ export const usedNames = (
   }
   return { variables: [...variables], outputs };
 };
+
+/**
+ * `if (condition) { … } else { … }`: its condition and the code of its arms;
+ * null for anything else (no braces, `else if`, code after it).
+ */
+export const readIfElse = (text: string): { condition: string; ifBody: string; elseBody: string | null } | null => {
+  const masked = maskSource(text);
+  const head = masked.match(/^\s*if\s*\(/);
+  if (!head) return null;
+  const open = head[0].length - 1;
+  const close = closingBracket(masked, open);
+  if (close === -1) return null;
+  const condition = text.slice(open + 1, close).trim();
+  const block = (from: number): { body: string; end: number } | null => {
+    const start = masked.slice(from).match(/^\s*\{/);
+    if (!start) return null;
+    const brace = from + start[0].length - 1;
+    const end = closingBracket(masked, brace);
+    return end === -1 ? null : { body: text.slice(brace + 1, end), end: end + 1 };
+  };
+  const ifBlock = block(close + 1);
+  if (!ifBlock || !condition) return null;
+  const rest = masked.slice(ifBlock.end);
+  if (/^\s*$/.test(rest)) return { condition, ifBody: ifBlock.body, elseBody: null };
+  const keyword = rest.match(/^\s*else\b/);
+  if (!keyword) return null;
+  const otherwise = block(ifBlock.end + keyword[0].length);
+  if (!otherwise || !/^\s*$/.test(masked.slice(otherwise.end))) return null;
+  return { condition, ifBody: ifBlock.body, elseBody: otherwise.body };
+};

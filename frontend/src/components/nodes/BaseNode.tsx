@@ -364,7 +364,17 @@ const BaseNode = ({
         )}
       </div>
 
-      {/* Execution Status Indicator */}
+      {/* A step of a branch's arm: the dashed line from its branch comes in on top. */}
+      {Boolean(data.branch) && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="branch"
+          isConnectable={false}
+          className="!h-2 !w-2 !border-0 !bg-violet-400"
+        />
+      )}
+            {/* Execution Status Indicator */}
       {status && status !== "disabled" && (
         <div className="absolute top-2 right-2">
           {/* A failed run says so in its label below; the dot only for a stored failure without one. */}
@@ -525,6 +535,17 @@ const BaseNode = ({
           )}
         </div>
       ))}
+      {/* Parameters a branch reads: its dashed line to the branch leaves at the bottom.
+          After the outputs, so it is never taken for one (not connectable either). */}
+      {type === "parameters" && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="branch-params"
+          isConnectable={false}
+          className="!h-1.5 !w-1.5 !border-0 !bg-violet-300 !opacity-60"
+        />
+      )}
     </div>
   );
 };

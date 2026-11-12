@@ -19,6 +19,7 @@ For a project, N-WAVE reads `main.nf` (or, without one, the top-most script with
 | An nf-core module or subworkflow (`modules/nf-core/…`) | The nf-core node, with its settings from `nextflow.config` (`ext.args`, …) |
 | A step from your node library, unchanged | That custom node |
 | `STEP(ch_reads)`, `STEP.out.reads` | Connections between steps |
+| `if (params.aligner == 'star') { … } else { … }` whose arms call steps (and name their outputs, `ch_aligned = ALIGN_STAR.out`) | A **Branch** node with each arm's steps, connected as the code reads (see [Branches](https://github.com/HCIstudio/N-WAVE/wiki/Nodes#branch-ifelse)) |
 | Other channel code (`channel.fromPath(…)`, `.map { … }`, `.branch { … }`, `.view()`) | Channel operator nodes, one per block of code, with the script's variable names |
 | `params.x = 5`, `'text'`, `true` | A Parameters node |
 | File Input, Samplesheet, Filter, Map, Merge and Display Output code N-WAVE wrote | Those nodes again, with their settings and, from a project, their files |

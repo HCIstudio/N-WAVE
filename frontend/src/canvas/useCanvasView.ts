@@ -11,6 +11,8 @@ import type { NodeData } from "../components/nodes/BaseNode";
 import { generateNextflowScriptWithNames } from "../generators/core/generateNextflowScript";
 import type { WorkflowProblem } from "../pages/workflow/workflowCheck";
 import {
+  branchEdges,
+  branchLanes,
   type CanvasView,
   type CodeConnection,
   codeConnectionEdge,
@@ -89,12 +91,13 @@ export const useCanvasView = (
   };
 
   // The editor's nodes and edges (the graph views draw the analysis instead).
+  // Branches (if/else): a lane around each arm, lines to its steps and from its parameters.
   const display = useMemo(() => {
-    const frames = groupFrames(nodes);
+    const frames = [...groupFrames(nodes), ...branchLanes(nodes)];
+    const drawn = [...shown.map(codeConnectionEdge), ...branchEdges(nodes)];
     return {
       nodes: frames.length > 0 ? [...frames, ...nodes] : nodes,
-      edges:
-        shown.length > 0 ? [...edges, ...shown.map(codeConnectionEdge)] : edges,
+      edges: drawn.length > 0 ? [...edges, ...drawn] : edges,
     };
   }, [nodes, edges, shown]);
 

@@ -50,6 +50,7 @@ import {
   definedNames,
   embeddedConfig,
   maskSource,
+  readIfElse,
   readIncludeItem,
   splitWorkflowStatements,
   topLevelItems,
@@ -783,9 +784,13 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   /** Reference file params and the channel each is read into. */
   const fileParams = new Map<string, string>();
 
+  /** Channels a branch's arms each set (`ch_aligned`): the outputs of both. */
+  const branchSources = new Map<string, Source[]>();
+
   /** The node ports an argument reads; null when it does more than adapt them. */
   const resolveArgument = (argument: string): Source[] | null => {
     const text = argument.trim();
+    if (branchSources.has(text)) return branchSources.get(text) ?? null;
     if (glue.has(text)) return resolveArgument(glue.get(text) as string);
     const tuple = tupleGlueParts(text);
     if (tuple) {
@@ -1188,10 +1193,80 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     );
     for (const [param, variable] of fileParams) sources.set(variable, { nodeId: node.id, port: param });
   }
+  // Branches (if/else) whose arms only call steps and name their outputs:
+  // a Branch node, each arm's steps in it. Anything else in them stays code.
+  const stepNames = (name: string) => processes.has(name) || includes.has(name) || namedWorkflows.has(name);
+  const readBranch = (text: string) => {
+    const read = readIfElse(text);
+    if (!read) return null;
+    const arms = { if: splitWorkflowStatements(read.ifBody), else: read.elseBody === null ? [] : splitWorkflowStatements(read.elseBody) };
+    // Each arm: step calls, and names for its own steps' outputs (`ch_aligned = ALIGN_STAR.out`).
+    // A channel from outside (`ch_x = ch_reads`) has no arm on the canvas: the block stays code.
+    const armOk = (entries: Statement[]) => {
+      const called = new Set<string>();
+      return entries.every((statement) => {
+        const text = statement.text.trim();
+        const call = callOf(text);
+        if (call && stepNames(call.name)) {
+          called.add(call.name);
+          return true;
+        }
+        const named = text.match(/^[A-Za-z_]\w*\s*=\s*([A-Za-z_]\w*)\.out(?:\.[A-Za-z_]\w*|\[\d+\])?$/);
+        return named !== null && called.has(named[1]);
+      });
+    };
+    const ok = armOk(arms.if) && armOk(arms.else) && arms.if.some((statement) => callOf(statement.text.trim()) !== null);
+    return ok ? { condition: read.condition, arms } : null;
+  };
+  const branchStatements = new Set(statements.filter((statement) => readBranch(statement.text.trim()) !== null));
+  /** Channels the branches set (`ch_aligned`): their `channel.empty()` start is the branch's. */
+  const branchChannels = new Set(
+    [...branchStatements].flatMap((statement) => {
+      const read = readBranch(statement.text.trim());
+      return read ? [...read.arms.if, ...read.arms.else].flatMap((entry) => (callOf(entry.text.trim()) ? [] : definedNames(entry.text))) : [];
+    }),
+  );
+  let branchCount = 0;
+  const branch = (statement: Statement): boolean => {
+    const read = readBranch(statement.text.trim());
+    if (!read) return false;
+    flush();
+    branchCount += 1;
+    const node = addNode(`branch_${branchCount}`, "branch", { ...definitionDefaults("branch"), condition: read.condition }, "If");
+    const set = new Map<string, Source[]>();
+    for (const arm of ["if", "else"] as const) {
+      for (const entry of read.arms[arm]) {
+        const text = entry.text.trim();
+        const call = callOf(text);
+        if (call && stepNames(call.name)) {
+          if (!step(call.name, splitArguments(call.args), text)) continue;
+          const member = steps.get(call.name) as Node<NodeData>;
+          member.data = {
+            ...member.data,
+            branch: { id: node.id, arm },
+            ...(entry.comments.length > 0 ? { scriptComments: entry.comments } : {}),
+          };
+          if (call.assigned) sources.set(call.assigned, { nodeId: member.id, port: member.data.outputs?.[0]?.name ?? "out" });
+          continue;
+        }
+        const [name, value] = text.split(/\s*=\s*/, 2);
+        const from = resolveArgument(value) ?? [];
+        set.set(name, [...(set.get(name) ?? []), ...from]);
+      }
+    }
+    for (const [name, from] of set) branchSources.set(name, from);
+    if (statement.comments.length > 0) node.data = { ...node.data, scriptComments: statement.comments };
+    return true;
+  };
+
   // Inputs are recognized; reset and walk again for the rest (in order).
   statements.forEach((statement, index) => {
     const text = statement.text.trim();
     if (recognizeInputDry(text)) return;
+    if (branchStatements.has(statement) && branch(statement)) return;
+    // A branch's channel starts empty (`ch_aligned = channel.empty()`): the branch sets it.
+    const emptied = text.match(/^([A-Za-z_]\w*)\s*=\s*[Cc]hannel\.empty\(\)$/);
+    if (emptied && branchChannels.has(emptied[1])) return;
     const defined = definedNames(text);
     if (defined.length === 1 && (glue.has(defined[0]) || selectedFiles.has(defined[0]))) return;
     const call = callOf(text);
@@ -1290,7 +1365,35 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   }
 
   if (layout.size === 0 || nodes.some((node) => !layout.has(keyOf(node)))) {
-    autoLayout(nodes, edges, new Set(nodes.filter((node) => layout.has(keyOf(node))).map((node) => node.id)));
+    // A branch stands between what its arms read and its arms: its own column.
+    const branchOf = (id: string) => (nodes.find((node) => node.id === id)?.data.branch as { id?: string } | undefined)?.id;
+    const through = edges.flatMap((edge) => {
+      const branch = branchOf(edge.target);
+      if (!branch || branchOf(edge.source) === branch) return [];
+      return [
+        { ...edge, id: `${edge.id}:branch`, target: branch },
+        { ...edge, id: `${edge.id}:arm`, source: branch },
+      ];
+    });
+    const arms = nodes.flatMap((node) => {
+      const branch = branchOf(node.id);
+      return branch ? [{ id: `${branch}:${node.id}`, source: branch, target: node.id }] : [];
+    });
+    const placed = new Set(nodes.filter((node) => layout.has(keyOf(node))).map((node) => node.id));
+    autoLayout(nodes, [...edges, ...through, ...arms], placed);
+    // Room between a branch's arms in one column, for their lanes: the else arm (and what's below it) moves down.
+    for (const branch of nodes.filter((node) => node.type === "branch" && !placed.has(node.id))) {
+      const arm = (name: string) =>
+        nodes.filter((node) => (node.data.branch as { id?: string; arm?: string } | undefined)?.id === branch.id && (node.data.branch as { arm?: string }).arm === name);
+      for (const otherwise of arm("else")) {
+        const above = arm("if").filter((node) => node.position.x === otherwise.position.x && node.position.y < otherwise.position.y);
+        if (above.length === 0) continue;
+        const from = otherwise.position.y;
+        for (const node of nodes) {
+          if (!placed.has(node.id) && node.position.x === otherwise.position.x && node.position.y >= from) node.position = { ...node.position, y: node.position.y + 50 };
+        }
+      }
+    }
   }
   if (!entry) warnings.push("No workflow block was found, so connections could not be read.");
   for (const node of nodes) {

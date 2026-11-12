@@ -8,8 +8,8 @@
 export type NodeKind = "input" | "nfcore" | "custom" | "operator" | "output";
 
 const INPUT_TYPES = new Set(["fileInput", "samplesheet", "parameters"]);
-/** Filter, Map, Merge and the like, and channel code kept from an import. */
-const OPERATOR_TYPES = new Set(["operator", "filter", "channelOperator"]);
+/** Filter, Map, Merge and the like, channel code kept from an import, and branches (if/else). */
+const OPERATOR_TYPES = new Set(["operator", "filter", "channelOperator", "branch"]);
 
 /** The kind of a node; notes have none. */
 export const nodeKindOf = (node: {

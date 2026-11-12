@@ -212,7 +212,7 @@ const WorkflowPageContent: React.FC = () => {
   const analysis = useWorkflowAnalysis(nodes, edges, workflowName);
   const [analysisOpen, setAnalysisOpen] = useState(false);
   // When steps run: the analysis's conditions with the Parameters node's values.
-  const stepConditions = useStepConditions(analysis, nodes, useFeature("conditions") && analysisOn);
+  const stepConditions = useStepConditions(analysis, nodes, useFeature("conditions") && analysisOn, useFeature("conditions"));
   // The editor or a graph of the code, and the connections the code makes that the canvas doesn't show.
   const canvasView = useCanvasView(nodes, edges, workflowName, {
     showCodeConnections: useFeature("connectionHints"),

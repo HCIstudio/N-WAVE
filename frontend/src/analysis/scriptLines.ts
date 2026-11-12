@@ -12,6 +12,10 @@
 //     whose channel it defines (a channel operator's block, an input's
 //     channel); else the node of the statement right before it (a channel
 //     operator's block goes on without a blank line).
+//   - a branch's `if (…) { … } else { … }` (N-WAVE writes it from a Branch
+//     node): each call in it, its step; the rest (the if and else lines,
+//     the channels its arms set, and their `channel.empty()` before it), the
+//     Branch node;
 //   - code kept as written at its place (a code node: functions, the output
 //     block, publish:): that node, found by its code.
 // Other lines (params, the header, comments, helper functions) belong to no node.
@@ -22,6 +26,7 @@ import {
   blockBody,
   definedNames,
   maskSource,
+  readIfElse,
   readIncludeItem,
   splitWorkflowStatements,
   topLevelItems,
@@ -104,8 +109,49 @@ const ownEntryWorkflow = (
     cursor = at + statement.text.length;
     return [{ ...statement, at, called: calledStep(statement.text, byName) }];
   });
+  // Branches (written from Branch nodes, `branch_1`, … in order): if blocks
+  // whose arms only call steps and name their outputs.
+  let branchCount = 0;
+  const branchOf = new Map<number, string>();
+  statements.forEach((statement, index) => {
+    const read = readIfElse(statement.text.trim());
+    if (!read) return;
+    const inner = [...splitWorkflowStatements(read.ifBody), ...splitWorkflowStatements(read.elseBody ?? "")];
+    const stepsOnly = inner.every(
+      (entry) => calledStep(entry.text, byName) || /^\s*[A-Za-z_]\w*\s*=\s*[A-Za-z_]\w*\.out\b/.test(entry.text),
+    );
+    if (inner.length === 0 || !stepsOnly) return;
+    branchCount += 1;
+    const branch = byName.get(`branch_${branchCount}`);
+    if (branch) branchOf.set(index, branch);
+  });
   let previous: string | undefined;
   statements.forEach((statement, index) => {
+    const branch = branchOf.get(index);
+    if (branch) {
+      // Its calls are their steps'; the rest of the block is the branch's.
+      let from = statement.at;
+      const read = readIfElse(statement.text.trim());
+      for (const entry of [...splitWorkflowStatements(read?.ifBody ?? ""), ...splitWorkflowStatements(read?.elseBody ?? "")]) {
+        const at = script.indexOf(entry.text, from);
+        if (at === -1) continue;
+        from = at + entry.text.length;
+        own(at, at + entry.text.length, calledStep(entry.text, byName));
+      }
+      own(statement.at, statement.at + statement.text.length, branch);
+      previous = branch;
+      return;
+    }
+    // A channel a branch's arms set starts empty before it: the branch's.
+    const emptied = statement.text.match(/^\s*([A-Za-z_]\w*)\s*=\s*channel\.empty\(\)\s*$/);
+    const setBy = emptied
+      ? [...branchOf].find(([at]) => at > index && new RegExp(`(?<![.\\w])${emptied[1]}\\s*=`).test(statements[at].text))?.[1]
+      : undefined;
+    if (setBy) {
+      own(statement.at, statement.at + statement.text.length, setBy);
+      previous = setBy;
+      return;
+    }
     // Glue (`ch_x = A.out.y.map { … }`) is the step that reads it next.
     const defined = definedNames(statement.text);
     // Only an assignment is glue, not a block (`if (…) { ch_x = … }`).

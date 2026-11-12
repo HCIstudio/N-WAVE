@@ -90,6 +90,24 @@ on any node's **Code** tab. Their settings are the ones you declared. See
 [Custom nodes](https://github.com/HCIstudio/N-WAVE/wiki/Custom-Nodes) and
 [Node packs](https://github.com/HCIstudio/N-WAVE/wiki/Node-Packs).
 
+## Branch (if/else)
+
+An `if (…) { … } else { … }` in an imported script whose arms call steps: the workflow runs
+one arm's steps, by a condition on its parameters (`params.aligner == 'star'`).
+
+- The **Branch** node shows the condition, the parameter it reads (a dashed violet line from
+  the Parameters node), and which arm runs with the parameters' values now.
+- Its **if** exit leads to the steps that run when the condition holds, its **else** exit to
+  those that run when it doesn't (dashed green and amber lines), each arm framed as a lane.
+  The arm that won't run with the current values is greyed out.
+- Where the arms meet again, the next step reads whichever arm ran: a connection from each
+  arm into the same input (it counts as one).
+- The code is written back as the `if`/`else`, with a channel each arm sets
+  (`ch_aligned = channel.empty()`, then `ch_aligned = ALIGN_STAR.out` in its arm).
+- An arm that does more than call steps and name their outputs (a channel from outside,
+  `.map { … }`) keeps the whole block as channel code. Steps in a branch can't be grouped.
+  The + menu doesn't offer a Branch yet: branches come from imported scripts.
+
 ## Output
 
 ### Display Output

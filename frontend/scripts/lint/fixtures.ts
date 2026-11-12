@@ -17,7 +17,8 @@ import {
 } from "../../src/registry/customNodes";
 import catalog from "../../src/registry/nfcore/catalog.json";
 import { copySubworkflow } from "../../src/workflows/import/copySubworkflow";
-import type { NfCoreCatalogForImport } from "../../src/workflows/import/importScript";
+import { importNextflowScript, type NfCoreCatalogForImport } from "../../src/workflows/import/importScript";
+import { STRUCTURE_SCRIPT } from "../../src/courses/courseWorkflows";
 import {
   buildNfCoreManifest,
   type NfCoreCatalogEntryForManifest,
@@ -494,6 +495,12 @@ const dawModelSkeleton = (): LintFixture => {
   };
 };
 
+/** A branch (if/else): the structure course's workflow, imported, written back as its if/else. */
+const branched = (): LintFixture => {
+  const imported = importNextflowScript(STRUCTURE_SCRIPT);
+  return { name: "branch-two-aligners", description: "Two aligners, one chosen by a parameter (if/else)", nodes: imported.nodes, edges: imported.edges };
+};
+
 export const buildLintFixtures = (): LintFixture[] => {
   const starSalmon = rnaseqStarSalmon as unknown as {
     nodes: Node<NodeData>[];
@@ -542,6 +549,7 @@ export const buildLintFixtures = (): LintFixture[] => {
       ALIGN_AND_QUANTIFY: ["star_align", "salmon_quant", "bam_sort_stats"],
     }),
     dawModelSkeleton(),
+    branched(),
     grouped(nfCoreSubworkflowChain(), "grouped-subworkflow-chain", "nf-core subworkflows in groups", {
       INDEX: ["nf-core/bwa/index"],
       TRIM_AND_ALIGN: ["nf-core/subworkflows/fastq_trim_fastp_fastqc", "nf-core/subworkflows/fastq_align_bwa"],

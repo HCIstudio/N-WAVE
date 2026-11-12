@@ -220,6 +220,7 @@ export const RESERVED_NODE_IDS = [
   "pipeline",
   "note",
   "outputDisplay",
+  "branch",
 ];
 const isReservedNodeId = (id: string): boolean =>
   id.toLowerCase().startsWith("nfcore_") ||

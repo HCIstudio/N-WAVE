@@ -35,7 +35,9 @@ export type NodeKind =
   | "process"
   | "output"
   /** Canvas notes: no ports, no code. */
-  | "annotation";
+  | "annotation"
+  /** A branch (if/else): which steps run, by the parameters; no data of its own. */
+  | "logic";
 
 export type NodePanelComponent = React.ComponentType<{
   node: Node<NodeData>;
@@ -311,6 +313,24 @@ const builtinNodeDefinitions: NodeDefinition[] = [
       outputs: [],
     },
     panel: NotePanel,
+  },
+  {
+    id: "branch",
+    kind: "logic",
+    category: "Logic",
+    label: "Branch (if/else)",
+    description:
+      "Runs one of two sets of steps, by a condition on the workflow's parameters (`if (params.aligner == 'star') { … } else { … }`).",
+    type: "branch",
+    icon: "GitFork",
+    defaults: {
+      label: "If",
+      condition: "",
+      inputs: [],
+      outputs: [],
+    },
+    // Imported from `if`/`else` blocks; the canvas doesn't offer it yet.
+    hiddenFromPalette: true,
   },
   {
     id: "outputDisplay",

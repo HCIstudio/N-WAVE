@@ -31,6 +31,8 @@ import OutputDisplayNode from "../nodes/output/OutputDisplayNode";
 import OperatorNode from "../nodes/OperatorNode";
 import ProcessNode from "../nodes/process/ProcessNode";
 import { GroupFrameNode } from "./GroupNodes";
+import BranchNode from "../nodes/BranchNode";
+import { BranchLaneNode } from "./BranchLane";
 
 const nodeTypes = {
   default: BaseNode,
@@ -46,6 +48,9 @@ const nodeTypes = {
   process: ProcessNode,
   // Groups of steps (#221): a frame around their steps.
   groupFrame: GroupFrameNode,
+  // Branches (if/else): the branch, and a lane around each arm's steps.
+  branch: BranchNode,
+  branchLane: BranchLaneNode,
 };
 
 const edgeTypes = {

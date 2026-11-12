@@ -48,7 +48,7 @@ export const connectionProblem = (
     return `This connection would make a loop (${describeCycle(loop, nodes)}). A step's output can't come back to its own input; use a new node instead.`;
   }
   // Most inputs take one connection; a second would be left out of the run.
-  return connectionLimitMessage(connection, targetNode, edges);
+  return connectionLimitMessage(connection, targetNode, edges, nodes);
 };
 
 /** What verbose mode records when a connection was dropped on an input that refused it. */
