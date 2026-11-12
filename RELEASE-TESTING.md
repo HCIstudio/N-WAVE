@@ -67,9 +67,15 @@ or has an issue that is explicitly moved to a later release.
 - [ ] The **References** page opens from the home page's footer; its DOI, website and wiki
       links work.
 - [ ] Term hover cards on the canvas and in panels show their explanation and docs link.
-- [ ] The [browser demo](https://hcistudio.github.io/N-WAVE/) (after the release): demos open,
-      the tutorial works, Analyse shows the recorded analysis. What needs a server (Run, Resume,
+- [ ] The [browser demo](https://hcistudio.github.io/N-WAVE/) (after the release): demos open, the basics courses work, Analyse shows the recorded analysis. What needs a server (Run, Resume,
       the run cache, Runs) is shown greyed out and says it needs a full install.
+
+## Courses
+
+- [ ] Every course on the **Courses** page works from start to end
+      ([#241](https://github.com/HCIstudio/N-WAVE/issues/241)): the basics in the demo and on
+      the installation, the advanced ones on the installation (greyed out in the demo, with the
+      way to install N-WAVE). A finished course is marked done.
 
 ## Building a workflow
 
@@ -80,6 +86,8 @@ or has an issue that is explicitly moved to a later release.
       An input that takes one connection doesn't take a second; a "many" input does.
 - [ ] Connection hints label the edges without overlapping (for example on Demo 3's STAR step).
 - [ ] Undo and redo of adding, deleting, connecting, moving and typing a setting.
+- [ ] Dragging a node onto the bin (above the Runs bar while a node is dragged) deletes it.
+      Deleting a node from its panel says that Undo brings it back, and it does.
 - [ ] Copy and paste nodes within a workflow and into another one. Keyboard shortcuts as listed
       in the shortcuts dialog.
 - [ ] Minimap, zoom to fit, and a large workflow (Demo 3) stay smooth.
@@ -139,8 +147,7 @@ or has an issue that is explicitly moved to a later release.
 - [ ] **Export** in the bottom bar opens one dialog: **Download script**, **Copy script** (the
       script on the clipboard), **Download project** and **Download DAW model** each do what it says.
 - [ ] **Diagram** in the Export dialog: SVG, PNG, Mermaid and Dot of the canvas open in a browser,
-      an image viewer, mermaid.live and Graphviz; after **Analyse**, the same for the analysis's
-      steps and channels.
+      an image viewer, mermaid.live and Graphviz; after **Analyse**, the same for the specification graph and the process dependency graph.
 - [ ] **Export** → **Download project**: the zip runs with plain Nextflow (`nextflow run main.nf -profile docker`)
       without N-WAVE, and gives the same results. Its README is right.
 - [ ] Exporting the same workflow twice gives identical files.

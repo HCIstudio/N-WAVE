@@ -28,9 +28,14 @@ have. A card at the top left of the canvas says what to do; what it is about is 
     copy itself.
   - **Build with nf-core modules**: a Samplesheet, FastQC and MultiQC from the nf-core
     Library, connected and exported.
+  - On their way: import and export, your own steps, large workflows, N-WAVE for studies.
 - **Advanced**, with an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation):
-  running workflows, reading their structure, nf-core pipelines and your own code. They are
-  on their way.
+  running workflows, when a run fails, nf-core pipelines, run limits and clusters, and reading
+  a workflow's structure. They are on their way.
+
+Every major feature gets a course: the plan is in
+[#241](https://github.com/HCIstudio/N-WAVE/issues/241), and each release from v1.7 on brings
+the course for its features.
 
 On your first visit, the home page offers the first course. A course can be left at any time
 and taken again from **Courses**.

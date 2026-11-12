@@ -293,9 +293,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         onClose={() => setIsConfirmOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Delete Node"
-        message={`Are you sure you want to delete the node "${
+        message={`Delete the node "${
           node.data.label || "Unnamed Node"
-        }"? This action cannot be undone.`}
+        }" and its connections? Undo (Ctrl+Z, or ⌘Z on a Mac) brings them back.`}
       />
     </Panel>
   );

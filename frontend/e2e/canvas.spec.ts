@@ -99,6 +99,15 @@ test.describe("canvas flow", () => {
     const trash = page.locator("#delete-drop-zone");
     const zone = await trash.boundingBox();
     if (!zone) throw new Error("the trash doesn't show while dragging");
+    // It can be seen and reached: nothing covers it, and it is clear of the Runs bar.
+    expect(
+      await page.evaluate(({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest("#delete-drop-zone")), {
+        x: zone.x + zone.width / 2,
+        y: zone.y + zone.height / 2,
+      }),
+    ).toBe(true);
+    const runs = await page.getByRole("region", { name: "Runs" }).boundingBox();
+    if (runs) expect(zone.y + zone.height).toBeLessThanOrEqual(runs.y);
     await page.mouse.move(zone.x + zone.width / 2, zone.y + zone.height / 2, {
       steps: 10,
     });

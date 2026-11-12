@@ -27,7 +27,9 @@ bottom bar saves at once).
 - **Double-click** a node to open its panel. Its tabs: **Settings**, **Code** (the Nextflow it
   adds) and **Results** (what it produced in the last run).
 - **Delete** a node with its panel's delete button, the **Delete** key, or by dragging it onto
-  the bin in the bottom-right corner. Hover a connection and click **×** to remove it.
+  the bin, which appears at the bottom right (above **Runs**) while a node is dragged; the
+  pointer decides. **Undo** brings a deleted node back. Hover a connection and click **×** to
+  remove it.
 
 The strip on top of each node says its kind, in its color: **Input** (light blue, where data
 enters), **nf-core** (green, tested nf-core tools), **Custom step** (violet, processes written

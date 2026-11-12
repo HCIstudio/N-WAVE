@@ -14,6 +14,7 @@ import { COURSES, type CourseInfo } from "../courses/courses";
 import { completedCourses } from "../courses/courseState";
 import { useStartCourse } from "../courses/useStartCourse";
 import { wikiUrl } from "../docs/links";
+import { issueUrl } from "../roadmap/roadmap";
 
 const linkClass = "text-nextflow-green hover:underline";
 
@@ -52,6 +53,11 @@ const CourseCard: React.FC<{
       {locked ? (
         <span className="flex items-center gap-1 text-xs text-text-light">
           <Lock size={14} aria-hidden /> {locked}
+          {info.issue && (
+            <a href={issueUrl(info.issue)} target="_blank" rel="noreferrer" className="pointer-events-auto underline">
+              #{info.issue}
+            </a>
+          )}
         </span>
       ) : (
         <button
@@ -72,7 +78,7 @@ const CoursesPage: React.FC = () => {
   const starter = useStartCourse();
   const basics = COURSES.filter((info) => info.level === "basics");
   const advanced = COURSES.filter((info) => info.level === "advanced");
-  const basicsDone = basics.every((info) => info.course && done.has(info.course));
+  const basicsDone = basics.every((info) => !info.course || done.has(info.course));
 
   return (
     <PageLayout>
@@ -106,6 +112,7 @@ const CoursesPage: React.FC = () => {
                 info={info}
                 done={Boolean(info.course && done.has(info.course))}
                 starting={starter.starting}
+                locked={info.course ? undefined : "Coming soon"}
                 onStart={() => info.course && void starter.start(info.course)}
               />
             ))}
