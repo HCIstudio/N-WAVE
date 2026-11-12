@@ -4,7 +4,7 @@ import { buildLintFixtures } from "../../scripts/lint/fixtures";
 import type { BioflowResult } from "../analysis/bioflow";
 import { conditionsByNode } from "../analysis/conditions";
 import { lineOwners } from "../analysis/scriptLines";
-import { groupedView, groupFrames } from "../canvas/canvasViews";
+import { groupFrames } from "../canvas/canvasViews";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { demoWorkflowSeed } from "../demo/demoWorkflow";
 import { nodeIdForProcess, summarizeNodeRuns } from "../execution/nodeRuns";
@@ -210,27 +210,14 @@ describe("importing groups", () => {
 });
 
 describe("on the canvas", () => {
-  const { nodes, edges } = demo();
+  const { nodes } = demo();
   const grouped = withGroup(nodes, BRANCH, "BRANCH");
 
-  it("frames a group's steps in All", () => {
+  it("frames a group's steps in the editor", () => {
     const [frame] = groupFrames(grouped);
     expect(frame).toMatchObject({ id: "frame:BRANCH", type: "groupFrame", data: { group: "BRANCH", steps: ["Filter", "Map"] } });
     const left = Math.min(...grouped.filter((node) => BRANCH.includes(node.id)).map((node) => node.position.x));
     expect(frame.position.x).toBeLessThan(left);
-  });
-
-  it("shows a group as one box in Grouped, connected to the rest", () => {
-    const view = groupedView(grouped, edges);
-    expect(view.nodes.filter((node) => node.hidden).map((node) => node.id)).toEqual(BRANCH);
-    expect(view.nodes.find((node) => node.id === "group:BRANCH")?.type).toBe("groupBox");
-    expect(view.edges.map((edge) => `${edge.source}->${edge.target}`).sort()).toEqual([
-      "demo-file-input->demo-filter-bee",
-      "demo-file-input->group:BRANCH",
-      "demo-filter-bee->demo-merge",
-      "demo-merge->demo-output",
-      "group:BRANCH->demo-merge",
-    ]);
   });
 
   it("suggests BioFlow-Insight's groups of two steps or more, not those already grouped", () => {

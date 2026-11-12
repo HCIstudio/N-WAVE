@@ -191,6 +191,20 @@ const entries = [
       "Where Nextflow runs each task, in a folder of its own. The files a node saves are copied from there to results/<node name>.",
     related: ["task"],
   },
+  {
+    id: "specification-graph",
+    term: "Specification graph",
+    definition:
+      "A read-only view of the workflow's code as Nextflow will run it: every process and channel operation, and the channels between them. BioFlow-Insight draws it from the code N-WAVE writes.",
+    related: ["process-dependency-graph", "process", "channel-operator"],
+  },
+  {
+    id: "process-dependency-graph",
+    term: "Process dependency graph",
+    definition:
+      "A read-only view of which process depends on which: an arrow where one's output reaches another, through any channel operations. Selecting a process shows what a change to it affects.",
+    related: ["specification-graph", "process", "subworkflow"],
+  },
 ] as const satisfies ReadonlyArray<Omit<GlossaryEntry, "related"> & { related?: readonly string[] }>;
 
 export type GlossaryId = (typeof entries)[number]["id"];
@@ -222,6 +236,8 @@ const docs: Record<GlossaryId, WikiLink> = {
   versions: { page: "nf-core-Library", anchor: "using-a-module" },
   "custom-process": { page: "Custom-Nodes" },
   "work-directory": { page: "Running-Workflows", anchor: "where-the-results-are" },
+  "specification-graph": { page: "Workflow-Analysis", anchor: "graph-views" },
+  "process-dependency-graph": { page: "Workflow-Analysis", anchor: "graph-views" },
 };
 
 /** Every entry, alphabetically. */

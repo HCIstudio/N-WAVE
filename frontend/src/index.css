@@ -82,20 +82,15 @@
 
 /* The process graph: a blueprint, so it can't be mistaken for the editor.
    Light lines on deep blue paper, in either theme. */
-.canvas-blueprint .react-flow {
+/* The graph views (specification graph, process dependency graph): drawn on
+   blueprint paper, so they can't be mistaken for the editor. */
+.graph-view .react-flow {
   background-color: #10345e;
-}
-.canvas-blueprint .react-flow__edge-path {
-  /* biome-ignore lint/complexity/noImportantStyles: edges set their stroke inline; on a blueprint every line is pale. */
-  stroke: #d6e8ff !important;
-}
-.canvas-blueprint .react-flow__node {
-  box-shadow: 0 0 0 1px rgba(214, 232, 255, 0.55), 0 0 0 4px rgba(16, 52, 94, 0.9);
-  border-radius: 0.5rem;
 }
 .blueprint-title-block {
   display: flex;
   flex-direction: column;
+  max-width: 24rem;
   border: 1.5px solid #d6e8ff;
   padding: 0.35rem 0.75rem;
   color: #eaf3ff;
@@ -122,22 +117,9 @@
   opacity: 0.8;
 }
 
-/* The Groups view: the editor's canvas on a blue-grey tint, so it is told
-   apart from the editor without looking like the read-only process graph. */
-.canvas-tinted .react-flow {
-  background-color: #1c2533;
-}
-.view-title-block {
-  display: flex;
-  flex-direction: column;
-  max-width: 24rem;
-  border: 1px solid rgba(125, 211, 252, 0.6);
-  border-radius: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  color: #e5eef8;
-  background: rgba(28, 37, 51, 0.92);
-}
-.view-title-block .blueprint-title {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+/* What a tutorial step points at (TutorialCallout). */
+.tutorial-target {
+  outline: 2px solid #38bdf8;
+  outline-offset: 4px;
+  border-radius: 6px;
 }

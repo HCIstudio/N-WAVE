@@ -11,7 +11,7 @@ const script = await readFile(
 );
 
 test.describe("canvas views", () => {
-  test("shows what code connects as dashed lines, and the steps on their own", async ({
+  test("shows what code connects as dashed lines, and offers the graphs of the code", async ({
     page,
   }) => {
     await page.goto("./");
@@ -27,36 +27,19 @@ test.describe("canvas views", () => {
       page.getByText(/calls “TRIM”, which the canvas doesn't connect to it/),
     ).toBeVisible();
 
-    // The process graph: the channel code is hidden, TRIM reaches ALIGN through it.
+    // The two read-only graphs of the code are in the view switch. They are
+    // drawn from BioFlow-Insight's analysis, which needs an installation:
+    // in the demo they are greyed out and say so.
     const view = page.getByRole("group", { name: "Canvas view" });
-    await view.getByRole("button", { name: "Process graph" }).click();
-    // A blueprint, with a title block that says what it shows.
-    const titleBlock = page.getByRole("region", { name: "Process graph view" });
-    await expect(titleBlock).toContainText("channel code between them is hidden");
-    await expect(page.locator('[data-view-style="blueprint"]')).toBeVisible();
-    const channelCode = page
-      .locator(".react-flow__node")
-      .filter({ hasText: "Channel code" });
-    await expect(channelCode).toBeHidden();
-    await expect(
-      page.locator(".react-flow__node:visible").filter({ hasText: "TRIM" }),
-    ).toBeVisible();
-    await expect(page.locator('[data-derived="through"]')).toHaveCount(1);
-    await expect(titleBlock).toContainText("Read-only view");
-    await expect(view.getByRole("button", { name: "Process graph" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-
-    // Editing goes back to All.
-    await page
-      .locator(".react-flow__node:visible")
-      .filter({ hasText: "ALIGN" })
-      .dblclick();
-    await expect(view.getByRole("button", { name: "Editor" })).toHaveAttribute(
-      "aria-pressed",
-      "true",
-    );
-    await expect(channelCode).toBeVisible();
+    const dependencies = view.getByRole("button", { name: "Dependencies" });
+    await expect(dependencies).toHaveAttribute("data-unavailable", "true");
+    await dependencies.click();
+    const titleBlock = page.getByRole("region", { name: "Process dependency graph view" });
+    await expect(titleBlock).toContainText("not the editor");
+    await expect(page.getByRole("status")).toContainText("Needs a full install of N-WAVE.");
+    await expect(page.getByRole("button", { name: "Add node" })).toHaveCount(0);
+    await titleBlock.getByRole("button", { name: "Back to the editor" }).click();
+    await expect(view.getByRole("button", { name: "Editor" })).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator('[data-derived="code"]')).toHaveCount(2);
   });
 });

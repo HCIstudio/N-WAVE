@@ -49,7 +49,7 @@ test.describe("templates and glossary", () => {
     await page.getByRole("link", { name: "Help" }).click();
     await expect(page.getByRole("heading", { name: "Help", level: 1 })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Glossary" })).toBeVisible();
-    await expect(page.getByRole("term")).toHaveCount(25);
+    await expect(page.getByRole("term")).toHaveCount(27);
     await page.getByPlaceholder("Search terms...").fill("sample");
     await expect(page.getByRole("term").filter({ hasText: "Samplesheet" })).toBeVisible();
     await expect(page.getByRole("term").filter({ hasText: "Docker" })).toHaveCount(0);

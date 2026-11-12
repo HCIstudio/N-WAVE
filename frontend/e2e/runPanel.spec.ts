@@ -1,51 +1,35 @@
 import { expect, test } from "./fixtures";
 
+// The demo has no server: running, and what comes of runs, are shown as in an
+// installation but greyed out, with why.
 test.describe("run panel", () => {
-  test("keeps a failed run open, shows its log and reopens", async ({
-    page,
-  }) => {
+  test("in the demo, Run and Resume are shown greyed out, with why", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
 
-    // The demo has no backend, so a run fails at once.
-    await page.getByRole("button", { name: "Run Workflow" }).click();
-    const panel = page.getByRole("region", { name: "Run panel" });
-    await expect(panel.getByRole("heading")).toHaveText("Workflow Failed");
+    const run = page.getByRole("button", { name: "Run Workflow" });
+    await expect(run).toBeDisabled();
+    await expect(run).toHaveAttribute("title", /^Needs N-WAVE installed with Docker/);
+    const resume = page.getByRole("switch", { name: "Resume" });
+    await expect(resume).toBeDisabled();
+    await expect(resume).toHaveAttribute("title", /Needs N-WAVE installed with Docker/);
 
-    // The error notice opens the full log.
-    await page.getByRole("button", { name: "Show full log" }).click();
-    await expect(panel.getByRole("tab", { name: "Log" })).toHaveAttribute(
-      "aria-selected",
-      "true",
-    );
-    await expect(panel.getByLabel("Run log", { exact: true })).toContainText("Error:");
-
-    // It no longer hides itself after a few seconds.
-    await page.waitForTimeout(11_000);
-    await expect(panel).toBeVisible();
-
-    await panel.getByRole("button", { name: "Maximize panel" }).click();
-    await panel.getByRole("button", { name: "Minimize run panel" }).click();
-    await expect(panel.getByRole("tab", { name: "Log" })).toHaveCount(0);
-
-    // The Runs bar brings it back, with the last run's log.
-    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
-    await expect(panel.getByLabel("Run log", { exact: true })).toContainText("Error:");
-    await panel.getByRole("tab", { name: "History" }).click();
-    await expect(panel).toContainText("hasn't been run on this server");
+    // The run cache is in Execution Settings, greyed out.
+    await page.getByRole("button", { name: "Execution Settings" }).click();
+    const cache = page.getByRole("region", { name: "Run cache" });
+    await expect(cache).toBeVisible();
+    await expect(page.locator("[data-needs-install]")).toContainText("Needs a full install of N-WAVE.");
   });
 
-  test("doesn't offer Resume in the demo, which keeps no cache", async ({ page }) => {
+  test("the Runs bar opens the run panel, with no runs in the demo", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
-    await page.getByRole("button", { name: "Run Workflow" }).click();
+
+    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
     const panel = page.getByRole("region", { name: "Run panel" });
-    await expect(panel.getByRole("heading")).toHaveText("Workflow Failed");
-    await expect(page.getByRole("button", { name: "Resume" })).toHaveCount(0);
-    await page.getByRole("button", { name: "Execution Settings" }).click();
-    await expect(page.getByText("Execution Settings", { exact: true })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Run cache" })).toHaveCount(0);
+    await panel.getByRole("tab", { name: "History" }).click();
+    await expect(panel).toContainText("hasn't been run on this server");
   });
 });

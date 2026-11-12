@@ -652,36 +652,49 @@ describe("HomePage", () => {
       localStorage.clear();
     });
 
-    it("tours the home page, with Next and Back, until it is skipped", async () => {
+    it("starts as a box in the page, then tours it, with Next and Back, until it is skipped", async () => {
       const { user } = await setup([demo]);
-      const tutorial = screen.getByRole("region", { name: "Tutorial" });
-      expect(tutorial.textContent).toContain("Welcome to N-WAVE");
-      expect(tutorial.textContent).toContain("1 of 8");
-      expect(within(tutorial).queryByRole("button", { name: "Back" })).toBeNull();
+      const tutorial = () => screen.getByRole("region", { name: "Tutorial" });
+      expect(tutorial().textContent).toContain("Welcome to N-WAVE");
+      expect(within(tutorial()).queryByRole("button", { name: "Back" })).toBeNull();
       expect(screen.queryByRole("button", { name: "Retake Tutorial" })).toBeNull();
+      // In the page, not over it, until the tour is started.
+      expect(tutorial().className).not.toContain("fixed");
 
-      await user.click(within(tutorial).getByRole("button", { name: "Next" }));
-      expect(tutorial.textContent).toContain("built-in demos");
-      await user.click(within(tutorial).getByRole("button", { name: "Back" }));
-      expect(tutorial.textContent).toContain("Welcome to N-WAVE");
+      await user.click(within(tutorial()).getByRole("button", { name: "Start the tour" }));
+      expect(tutorial().textContent).toContain("built-in demos");
+      expect(tutorial().textContent).toContain("2 of 8");
+      expect(tutorial().className).toContain("fixed");
+      await user.click(within(tutorial()).getByRole("button", { name: "Next" }));
+      expect(tutorial().textContent).toContain("Your workflows");
+      await user.click(within(tutorial()).getByRole("button", { name: "Back" }));
+      expect(tutorial().textContent).toContain("built-in demos");
 
-      await user.click(within(tutorial).getByRole("button", { name: "Skip tutorial" }));
+      await user.click(within(tutorial()).getByRole("button", { name: "Skip tutorial" }));
       expect(localStorage.getItem(TUTORIAL_DONE[0])).toBe(TUTORIAL_DONE[1]);
       expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
       expect(within(card("Basic demo")).getByRole("button", { name: "Duplicate" })).toBeTruthy();
 
       await user.click(button("Retake Tutorial"));
       expect(localStorage.getItem(TUTORIAL_DONE[0])).toBeNull();
-      expect(screen.getByRole("region", { name: "Tutorial" }).textContent).toContain("Welcome to N-WAVE");
+      expect(tutorial().textContent).toContain("Welcome to N-WAVE");
+    });
+
+    it("can be skipped before it starts", async () => {
+      const { user } = await setup([demo]);
+      await user.click(within(screen.getByRole("region", { name: "Tutorial" })).getByRole("button", { name: "Skip tutorial" }));
+      expect(localStorage.getItem(TUTORIAL_DONE[0])).toBe(TUTORIAL_DONE[1]);
+      expect(screen.queryByRole("region", { name: "Tutorial" })).toBeNull();
     });
 
     it("ends the tour with the user's own copy of Demo 1, where it goes on", async () => {
       post.mockResolvedValue({ data: { _id: "copy-1" } });
       const { user } = await setup([demo]);
-      const tutorial = screen.getByRole("region", { name: "Tutorial" });
-      for (let step = 1; step < 8; step++) await user.click(within(tutorial).getByRole("button", { name: "Next" }));
-      expect(tutorial.textContent).toContain("duplicate Demo 1");
-      await user.click(within(tutorial).getByRole("button", { name: "Duplicate Demo 1" }));
+      const tutorial = () => screen.getByRole("region", { name: "Tutorial" });
+      await user.click(within(tutorial()).getByRole("button", { name: "Start the tour" }));
+      for (let step = 2; step < 8; step++) await user.click(within(tutorial()).getByRole("button", { name: "Next" }));
+      expect(tutorial().textContent).toContain("duplicate Demo 1");
+      await user.click(within(tutorial()).getByRole("button", { name: "Duplicate Demo 1" }));
       expect(post).toHaveBeenCalledWith("/workflows/builtin:demo-basic/duplicate");
       expect(sessionStorage.getItem("nwave.demoTutorial.active")).toBe("canvas");
       expect(sessionStorage.getItem("nwave.demoTutorial.step")).toBe("0");

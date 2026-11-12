@@ -38,35 +38,11 @@ test.describe("groups of steps", () => {
     await expect(frame).toContainText("Barry Uppercase2 steps");
     await expect(frame.locator("header")).toHaveAttribute("title", "Subworkflow BARRY_UPPERCASE in the code");
 
-    // Grouped: one box instead of the two steps; Open goes back to them.
-    const view = page.getByRole("group", { name: "Canvas view" });
-    await view.getByRole("button", { name: "Groups" }).click();
-    // Its own look (not the process graph's blueprint), and a title block that says what it shows.
-    await expect(page.locator('[data-view-style="tinted"]')).toBeVisible();
-    await expect(page.getByRole("region", { name: "Groups view" })).toContainText("Move a box to move its steps");
-    await expect(filter).toBeHidden();
-    const box = page.locator('.react-flow__node[data-id="group:BARRY_UPPERCASE"]');
-    // Moving the box moves its steps (back in the editor, they have moved too).
-    const before = await box.boundingBox();
-    if (!before) throw new Error("the group box is not visible");
-    await page.mouse.move(before.x + 60, before.y + 70);
-    await page.mouse.down();
-    await page.mouse.move(before.x + 60, before.y + 170, { steps: 8 });
-    await page.mouse.up();
-    await expect.poll(async () => (await box.boundingBox())?.y ?? 0).toBeGreaterThan(before.y + 50);
     // The group's name opens its editor.
-    await box.getByRole("button", { name: "Edit group “Barry Uppercase”" }).click();
+    await frame.getByRole("button", { name: "Edit group “Barry Uppercase”" }).click();
     const editor = page.getByRole("dialog", { name: "Edit the group" });
     await expect(editor.getByRole("button", { name: "Ungroup" })).toBeVisible();
     await editor.getByRole("button", { name: "Cancel" }).click();
-    await expect(box).toContainText("Filter");
-    await expect(box).toContainText("Map");
-    // Into the box from File Input, out of it into Merge.
-    await expect(page.locator('[data-testid^="rf__edge-grouped:"]')).toHaveCount(2);
-    await box.getByRole("button", { name: "Open" }).click();
-    await expect(view.getByRole("button", { name: "Editor" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator("[data-view-style]")).toHaveCount(0);
-    await expect(filter).toBeVisible();
 
     // The script: the group is a workflow the entry workflow calls.
     const downloadPromise = page.waitForEvent("download");
@@ -80,7 +56,6 @@ test.describe("groups of steps", () => {
     await frame.getByRole("button", { name: "Edit group “Barry Uppercase”" }).click();
     await page.getByRole("dialog", { name: "Edit the group" }).getByRole("button", { name: "Ungroup" }).click();
     await expect(frame).toHaveCount(0);
-    await expect(view.getByRole("button", { name: "Groups" })).toHaveCount(0);
   });
 
   test("groups what the analysis suggests", async ({ page }) => {

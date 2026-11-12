@@ -135,10 +135,10 @@ tab's `session`, the `participant` ID and marked `test` if set, the open `workfl
 | `failure.explained` | A failure explanation was shown | `kind`, `title`, `certainty`, `process` |
 | `failure.feedback` | *Did this help?* was answered under a failure explanation | `kind`, `certainty`, `helpful` (`true` or `false`) |
 | `analysis.run` | The workflow was analysed (**Analyse**) | `lint`, `bioflow` (each `done`, `unavailable` or `failed`), `errors`, `warnings`; or `failed` |
-| `analysis.structureViewed` | The analysis's structure view was switched | `view` (`steps` or `channels`) |
-| `analysis.downloaded` | The analysed structure was downloaded | `format` (`mermaid` or `dot`), `view` |
 | `conditions.preview` | The steps that won't run with the parameter values changed (after an analysis, or a value's change) | `notRunning` (node IDs), `conditional` (steps with a condition) |
-| `canvas.viewChanged` | The canvas view was switched (**Editor**, **Process graph**, **Groups**) | `view` (`all`, `steps` or `grouped`) |
+| `canvas.viewChanged` | The canvas view was switched (**Editor**, **Specification graph**, **Process dependency graph**) | `view` (`editor`, `specification` or `dependencies`) |
+| `graph.inspected` | A process, operation or subworkflow was selected in a graph view | `view`, `kind` (`step`, `operation` or `cluster`) |
+| `graph.clusterToggled` | A subworkflow was collapsed or expanded in a graph view | `view`, `collapsed` |
 | `group.created` | Steps were grouped into a subworkflow | `steps` (how many), `from` (`selection` or `suggestion`) |
 | `group.renamed` | A group was renamed | – |
 | `group.removed` | A group was ungrouped | `steps` (how many it had) |

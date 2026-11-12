@@ -83,5 +83,5 @@ export const useRunsOverview = () => {
       .map((run) => run.workflowName ?? run.id);
   }, [running, refresh]);
 
-  return { runs, running, lastRuns, refresh, stopAll, enabled: !isDemoMode };
+  return { runs, running, lastRuns, refresh, stopAll };
 };

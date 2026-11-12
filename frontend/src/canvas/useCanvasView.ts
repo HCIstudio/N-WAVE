@@ -1,5 +1,6 @@
-// The open workflow's view (All or Steps only) and the connections its code
-// makes that the canvas doesn't show, computed from its generated script.
+// The open workflow's view (the Editor, or a read-only graph of its code) and,
+// in the editor, the connections its code makes that the canvas doesn't
+// show (computed from its generated script) and a frame around each group.
 
 import type { Edge, Node } from "@xyflow/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -14,9 +15,7 @@ import {
   type CodeConnection,
   codeConnectionEdge,
   codeConnections,
-  groupedView,
   groupFrames,
-  stepsOnlyView,
 } from "./canvasViews";
 
 const NONE: CodeConnection[] = [];
@@ -46,7 +45,7 @@ export const useCanvasView = (
   workflowName: string,
   { showCodeConnections = true }: { showCodeConnections?: boolean } = {},
 ) => {
-  const [view, setViewState] = useState<CanvasView>("all");
+  const [view, setViewState] = useState<CanvasView>("editor");
   const signature = useMemo(() => codeSignature(nodes, edges), [nodes, edges]);
 
   // From the code, so only when the code changes (not on a drag).
@@ -76,11 +75,11 @@ export const useCanvasView = (
   }, [signature, workflowName]);
   const shown = showCodeConnections ? connections : NONE;
 
-  // An edit (anything that changes the code) goes back to All, where it can be made.
+  // An edit (anything that changes the code) goes back to the editor, where it can be made.
   const lastSignature = useRef(signature);
   useEffect(() => {
-    if (signature !== lastSignature.current && view !== "all")
-      setViewState("all");
+    if (signature !== lastSignature.current && view !== "editor")
+      setViewState("editor");
     lastSignature.current = signature;
   }, [signature, view]);
 
@@ -89,16 +88,15 @@ export const useCanvasView = (
     logActivity("canvas.viewChanged", { view: next });
   };
 
+  // The editor's nodes and edges (the graph views draw the analysis instead).
   const display = useMemo(() => {
-    if (view === "steps") return stepsOnlyView(nodes, edges, shown);
-    if (view === "grouped") return groupedView(nodes, edges);
     const frames = groupFrames(nodes);
     return {
       nodes: frames.length > 0 ? [...frames, ...nodes] : nodes,
       edges:
         shown.length > 0 ? [...edges, ...shown.map(codeConnectionEdge)] : edges,
     };
-  }, [view, nodes, edges, shown]);
+  }, [nodes, edges, shown]);
 
   // The messages follow the connections (labels from the latest nodes).
   const problems = useMemo(

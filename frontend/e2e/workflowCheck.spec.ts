@@ -37,13 +37,14 @@ test.describe("workflow check", () => {
     await expect(list).toHaveCount(0);
     await expect(input).toHaveClass(/selected/);
 
-    // With a file, the workflow can run; the warning stays.
+    // With a file, the check no longer blocks it (in the demo, Run then
+    // says it needs an installation); the warning stays.
     await input.locator('input[type="file"]').setInputFiles({
       name: "greetings.txt",
       mimeType: "text/plain",
       buffer: Buffer.from("hello world\n"),
     });
-    await expect(run).toBeEnabled();
+    await expect(run).toHaveAttribute("title", /^Needs N-WAVE installed with Docker/);
     await expect(input.getByRole("img")).toHaveCount(0);
     await expect(check).toHaveAccessibleName("Workflow check: 1 warning");
   });

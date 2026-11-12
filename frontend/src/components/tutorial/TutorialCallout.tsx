@@ -25,6 +25,15 @@ const CALLOUT_WIDTH = 320;
 export const TUTORIAL_BOX_CLASS =
   "rounded-md border border-l-4 border-panel-border border-l-sky-400 bg-panel-background text-text shadow-lg";
 
+/**
+ * A box that floats over the page: a deep shadow and a sky ring set it apart
+ * from whatever is behind it.
+ */
+const FLOATING_CLASS = "ring-1 ring-sky-400/60 shadow-[0_12px_40px_rgba(0,0,0,0.6)]";
+
+/** Marks what a step points at (index.css): outlined while the step shows. */
+const TARGET_CLASS = "tutorial-target";
+
 /** Small "Tutorial" label at the top of a tutorial box. */
 export const TutorialBadge: React.FC = () => (
   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
@@ -46,6 +55,14 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
   onSkip,
 }) => {
   const [position, setPosition] = useState({ top: 0, left: 0 });
+
+  // What the step points at is outlined, so it stands out from the page.
+  useEffect(() => {
+    if (!targetSelector) return;
+    const target = document.querySelector(targetSelector);
+    target?.classList.add(TARGET_CLASS);
+    return () => target?.classList.remove(TARGET_CLASS);
+  }, [targetSelector]);
 
   useEffect(() => {
     const updatePosition = () => {
@@ -120,7 +137,7 @@ const TutorialCallout: React.FC<TutorialCalloutProps> = ({
     <section
       aria-label="Tutorial"
       aria-live="polite"
-      className={`fixed z-50 w-[320px] p-4 ${TUTORIAL_BOX_CLASS}`}
+      className={`fixed z-50 w-[320px] p-4 ${TUTORIAL_BOX_CLASS} ${FLOATING_CLASS}`}
       style={{ top: position.top, left: position.left, transform }}
     >
       <div className="flex items-baseline justify-between">

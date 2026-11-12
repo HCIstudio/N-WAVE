@@ -58,27 +58,24 @@ opens).
 - **Zoom to the failing step** appears next to them after a run failed and goes to the step
   that failed.
 
-## Views: the editor, the process graph, or groups
+## Views: the editor and the graphs of the code
 
-The switch in the bottom bar (**Editor** | **Process graph** | **Groups**) chooses what the
-canvas shows:
+The switch in the bottom bar (**Editor** | **Specification** | **Dependencies**) chooses what
+the canvas shows:
 
-- **Editor**: every node, editable.
-- **Process graph**: the processes and how data flows between them. Channel code (channel
-  operator nodes, and code kept from an import) is hidden, and each step connects straight
-  to the steps its data reaches through it (dotted lines). Large imported workflows read as
-  their steps this way.
-- **Groups** (when the workflow has [groups](#groups-of-steps)): each group is one box with
-  its steps listed, connected to the rest. Moving a box moves its steps; clicking a group's
-  name opens its editor (rename, ungroup). **Open** (or a double-click) goes back to the
-  editor, zoomed to the group's steps.
+- **Editor**: the workflow as you build it, every node, editable.
+- **Specification** (the specification graph) and **Dependencies** (the process dependency
+  graph): two read-only views of the code N-WAVE writes for the canvas, as
+  [BioFlow-Insight](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis) reads it. The
+  specification graph has every process and channel operation and the channels between them;
+  the process dependency graph only the processes, and which one depends on which. See
+  [Workflow analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis#graph-views)
+  for what each tells you.
 
-N-WAVE draws both views from the canvas; they aren't the
-[analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis), which is BioFlow-Insight's
-reading of the code (**Analyse**). Each has a title block at the top left: what it shows, and
-**Back to the editor**. The process graph is read-only and drawn as a blueprint (blue paper),
-so it can't be mistaken for the editor; groups are drawn on a blue-grey canvas, and connections
-are made in the editor. Editing a node's settings goes back to the editor.
+The graph views are drawn as a blueprint (blue paper) with a title block, so they can't be
+mistaken for the editor; nothing can be added, moved or connected there, and **Back to the
+editor** returns to it. They need an installation (the analysis runs on its server): in the
+browser demo they are greyed out and say so.
 
 **Connected in code** (orange dashed lines): code in a node can call a step or read another
 node's output that the canvas doesn't connect to it, for example an imported
@@ -99,8 +96,9 @@ the group changes how the code is written and adds a way to see the workflow:
 2. Name it. The name is the subworkflow's in the code (`Read QC` → `READ_QC`); it can't be a
    step's name or another group's.
 3. On the canvas, a frame shows the group's steps. Click its name to edit the group: rename
-   it, or **Ungroup** (the steps on their own again). **Groups** in the bottom bar shows each
-   group as one box.
+   it, or **Ungroup** (the steps on their own again). In the
+   [graph views](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis#graph-views), the
+   group is a subworkflow that can be collapsed to one box.
 
 In the code, the group is a named workflow the workflow calls: what its steps read from the
 other steps becomes its inputs (`take:`), what the other steps read from it its outputs

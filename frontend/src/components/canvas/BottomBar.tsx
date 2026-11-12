@@ -41,7 +41,7 @@ interface BottomBarProps {
   checkControl?: React.ReactNode;
   /** Analyse (the workflow's code and structure), shown before the check. */
   analysisControl?: React.ReactNode;
-  /** The canvas view (Editor, Process graph, Groups), shown before Analyse. */
+  /** The canvas view (Editor, Specification graph, Process dependency graph), shown before Analyse. */
   viewControl?: React.ReactNode;
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;
@@ -55,7 +55,13 @@ interface BottomBarProps {
    * cache from earlier runs, the run reuses the steps that haven't changed.
    * Off (greyed) while there is no cache.
    */
-  resume?: { available: boolean; on: boolean; onChange: (on: boolean) => void };
+  resume?: {
+    available: boolean;
+    /** Why it can't be used at all (the demo), instead of "nothing to reuse yet". */
+    unavailableReason?: string | null;
+    on: boolean;
+    onChange: (on: boolean) => void;
+  };
   /** More sections at the end of the execution settings (the run cache). */
   settingsExtra?: React.ReactNode;
 }
@@ -473,7 +479,9 @@ const BottomBar: React.FC<BottomBarProps> = ({
                     : "bg-background text-text-light hover:bg-accent"
                 }`}
                 title={
-                  !resume.available
+                  resume.unavailableReason
+                    ? `Resume: ${resume.unavailableReason}`
+                    : !resume.available
                     ? "Resume: a run reuses the steps an earlier run of this workflow finished. Nothing to reuse yet."
                     : resume.on
                       ? "Resume is on: the next run reuses the steps whose code and inputs haven't changed. Click to run every step."

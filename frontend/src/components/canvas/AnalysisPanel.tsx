@@ -1,110 +1,19 @@
 // The workflow's analysis (Analyse in the bottom bar): what nextflow lint and
-// BioFlow-Insight found in its code, and its structure as BioFlow-Insight
-// reads it, read-only, with metrics and downloads.
+// BioFlow-Insight found in its code, and steps that belong together. Its
+// structure is drawn by the graph views (Specification graph, Process
+// dependency graph), which this opens.
 
-import { downloadText } from "../../utils/download";
-import {
-  Background,
-  type Edge,
-  Handle,
-  type Node,
-  type NodeProps,
-  Position,
-  ReactFlow,
-  ReactFlowProvider,
-} from "@xyflow/react";
-import clsx from "clsx";
-import {
-  AlertTriangle,
-  CheckCircle2,
-  Download,
-  Info,
-  Loader,
-  RefreshCw,
-  X,
-  XCircle,
-} from "lucide-react";
+import type { Node } from "@xyflow/react";
+import { AlertTriangle, CheckCircle2, Info, Loader, Network, RefreshCw, Share2, X, XCircle } from "lucide-react";
 import type React from "react";
-import { memo, useEffect, useId, useMemo, useState } from "react";
-import { logActivity } from "../../activity/activityLog";
+import { useEffect, useId, useMemo } from "react";
 import { type AnalysisPart, analysisProblems } from "../../analysis/analysis";
 import { BIOFLOW_PAPER_URL } from "../../analysis/bioflow";
 import { wikiUrl } from "../../docs/links";
-import {
-  layoutStructure,
-  type StructureView,
-  structureGraph,
-  structureMetrics,
-  toDot,
-  toMermaid,
-} from "../../analysis/structure";
+import type { GraphKind } from "../../analysis/graphViews";
 import type { WorkflowAnalysisState } from "../../analysis/useWorkflowAnalysis";
-import { STEP_HEIGHT, STEP_WIDTH } from "../../workflows/nested/nestedGraph";
 import type { NodeData } from "../nodes/BaseNode";
 import { groupSuggestions, SUGGESTION_REASONS } from "../../groups/suggestions";
-
-interface StructureNodeData extends Record<string, unknown> {
-  label: string;
-  kind: "step" | "operation";
-  subworkflow: string | null;
-  /** Shows the step's node on the canvas; unset for operations and steps inside. */
-  onShow?: () => void;
-}
-
-const StructureNode = memo(({ data }: NodeProps<Node<StructureNodeData>>) => (
-  <div
-    className={clsx(
-      "flex h-full w-full flex-col justify-center overflow-hidden border px-3 text-left",
-      data.kind === "step" ? "rounded-md border-gray-300 bg-white shadow-sm" : "rounded-full border-dashed border-gray-400 bg-gray-50",
-    )}
-  >
-    <Handle
-      type="target"
-      position={Position.Left}
-      isConnectable={false}
-      className="!opacity-0"
-    />
-    <span
-      className={clsx(
-        "truncate",
-        data.kind === "step"
-          ? "text-xs font-semibold text-gray-800"
-          : "font-mono text-[11px] text-gray-600",
-      )}
-      title={data.label}
-    >
-      {data.label}
-    </span>
-    {data.subworkflow && (
-      <span className="truncate text-[10px] text-gray-600">
-        in {data.subworkflow}
-      </span>
-    )}
-    {data.onShow && (
-      <button
-        type="button"
-        onClick={data.onShow}
-        className="nodrag self-start text-[10px] font-medium text-blue-700 hover:underline"
-      >
-        Show on canvas
-      </button>
-    )}
-    <Handle
-      type="source"
-      position={Position.Right}
-      isConnectable={false}
-      className="!opacity-0"
-    />
-  </div>
-));
-StructureNode.displayName = "StructureNode";
-
-const nodeTypes = { structure: StructureNode };
-const ignoreClick = () => {};
-
-
-const fileBase = (name: string) =>
-  name.trim().replace(/[^\w.-]+/g, "_") || "workflow";
 
 const PartStatus: React.FC<{ part: AnalysisPart<unknown>; name: string }> = ({
   part,
@@ -128,6 +37,8 @@ interface AnalysisPanelProps {
   onShowNode: (nodeId: string) => void;
   /** Group the steps of a suggestion (absent: can't be changed now). */
   onGroup?: (ids: string[]) => void;
+  /** Opens a graph view of the code. */
+  onOpenView: (kind: GraphKind) => void;
   onClose: () => void;
 }
 
@@ -138,10 +49,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   nodeLabels,
   onShowNode,
   onGroup,
+  onOpenView,
   onClose,
 }) => {
   const headingId = useId();
-  const [view, setView] = useState<StructureView>("steps");
   const { analysis, current, running, error, analyse } = state;
 
   useEffect(() => {
@@ -158,14 +69,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   );
   const bioflow =
     analysis?.bioflow.status === "done" ? analysis.bioflow.result : null;
-  const graph = useMemo(
-    () => (bioflow ? structureGraph(bioflow, view) : null),
-    [bioflow, view],
-  );
-  const metrics = useMemo(
-    () => (bioflow ? structureMetrics(bioflow) : null),
-    [bioflow],
-  );
   // Steps that belong together, by BioFlow-Insight (only while the steps are as analysed).
   const suggestions = useMemo(
     () =>
@@ -175,67 +78,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
     [bioflow, analysis, state.structureCurrent, nodes],
   );
 
-  // The canvas node of each top-level step, to show it.
-  const nodeOfStep = useMemo(() => {
-    const byName = new Map<string, string>();
-    for (const [nodeId, name] of analysis?.names ?? [])
-      byName.set(name, nodeId);
-    return byName;
-  }, [analysis]);
-
-  const { flowNodes, flowEdges } = useMemo(() => {
-    if (!graph)
-      return {
-        flowNodes: [] as Node<StructureNodeData>[],
-        flowEdges: [] as Edge[],
-      };
-    const positions = new Map(
-      layoutStructure(graph).map((item) => [item.id, item.position]),
-    );
-    const flowNodes: Node<StructureNodeData>[] = graph.nodes.map((node) => {
-      const nodeId =
-        node.kind === "step" && !node.subworkflow
-          ? nodeOfStep.get(node.label)
-          : undefined;
-      return {
-        id: node.id,
-        type: "structure",
-        position: positions.get(node.id) ?? { x: 0, y: 0 },
-        width: STEP_WIDTH,
-        height: node.kind === "step" ? STEP_HEIGHT : 40,
-        draggable: false,
-        selectable: false,
-        data: {
-          label: node.label,
-          kind: node.kind,
-          subworkflow: node.subworkflow,
-          ...(nodeId ? { onShow: () => onShowNode(nodeId) } : {}),
-        },
-      };
-    });
-    const flowEdges: Edge[] = graph.edges.map((edge, index) => ({
-      id: `${edge.from}->${edge.to}-${index}`,
-      source: edge.from,
-      target: edge.to,
-      style: { stroke: "#9ca3af" },
-    }));
-    return { flowNodes, flowEdges };
-  }, [graph, nodeOfStep, onShowNode]);
-
   const errors = problems.filter((problem) => problem.level === "error").length;
   const warnings = problems.length - errors;
-  const showView = (next: StructureView) => {
-    setView(next);
-    logActivity("analysis.structureViewed", { view: next });
-  };
-
   return (
-    <div className="fixed inset-0 z-40 flex bg-black/50 p-4 sm:p-8">
+    <div className="fixed inset-0 z-40 flex justify-center bg-black/50 p-4 sm:p-8">
       <section
         role="dialog"
         aria-modal="true"
         aria-labelledby={headingId}
-        className="flex min-h-0 w-full flex-col overflow-hidden rounded-lg border border-panel-border bg-panel-background shadow-2xl"
+        className="flex min-h-0 w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-panel-border bg-panel-background shadow-2xl"
       >
         <header className="flex items-center gap-3 border-b border-panel-border px-4 py-3">
           <h2 id={headingId} className="text-lg font-semibold text-text">
@@ -266,8 +117,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
           </div>
         </header>
 
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="max-h-[45%] overflow-y-auto border-b border-panel-border p-4 lg:max-h-none lg:w-96 lg:border-b-0 lg:border-r">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
             {running && !analysis && (
               <p className="flex items-center gap-2 text-sm text-text-light">
                 <Loader className="h-4 w-4 animate-spin" aria-hidden />{" "}
@@ -362,38 +213,31 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                   )}
                 </div>
 
-                {metrics && (
+                {bioflow && (
                   <>
                     <h3 className="mb-2 mt-4 text-sm font-semibold text-text">
-                      In numbers
+                      Its structure
                     </h3>
-                    <dl className="grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
-                      <dt className="text-text-light">Steps</dt>
-                      <dd className="text-text">{metrics.steps}</dd>
-                      {metrics.operations !== null && (
-                        <>
-                          <dt className="text-text-light">
-                            Channel operations
-                          </dt>
-                          <dd className="text-text">{metrics.operations}</dd>
-                        </>
-                      )}
-                      <dt className="text-text-light">
-                        Connections between steps
-                      </dt>
-                      <dd className="text-text">{metrics.connections}</dd>
-                      <dt className="text-text-light">Longest path</dt>
-                      <dd className="text-text">
-                        {metrics.longestPath} step
-                        {metrics.longestPath === 1 ? "" : "s"}
-                      </dd>
-                      <dt className="text-text-light">Subworkflow calls</dt>
-                      <dd className="text-text">{metrics.subworkflows}</dd>
-                      <dt className="text-text-light">
-                        Steps with a condition
-                      </dt>
-                      <dd className="text-text">{metrics.conditionalSteps}</dd>
-                    </dl>
+                    <p className="mb-2 text-sm text-text-light">
+                      BioFlow-Insight&apos;s reading of the code, as read-only views
+                      in place of the editor:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenView("specification")}
+                        className="flex items-center gap-1 rounded-md border border-panel-border px-2 py-1 text-sm text-text hover:bg-accent"
+                      >
+                        <Share2 className="h-4 w-4" aria-hidden /> Specification graph
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenView("dependencies")}
+                        className="flex items-center gap-1 rounded-md border border-panel-border px-2 py-1 text-sm text-text hover:bg-accent"
+                      >
+                        <Network className="h-4 w-4" aria-hidden /> Process dependency graph
+                      </button>
+                    </div>
                   </>
                 )}
                 {suggestions.length > 0 && (
@@ -442,121 +286,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               </>
             )}
           </div>
-
-          <div className="flex min-h-0 flex-1 flex-col">
-            <div className="flex flex-wrap items-center gap-2 border-b border-panel-border px-4 py-2">
-              <div
-                role="tablist"
-                aria-label="Structure"
-                className="flex rounded-md border border-panel-border"
-              >
-                {(
-                  [
-                    ["steps", "Steps"],
-                    ["channels", "Steps and channels"],
-                  ] as const
-                ).map(([id, label]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    role="tab"
-                    aria-selected={view === id}
-                    onClick={() => showView(id)}
-                    className={clsx(
-                      "px-3 py-1 text-sm",
-                      view === id
-                        ? "bg-accent font-medium text-text"
-                        : "text-text-light hover:text-text",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              {graph && (
-                <div className="ml-auto flex gap-2">
-                  {(
-                    [
-                      [
-                        "mermaid",
-                        "Mermaid",
-                        ".mmd",
-                        () => toMermaid(graph),
-                        "text/plain",
-                      ],
-                      [
-                        "dot",
-                        "Dot",
-                        ".dot",
-                        () => toDot(graph, workflowName),
-                        "text/vnd.graphviz",
-                      ],
-                    ] as const
-                  ).map(([format, label, extension, make, type]) => (
-                    <button
-                      key={format}
-                      type="button"
-                      onClick={() => {
-                        downloadText(
-                          make(),
-                          `${fileBase(workflowName)}-${view}${extension}`,
-                          type,
-                        );
-                        logActivity("analysis.downloaded", { format, view });
-                      }}
-                      className="flex items-center gap-1 rounded-md border border-panel-border px-2 py-1 text-sm text-text hover:bg-accent"
-                    >
-                      <Download className="h-4 w-4" aria-hidden /> {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="relative min-h-0 flex-1">
-              {!analysis ? null : !bioflow ? (
-                <p className="p-6 text-sm text-text-light">
-                  The structure comes from BioFlow-Insight, which isn&apos;t
-                  available here.
-                </p>
-              ) : !graph ? (
-                <p className="p-6 text-sm text-text-light">
-                  BioFlow-Insight couldn&apos;t read the channels of this
-                  workflow.
-                </p>
-              ) : graph.nodes.length === 0 ? (
-                <p className="p-6 text-sm text-text-light">
-                  No steps found in the workflow&apos;s code.
-                </p>
-              ) : (
-                <ReactFlowProvider key={view}>
-                  <ReactFlow
-                    aria-label={
-                      view === "steps"
-                        ? "Steps and how they connect"
-                        : "Steps, channel operations and channels"
-                    }
-                    nodes={flowNodes}
-                    edges={flowEdges}
-                    nodeTypes={nodeTypes}
-                    nodesDraggable={false}
-                    nodesConnectable={false}
-                    elementsSelectable={false}
-                    onNodeClick={ignoreClick}
-                    fitView
-                    fitViewOptions={{ maxZoom: 1 }}
-                    minZoom={0.05}
-                    proOptions={{ hideAttribution: true }}
-                  >
-                    <Background gap={24} />
-                  </ReactFlow>
-                </ReactFlowProvider>
-              )}
-            </div>
-          </div>
         </div>
 
         <footer className="border-t border-panel-border px-4 py-2 text-xs text-text-light">
-          Read-only, from the workflow&apos;s generated code. Structure by{" "}
+          From the workflow&apos;s generated code, by{" "}
           <a
             href={BIOFLOW_PAPER_URL}
             target="_blank"

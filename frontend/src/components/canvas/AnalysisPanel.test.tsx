@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { Node } from "@xyflow/react";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { recorded, startRecording, stopRecording } from "../../activity/activityTesting";
+import { stopRecording } from "../../activity/activityTesting";
 import type { WorkflowAnalysis } from "../../analysis/analysis";
 import type { BioflowResult } from "../../analysis/bioflow";
 import type { WorkflowAnalysisState } from "../../analysis/useWorkflowAnalysis";
@@ -55,7 +55,7 @@ const state = (overrides: Partial<WorkflowAnalysisState> = {}): WorkflowAnalysis
   ...overrides,
 });
 
-const renderPanel = (panelState: WorkflowAnalysisState, onShowNode = vi.fn()) =>
+const renderPanel = (panelState: WorkflowAnalysisState, onShowNode = vi.fn(), onOpenView = vi.fn()) =>
   render(
     <AnalysisPanel
       state={panelState}
@@ -63,6 +63,7 @@ const renderPanel = (panelState: WorkflowAnalysisState, onShowNode = vi.fn()) =>
       workflowName="My workflow"
       nodeLabels={{ "n-qc": "QC" }}
       onShowNode={onShowNode}
+      onOpenView={onOpenView}
       onClose={vi.fn()}
     />,
   );
@@ -78,9 +79,12 @@ describe("AnalysisPanel", () => {
     expect(screen.getByText(/don't keep the workflow from running/)).toBeTruthy();
   });
 
-  it("shows the structure's numbers, and credits BioFlow-Insight", () => {
-    renderPanel(state());
-    expect(screen.getByText("Steps", { selector: "dt" }).nextElementSibling?.textContent).toBe(String(recordedResult.steps.length));
+  it("opens the graph views of the structure, and credits BioFlow-Insight", async () => {
+    const onOpenView = vi.fn();
+    renderPanel(state(), vi.fn(), onOpenView);
+    await userEvent.click(screen.getByRole("button", { name: "Specification graph" }));
+    await userEvent.click(screen.getByRole("button", { name: "Process dependency graph" }));
+    expect(onOpenView.mock.calls).toEqual([["specification"], ["dependencies"]]);
     expect(screen.getByRole("link", { name: "BioFlow-Insight (Marchment et al., 2024)" }).getAttribute("href")).toBe(
       "https://doi.org/10.1093/nargab/lqae092",
     );
@@ -105,20 +109,7 @@ describe("AnalysisPanel", () => {
     );
     expect(screen.getByText(/nextflow lint isn't available: Nextflow's lint runs in Docker/)).toBeTruthy();
     expect(screen.getByText(/BioFlow-Insight failed: The analysis took longer/)).toBeTruthy();
-    expect(screen.getByText(/The structure comes from BioFlow-Insight, which isn't available here/)).toBeTruthy();
-  });
-
-  it("switches views and downloads the structure (recorded in verbose mode)", async () => {
-    startRecording();
-    renderPanel(state());
-    await userEvent.click(screen.getByRole("tab", { name: "Steps and channels" }));
-    expect(screen.getByRole("tab", { name: "Steps and channels" }).getAttribute("aria-selected")).toBe("true");
-    expect(recorded("analysis.structureViewed").map((event) => event.data)).toEqual([{ view: "channels" }]);
-    await userEvent.click(screen.getByRole("button", { name: "Mermaid" }));
-    await userEvent.click(screen.getByRole("button", { name: "Dot" }));
-    expect(recorded("analysis.downloaded").map((event) => event.data)).toEqual([
-      { format: "mermaid", view: "channels" },
-      { format: "dot", view: "channels" },
-    ]);
+    // Without BioFlow-Insight's reading, there is no structure to open.
+    expect(screen.queryByRole("button", { name: "Specification graph" })).toBeNull();
   });
 });
