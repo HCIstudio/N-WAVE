@@ -2,7 +2,7 @@
 // delete button of its panel.
 
 import { type Dispatch, type SetStateAction, useState } from "react";
-import { type Edge, type Node, useReactFlow } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 
 /** Remove a node and its connections from the canvas. */
@@ -26,6 +26,13 @@ interface Options {
   setEdges: Dispatch<SetStateAction<Edge[]>>;
 }
 
+/** The mouse or touch event of a drag: where the pointer is. */
+type PointerLike = {
+  clientX?: number;
+  clientY?: number;
+  touches?: ArrayLike<{ clientX: number; clientY: number }>;
+};
+
 export const useNodeDeletion = ({
   readOnly,
   requestCopy,
@@ -33,29 +40,22 @@ export const useNodeDeletion = ({
   setNodes,
   setEdges,
 }: Options) => {
-  const { screenToFlowPosition, getInternalNode } = useReactFlow();
   const [isDragging, setIsDragging] = useState(false);
   const [isHoveringDropZone, setIsHoveringDropZone] = useState(false);
   const [nodeToDelete, setNodeToDelete] = useState<Node<NodeData> | null>(null);
 
   const onNodeDragStart = () => setIsDragging(true);
 
-  const onNodeDrag = (_: unknown, node: Node) => {
-    const internal = getInternalNode(node.id);
-    const width = internal?.measured.width;
-    const height = internal?.measured.height;
-    if (!internal || !width || !height) return;
-    const { x, y } = internal.internals.positionAbsolute;
+  // On the bin when the pointer is: not when the node's box only touches it,
+  // which deleted large nodes moved near the edge.
+  const onNodeDrag = (event: PointerLike, _node: Node) => {
+    const point = event.touches?.[0] ?? event;
+    if (point.clientX === undefined || point.clientY === undefined) return;
     const dropZone = document.getElementById("delete-drop-zone");
     if (!dropZone) return;
     const rect = dropZone.getBoundingClientRect();
-    const topLeft = screenToFlowPosition({ x: rect.left, y: rect.top });
-    const bottomRight = screenToFlowPosition({ x: rect.right, y: rect.bottom });
     setIsHoveringDropZone(
-      x < bottomRight.x &&
-        x + width > topLeft.x &&
-        y < bottomRight.y &&
-        y + height > topLeft.y,
+      point.clientX >= rect.left && point.clientX <= rect.right && point.clientY >= rect.top && point.clientY <= rect.bottom,
     );
   };
 

@@ -167,6 +167,7 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "When a step runs: its conditions, and a preview by parameter values", issue: 220, status: "released" },
       { title: "Group steps into a subworkflow", issue: 221, status: "released" },
       { title: "Export and import through the FONDA workflow metamodel", issue: 194, status: "released" },
+      { title: "Courses for every major feature", issue: 241 },
       { title: "Tested on a local installation before the release", issue: 224 },
     ],
   },
@@ -180,6 +181,8 @@ export const RELEASES: RoadmapRelease[] = [
     features: [
       { title: "I/O monitoring of each step", issue: 102 },
       { title: "Bottleneck analysis and runtime prediction with BottleMod", issue: 173 },
+      { title: "A course for its features", issue: 251 },
+      { title: "Tested on a local installation before the release", issue: 256 },
     ],
   },
   {
@@ -192,6 +195,8 @@ export const RELEASES: RoadmapRelease[] = [
     features: [
       { title: "The AI companion", issue: 41 },
       { title: "A benchmark of nf-core tasks for models and prompts", issue: 195 },
+      { title: "A course for its features", issue: 252 },
+      { title: "Tested on a local installation before the release", issue: 257 },
     ],
   },
   {
@@ -204,6 +209,8 @@ export const RELEASES: RoadmapRelease[] = [
     features: [
       { title: "Interaction steps: a run waits for your decision", issue: 196 },
       { title: "nf-interact: interactions as a Nextflow plugin", issue: 201 },
+      { title: "A course for its features", issue: 253 },
+      { title: "Tested on a local installation before the release", issue: 258 },
     ],
   },
   {
@@ -213,7 +220,11 @@ export const RELEASES: RoadmapRelease[] = [
     milestone: 11,
     goal: "Questions appear only once the data they need exists, and expire when they no longer make sense.",
     why: "The right question at the right moment.",
-    features: [{ title: "Rules for when an interaction is available", issue: 197 }],
+    features: [
+      { title: "Rules for when an interaction is available", issue: 197 },
+      { title: "A course for its features", issue: 254 },
+      { title: "Tested on a local installation before the release", issue: 259 },
+    ],
   },
   {
     version: "2.0",
@@ -228,6 +239,8 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "An API for interaction steps in other workflow systems", issue: 199 },
       { title: "Run N-WAVE on shared research infrastructure", issue: 200 },
       { title: "An archived, citable release", issue: 202 },
+      { title: "Courses for its features", issue: 255 },
+      { title: "Tested on a local and a shared installation before the release", issue: 260 },
     ],
   },
 ];

@@ -39,6 +39,8 @@ export interface CourseInfo {
   course?: CourseId;
   /** The course to take after this one. */
   next?: CourseId;
+  /** A course to come: its issue. */
+  issue?: number;
 }
 
 export const COURSES: CourseInfo[] = [
@@ -74,22 +76,60 @@ export const COURSES: CourseInfo[] = [
     level: "basics",
     topics: ["Inputs", "The nf-core Library", "Connecting tools", "The workflow check", "Exporting"],
   },
+  // Planned (#241): each names its issue; the Courses page shows them as coming soon.
+  {
+    id: "import-export",
+    title: "Import and export",
+    summary: "Take a workflow out as a script, a project or a DAW model, and bring Nextflow pipelines in.",
+    minutes: 8,
+    level: "basics",
+    topics: ["Export", "Import", "Round trip", "DAW model"],
+    issue: 242,
+  },
+  {
+    id: "own-steps",
+    title: "Your own steps",
+    summary: "Write a custom process, read its code, and share your nodes as a node pack.",
+    minutes: 8,
+    level: "basics",
+    topics: ["Custom processes", "The Code tab", "Node packs"],
+    issue: 243,
+  },
+  {
+    id: "large-workflows",
+    title: "Large workflows",
+    summary: "Find your way in a large workflow: the minimap, the steps inside a subworkflow, and groups.",
+    minutes: 8,
+    level: "basics",
+    topics: ["Minimap", "Nested views", "Groups"],
+    issue: 244,
+  },
+  {
+    id: "studies",
+    title: "N-WAVE for studies",
+    summary: "Switch help features on and off, and record what happens in N-WAVE for a study.",
+    minutes: 5,
+    level: "basics",
+    topics: ["Feature switches", "Verbose mode"],
+    issue: 245,
+  },
   {
     id: "run",
     title: "Run a workflow",
-    summary: "Run a workflow on real data, follow it live, read its log and results, and resume it after a fix.",
+    summary: "Run a workflow, follow it live, read its log and results, and find earlier runs.",
     minutes: 10,
     level: "advanced",
-    topics: ["Running", "The run panel", "Results", "Resume"],
+    topics: ["Running", "The run panel", "Results"],
+    issue: 246,
   },
   {
-    id: "structure",
-    title: "Read a workflow's structure",
-    summary:
-      "Analyse a workflow's code, read its specification graph and process dependency graph, and see what a change affects.",
-    minutes: 8,
+    id: "failures",
+    title: "When a run fails",
+    summary: "Read a failure explanation and its evidence, fix the step, and resume the run.",
+    minutes: 10,
     level: "advanced",
-    topics: ["Analyse", "Specification graph", "Process dependency graph"],
+    topics: ["Failure explanations", "Resume", "The run cache"],
+    issue: 247,
   },
   {
     id: "pipeline",
@@ -98,14 +138,26 @@ export const COURSES: CourseInfo[] = [
     minutes: 15,
     level: "advanced",
     topics: ["Pipeline node", "Profiles", "Reports"],
+    issue: 248,
   },
   {
-    id: "own-code",
-    title: "Bring your own code",
-    summary: "Import a Nextflow script, write a custom process, and group steps into a subworkflow.",
-    minutes: 12,
+    id: "clusters",
+    title: "Run limits and clusters",
+    summary: "Set how much a run may use, and run on a cluster through a run profile.",
+    minutes: 8,
     level: "advanced",
-    topics: ["Import", "Custom steps", "Groups"],
+    topics: ["Run limits", "Run profiles"],
+    issue: 249,
+  },
+  {
+    id: "structure",
+    title: "Read a workflow's structure",
+    summary:
+      "Analyse a workflow's code, read its specification graph and process dependency graph, and see what a change affects.",
+    minutes: 10,
+    level: "advanced",
+    topics: ["Analyse", "Specification graph", "Process dependency graph"],
+    issue: 250,
   },
 ];
 

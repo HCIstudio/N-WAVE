@@ -290,7 +290,7 @@ describe("PropertiesPanel", () => {
       await user.click(screen.getByRole("button", { name: "Delete Node" }));
       expect(
         screen.getByText(
-          'Are you sure you want to delete the node "Note"? This action cannot be undone.',
+          'Delete the node "Note" and its connections? Undo (Ctrl+Z, or ⌘Z on a Mac) brings them back.',
         ),
       ).toBeTruthy();
       await user.click(screen.getByRole("button", { name: "Confirm" }));
@@ -302,9 +302,9 @@ describe("PropertiesPanel", () => {
       const { all } = show({ node: makeNode("note", { label: "" }) });
       const user = userEvent.setup();
       await user.click(screen.getByRole("button", { name: "Delete Node" }));
-      expect(screen.getByText(/delete the node "Unnamed Node"/)).toBeTruthy();
+      expect(screen.getByText(/Delete the node "Unnamed Node"/)).toBeTruthy();
       await user.click(screen.getByRole("button", { name: "Cancel" }));
-      expect(screen.queryByText(/delete the node/)).toBeNull();
+      expect(screen.queryByText(/Delete the node/)).toBeNull();
       expect(all.onDelete).not.toHaveBeenCalled();
     });
   });
