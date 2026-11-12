@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addNode, connect } from "./fixtures";
+import { addNode, connect, exportAs } from "./fixtures";
 
 // A fresh browser: the courses haven't been offered yet.
 test.describe("courses", () => {
@@ -88,12 +88,119 @@ test.describe("courses", () => {
     await expect(card).toHaveCount(0);
   });
 
+  test("import and export: out as a project, a script and a DAW model, and the script back in", async ({ page }) => {
+    await page.goto("./courses");
+    await page.getByRole("listitem", { name: "Import and export" }).getByRole("button", { name: "Start" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const card = page.getByRole("region", { name: "Course" });
+    await expect(card).toContainText("Your copy of Demo 1");
+    await card.getByRole("button", { name: "Next" }).click();
+
+    await expect(card).toContainText("Open Export");
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    await expect(card).toContainText("Download project");
+    const dialog = page.getByRole("dialog", { name: "Export workflow" });
+    let download = page.waitForEvent("download");
+    await dialog.getByRole("button", { name: "Download project" }).click();
+    await download;
+    await expect(card).toContainText("Download script");
+    download = page.waitForEvent("download");
+    await exportAs(page, "Download script");
+    const script = await download;
+    await expect(card).toContainText("Download DAW model");
+    download = page.waitForEvent("download");
+    await exportAs(page, "Download DAW model");
+    await download;
+
+    // The home page: the card says where to go, then follows the user there.
+    await expect(card).toContainText("Go to the home page");
+    await page.getByRole("link", { name: "Home" }).click();
+    await expect(page).toHaveURL(/\/$/);
+    await expect(card).toContainText("Import Workflow");
+    await expect(page.locator('[data-tutorial="import"]')).toHaveClass(/tutorial-target/);
+    await page.getByRole("button", { name: "Import Workflow" }).click();
+    await page.getByLabel("Nextflow File, Project Zip, Folder or DAW Model").setInputFiles(await script.path());
+    await page.getByRole("button", { name: "Import", exact: true }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    await expect(card).toContainText("read back from the code");
+    await expect(page.locator(".react-flow__node")).toHaveCount(6);
+  });
+
+  test("your own steps: a custom process, its code, and a node pack", async ({ page }) => {
+    await page.goto("./courses");
+    await page.getByRole("listitem", { name: "Your own steps" }).getByRole("button", { name: "Start" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const card = page.getByRole("region", { name: "Course" });
+    await card.getByRole("button", { name: "Next" }).click();
+    await page.getByRole("button", { name: "Add node" }).click();
+    await page.getByRole("button", { name: "Custom process" }).click();
+    await expect(card).toContainText("Save Node");
+    await page.getByRole("textbox", { name: "Name", exact: true }).first().fill("Head lines");
+    await page.getByRole("button", { name: "Save Node" }).click();
+    await expect(card).toContainText("Add it");
+    await page.getByRole("button", { name: /^Head lines/ }).first().click();
+    await expect(card).toContainText("Code");
+    await page.locator(".react-flow__node").first().dblclick();
+    await page.getByRole("tab", { name: "Code" }).click();
+    await expect(card).toContainText("Download pack");
+    await page.getByRole("button", { name: "Close Panel" }).first().click();
+    await page.getByRole("button", { name: "Add node" }).click();
+    await page.getByRole("button", { name: "Node packs" }).click();
+    await page.getByRole("tab", { name: "Export" }).click();
+    await page.getByRole("checkbox", { name: /Head lines/ }).check();
+    await page.getByRole("textbox", { name: "Pack name" }).fill("Text tools");
+    const download = page.waitForEvent("download");
+    await page.getByRole("button", { name: "Download pack" }).click();
+    await download;
+    await expect(card).toContainText("You wrote a step of your own");
+  });
+
+  test("large workflows: the overview, a subworkflow's steps, and a group", async ({ page }) => {
+    await page.goto("./courses");
+    await page.getByRole("listitem", { name: "Large workflows" }).getByRole("button", { name: "Start" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    await expect(page).not.toHaveURL(/builtin:/);
+    const card = page.getByRole("region", { name: "Course" });
+    await expect(card).toContainText("Demo 3");
+    await card.getByRole("button", { name: "Next" }).click();
+    await expect(card).toContainText("Fit view");
+    await page.locator("[data-canvas-controls]").getByRole("button", { name: "Fit view" }).click();
+    await expect(card).toContainText("Step in");
+    await page.getByRole("button", { name: /^Step in/ }).first().click();
+    await expect(card).toContainText("Copy into new workflow");
+    await card.getByRole("button", { name: "Skip this step" }).or(card.getByRole("button", { name: "Next" })).click();
+    await expect(card).toContainText("Group into subworkflow");
+    await card.getByRole("button", { name: "Leave course" }).click();
+    await expect(card).toHaveCount(0);
+  });
+
+  test("N-WAVE for studies: feature switches and verbose mode in Global Settings", async ({ page }) => {
+    await page.goto("./courses");
+    await page.getByRole("listitem", { name: "N-WAVE for studies" }).getByRole("button", { name: "Start" }).click();
+    await expect(page).toHaveURL(/\/settings$/);
+    const card = page.getByRole("region", { name: "Course" });
+    await card.getByRole("button", { name: "Next" }).click();
+    const hints = page.locator('[data-feature="connectionHints"]');
+    await expect(hints).toHaveClass(/tutorial-target/);
+    await hints.getByRole("checkbox").uncheck();
+    await expect(card).toContainText("switch it on");
+    await hints.getByRole("checkbox").check();
+    await expect(card).toContainText("Record what happens");
+    await page.getByRole("checkbox", { name: /Record what happens/ }).check();
+    await expect(card).toContainText("Participant ID");
+    await page.getByLabel("Participant ID (this browser)").fill("P01");
+    await page.getByLabel("Participant ID (this browser)").press("Enter");
+    await expect(card).toContainText("Start test");
+    await card.getByRole("button", { name: "Leave course" }).click();
+    await expect(card).toHaveCount(0);
+  });
+
   test("the courses page: the basics in the browser, then the advanced ones with an installation", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("region", { name: "Tutorial" }).getByRole("button", { name: "Not now" }).click();
     await page.getByRole("link", { name: "Courses", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Courses", level: 1 })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(3);
+    await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(7);
     await expect(page.getByRole("region", { name: "Install N-WAVE" })).toContainText("How to install N-WAVE");
     const advanced = page.getByRole("region", { name: "Advanced" });
     await expect(advanced).toContainText("Needs a full install of N-WAVE.");

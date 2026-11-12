@@ -75,8 +75,7 @@ import { applyRunDefaults } from "../settings/effectiveSettings";
 import { useRunDefaults } from "../settings/useRunDefaults";
 import { useFeature } from "../settings/useFeatures";
 import RunCacheSettings from "../components/common/workflow/RunCacheSettings";
-import { useCourse } from "../courses/useCourse";
-import CourseCard from "../courses/CourseCard";
+import { publishCourseStage } from "../courses/courseStage";
 import type { WorkflowSource } from "./workflow/workflowExport";
 import { useWorkflowExports } from "./workflow/useWorkflowExports";
 
@@ -309,8 +308,17 @@ const WorkflowPageContent: React.FC = () => {
     onShowShortcuts: () => setShowShortcuts(true),
   });
   const panels = useNodePanels();
-  // A course running on the canvas: its task steps watch what the user does.
-  const course = useCourse({ nodes, edges, openPanels: panels.openIds });
+  // A course's tasks (CourseRunner, at the app level) watch the canvas.
+  useEffect(() => {
+    publishCourseStage({
+      nodes,
+      edges,
+      openPanels: panels.openIds,
+      editor: canvasView.view === "editor",
+      path: location.pathname,
+    });
+  }, [nodes, edges, panels.openIds, canvasView.view, location.pathname]);
+  useEffect(() => () => publishCourseStage(null), []);
   const deletion = useNodeDeletion({
     readOnly,
     requestCopy,
@@ -600,7 +608,6 @@ const WorkflowPageContent: React.FC = () => {
               onClose={grouping.closeDialog}
             />
           )}
-          {course && canvasView.view === "editor" && <CourseCard course={course} />}
           {nestedNode && nestedEntry && (
             <NestedView
               title={String(nestedNode.data.label || nestedNode.type)}

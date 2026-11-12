@@ -154,7 +154,7 @@ const FeatureSettings: React.FC = () => {
 
       <ul className="mt-4 space-y-3" aria-label="Feature switches">
         {FEATURE_SWITCHES.map((feature) => (
-          <li key={feature.id}>
+          <li key={feature.id} data-feature={feature.id}>
             <label className="flex items-start gap-2 text-sm text-text">
               <input
                 type="checkbox"

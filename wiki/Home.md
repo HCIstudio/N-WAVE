@@ -18,7 +18,9 @@ runs it and shows the results.
 
 **Courses** on the home page: short hands-on lessons in N-WAVE itself. Each step shows you
 something or asks you to do it (open a panel, add a node, connect it), and goes on once you
-have. A card at the top left of the canvas says what to do; what it is about is outlined.
+have. A card says what to do (at the top left of the canvas, at the bottom right on other
+pages); what it is about is outlined. When a step is on another page, the card says so and
+links there.
 
 - **Basics**, in the browser (the online demo too):
   - **The home page**: what is where. It ends with you making a workflow of your own (**New
@@ -28,7 +30,14 @@ have. A card at the top left of the canvas says what to do; what it is about is 
     copy itself.
   - **Build with nf-core modules**: a Samplesheet, FastQC and MultiQC from the nf-core
     Library, connected and exported.
-  - On their way: import and export, your own steps, large workflows, N-WAVE for studies.
+  - **Import and export**: in a copy of Demo 1, download the project, the script and the DAW
+    model, then import the script on the home page and get the same canvas back.
+  - **Your own steps**: write a custom process, add it, read its Code tab, and share it as a
+    node pack.
+  - **Large workflows**: in a copy of Demo 3, the whole workflow at once, the steps inside a
+    subworkflow, and grouping steps into a subworkflow of your own.
+  - **N-WAVE for studies**: in Global Settings, switch a help feature off and on, turn on
+    verbose mode, set a participant ID, mark a test and download the recording.
 - **Advanced**, with an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation):
   running workflows, when a run fails, nf-core pipelines, run limits and clusters, and reading
   a workflow's structure. They are on their way.

@@ -76,6 +76,11 @@ or has an issue that is explicitly moved to a later release.
       ([#241](https://github.com/HCIstudio/N-WAVE/issues/241)): the basics in the demo and on
       the installation, the advanced ones on the installation (greyed out in the demo, with the
       way to install N-WAVE). A finished course is marked done.
+- [ ] The basics after the nf-core course: **Import and export** (its downloads, and the
+      script imported back on the home page), **Your own steps** (a custom process and a node
+      pack), **Large workflows** (in a copy of Demo 3: Fit view, Step in, a group) and **N-WAVE
+      for studies** (in Global Settings: a feature switch, verbose mode, a test, the ZIP). On a
+      page other than the step's, the card says where to go.
 
 ## Building a workflow
 
