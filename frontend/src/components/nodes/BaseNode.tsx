@@ -10,7 +10,7 @@ import {
 import { memo, type ReactNode, useEffect } from "react";
 import { DynamicIcon } from "../common";
 import clsx from "clsx";
-import { AlertTriangle, ArrowDownToDot, CheckCircle2, GitBranch, XCircle } from "lucide-react";
+import { AlertTriangle, ArrowDownToDot, CheckCircle2, GitBranch, Loader2, XCircle } from "lucide-react";
 import { useNodeConditions } from "../../execution/NodeConditionsContext";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
@@ -214,14 +214,8 @@ const BaseNode = ({
     nodeClasses.push("border-gray-600"); // Default border
   }
 
-  if (status === "running") {
-    nodeClasses.push(
-      "border-yellow-400",
-      "border-2",
-      "animate-pulse",
-      "bg-yellow-50"
-    );
-  } else if (status === "error") {
+  // A running step keeps its look; its label at the bottom says it runs.
+  if (status === "error") {
     nodeClasses.push("border-red-500", "border-2", "bg-red-50");
   } else if (status === "waiting") {
     nodeClasses.push("border-purple-400", "border-2", "bg-purple-50");
@@ -357,12 +351,6 @@ const BaseNode = ({
       {/* Execution Status Indicator */}
       {status && status !== "disabled" && (
         <div className="absolute top-2 right-2">
-          {status === "running" && (
-            <div
-              className="w-3 h-3 bg-yellow-400 rounded-full animate-pulse"
-              title="Running"
-            />
-          )}
           {status === "error" && (
             <div className="w-3 h-3 bg-red-500 rounded-full" title="Failed" />
           )}
@@ -417,14 +405,14 @@ const BaseNode = ({
       )}
 
       {/* What the last run did here; double-click shows its results. */}
-      {(run || status === "success") && (
+      {(run || status === "success" || status === "running") && (
         <output
-          aria-label={`Last run: ${run?.status ?? "succeeded"}`}
+          aria-label={`Last run: ${run?.status ?? (status === "running" ? "running" : "succeeded")}`}
           title={
-            !run
+            status === "running"
+              ? "This step is running: its tasks are counted as they finish. The run panel follows it live."
+              : !run
               ? "This step ran without errors"
-              : run.status === "running"
-              ? "This step is running"
               : ignoredErrors > 0
                 ? "Some tasks failed, but the pipeline is set to go on without them. Double-click to see which."
                 : "Double-click to see what this step produced"
@@ -434,9 +422,10 @@ const BaseNode = ({
             // Below the stack of a node with steps inside.
             hasStepsInside ? "-bottom-7" : "-bottom-3",
             "inline-flex items-center gap-1",
-            run?.status === "running" &&
+            status === "running" &&
               "border-yellow-400 bg-yellow-100 text-yellow-900",
             (!run || run.status === "succeeded") &&
+              status !== "running" &&
               ignoredErrors === 0 &&
               "border-nextflow-green bg-emerald-50 text-nextflow-green-dark",
             ignoredErrors > 0 && "border-amber-500 bg-amber-100 text-amber-900",
@@ -445,13 +434,16 @@ const BaseNode = ({
             run?.status === "failed" && "border-red-500 bg-red-100 text-red-900"
           )}
         >
-          {(!run || run.status === "succeeded") && ignoredErrors === 0 && (
+          {(!run || run.status === "succeeded") && ignoredErrors === 0 && status !== "running" && (
             <CheckCircle2 className="h-3 w-3" aria-hidden />
           )}
-          {!run
+          {status === "running" && <Loader2 className="h-3 w-3 animate-spin" aria-hidden />}
+          {status === "running"
+            ? run && run.total > 1
+              ? `Running, ${run.done} of ${run.total} tasks done`
+              : "Running"
+            : !run
             ? "Done"
-            : run.status === "running"
-            ? `Running${run.total > 1 ? ` ${run.done}/${run.total}` : ""}`
             : run.status === "failed"
               ? `Failed${run.total > 1 ? ` ${run.failed}/${run.total}` : ""}`
               : ignoredErrors > 0

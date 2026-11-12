@@ -26,6 +26,16 @@ describe("BaseNode", () => {
     expect(card.className).not.toMatch(/border-green|bg-green/);
   });
 
+  it("marks a running step with a yellow label, not a yellow border or dot", () => {
+    const { container } = show({ status: "running" } as Partial<NodeData>);
+    const label = screen.getByRole("status", { name: "Last run: running" });
+    expect(label.textContent).toBe("Running");
+    expect(label.className).toContain("bg-yellow-100");
+    const card = container.firstElementChild as HTMLElement;
+    expect(card.className).not.toMatch(/yellow|animate-pulse/);
+    expect(container.querySelector('[title="Running"]')).toBeNull();
+  });
+
   it("is outlined in blue when selected", () => {
     const { container } = show({}, { selected: true });
     expect((container.firstElementChild as HTMLElement).className).toContain("ring-blue-500");
