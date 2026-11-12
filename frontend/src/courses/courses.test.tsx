@@ -80,6 +80,7 @@ describe("a course on the canvas", () => {
   it("lets a task be skipped, and an explanation go on with Next", () => {
     startAt("canvas", 0);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
+    expect((card().querySelector("[data-course-progress]") as HTMLElement).style.width).toBe("0%");
     fireEvent.click(within(card()).getByRole("button", { name: "Next" }));
     fireEvent.click(within(card()).getByRole("button", { name: "Skip this step" }));
     expect(card().textContent).toContain("Case to Lowercase");
@@ -88,6 +89,7 @@ describe("a course on the canvas", () => {
   it("is marked done at its end, and offers the next course", () => {
     startAt("canvas", COURSE_STEPS.canvas.length - 1);
     render(<Harness nodes={demo.nodes} edges={demo.edges} openPanels={[]} />);
+    expect((card().querySelector("[data-course-progress]") as HTMLElement).style.width).toBe("100%");
     expect(
       within(card()).getByRole("button", {
         name: "Next course: Build with nf-core modules",

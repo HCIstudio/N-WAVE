@@ -195,7 +195,8 @@ N-WAVE/
 
 Every pull request runs the `Test` workflow (lint, unit tests with coverage floors,
 typecheck, build, Nextflow lint of the generated scripts, the workflow analysis image with its
-contract tests and cross-check, and end-to-end tests), and `main` only
+contract tests and cross-check, end-to-end tests, and a security check of the workflows with
+[zizmor](https://docs.zizmor.sh)), and `main` only
 accepts green pull requests. Every merge to `main` is released automatically: version bump,
 Docker images, the demo site and a GitHub Release with `latest.yml`. Details, and how to set a
 new minor or major version, are in [CONTRIBUTING.md](CONTRIBUTING.md#releases).
