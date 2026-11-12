@@ -105,11 +105,19 @@ Guidelines:
 - **Don't bump patch versions.** Every merge to `main` is released automatically (see
   [Releases](#releases)).
 
+## Workflow security
+
+zizmor fails the `Test` workflow on any finding, so keep new workflows to its rules: every
+action pinned to a commit hash with its version in a comment (`uses: owner/action@<sha> # v1.2.3`;
+Dependabot updates both), permissions set per job and only what the job needs,
+`persist-credentials: false` on checkouts that don't push, and values from `${{ }}` passed to
+`run:` scripts through `env:`. Locally: `pipx run zizmor .` (or `pip install zizmor`).
+
 ## Releases
 
 | Workflow | Trigger | What it does |
 | --- | --- | --- |
-| `test.yml` | pull request, push to `main` | The merge gate: lint, unit tests with coverage, typecheck and build for both packages, the script tests, Nextflow lint of the generated scripts, and Playwright end-to-end tests (not blocking yet). |
+| `test.yml` | pull request, push to `main` | The merge gate: lint, unit tests with coverage, typecheck and build for both packages, the script tests, Nextflow lint of the generated scripts, Playwright end-to-end tests (not blocking yet), and [zizmor](https://docs.zizmor.sh) on the workflows and the Dependabot config. |
 | `wiki.yml` | push to `main` that changes `wiki/` | Publishes the `wiki/` pages to the GitHub wiki (`scripts/publish-wiki.sh`). |
 | `release.yml` | push to `main` | Steps the version, deploys the demo to GitHub Pages, pushes multi-arch images (`linux/amd64`, `linux/arm64`) to Docker Hub as `hcistudio/nwave-*:<version>` and `:latest`, commits the version to both `package.json` files, and creates a GitHub Release (`v<version>`) with `latest.yml`. |
 
