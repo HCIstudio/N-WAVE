@@ -49,6 +49,9 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 
+/** The run defaults as last read, for code outside React (a course's tasks). */
+export const currentRunDefaults = (): RunDefaults => state.defaults;
+
 /** Forgets what was read (tests). */
 export const resetRunDefaults = (): void => {
   state = { defaults: BUILT_IN_RUN_DEFAULTS, loaded: false, error: null };

@@ -205,6 +205,9 @@ test.describe("courses", () => {
     const advanced = page.getByRole("region", { name: "Advanced" });
     await expect(advanced).toContainText("Needs a full install of N-WAVE.");
     await expect(advanced.getByRole("button", { name: "Start" })).toHaveCount(0);
+    // All five are written: none is "coming soon", each needs an installation.
+    await expect(advanced.getByText("Coming soon")).toHaveCount(0);
+    await expect(advanced.getByText("Needs a full install", { exact: true })).toHaveCount(5);
     await page.goto("./");
     await expect(page.getByRole("region", { name: "Tutorial" })).toHaveCount(0);
   });

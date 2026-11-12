@@ -10,7 +10,12 @@ export type CourseId =
   | "import-export"
   | "own-steps"
   | "large-workflows"
-  | "studies";
+  | "studies"
+  | "run"
+  | "failures"
+  | "pipeline"
+  | "clusters"
+  | "structure";
 export type CoursePart = "home" | "canvas";
 
 export interface ActiveCourse {

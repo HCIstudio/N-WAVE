@@ -8,6 +8,7 @@ import type { Node } from "@xyflow/react";
 import { getCurrentTest, getParticipant } from "../activity/activityLog";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { currentFeatures } from "../settings/useFeatures";
+import { ADVANCED_COURSE_STEPS } from "./advancedCourseSteps";
 import type { CourseId } from "./courseState";
 import type { CourseContext, CourseStep } from "./courses";
 
@@ -579,4 +580,5 @@ export const COURSE_STEPS: Record<Exclude<CourseId, "home">, CourseStep[]> = {
   "large-workflows": LARGE,
   studies: STUDIES,
   "nfcore-modules": NFCORE,
+  ...ADVANCED_COURSE_STEPS,
 };

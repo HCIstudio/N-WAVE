@@ -32,7 +32,8 @@ export const DONE_PAUSE_MS = 900;
 const CHECK_MS = 500;
 
 export const useCourse = () => {
-  const { nodes, edges, openPanels } = useSyncExternalStore(subscribeCourseStage, courseStage);
+  const stage = useSyncExternalStore(subscribeCourseStage, courseStage);
+  const { nodes, edges, openPanels } = stage;
   const path = useLocation().pathname;
   const [state, setState] = useState(runningOnCanvas);
   const [tick, setTick] = useState(0);
@@ -89,8 +90,22 @@ export const useCourse = () => {
   // A task done: a moment to see the tick, then the next step.
   // biome-ignore lint/correctness/useExhaustiveDependencies: tick re-checks what the task reads elsewhere.
   const done = useMemo(
-    () => Boolean(step?.done?.({ nodes, edges, openPanels, clicked, path })),
-    [step, nodes, edges, openPanels, clicked, path, tick],
+    () =>
+      Boolean(
+        step?.done?.({
+          nodes,
+          edges,
+          openPanels,
+          clicked,
+          path,
+          run: stage.run,
+          analysis: stage.analysis,
+          view: stage.view,
+          nested: stage.nested,
+          runProfile: stage.runProfile,
+        }),
+      ),
+    [step, stage, nodes, edges, openPanels, clicked, path, tick],
   );
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => {
