@@ -1,7 +1,10 @@
 import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import type { NodeData } from "../components/nodes/BaseNode";
-import { canvasDiagram, laidOutDiagram, renderDiagram, toSvg } from "./diagrams";
+import recorded from "../demo/analysisResults.json";
+import type { BioflowResult } from "../analysis/bioflow";
+import { type GraphModel, graphModel } from "../analysis/graphViews";
+import { canvasDiagram, graphDiagram, renderDiagram, toSvg } from "./diagrams";
 
 const node = (id: string, type: string, label: string, x: number, y: number): Node<NodeData> =>
   ({ id, type, position: { x, y }, data: { label } }) as Node<NodeData>;
@@ -45,15 +48,17 @@ describe("diagrams", () => {
     expect(svg).toMatch(/viewBox="0 0 828 196"/);
   });
 
-  it("lay out a graph without positions left to right", () => {
-    const diagram = laidOutDiagram({
-      nodes: [
-        { id: "A", kind: "step", label: "A", subworkflow: null },
-        { id: "B", kind: "step", label: "B", subworkflow: null },
-      ],
-      edges: [{ from: "A", to: "B" }],
-    });
-    expect((diagram.positions.get("B")?.x ?? 0) > (diagram.positions.get("A")?.x ?? 0)).toBe(true);
+  it("draw a graph view of the code as the view lays it out, with its subworkflows framed", () => {
+    const results = Object.values(recorded as unknown as Record<string, { bioflow: { result: BioflowResult } }>).map(
+      (entry) => entry.bioflow.result,
+    );
+    const rnaseq = results.find((result) => result.subworkflows.length > 0) as BioflowResult;
+    const diagram = graphDiagram(graphModel(rnaseq, "dependencies") as GraphModel);
+    expect(diagram.positions.size).toBe(rnaseq.steps.length);
+    expect(diagram.frames?.map((frame) => frame.name).sort()).toEqual(["BAM_STATS_SAMTOOLS", "SAMTOOLS_SORT_INDEX_STATS"]);
+    const svg = toSvg(diagram);
+    expect(svg).toContain(">SAMTOOLS_SORT_INDEX_STATS</text>");
+    expect(svg).toContain('stroke-dasharray="6 4"');
   });
 
   it("are written as Mermaid and Dot", async () => {

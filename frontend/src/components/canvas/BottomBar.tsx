@@ -41,7 +41,7 @@ interface BottomBarProps {
   checkControl?: React.ReactNode;
   /** Analyse (the workflow's code and structure), shown before the check. */
   analysisControl?: React.ReactNode;
-  /** The canvas view (Editor, Process graph, Groups), shown before Analyse. */
+  /** The canvas view (Editor, Specification graph, Process dependency graph), shown before Analyse. */
   viewControl?: React.ReactNode;
   isLoading?: boolean; // Whether the workflow is being loaded
   executionSettings: ExecutionSettings;

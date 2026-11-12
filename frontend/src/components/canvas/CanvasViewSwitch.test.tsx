@@ -3,21 +3,25 @@ import { describe, expect, it, vi } from "vitest";
 import CanvasViewSwitch from "./CanvasViewSwitch";
 
 describe("CanvasViewSwitch", () => {
-  it("always shows all three views; Groups is greyed out without groups", () => {
+  it("offers the editor and the two graph views of the code", () => {
     const onChange = vi.fn();
-    render(<CanvasViewSwitch view="all" onChange={onChange} />);
-    for (const name of ["Editor", "Process graph", "Groups"]) expect(screen.getByRole("button", { name })).toBeTruthy();
-    const groups = screen.getByRole("button", { name: "Groups" }) as HTMLButtonElement;
-    expect(groups.disabled).toBe(true);
-    expect(groups.title).toMatch(/^No groups yet/);
-    fireEvent.click(screen.getByRole("button", { name: "Process graph" }));
-    expect(onChange).toHaveBeenCalledWith("steps");
+    render(<CanvasViewSwitch view="editor" onChange={onChange} />);
+    expect(screen.getByRole("button", { name: "Editor" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Specification" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dependencies" }));
+    expect(onChange.mock.calls).toEqual([["specification"], ["dependencies"]]);
+    expect(screen.getByRole("button", { name: "Dependencies" }).title).toMatch(/^Process dependency graph \(read-only\)/);
   });
 
-  it("opens Groups once the workflow has a group", () => {
+  it("greys the graph views out where they can't be drawn, and still opens them to say why", () => {
     const onChange = vi.fn();
-    render(<CanvasViewSwitch view="all" onChange={onChange} hasGroups />);
-    fireEvent.click(screen.getByRole("button", { name: "Groups" }));
-    expect(onChange).toHaveBeenCalledWith("grouped");
+    render(<CanvasViewSwitch view="editor" onChange={onChange} graphsUnavailable="Needs a full install." />);
+    const graph = screen.getByRole("button", { name: /^Specification/ });
+    expect(graph.getAttribute("data-unavailable")).toBe("true");
+    expect(graph.textContent).toBe("Specification (not available here)");
+    expect(graph.title).toMatch(/Needs a full install\.$/);
+    expect(screen.getByRole("button", { name: "Editor" }).getAttribute("data-unavailable")).toBeNull();
+    fireEvent.click(graph);
+    expect(onChange).toHaveBeenCalledWith("specification");
   });
 });

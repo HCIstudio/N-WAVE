@@ -148,24 +148,28 @@ or has an issue that is explicitly moved to a later release.
 
 ## Analysis (v1.6)
 
-- [ ] **Analyse** on a built-in example: no problems, both structure views, **Show on canvas**,
-      the Mermaid and Dot downloads. The first analysis downloads the images.
+- [ ] **Analyse** on a built-in example: no problems, and its buttons open both graph views.
+      **Export** → **Diagram** of either graph as Mermaid and Dot. The first analysis downloads
+      the images.
 - [ ] An error added to a custom process shows on its node, in the workflow check, with the
       tool and line. It doesn't block Run.
 - [ ] Changing the code removes the analysis's problems; moving nodes doesn't.
 - [ ] An imported nf-core style pipeline analyses, including its nf-core modules.
 - [ ] With no network for the containers (unplug, or a firewall): the analysis still works.
 - [ ] `NWAVE_BIOFLOW=off` and `NWAVE_LINT=off`: the panel says which tool isn't available.
-- [ ] **Canvas views**: connections made in code show as dashed lines with a warning; **Process
-      graph** hides the channel code and connects the steps through it, drawn as a blueprint;
-      an edit goes back to the **Editor**.
+- [ ] **Canvas views**: connections made in code show as dashed lines with a warning.
+      **Specification** and **Dependencies** show BioFlow-Insight's graphs of the code, read-only
+      on blueprint paper (analysing first if needed): selecting a process shows what it depends
+      on and what a change affects, subworkflows collapse to one box, the side panel's numbers
+      and longest chain make sense, **Show in the editor** and **Back to the editor** work. In
+      the browser demo both are greyed out and say a full install is needed.
 - [ ] **When a step runs**: in an imported script with `if (params.aligner == …)`, the steps
       have **if** badges. Changing the parameter's value greys out the other branch straight
       away, and the panel's **When it runs** says which condition holds.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
-      imports back grouped. The **Groups** view shows each group as one box: moving a box moves its
-      steps, clicking a group's name renames or ungroups it, **Open** shows its steps.
+      imports back grouped. Clicking a group's name renames or ungroups it; in the graph views
+      the group is a subworkflow that collapses to one box.
 - [ ] **DAW model**: **Export** → **Download DAW model**, import the file, and get the same canvas (and the
       same file when exported again). A model written by hand with tasks that have no
       implementation opens as placeholders, and the workflow check lists them.

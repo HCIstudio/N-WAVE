@@ -46,7 +46,7 @@ const ExportDialog: React.FC<ExportActions & { isOpen: boolean; onClose: () => v
   const [chosenSource, setSource] = useState<string | null>(null);
   const diagramSource = diagramSources.some((source) => source.id === chosenSource)
     ? (chosenSource as string)
-    : (diagramSources[0]?.id ?? "canvas");
+    : (diagramSources[0]?.id ?? "editor");
   const choices: Choice[] = [
     {
       icon: FileCode,
@@ -117,8 +117,8 @@ const ExportDialog: React.FC<ExportActions & { isOpen: boolean; onClose: () => v
               <h3 className="text-sm font-medium text-text">Diagram</h3>
               <p className="mt-0.5 text-xs text-text-light">
                 A picture of the workflow for papers and slides (SVG, PNG), or as text that Mermaid
-                and Graphviz draw. Analyse the workflow to also get the structure BioFlow-Insight
-                found.
+                and Graphviz draw. Analyse the workflow to also get the specification graph and the
+                process dependency graph of its code.
               </p>
               {diagramSources.length > 1 && (
                 <label htmlFor={sourceId} className="mt-2 block text-xs text-text-light">

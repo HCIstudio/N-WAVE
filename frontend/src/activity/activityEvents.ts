@@ -43,8 +43,12 @@ export const ACTIVITY_TYPES = {
   "code.opened": "A node's Code tab was opened",
   /** `notRunning`: the nodes the preview says won't run with the current values; `conditional`: how many have conditions. */
   "conditions.preview": "The preview of which steps run (by parameter values) changed",
-  /** `view`: all, steps or grouped. */
-  "canvas.viewChanged": "The canvas view changed (Editor, Process graph, Groups)",
+  /** `view`: editor, specification or dependencies. */
+  "canvas.viewChanged": "The canvas view changed (Editor, Specification graph, Process dependency graph)",
+  /** `view`; `kind`: step, operation or cluster (a collapsed subworkflow). */
+  "graph.inspected": "A process, operation or subworkflow was selected in a graph view",
+  /** `view`; `collapsed`: true or false. */
+  "graph.clusterToggled": "A subworkflow was collapsed or expanded in a graph view",
   /** `steps`: how many; `from`: selection or suggestion (from the analysis). */
   "group.created": "Steps were grouped into a subworkflow",
   /** `steps`: how many it had. */
@@ -52,10 +56,6 @@ export const ACTIVITY_TYPES = {
   "group.renamed": "A group was renamed",
   /** `lint`, `bioflow`: each tool's status (done, unavailable, failed); `errors`, `warnings`: counts; or `failed`. */
   "analysis.run": "The workflow was analysed (Analyse in the bottom bar)",
-  /** `view`: steps or channels. */
-  "analysis.structureViewed": "The analysis's structure view was shown",
-  /** `format`: mermaid or dot; `view`. */
-  "analysis.downloaded": "The analysed structure was downloaded",
   /** `nodeId` (a canvas node) or `step` (a step inside), `depth`. */
   "nested.opened": "The steps inside a subworkflow or pipeline were opened",
   undo: "Undo",

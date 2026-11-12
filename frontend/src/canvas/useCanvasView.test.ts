@@ -50,7 +50,7 @@ describe("useCanvasView", () => {
     expect(result.current.problems).toEqual([]);
   });
 
-  it("switches to the process graph, and back to the editor on an edit (recorded in verbose mode)", () => {
+  it("switches to a graph view, and back to the editor on an edit (recorded in verbose mode)", () => {
     startRecording();
     const { result, rerender } = renderHook(
       ({ current }) => useCanvasView(current, imported.edges, "wf"),
@@ -58,25 +58,22 @@ describe("useCanvasView", () => {
         initialProps: { current: nodes },
       },
     );
-    act(() => result.current.setView("steps"));
-    expect(result.current.view).toBe("steps");
-    expect(
-      result.current.edges.some((edge) => edge.id.startsWith("steps:")),
-    ).toBe(true);
+    act(() => result.current.setView("dependencies"));
+    expect(result.current.view).toBe("dependencies");
     // Moving nodes isn't an edit.
     rerender({
       current: nodes.map((node) => ({ ...node, position: { x: 1, y: 1 } })),
     });
-    expect(result.current.view).toBe("steps");
+    expect(result.current.view).toBe("dependencies");
     rerender({
       current: nodes.map((node) => ({
         ...node,
         data: { ...node.data, label: `${node.data.label}!` },
       })),
     });
-    expect(result.current.view).toBe("all");
+    expect(result.current.view).toBe("editor");
     expect(recorded("canvas.viewChanged").map((event) => event.data)).toEqual([
-      { view: "steps" },
+      { view: "dependencies" },
     ]);
   });
 });

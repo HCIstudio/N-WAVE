@@ -21,8 +21,8 @@ const portsEqual = (
 
 const OperatorNode = (props: NodeProps<Node<NodeData>>) => {
   const { data, id } = props;
-  // The workflow's own nodes and connections, not the view's (Steps only and
-  // Grouped draw other edges), so a view never changes what a node computes.
+  // The workflow's own nodes and connections, not the canvas's (which adds
+  // dashed connections made in code), so drawing never changes what a node computes.
   const { updateNodeData: updateAnyNodeData, nodes, edges } = useWorkflowContext();
   // Writes only while the node is still an operator: converting it to a
   // custom node changes its type, and this component can render once more

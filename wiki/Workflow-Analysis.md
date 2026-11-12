@@ -5,16 +5,13 @@ Nextflow code without running it (Marchment, Brancotte, Schmit, Lemoine, Cohen-B
 visualization*, NAR Genomics and Bioinformatics 6(3), lqae092, 2024,
 [doi:10.1093/nargab/lqae092](https://doi.org/10.1093/nargab/lqae092)).
 
-**Analyse** in the bottom bar checks the workflow's code and shows its structure. Two tools
-look at the code N-WAVE writes for the canvas, on your own machine:
+**Analyse** in the bottom bar checks the workflow's code, and the
+[graph views](#graph-views) show its structure. Two tools look at the code N-WAVE writes for
+the canvas, on your own machine:
 
 - **nextflow lint**, Nextflow's own checker: errors and warnings, each with its line;
 - **BioFlow-Insight**: the workflow's structure, the conditions steps run under, and errors it
   finds.
-
-More is planned on top of the same analysis: when each step runs
-([#220](https://github.com/HCIstudio/N-WAVE/issues/220)) and grouping steps that belong
-together ([#221](https://github.com/HCIstudio/N-WAVE/issues/221)).
 
 ## Using it
 
@@ -25,10 +22,8 @@ together ([#221](https://github.com/HCIstudio/N-WAVE/issues/221)).
    code it is in. The problems are in the workflow check next to **Run** too, and are marked on
    their nodes. They don't keep the workflow from running: lint is stricter than the Nextflow
    that runs it.
-3. **Structure**: **Steps** shows which step's outputs reach which step; **Steps and channels**
-   adds the channel operations between them. **Show on canvas** goes to a step's node. On the
-   left: the number of steps, operations and connections, the longest path, subworkflow calls
-   and steps with a condition. **Mermaid** and **Dot** download the graph.
+3. **Its structure**: **Specification graph** and **Process dependency graph** open the
+   [graph views](#graph-views).
 
 When you change the workflow, its problems leave the check until you analyse it again (moving
 nodes doesn't count). Most useful after editing code: custom processes, channel operator code,
@@ -36,7 +31,39 @@ and code kept from an import. Code N-WAVE writes from its own nodes passes the c
 
 In the [browser demo](https://hcistudio.github.io/N-WAVE/) there is no server to analyse on:
 the built-in examples show the analysis they got when the demo was built, other workflows say
-that analysing needs an installation.
+that analysing needs an installation. The graph views are greyed out there.
+
+## Graph views
+
+Two read-only views of the workflow's code, in place of the editor (the switch in the bottom
+bar, or the buttons in the analysis). They are BioFlow-Insight's two graphs of the code, the
+same that its paper describes, and they show what the editor doesn't: the editor is the
+workflow as you build it, these are the workflow as Nextflow will run it.
+
+- **Specification graph**: every process (a box) and every channel operation (a pill), with
+  the channels between them. Subworkflows (nf-core subworkflows, your
+  [groups](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows#groups-of-steps)) are
+  frames. Use it to check that the code does what the canvas shows, and to find logic that
+  only the code has: code kept from an import, a custom process's channels, the operations
+  inside an nf-core subworkflow.
+- **Process dependency graph**: only the processes, with an arrow where one's output reaches
+  another, through any channel operations. Use it to see what depends on what.
+
+Both read left to right, in the order data flows. In both:
+
+- **Select a process**: what it depends on (blue) and what a change to it affects (amber),
+  with the counts and lists in the side panel. **Show in the editor** goes to its node.
+- **Collapse** a subworkflow (its frame's arrow, or **Collapse subworkflows**): it becomes one
+  box, connected to the rest. The workflow as its parts; **Expand all** opens them again.
+- **Insights** (the side panel): how many processes, operations, dependencies and
+  subworkflows; the **longest chain**, the processes a run waits for one after the other (the
+  ones to make faster); how many processes can run **side by side**; where the workflow
+  **starts** and **ends**; the processes **most depended on** (a change to them affects the
+  most); the processes that run under a condition. **Highlight it** shows the longest chain.
+
+Opening a view analyses the workflow if it hasn't been analysed as it is. **Export** →
+**Diagram** draws either graph as SVG, PNG, Mermaid or Dot, laid out as in the view. In the
+browser demo, the graph views are greyed out: they need an installation.
 
 ## Steps that belong together
 

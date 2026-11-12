@@ -12,15 +12,14 @@ import type { ExecutionSettings } from "../../types/execution";
 import { usesImportedSource } from "./runRequest";
 import { logActivity } from "../../activity/activityLog";
 import { serializeDawModel, toDawModel } from "../../metamodel/toDawModel";
-import { groupedView, stepsOnlyView } from "../../canvas/canvasViews";
 import type { BioflowResult } from "../../analysis/bioflow";
-import { structureGraph } from "../../analysis/structure";
+import { graphModel } from "../../analysis/graphViews";
 import {
   canvasDiagram,
   DIAGRAM_FORMATS,
   type Diagram,
   type DiagramFormat,
-  laidOutDiagram,
+  graphDiagram,
   renderDiagram,
 } from "../../export/diagrams";
 
@@ -146,34 +145,22 @@ export const exportProject = async (source: WorkflowSource): Promise<string> => 
   return fileName;
 };
 
-/**
- * What a diagram shows: one of the canvas's views (as the view switch names
- * them), or one of the graphs of BioFlow-Insight's analysis.
- */
-export type DiagramSource = "canvas" | "process-graph" | "groups" | "steps" | "channels";
+/** What a diagram shows: the editor's canvas, or a graph view of the code (as the view switch names them). */
+export type DiagramSource = "editor" | "specification" | "dependencies";
 
-/** The diagrams there are: the canvas's views, and with a current analysis its graphs. */
-export const diagramSources = (
-  bioflow: BioflowResult | null,
-  hasGroups = false,
-): Array<{ id: DiagramSource; label: string }> => [
-  { id: "canvas", label: "Editor: the canvas as drawn" },
-  { id: "process-graph", label: "Process graph: the steps, channel code hidden" },
-  ...(hasGroups ? [{ id: "groups" as const, label: "Groups: each group of steps as one box" }] : []),
-  ...(bioflow ? [{ id: "steps" as const, label: "BioFlow-Insight analysis: steps and how data flows" }] : []),
+/** The diagrams there are: the editor, and with a current analysis the two graph views. */
+export const diagramSources = (bioflow: BioflowResult | null): Array<{ id: DiagramSource; label: string }> => [
+  { id: "editor", label: "Editor: the canvas as drawn" },
   ...(bioflow?.specification
-    ? [{ id: "channels" as const, label: "BioFlow-Insight analysis: steps, channel operations and channels" }]
+    ? [{ id: "specification" as const, label: "Specification graph: every process, operation and channel" }]
     : []),
+  ...(bioflow ? [{ id: "dependencies" as const, label: "Process dependency graph: which process depends on which" }] : []),
 ];
 
 const diagramOf = (source: WorkflowSource, which: DiagramSource, bioflow: BioflowResult | null): Diagram | null => {
-  if (which === "canvas") return canvasDiagram(source.nodes, source.edges);
-  if (which === "process-graph" || which === "groups") {
-    const view = which === "groups" ? groupedView(source.nodes, source.edges) : stepsOnlyView(source.nodes, source.edges);
-    return canvasDiagram(view.nodes as Node<NodeData>[], view.edges);
-  }
-  const graph = bioflow ? structureGraph(bioflow, which) : null;
-  return graph ? laidOutDiagram(graph) : null;
+  if (which === "editor") return canvasDiagram(source.nodes, source.edges);
+  const model = bioflow ? graphModel(bioflow, which) : null;
+  return model ? graphDiagram(model) : null;
 };
 
 /** Download a diagram; returns its file name. */
@@ -186,7 +173,7 @@ export const downloadDiagram = async (
   const diagram = diagramOf(source, which, bioflow);
   if (!diagram) throw new Error("There is no analysis of this workflow to draw. Analyse it first.");
   const extension = DIAGRAM_FORMATS.find((entry) => entry.format === format)?.extension ?? "";
-  const fileName = `${fileBaseName(source.workflowName)}${which === "canvas" ? "" : `.${which}`}${extension}`;
+  const fileName = `${fileBaseName(source.workflowName)}${which === "editor" ? "" : `.${which}`}${extension}`;
   downloadBlob(await renderDiagram(diagram, format, source.workflowName || "workflow"), fileName);
   logActivity("workflow.exported", { kind: "diagram", source: which, format });
   return fileName;

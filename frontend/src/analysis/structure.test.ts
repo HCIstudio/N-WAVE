@@ -1,47 +1,7 @@
 import { describe, expect, it } from "vitest";
-import recorded from "../demo/analysisResults.json";
-import type { BioflowResult } from "./bioflow";
-import { longestPath, structureGraph, structureMetrics, toDot, toMermaid } from "./structure";
-
-const results = Object.values(recorded as unknown as Record<string, { bioflow: { result: BioflowResult } }>).map(
-  (entry) => entry.bioflow.result,
-);
-// The rebuilt RNA-seq example: the one with subworkflows.
-const rnaseq = results.find((result) => result.subworkflows.length > 0) as BioflowResult;
+import { toDot, toMermaid } from "./structure";
 
 describe("structure", () => {
-  it("has the steps view and the steps-and-channels view", () => {
-    const steps = structureGraph(rnaseq, "steps");
-    expect(steps?.nodes.length).toBe(rnaseq.steps.length);
-    expect(steps?.edges.length).toBe(rnaseq.connections.length);
-    const channels = structureGraph(rnaseq, "channels");
-    expect(channels?.nodes.some((node) => node.kind === "operation")).toBe(true);
-    expect(channels?.nodes.filter((node) => node.kind === "step").length).toBe(rnaseq.steps.length);
-    expect(structureGraph({ ...rnaseq, specification: null }, "channels")).toBeNull();
-  });
-
-  it("counts the longest path in steps, through operations and past loops", () => {
-    expect(
-      longestPath({
-        nodes: [
-          { id: "A", kind: "step", label: "A", subworkflow: null },
-          { id: "op1", kind: "operation", label: "x", subworkflow: null },
-          { id: "B", kind: "step", label: "B", subworkflow: null },
-          { id: "C", kind: "step", label: "C", subworkflow: null },
-        ],
-        edges: [
-          { from: "A", to: "op1" },
-          { from: "op1", to: "B" },
-          { from: "B", to: "C" },
-          { from: "C", to: "B" },
-        ],
-      }),
-    ).toBe(3);
-    const metrics = structureMetrics(rnaseq);
-    expect(metrics.steps).toBe(rnaseq.steps.length);
-    expect(metrics.longestPath).toBeGreaterThan(3);
-  });
-
   it("writes Mermaid and Dot", () => {
     const graph = {
       nodes: [
@@ -54,5 +14,40 @@ describe("structure", () => {
     expect(toDot(graph, "wf")).toBe(
       'digraph "wf" {\n    rankdir=LR;\n    "A" [label="say \\"hi\\"", shape=box];\n    "op1" [label="ch.map { x -> x }", shape=ellipse];\n    "A" -> "op1";\n}\n',
     );
+  });
+
+  it("draws subworkflows around their nodes, nested", () => {
+    const graph = {
+      nodes: [
+        { id: "A", kind: "step" as const, label: "A", subworkflow: null },
+        { id: "S.B", kind: "step" as const, label: "B", subworkflow: "S" },
+        { id: "S.T.C", kind: "step" as const, label: "C", subworkflow: "S.T" },
+      ],
+      edges: [
+        { from: "A", to: "S.B" },
+        { from: "S.B", to: "S.T.C" },
+      ],
+      clusters: [
+        { id: "S", name: "ALIGN", parent: null },
+        { id: "S.T", name: "STATS", parent: "S" },
+      ],
+    };
+    expect(toMermaid(graph)).toBe(
+      [
+        "flowchart LR",
+        '    n1["A"]',
+        '    subgraph s1["ALIGN"]',
+        '        n2["B"]',
+        '        subgraph s2["STATS"]',
+        '            n3["C"]',
+        "        end",
+        "    end",
+        "    n1 --> n2",
+        "    n2 --> n3",
+        "",
+      ].join("\n"),
+    );
+    expect(toDot(graph, "wf")).toContain('    subgraph cluster_1 { label="ALIGN";\n        "S.B"');
+    expect(toDot(graph, "wf")).toContain('        subgraph cluster_2 { label="STATS";\n            "S.T.C"');
   });
 });

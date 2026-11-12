@@ -1,5 +1,4 @@
 import { Loader } from "lucide-react";
-import { moveGroupBoxes } from "../canvas/canvasViews";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
@@ -62,8 +61,8 @@ import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
 import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
-import NeedsInstall, { demoUnavailable } from "../components/common/ui/NeedsInstall";
-import { viewLook } from "../components/canvas/viewLooks";
+import NeedsInstall, { demoUnavailable, NEEDS_INSTALL } from "../components/common/ui/NeedsInstall";
+import GraphView, { type GraphUnavailable } from "../components/graphView/GraphView";
 import GroupDialog from "../components/canvas/GroupDialog";
 import { GroupActionsContext } from "../components/canvas/GroupNodes";
 import { useGroups } from "./workflow/useGroups";
@@ -214,7 +213,7 @@ const WorkflowPageContent: React.FC = () => {
   const [analysisOpen, setAnalysisOpen] = useState(false);
   // When steps run: the analysis's conditions with the Parameters node's values.
   const stepConditions = useStepConditions(analysis, nodes, useFeature("conditions") && analysisOn);
-  // The editor, the process graph or groups, and the connections the code makes that the canvas doesn't show.
+  // The editor or a graph of the code, and the connections the code makes that the canvas doesn't show.
   const canvasView = useCanvasView(nodes, edges, workflowName, {
     showCodeConnections: useFeature("connectionHints"),
   });
@@ -446,12 +445,11 @@ const WorkflowPageContent: React.FC = () => {
   // Interaction flags on the nodes the canvas shows: the node of the panel
   // under the pointer is highlighted, and a run stops editing. Nodes of a
   // read-only workflow stay draggable: dropping one opens an editable copy.
-  // The nodes of the view: steps only hides channel code, Grouped shows
-  // each group as one box, All draws a frame around each group's steps.
+  // The editor draws a frame around each group's steps.
   const canvasNodes = useMemo(
     () =>
       canvasView.nodes.map((node) =>
-        node.type === "groupFrame" || node.type === "groupBox"
+        node.type === "groupFrame"
           ? node
           : {
               ...node,
@@ -464,18 +462,20 @@ const WorkflowPageContent: React.FC = () => {
       ),
     [canvasView.nodes, panels.highlightedId, isRunning]
   );
-  const openGroup = useCallback(
-    (group: string) => {
-      canvasView.setView("all");
-      const members = (grouping.groups.get(group) ?? []).map((node) => ({ id: node.id }));
-      window.setTimeout(() => void fitView({ nodes: members, duration: 300, maxZoom: 1.2 }), 0);
-    },
-    [canvasView, grouping.groups, fitView],
-  );
   const groupActions = useMemo(
-    () => ({ rename: grouping.startRename, ungroup: (group: string) => void grouping.ungroup(group), open: openGroup, editable: !isRunning }),
-    [grouping.startRename, grouping.ungroup, openGroup, isRunning],
+    () => ({ rename: grouping.startRename, ungroup: (group: string) => void grouping.ungroup(group), editable: !isRunning }),
+    [grouping.startRename, grouping.ungroup, isRunning],
   );
+  // The graph views draw BioFlow-Insight's analysis, which needs an installation's server.
+  const graphsUnavailable: GraphUnavailable | null = isDemoMode
+    ? {
+        reason:
+          "It is drawn from BioFlow-Insight's analysis of the workflow's code, which runs on the server of an installation. The browser demo has none.",
+        demo: true,
+      }
+    : !analysisOn
+      ? { reason: "The analysis is switched off in Global Settings → Features.", demo: false }
+      : null;
 
   if (workflow.loadError) {
     return (
@@ -497,11 +497,14 @@ const WorkflowPageContent: React.FC = () => {
     <NodeProblemsContext.Provider value={check.nodeProblems}>
       <ConnectionHintsContext.Provider value={edgeHints}>
       <div className="flex flex-col h-screen w-screen bg-canvas-background text-text">
-        <Header
-          onProcessSelect={handleProcessSelect}
-          onCustomNodeSaved={customNodes.applyDefinition}
-          onCustomNodeDeleteRequested={customNodes.requestDelete}
-        />
+        {/* Nodes are added in the editor; the graph views are read-only. */}
+        {canvasView.view === "editor" && (
+          <Header
+            onProcessSelect={handleProcessSelect}
+            onCustomNodeSaved={customNodes.applyDefinition}
+            onCustomNodeDeleteRequested={customNodes.requestDelete}
+          />
+        )}
         <div className="flex-grow relative">
           {workflow.isLoading && (
             <div className="absolute inset-0 bg-background bg-opacity-80 flex items-center justify-center z-50">
@@ -515,26 +518,29 @@ const WorkflowPageContent: React.FC = () => {
             title="The canvas ran into a problem"
             description="Your last saved version of this workflow is safe. Try again to re-render the canvas, or reload the page."
           >
+            {canvasView.view !== "editor" ? (
+              <GraphView
+                kind={canvasView.view}
+                analysis={analysis}
+                unavailable={graphsUnavailable}
+                onBack={() => canvasView.setView("editor")}
+                onShowInEditor={(nodeId) => {
+                  canvasView.setView("editor");
+                  window.setTimeout(() => showNode(nodeId), 0);
+                }}
+              />
+            ) : (
             <Canvas
               nodes={canvasNodes}
               edges={canvasView.edges}
-              readOnly={canvasView.view !== "all"}
-              view={viewLook(canvasView.view, () => canvasView.setView("all"))}
-              onNodesChange={(changes) => guards.handleNodesChange(moveGroupBoxes(changes, nodes))}
+              onNodesChange={guards.handleNodesChange}
               onEdgesChange={guards.handleEdgesChange}
               onConnect={guards.handleConnect}
-              // A group box isn't deleted by dropping it on the bin.
-              onNodeDragStart={(_, node) => node.type !== "groupBox" && deletion.onNodeDragStart()}
-              onNodeDrag={(event, node) => node.type !== "groupBox" && deletion.onNodeDrag(event, node)}
-              onNodeDragStop={(event, node) => node.type !== "groupBox" && deletion.onNodeDragStop(event, node)}
+              onNodeDragStart={deletion.onNodeDragStart}
+              onNodeDrag={deletion.onNodeDrag}
+              onNodeDragStop={deletion.onNodeDragStop}
               onNodeDoubleClick={(_, node) => {
-                if (node.type === "groupBox") {
-                  openGroup(String((node.data as { group?: unknown }).group));
-                  return;
-                }
                 if (node.type === "groupFrame") return;
-                // Settings are edited in All.
-                if (canvasView.view !== "all") canvasView.setView("all");
                 panels.open(node.id);
               }}
               isValidConnection={isValidConnection}
@@ -544,8 +550,9 @@ const WorkflowPageContent: React.FC = () => {
               onShowShortcuts={() => setShowShortcuts(true)}
               onZoomToFailed={failingNodeId ? () => showNode(failingNodeId) : undefined}
             />
+            )}
           </ErrorBoundary>
-          {canvasView.view === "all" && grouping.selection.length > 0 && !isRunning && (
+          {canvasView.view === "editor" && grouping.selection.length > 0 && !isRunning && (
             <div
               role="toolbar"
               aria-label="Selected steps"
@@ -610,6 +617,10 @@ const WorkflowPageContent: React.FC = () => {
                       grouping.startGrouping(ids, "suggestion");
                     }
               }
+              onOpenView={(kind) => {
+                setAnalysisOpen(false);
+                canvasView.setView(kind);
+              }}
               onClose={() => setAnalysisOpen(false)}
             />
           )}
@@ -651,7 +662,13 @@ const WorkflowPageContent: React.FC = () => {
           isSaving={workflow.isSaving}
           isRunning={isRunning}
           runBlockedReason={check.blockedReason ?? demoUnavailable}
-          viewControl={<CanvasViewSwitch view={canvasView.view} onChange={canvasView.setView} hasGroups={grouping.groups.size > 0} />}
+          viewControl={
+            <CanvasViewSwitch
+              view={canvasView.view}
+              onChange={canvasView.setView}
+              graphsUnavailable={graphsUnavailable ? (graphsUnavailable.demo ? NEEDS_INSTALL : graphsUnavailable.reason) : null}
+            />
+          }
           analysisControl={
             analysisOn ? (
               <AnalyseButton

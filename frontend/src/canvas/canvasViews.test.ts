@@ -5,7 +5,7 @@ import { lineOwners } from "../analysis/scriptLines";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { generateNextflowScriptWithNames } from "../generators/core/generateNextflowScript";
 import { importNextflowScript } from "../workflows/import/importScript";
-import { codeConnections, stepsOnlyView } from "./canvasViews";
+import { codeConnections } from "./canvasViews";
 
 const connectionsOf = (nodes: Node<NodeData>[], edges: Edge[]) => {
   const { script, names } = generateNextflowScriptWithNames(
@@ -99,23 +99,4 @@ describe("codeConnections", () => {
       expect(connectionsOf(fixture.nodes, fixture.edges)).toEqual([]);
     },
   );
-});
-
-describe("stepsOnlyView", () => {
-  it("hides channel code and connects the steps through it", () => {
-    const { nodes, edges } = importNextflowScript(conditions);
-    const connections = connectionsOf(nodes, edges);
-    const view = stepsOnlyView(nodes, edges, connections);
-    const block = nodes.find((node) => node.type === "channelOperator")?.id;
-    expect(view.nodes.find((node) => node.id === block)?.hidden).toBe(true);
-    const label = (nodeId: string) =>
-      nodes.find((node) => node.id === nodeId)?.data.label;
-    const pairs = view.edges
-      .map((edge) => `${label(edge.source)}->${label(edge.target)}`)
-      .sort();
-    // TRIM's reads reach ALIGN through the hidden block.
-    expect(pairs).toContain("TRIM->ALIGN");
-    // The block reads TRIM and calls QC, but not with TRIM's output.
-    expect(pairs).not.toContain("TRIM->QC");
-  });
 });
