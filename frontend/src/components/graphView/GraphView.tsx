@@ -34,6 +34,8 @@ import {
   structureInsight,
 } from "../../analysis/graphViews";
 import type { WorkflowAnalysisState } from "../../analysis/useWorkflowAnalysis";
+import { useAnalysisProgress } from "../../analysis/useAnalysisProgress";
+import AnalysisProgress from "../canvas/AnalysisProgress";
 import { wikiUrl } from "../../docs/links";
 import CustomControls from "../canvas/CustomControls";
 import Term from "../common/ui/Term";
@@ -111,12 +113,14 @@ const Blueprint: React.FC<{ children?: React.ReactNode }> = ({ children }) => (
 );
 
 /** A message in the middle of the paper, when there is no graph to draw. */
-const Message: React.FC<{ kind: GraphKind; onBack: () => void; children: React.ReactNode; greyed?: boolean }> = ({
-  kind,
-  onBack,
-  children,
-  greyed = false,
-}) => (
+const Message: React.FC<{
+  kind: GraphKind;
+  onBack: () => void;
+  children: React.ReactNode;
+  greyed?: boolean;
+  /** Announced as a status (unset when what it holds announces itself). */
+  status?: boolean;
+}> = ({ kind, onBack, children, greyed = false, status = true }) => (
   <div className="graph-view relative h-full w-full" data-graph-view={kind} data-unavailable={greyed || undefined}>
     <ReactFlowProvider>
       <ReactFlow nodes={[]} edges={[]} proOptions={{ hideAttribution: true }} panOnDrag={false} zoomOnScroll={false}>
@@ -128,7 +132,7 @@ const Message: React.FC<{ kind: GraphKind; onBack: () => void; children: React.R
     </ReactFlowProvider>
     <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
       <div
-        role="status"
+        role={status ? "status" : undefined}
         className={`pointer-events-auto max-w-md rounded-lg border border-sky-300/50 bg-[#10345e]/90 p-4 text-sm text-sky-50 shadow-xl ${greyed ? "opacity-90" : ""}`}
       >
         {children}
@@ -139,6 +143,7 @@ const Message: React.FC<{ kind: GraphKind; onBack: () => void; children: React.R
 
 const GraphView: React.FC<GraphViewProps> = ({ kind, analysis, unavailable, onBack, onShowInEditor }) => {
   const { analysis: result, structureCurrent, running, error, analyse } = analysis;
+  const progress = useAnalysisProgress(running);
 
   // Opening the view analyses the workflow when its analysis isn't of the steps as they are.
   const requested = useRef(false);
@@ -173,12 +178,9 @@ const GraphView: React.FC<GraphViewProps> = ({ kind, analysis, unavailable, onBa
       );
     }
     return (
-      <Message kind={kind} onBack={onBack}>
-        <p className="flex items-center gap-2">
-          <Loader className="h-4 w-4 animate-spin" aria-hidden />
-          BioFlow-Insight is reading the workflow&apos;s code…
-        </p>
-        <p className="mt-1 text-xs text-sky-100/80">The first analysis downloads the tools; it takes a little longer.</p>
+      <Message kind={kind} onBack={onBack} status={false}>
+        <p className="mb-2 font-semibold">BioFlow-Insight is reading the workflow&apos;s code</p>
+        {progress ? <AnalysisProgress progress={progress} tone="blueprint" /> : <Loader className="h-4 w-4 animate-spin" aria-hidden />}
       </Message>
     );
   }

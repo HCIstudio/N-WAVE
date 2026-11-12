@@ -11,6 +11,8 @@ import { type AnalysisPart, analysisProblems } from "../../analysis/analysis";
 import { BIOFLOW_PAPER_URL } from "../../analysis/bioflow";
 import { wikiUrl } from "../../docs/links";
 import type { GraphKind } from "../../analysis/graphViews";
+import { useAnalysisProgress } from "../../analysis/useAnalysisProgress";
+import AnalysisProgress from "./AnalysisProgress";
 import type { WorkflowAnalysisState } from "../../analysis/useWorkflowAnalysis";
 import type { NodeData } from "../nodes/BaseNode";
 import { groupSuggestions, SUGGESTION_REASONS } from "../../groups/suggestions";
@@ -53,6 +55,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
   onClose,
 }) => {
   const headingId = useId();
+  const progress = useAnalysisProgress(state.running);
   const { analysis, current, running, error, analyse } = state;
 
   useEffect(() => {
@@ -119,12 +122,10 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
 
         <div className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 overflow-y-auto p-4">
-            {running && !analysis && (
-              <p className="flex items-center gap-2 text-sm text-text-light">
-                <Loader className="h-4 w-4 animate-spin" aria-hidden />{" "}
-                Analysing the workflow&apos;s code… (the first time downloads
-                the tools)
-              </p>
+            {progress && (
+              <div className="mb-4 rounded-md border border-panel-border p-3">
+                <AnalysisProgress progress={progress} />
+              </div>
             )}
             {error && (
               <p
