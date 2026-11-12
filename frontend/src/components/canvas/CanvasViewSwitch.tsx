@@ -1,7 +1,7 @@
 // The canvas view in the bottom bar: the Editor (every node, editable), the
-// Process graph (the steps only), or Groups (each group of steps as one box,
-// when the workflow has groups). The last two are read-only and drawn as a
-// blueprint (Canvas.tsx).
+// Process graph (the steps only), or Groups (each group of steps as one box).
+// All three are always shown; Groups is greyed out until the workflow has a
+// group. N-WAVE draws each from the canvas (canvas/canvasViews.ts).
 
 import clsx from "clsx";
 import type React from "react";
@@ -31,30 +31,38 @@ const VIEWS: Array<{ id: CanvasView; label: string; title: string }> = [
 const CanvasViewSwitch: React.FC<{
   view: CanvasView;
   onChange: (view: CanvasView) => void;
-  /** Grouped is offered when the workflow has groups. */
+  /** Groups can be opened once the workflow has a group. */
   hasGroups?: boolean;
 }> = ({ view, onChange, hasGroups = false }) => (
   <fieldset
     aria-label="Canvas view"
     className="m-0 flex shrink-0 overflow-hidden rounded-md border border-panel-border p-0 text-xs"
   >
-    {VIEWS.filter((entry) => entry.id !== "grouped" || hasGroups || view === "grouped").map((entry) => (
-      <button
-        key={entry.id}
-        type="button"
-        aria-pressed={view === entry.id}
-        title={entry.title}
-        onClick={() => onChange(entry.id)}
-        className={clsx(
-          "whitespace-nowrap px-2 py-1",
-          view === entry.id
-            ? "bg-accent font-medium text-text"
-            : "text-text-light hover:text-text",
-        )}
-      >
-        {entry.label}
-      </button>
-    ))}
+    {VIEWS.map((entry) => {
+      const unavailable = entry.id === "grouped" && !hasGroups && view !== "grouped";
+      return (
+        <button
+          key={entry.id}
+          type="button"
+          aria-pressed={view === entry.id}
+          disabled={unavailable}
+          title={
+            unavailable
+              ? "No groups yet: select steps in the Editor and choose Group into subworkflow… (or group a suggestion from Analyse)"
+              : entry.title
+          }
+          onClick={() => onChange(entry.id)}
+          className={clsx(
+            "whitespace-nowrap px-2 py-1 disabled:cursor-not-allowed disabled:opacity-40",
+            view === entry.id
+              ? "bg-accent font-medium text-text"
+              : "text-text-light enabled:hover:text-text",
+          )}
+        >
+          {entry.label}
+        </button>
+      );
+    })}
   </fieldset>
 );
 

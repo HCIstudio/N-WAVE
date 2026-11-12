@@ -80,7 +80,7 @@ test.describe("groups of steps", () => {
     await frame.getByRole("button", { name: "Edit group “Barry Uppercase”" }).click();
     await page.getByRole("dialog", { name: "Edit the group" }).getByRole("button", { name: "Ungroup" }).click();
     await expect(frame).toHaveCount(0);
-    await expect(view.getByRole("button", { name: "Groups" })).toHaveCount(0);
+    await expect(view.getByRole("button", { name: "Groups" })).toBeDisabled();
   });
 
   test("groups what the analysis suggests", async ({ page }) => {

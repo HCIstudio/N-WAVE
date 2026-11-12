@@ -141,3 +141,10 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+/* What a tutorial step points at (TutorialCallout). */
+.tutorial-target {
+  outline: 2px solid #38bdf8;
+  outline-offset: 4px;
+  border-radius: 6px;
+}

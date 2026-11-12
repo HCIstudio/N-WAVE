@@ -5,6 +5,7 @@ import { AlertTriangle, CheckCircle2, Loader, RefreshCw, XCircle } from "lucide-
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { EXPLAINED, howExplainedUrl } from "../../docs/links";
+import { demoUnavailable } from "../common/ui/NeedsInstall";
 
 export interface CheckProblem {
   id: string;
@@ -98,9 +99,9 @@ const WorkflowCheckButton: React.FC<WorkflowCheckButtonProps> = ({
             <button
               type="button"
               onClick={onRecheck}
-              disabled={isChecking}
+              disabled={isChecking || demoUnavailable !== null}
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-text-light hover:bg-accent disabled:opacity-50"
-              title="Ask the server again whether Docker and Nextflow are available"
+              title={demoUnavailable ?? "Ask the server again whether Docker and Nextflow are available"}
             >
               {isChecking ? (
                 <Loader className="h-3.5 w-3.5 animate-spin" aria-hidden />

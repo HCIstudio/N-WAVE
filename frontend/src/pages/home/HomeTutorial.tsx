@@ -1,16 +1,18 @@
-// The tutorial's first part, on the home page: what its parts are for. Its
-// last step makes the user's own copy of Demo 1, where the tutorial goes on
+// The tutorial's first part, on the home page: what its parts are for. It
+// starts as a box in the page, between the title and the demos; once the user
+// starts the tour, each step points at a part of the page. Its last step makes
+// the user's own copy of Demo 1, where the tutorial goes on
 // (useWorkflowTutorial), on a canvas they can change and run.
 
 import type React from "react";
-import TutorialCallout from "../../components/tutorial/TutorialCallout";
+import TutorialCallout, { TUTORIAL_BOX_CLASS, TutorialBadge } from "../../components/tutorial/TutorialCallout";
 import { completeTutorial, setTutorialStep } from "../../components/tutorial/tutorialState";
 
 type Placement = React.ComponentProps<typeof TutorialCallout>["placement"];
 
 interface HomeStep {
   text: React.ReactNode;
-  /** `data-tutorial` of what it points at; none: the middle of the page. */
+  /** `data-tutorial` of what it points at; none: the box in the page (the first step). */
   target?: string;
   placement: Placement;
 }
@@ -110,6 +112,31 @@ const HomeTutorial: React.FC<{
     setTutorialStep("home", next);
     onStep(next);
   };
+  const skip = () => {
+    completeTutorial();
+    onStep(null);
+  };
+  // Not started yet: a box in the page that doesn't cover anything.
+  if (step === 0) {
+    return (
+      <section aria-label="Tutorial" className={`mb-8 max-w-3xl p-4 text-sm ${TUTORIAL_BOX_CLASS}`}>
+        <TutorialBadge />
+        <p className="leading-5">{current.text}</p>
+        <div className="mt-3 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => go(1)}
+            className="rounded-md bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white hover:bg-nextflow-green-dark"
+          >
+            Start the tour
+          </button>
+          <button type="button" onClick={skip} className="rounded-md px-2 py-1.5 text-xs text-sky-300 hover:bg-accent">
+            Skip tutorial
+          </button>
+        </div>
+      </section>
+    );
+  }
   return (
     <TutorialCallout
       text={current.text}
@@ -120,10 +147,7 @@ const HomeTutorial: React.FC<{
       forwardLabel={step === LAST ? "Duplicate Demo 1" : "Next"}
       onBack={() => go(step - 1)}
       onForward={() => (step === LAST ? onDuplicateDemo() : go(step + 1))}
-      onSkip={() => {
-        completeTutorial();
-        onStep(null);
-      }}
+      onSkip={skip}
     />
   );
 };

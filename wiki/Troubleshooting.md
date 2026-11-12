@@ -170,7 +170,9 @@ The Docker installation can't; export the project and run it on the cluster inst
 
 The [browser demo](https://hcistudio.github.io/N-WAVE/) has no server: it can't run
 workflows, and it keeps your workflows, custom nodes and installed nf-core modules in this
-browser only (clearing site data removes them). Export a project to run it elsewhere, or
+browser only (clearing site data removes them). It shows the same pages as an installation:
+what needs a server (**Run**, **Resume**, the run cache, the home page's **Runs**) is greyed
+out, with **Needs a full install of N-WAVE**. Export a project to run it elsewhere, or
 [install N-WAVE](https://github.com/HCIstudio/N-WAVE/wiki/Installation).
 
 ## Saving

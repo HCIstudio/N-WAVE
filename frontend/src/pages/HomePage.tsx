@@ -35,6 +35,7 @@ import ImportWorkflowDialog from "./home/ImportWorkflowDialog";
 import { useFeature } from "../settings/useFeatures";
 import { WORKFLOW_TEMPLATES } from "../templates/workflowTemplates";
 import { useRunsOverview } from "./home/useRunsOverview";
+import NeedsInstall from "../components/common/ui/NeedsInstall";
 import type { RunSummary } from "../api/runs";
 import NewWorkflowDialog, {
   type NewWorkflowChoice,
@@ -706,7 +707,7 @@ const HomePage: React.FC = () => {
               <h2
                 id={`${fieldId}-examples`}
                 data-tutorial="demos"
-                className="text-xl font-semibold text-text"
+                className="w-fit text-xl font-semibold text-text"
               >
                 Built-in demos
               </h2>
@@ -723,7 +724,7 @@ const HomePage: React.FC = () => {
           )}
 
           <section aria-labelledby={`${fieldId}-own`}>
-            <h2 id={`${fieldId}-own`} data-tutorial="own" className="text-xl font-semibold text-text">
+            <h2 id={`${fieldId}-own`} data-tutorial="own" className="w-fit text-xl font-semibold text-text">
               Your workflows
             </h2>
             {!hasUserWorkflows && (
@@ -749,13 +750,13 @@ const HomePage: React.FC = () => {
             </div>
           </section>
 
-          {runsOverview.enabled && (
+          <NeedsInstall>
             <RunsOverview
               runs={runsOverview.runs}
               running={runsOverview.running}
               onStopAll={runsOverview.stopAll}
             />
-          )}
+          </NeedsInstall>
         </div>
         {actionError && (
           <Toast

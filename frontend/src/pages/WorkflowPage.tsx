@@ -62,6 +62,7 @@ import { useStepConditions } from "../analysis/useStepConditions";
 import { NodeConditionsContext } from "../execution/NodeConditionsContext";
 import { useCanvasView } from "../canvas/useCanvasView";
 import CanvasViewSwitch from "../components/canvas/CanvasViewSwitch";
+import NeedsInstall, { demoUnavailable } from "../components/common/ui/NeedsInstall";
 import { viewLook } from "../components/canvas/viewLooks";
 import GroupDialog from "../components/canvas/GroupDialog";
 import { GroupActionsContext } from "../components/canvas/GroupNodes";
@@ -649,7 +650,7 @@ const WorkflowPageContent: React.FC = () => {
           isSaved={workflow.isSaved}
           isSaving={workflow.isSaving}
           isRunning={isRunning}
-          runBlockedReason={check.blockedReason}
+          runBlockedReason={check.blockedReason ?? demoUnavailable}
           viewControl={<CanvasViewSwitch view={canvasView.view} onChange={canvasView.setView} hasGroups={grouping.groups.size > 0} />}
           analysisControl={
             analysisOn ? (
@@ -669,7 +670,7 @@ const WorkflowPageContent: React.FC = () => {
                 problems={check.problems}
                 nodeLabels={nodeLabels}
                 onShowNode={showNode}
-                onRecheck={isDemoMode ? undefined : () => void check.recheck()}
+                onRecheck={() => void check.recheck()}
                 isChecking={check.isChecking}
                 blocking={check.mode === "block"}
               />
@@ -681,20 +682,27 @@ const WorkflowPageContent: React.FC = () => {
           onExecutionSettingsChange={handleExecutionSettingsChange}
           onShowRuns={run.openPanel}
           resume={
-            isDemoMode || !resumeOn
-              ? undefined
-              : { available: resume.available, on: resume.resume, onChange: resume.setResume }
+            resumeOn
+              ? {
+                  available: resume.available && !demoUnavailable,
+                  unavailableReason: demoUnavailable,
+                  on: resume.resume,
+                  onChange: resume.setResume,
+                }
+              : undefined
           }
           settingsExtra={
-            isDemoMode || !resumeOn ? undefined : (
-              <RunCacheSettings
-                cache={resume.cache}
-                onClear={() => void resume.clear()}
-                isClearing={resume.isClearing}
-                isRunning={isRunning}
-                error={resume.error}
-              />
-            )
+            resumeOn ? (
+              <NeedsInstall>
+                <RunCacheSettings
+                  cache={resume.cache}
+                  onClear={() => void resume.clear()}
+                  isClearing={resume.isClearing}
+                  isRunning={isRunning}
+                  error={resume.error}
+                />
+              </NeedsInstall>
+            ) : undefined
           }
         />
         <CopyPromptDialog

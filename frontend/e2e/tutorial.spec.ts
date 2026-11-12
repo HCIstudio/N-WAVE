@@ -6,8 +6,10 @@ test.describe("tutorial", () => {
     await page.goto("./");
     const box = page.getByRole("region", { name: "Tutorial" });
     await expect(box).toContainText("Welcome to N-WAVE");
-    await box.getByRole("button", { name: "Next" }).click();
+    await box.getByRole("button", { name: "Start the tour" }).click();
     await expect(box).toContainText("built-in demos");
+    // What the step points at is outlined.
+    await expect(page.locator('[data-tutorial="demos"]')).toHaveClass(/tutorial-target/);
 
     await box.getByRole("button", { name: "Skip tutorial" }).click();
     await expect(box).toHaveCount(0);
@@ -18,7 +20,8 @@ test.describe("tutorial", () => {
     await page.goto("./");
     const box = page.getByRole("region", { name: "Tutorial" });
     const next = box.getByRole("button", { name: "Next" });
-    for (let step = 1; step < 8; step++) await next.click();
+    await box.getByRole("button", { name: "Start the tour" }).click();
+    for (let step = 2; step < 8; step++) await next.click();
     await box.getByRole("button", { name: "Duplicate Demo 1" }).click();
 
     // An editable copy, not the read-only demo.

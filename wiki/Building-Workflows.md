@@ -68,12 +68,13 @@ canvas shows:
   operator nodes, and code kept from an import) is hidden, and each step connects straight
   to the steps its data reaches through it (dotted lines). Large imported workflows read as
   their steps this way.
-- **Groups** (when the workflow has [groups](#groups-of-steps)): each group is one box with
+- **Groups**: each [group](#groups-of-steps) is one box with
   its steps listed, connected to the rest. Moving a box moves its steps; clicking a group's
   name opens its editor (rename, ungroup). **Open** (or a double-click) goes back to the
-  editor, zoomed to the group's steps.
+  editor, zoomed to the group's steps. It is greyed out until the workflow has a group.
 
-N-WAVE draws both views from the canvas; they aren't the
+N-WAVE draws both views from the canvas, in the browser, so they work in the browser demo
+too; they aren't the
 [analysis](https://github.com/HCIstudio/N-WAVE/wiki/Workflow-Analysis), which is BioFlow-Insight's
 reading of the code (**Analyse**). Each has a title block at the top left: what it shows, and
 **Back to the editor**. The process graph is read-only and drawn as a blueprint (blue paper),

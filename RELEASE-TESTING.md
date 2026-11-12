@@ -48,8 +48,8 @@ or has an issue that is explicitly moved to a later release.
 
 ## Home page, help and demo
 
-- [ ] The tutorial starts on the first visit with a tour of the home page (**Next**, **Back**,
-      **Skip tutorial**). Its last step duplicates Demo 1 and goes on on that copy's canvas
+- [ ] On the first visit, the tutorial is a box between the title and the demos; **Start the
+      tour** points at the home page's parts, one at a time (**Next**, **Back**, **Skip tutorial**). Its last step duplicates Demo 1 and goes on on that copy's canvas
       (changing Map, adding a node). Skipped or finished, it doesn't come back.
 - [ ] Each built-in demo opens read-only; duplicating it gives an editable copy.
 - [ ] Workflow cards show the last run and its result. Editing the name and description,
@@ -60,7 +60,8 @@ or has an issue that is explicitly moved to a later release.
       links work.
 - [ ] Term hover cards on the canvas and in panels show their explanation and docs link.
 - [ ] The [browser demo](https://hcistudio.github.io/N-WAVE/) (after the release): demos open,
-      the tutorial works, Analyse shows the recorded analysis, Run says it needs an installation.
+      the tutorial works, Analyse shows the recorded analysis. What needs a server (Run, Resume,
+      the run cache, Runs) is shown greyed out and says it needs a full install.
 
 ## Building a workflow
 

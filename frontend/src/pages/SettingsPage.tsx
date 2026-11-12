@@ -2,7 +2,7 @@ import type React from "react";
 import { useId } from "react";
 import { Link } from "react-router";
 import { ArrowLeft, Info } from "lucide-react";
-import { isDemoMode } from "../api";
+import NeedsInstall from "../components/common/ui/NeedsInstall";
 import PageLayout from "../components/layout/PageLayout";
 import { useFeature } from "../settings/useFeatures";
 import { buildInfo } from "../utils/buildInfo";
@@ -36,7 +36,9 @@ const SettingsPage: React.FC = () => {
 
         {notificationsOn && <NotificationSettings />}
         <RunDefaultsSettings />
-        {!isDemoMode && <AllCachesSettings />}
+        <NeedsInstall>
+          <AllCachesSettings />
+        </NeedsInstall>
         <FeatureSettings />
         <VerboseSettings />
 
