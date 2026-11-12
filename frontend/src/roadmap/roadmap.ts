@@ -167,7 +167,7 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "When a step runs: its conditions, and a preview by parameter values", issue: 220, status: "released" },
       { title: "Group steps into a subworkflow", issue: 221, status: "released" },
       { title: "Export and import through the FONDA workflow metamodel", issue: 194, status: "released" },
-      { title: "Courses for every major feature", issue: 241 },
+      { title: "Courses for every major feature", issue: 241, status: "released" },
       { title: "Tested on a local installation before the release", issue: 224 },
     ],
   },
