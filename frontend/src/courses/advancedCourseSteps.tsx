@@ -432,7 +432,7 @@ const STRUCTURE: CourseStep[] = [
     text: (
       <>
         That <code>if</code> is the <strong>Branch</strong> node: its condition reads <code>aligner</code> (the dashed
-        violet line from Parameters). Its <strong>if</strong> exit leads to ALIGN_STAR, its <strong>else</strong> exit to
+        fuchsia line from Parameters). Its <strong>if</strong> exit leads to ALIGN_STAR, its <strong>else</strong> exit to
         ALIGN_HISAT, each in its lane. REPORT reads whichever ran.
       </>
     ),

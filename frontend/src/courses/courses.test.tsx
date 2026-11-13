@@ -5,6 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { endTest, setParticipant, startTest } from "../activity/activityLog";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { demoWorkflowSeed } from "../demo/demoWorkflow";
+import { generateNextflowScript } from "../generators/core/generateNextflowScript";
+import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings";
+import { checkWorkflow } from "../pages/workflow/workflowCheck";
+import { getNodeParameters } from "../registry/params";
+import { importNextflowScript } from "../workflows/import/importScript";
+import { BRANCHES_SCRIPT } from "./courseWorkflows";
 import CoursesPage from "../pages/CoursesPage";
 import { resetFeatures } from "../settings/useFeatures";
 import CourseRunner from "./CourseRunner";
@@ -300,6 +306,44 @@ describe("the large workflows course's tasks", () => {
     expect(
       group.done?.(withClicks([], "/workflow/w1", [{ id: "fastqc_raw", data: { group: "QC" } as NodeData }])),
     ).toBe(true);
+  });
+});
+
+describe("the choices course's tasks", () => {
+  const [, add, condition, ifArm, elseArm, parameter, exported] = COURSE_STEPS.branches;
+  const context = (nodes: Node<NodeData>[], edges: Edge[], clicked: string[] = []): CourseContext =>
+    ({ ...ctx([]), nodes, edges, clicked: new Set(clicked) }) as CourseContext;
+  const checkContext = { missingNfCoreComponents: [], settings: DEFAULT_EXECUTION_SETTINGS, docker: null, nextflow: null, limits: null };
+  const errors = (nodes: Node<NodeData>[], edges: Edge[]) =>
+    checkWorkflow(nodes, edges, checkContext).filter((problem) => problem.level === "error").map((problem) => problem.id);
+  const set = (nodes: Node<NodeData>[], id: string, data: Partial<NodeData>) =>
+    nodes.map((entry) => (entry.id === id ? { ...entry, data: { ...entry.data, ...data } } : entry));
+
+  it("follow the workflow from two aligners into REPORT to a parameter choosing one, and the check goes from an error to none", () => {
+    const imported = importNextflowScript(BRANCHES_SCRIPT);
+    let { nodes } = imported;
+    const { edges } = imported;
+    expect(errors(nodes, edges)).toEqual(["extra:n-report:aligned"]);
+    expect(add.done?.(context(nodes, edges))).toBe(false);
+    nodes = [...nodes, { id: "b", type: "branch", position: { x: 0, y: 0 }, data: { label: "If", conditions: [""] } }];
+    expect(add.done?.(context(nodes, edges))).toBe(true);
+    expect(condition.done?.(context(nodes, edges))).toBe(false);
+    nodes = set(nodes, "b", { conditions: ["params.aligner == 'star'"] });
+    expect(condition.done?.(context(nodes, edges))).toBe(true);
+    nodes = set(nodes, "n-align_star", { branch: { id: "b", arm: "if" } });
+    expect(ifArm.done?.(context(nodes, edges))).toBe(true);
+    expect(elseArm.done?.(context(nodes, edges))).toBe(false);
+    nodes = set(nodes, "n-align_hisat", { branch: { id: "b", arm: "else" } });
+    expect(elseArm.done?.(context(nodes, edges))).toBe(true);
+    expect(errors(nodes, edges)).toEqual([]);
+    const params = nodes.find((entry) => entry.id === "n-params") as Node<NodeData>;
+    expect(parameter.done?.(context(nodes, edges))).toBe(false);
+    nodes = set(nodes, "n-params", { parameters: getNodeParameters(params.data).map((entry) => ({ ...entry, value: "hisat2" })) });
+    expect(parameter.done?.(context(nodes, edges))).toBe(true);
+    expect(exported.done?.(context(nodes, edges, ["Export"]))).toBe(true);
+    const script = generateNextflowScript(nodes, edges, "Two aligners", "results");
+    expect(script).toContain("if (params.aligner == 'star') {");
+    expect(script).toContain("} else {");
   });
 });
 

@@ -36,6 +36,10 @@ links there.
     node pack.
   - **Large workflows**: in a copy of Demo 3, the whole workflow at once, the steps inside a
     subworkflow, and grouping steps into a subworkflow of your own.
+  - **Choices in a workflow**: in a workflow imported for the course, two aligners both
+    feed one report; add a Branch from the + menu, set its condition, put an aligner in each
+    arm, switch the parameter and read the `if` / `else` in the export. Then else if,
+    switches, nested branches, skip flags and why loops stay code.
   - **N-WAVE for studies**: in Global Settings, switch a help feature off and on, turn on
     verbose mode, set a participant ID, mark a test and download the recording.
 - **Advanced**, with an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation)

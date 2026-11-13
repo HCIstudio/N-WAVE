@@ -5,6 +5,7 @@ import {
   type NodeProps,
   useConnection,
   useReactFlow,
+  useStore,
   useUpdateNodeInternals,
 } from "@xyflow/react";
 import { memo, type ReactNode, useEffect } from "react";
@@ -123,6 +124,8 @@ const BaseNode = ({
   );
   const { getNode } = useReactFlow();
   const hintsOn = useFeature("connectionHints");
+  // Branch handles only show in a workflow with a Branch node (a boolean: re-renders when that changes).
+  const hasBranches = useStore((state) => state.nodes.some((node) => node.type === "branch"));
   const openNested = useOpenNestedView();
   const fitOf = (portName: string): { fits: boolean; message?: string } | null => {
     if (!dragFrom || !hintsOn) return null;
@@ -144,10 +147,10 @@ const BaseNode = ({
   const portKey = [...(data.inputs ?? []), ...(data.outputs ?? [])]
     .map((port) => port.name)
     .join("|");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: portKey is the change signal.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: portKey and hasBranches are the change signals (handles come and go).
   useEffect(() => {
     updateNodeInternals(id);
-  }, [id, portKey, updateNodeInternals]);
+  }, [id, portKey, hasBranches, updateNodeInternals]);
 
   // The last run's state for this node wins over a stored status.
   const { summary: run } = useNodeRun(id);
@@ -366,7 +369,7 @@ const BaseNode = ({
       </div>
 
       {/* Where a branch's line comes in (on top): a line from a Branch's exit puts the node in that arm. */}
-      {canJoinArm({ id, type, data }) && (
+      {hasBranches && canJoinArm({ id, type, data }) && (
         <Handle
           type="target"
           position={Position.Top}
@@ -538,13 +541,13 @@ const BaseNode = ({
       ))}
       {/* Parameters a branch reads: its dashed line to the branch leaves at the bottom.
           After the outputs, so it is never taken for one (not connectable either). */}
-      {type === "parameters" && (
+      {hasBranches && type === "parameters" && (
         <Handle
           type="source"
           position={Position.Bottom}
           id="branch-params"
           isConnectable={false}
-          className="!h-1.5 !w-1.5 !border-0 !bg-violet-300 !opacity-60"
+          className="!h-1.5 !w-1.5 !border-0 !bg-fuchsia-300 !opacity-60"
         />
       )}
     </div>

@@ -273,7 +273,7 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     category: "Branches",
     label: "Switch on a parameter",
     description:
-      "One set of steps for each value of a parameter (aligner: star, hisat2, …), the else arm for any other. Written as if / else if: Nextflow has no switch.",
+      "One set of steps for each value of a parameter (aligner: star, hisat2, …), the else arm for any other. Written as if / else if: Nextflow's strict syntax has no switch.",
     type: "branch",
     icon: "GitFork",
     defaults: { label: "Switch", switchParameter: "", switchValues: ["", ""], conditions: [], inputs: [], outputs: [] },

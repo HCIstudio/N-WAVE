@@ -2,6 +2,7 @@
 // the node it is about where there is one. Errors block the run (it would
 // fail, or do nothing); warnings let it run.
 
+import { placementOf } from "../../generators/core/placement";
 import { branchChain, branchConditions, exclusiveArms } from "../../branches/branches";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
@@ -140,7 +141,9 @@ const checkNodes = (
       }
       continue;
     }
-    if (!connected && node.type !== "parameters" && node.type !== "pipeline" && node.type !== "branch") {
+    // Code placed outside the workflow block (a function, `params.x = …`) is part of the script as it is.
+    const placed = node.type === "channelOperator" && placementOf(node.data) !== null;
+    if (!connected && !placed && node.type !== "parameters" && node.type !== "pipeline" && node.type !== "branch") {
       add(node, "unconnected", "warning", `“${label}” isn't connected to anything, so it won't take part in the run.`);
       continue;
     }

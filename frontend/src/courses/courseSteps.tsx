@@ -7,6 +7,7 @@
 import type { Node } from "@xyflow/react";
 import { getCurrentTest, getParticipant } from "../activity/activityLog";
 import type { NodeData } from "../components/nodes/BaseNode";
+import { getNodeParameters } from "../registry/params";
 import { currentFeatures } from "../settings/useFeatures";
 import { ADVANCED_COURSE_STEPS } from "./advancedCourseSteps";
 import type { CourseId } from "./courseState";
@@ -480,6 +481,128 @@ const LARGE: CourseStep[] = [
   },
 ];
 
+/** The Branch nodes on the canvas. */
+const branchNodes = ({ nodes }: CourseContext) => nodes.filter((entry) => entry.type === "branch");
+/** The arm a node is in (its branch is on the canvas). */
+const armOfNode = (context: CourseContext, id: string): string | null => {
+  const membership = context.nodes.find((entry) => entry.id === id)?.data.branch as { id?: string; arm?: string } | undefined;
+  return membership && branchNodes(context).some((entry) => entry.id === membership.id) ? (membership.arm ?? null) : null;
+};
+/** The aligner the Parameters node sets. */
+const alignerValue = ({ nodes }: CourseContext): unknown =>
+  nodes
+    .filter((entry) => entry.type === "parameters")
+    .flatMap((entry) => getNodeParameters(entry.data))
+    .find((parameter) => parameter.name === "aligner")?.value;
+
+// In a workflow imported for it: two aligners, both into REPORT.
+const BRANCHES: CourseStep[] = [
+  {
+    text: (
+      <>
+        A workflow imported for this course: TRIM, then <strong>two aligners</strong>, both into REPORT. REPORT takes
+        one aligner&apos;s output, so the <strong>workflow check</strong> (next to Run) has an error. The parameter{" "}
+        <code>aligner</code> should choose one.
+      </>
+    ),
+    target: 'button[aria-label^="Workflow check"]',
+  },
+  {
+    text: (
+      <>
+        Open the <strong>+ menu</strong>. Under <strong>Branches</strong>, add <strong>If / else</strong>: the
+        workflow then runs one of two sets of steps. Branches are <strong>Logic</strong> nodes, fuchsia diamonds in the
+        legend.
+      </>
+    ),
+    target: ADD_NODE,
+    done: (context) => branchNodes(context).length > 0,
+  },
+  {
+    text: (
+      <>
+        Double-click the <strong>Branch</strong> node and set its <strong>if</strong> condition to{" "}
+        <code>params.aligner == &apos;star&apos;</code>. A condition is Groovy on the workflow&apos;s parameters.
+      </>
+    ),
+    target: "[data-branch]",
+    done: (context) =>
+      branchNodes(context).some((entry) =>
+        (Array.isArray(entry.data.conditions) ? entry.data.conditions : []).some((condition) =>
+          /^params\.aligner\s*==\s*['"]star['"]$/.test(String(condition).trim()),
+        ),
+      ),
+  },
+  {
+    text: (
+      <>
+        Each arm has an exit on the right of the Branch node. Draw a line from the <strong>if</strong> exit to{" "}
+        <strong>ALIGN_STAR</strong>: it goes into that arm, framed in its lane.
+      </>
+    ),
+    target: "[data-branch]",
+    done: (context) => armOfNode(context, "n-align_star") === "if",
+  },
+  {
+    text: (
+      <>
+        And from the <strong>else</strong> exit to <strong>ALIGN_HISAT</strong>. Now only one aligner runs, so REPORT
+        reads one at a time: the error is gone from the workflow check.
+      </>
+    ),
+    target: "[data-branch]",
+    done: (context) => armOfNode(context, "n-align_hisat") === "else",
+  },
+  {
+    text: (
+      <>
+        The Branch shows which arm <strong>runs now</strong>. Double-click <strong>Parameters</strong> and set{" "}
+        <code>aligner</code> to <code>hisat2</code>: the else arm runs, and ALIGN_STAR greys out.
+      </>
+    ),
+    target: node("n-params"),
+    done: (context) => alignerValue(context) === "hisat2",
+  },
+  {
+    text: (
+      <>
+        <strong>Open Export</strong> and look at the script: the Branch is an <code>if</code> / <code>else</code>, and
+        REPORT reads a channel each arm sets. Other Nextflow tools read it as any script.
+      </>
+    ),
+    target: EXPORT,
+    done: ({ clicked }) => clicked.has("Export"),
+  },
+  {
+    text: (
+      <>
+        More choices: <strong>Add else if</strong> in the Branch&apos;s settings tests conditions in order;{" "}
+        <strong>Switch on a parameter</strong> (+ menu, Branches) takes a value per arm and is written as{" "}
+        <code>if</code> / <code>else if</code>, since Nextflow&apos;s strict syntax has no <code>switch</code>. A Branch
+        in another&apos;s arm nests, and an <code>if</code> whose else has no steps is a skip flag, like nf-core&apos;s{" "}
+        <code>skip_qc</code>.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        Importing reads all of these from a script, <code>switch</code> too. <strong>Loops</strong> (<code>for</code>,{" "}
+        <code>while</code>) stay code, with a warning: Nextflow&apos;s strict syntax rejects them, as a channel already
+        runs a step once per item.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        <strong>That&apos;s choices in a workflow.</strong> The Nodes page of the wiki has Branches in full, and
+        Importing Workflows what comes in how.
+      </>
+    ),
+  },
+];
+
 // #245: on Global Settings, no workflow needed.
 const STUDIES: CourseStep[] = [
   {
@@ -578,6 +701,7 @@ export const COURSE_STEPS: Record<Exclude<CourseId, "home">, CourseStep[]> = {
   "import-export": IMPORT_EXPORT,
   "own-steps": OWN_STEPS,
   "large-workflows": LARGE,
+  branches: BRANCHES,
   studies: STUDIES,
   "nfcore-modules": NFCORE,
   ...ADVANCED_COURSE_STEPS,
