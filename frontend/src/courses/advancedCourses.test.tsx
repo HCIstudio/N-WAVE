@@ -126,7 +126,7 @@ describe("the clusters course's tasks", () => {
 });
 
 describe("the structure course's tasks", () => {
-  const [, analyse, error, fixed, specification, dependencies, editor, aligner, group] = COURSE_STEPS.structure;
+  const [, branch, aligner, analyse, error, fixed, specification, dependencies, editor, group] = COURSE_STEPS.structure;
   const parameters = (value: string) =>
     [
       {
@@ -136,7 +136,8 @@ describe("the structure course's tasks", () => {
       },
     ] as Node<NodeData>[];
 
-  it("follow the analysis, the views, the condition and a group", () => {
+  it("follow the branch, the analysis, the views and a group", () => {
+    expect(branch.target).toBe("[data-branch]");
     expect(analyse.done?.(context())).toBe(false);
     expect(analyse.done?.(context({ analysis: { problems: 0 } }))).toBe(true);
     expect(error.done?.(context({ analysis: { problems: 0 } }))).toBe(false);
@@ -206,6 +207,11 @@ describe("starting an advanced course", () => {
     for (const id of ["n-params", "n-trim", "n-qc", "n-align_star", "n-align_hisat", "n-report"]) {
       expect(ids).toContain(id);
     }
+    // The if/else is a Branch node, with an aligner in each arm.
+    const branch = draft.nodes.find((entry) => entry.type === "branch");
+    expect(branch?.data.conditions).toEqual(["params.aligner == 'star'"]);
+    expect(draft.nodes.find((entry) => entry.id === "n-align_star")?.data.branch).toEqual({ id: branch?.id, arm: "if" });
+    expect(draft.nodes.find((entry) => entry.id === "n-align_hisat")?.data.branch).toEqual({ id: branch?.id, arm: "else" });
   });
 });
 

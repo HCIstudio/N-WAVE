@@ -34,7 +34,9 @@ bottom bar saves at once).
 The strip on top of each node says its kind, in its color: **Input** (light blue, where data
 enters), **nf-core** (green, tested nf-core tools), **Custom step** (violet, processes written
 by hand), **Operator** (grey, Filter, Map, Merge and channel code: they reshape the data
-between steps and run no tool) and **Output** (yellow, where results come out). The legend
+between steps and run no tool), **Logic** (fuchsia, Branch nodes that choose which steps run,
+see [Branches](https://github.com/HCIstudio/N-WAVE/wiki/Nodes#branches-if--else-if--else))
+and **Output** (yellow, where results come out). The legend
 is on the home page and on the Help page, which the canvas's **?** button opens.
 
 ## Finding your way on a large canvas

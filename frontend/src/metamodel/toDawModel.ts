@@ -11,7 +11,8 @@
 //   a step without an implementation      Task (the solution idea only)
 //   channel code                          Task: InlineDescription
 //   channel code that decides which
-//   steps get data (if, branch, filter)   Task: SkipTask (InterconnectionManipulation)
+//   steps get data (if, branch, filter),
+//   and a Branch node (if/else)           Task: SkipTask (InterconnectionManipulation)
 //   onComplete / onError code             Task: Monitor
 //   File Input, Samplesheet,
 //   Display Output                        Storage: FileStorage
@@ -104,6 +105,9 @@ export const classifyNode = (node: Node<NodeData>): Kind => {
         type: parameters.length > 0 && parameters.every((parameter) => parameter.type === "file") ? "FileStorage" : "IntermediateStorage",
       };
     }
+    case "branch":
+      // Which arm's steps get data, by a condition (`if (params.aligner == 'star')`).
+      return { kind: "task", type: "SkipTask" };
     case "pipeline":
       return { kind: "daw", reference: `nf-core/${String(data.pipelineName ?? "").replace(/^nf-core\//, "")}` };
     case "channelOperator": {

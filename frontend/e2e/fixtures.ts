@@ -106,6 +106,19 @@ export const connect = async (
   await page.mouse.up();
 };
 
+/** Draw a line from one handle to another (a branch's arm exit to a step, …). */
+export const connectHandles = async (page: Page, source: Locator, target: Locator): Promise<void> => {
+  await page.waitForTimeout(100);
+  await canvasSettled(page);
+  const s = await source.boundingBox();
+  const t = await target.boundingBox();
+  if (!s || !t) throw new Error("handles are not visible");
+  await page.mouse.move(s.x + s.width / 2, s.y + s.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(t.x + t.width / 2, t.y + t.height / 2, { steps: 10 });
+  await page.mouse.up();
+};
+
 /** Export from the bottom bar's Export dialog: "Download script", "Download project", ... */
 export const exportAs = async (page: Page, action: string): Promise<void> => {
   await page.getByRole("button", { name: "Export", exact: true }).click();

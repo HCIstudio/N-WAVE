@@ -4,6 +4,7 @@ import type { Connection, Edge, Node } from "@xyflow/react";
 import type { NextflowProcessCategory } from "../data/types";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import NotePanel from "../components/panels/input/NotePanel";
+import BranchPanel from "../components/panels/logic/BranchPanel";
 import ParametersPanel from "../components/panels/input/ParametersPanel";
 import PipelinePanel from "../components/panels/process/PipelinePanel";
 import ChannelOperatorPanel from "../components/panels/operator/ChannelOperatorPanel";
@@ -35,7 +36,9 @@ export type NodeKind =
   | "process"
   | "output"
   /** Canvas notes: no ports, no code. */
-  | "annotation";
+  | "annotation"
+  /** A branch (if/else): which steps run, by the parameters; no data of its own. */
+  | "logic";
 
 export type NodePanelComponent = React.ComponentType<{
   node: Node<NodeData>;
@@ -238,6 +241,43 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     panel: ChannelOperatorPanel,
     generateNextflow: generateChannelOperatorNode,
     executionLabel: "Channel Operator",
+  },
+  // Branches (if / else if / else): which steps run, by the parameters. One node type, three starts.
+  {
+    id: "branch",
+    kind: "logic",
+    category: "Branches",
+    label: "If / else",
+    description:
+      "Runs one of two sets of steps, by a condition on the workflow's parameters (`if (params.trim) { … } else { … }`). Draw lines from its exits to the steps of each arm.",
+    type: "branch",
+    icon: "GitFork",
+    defaults: { label: "If", conditions: [""], inputs: [], outputs: [] },
+    panel: BranchPanel,
+  },
+  {
+    id: "branchElseIf",
+    kind: "logic",
+    category: "Branches",
+    label: "If / else if / else",
+    description:
+      "Chooses one of several sets of steps: the first condition that holds, else the else arm (`if (params.aligner == 'star') … else if (…) … else …`).",
+    type: "branch",
+    icon: "GitFork",
+    defaults: { label: "If", conditions: ["", ""], inputs: [], outputs: [] },
+    panel: BranchPanel,
+  },
+  {
+    id: "branchSwitch",
+    kind: "logic",
+    category: "Branches",
+    label: "Switch on a parameter",
+    description:
+      "One set of steps for each value of a parameter (aligner: star, hisat2, …), the else arm for any other. Written as if / else if: Nextflow's strict syntax has no switch.",
+    type: "branch",
+    icon: "GitFork",
+    defaults: { label: "Switch", switchParameter: "", switchValues: ["", ""], conditions: [], inputs: [], outputs: [] },
+    panel: BranchPanel,
   },
   {
     id: "process",

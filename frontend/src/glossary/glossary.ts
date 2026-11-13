@@ -59,6 +59,13 @@ const entries = [
     related: ["channel"],
   },
   {
+    id: "branch",
+    term: "Branch (if / else)",
+    definition:
+      "A node that chooses which steps run, by conditions on the workflow's parameters: the first arm whose condition holds, else the else arm. The steps after it read whichever arm ran.",
+    related: ["parameters", "channel"],
+  },
+  {
     id: "tuple",
     term: "Tuple",
     definition:
@@ -217,6 +224,7 @@ const docs: Record<GlossaryId, WikiLink> = {
   task: { page: "Running-Workflows", anchor: "the-run-panel" },
   channel: { page: "Building-Workflows", anchor: "connecting" },
   "channel-operator": { page: "Nodes", anchor: "channel-operator" },
+  branch: { page: "Nodes", anchor: "branches-if--else-if--else" },
   tuple: { page: "nf-core-Library", anchor: "using-a-module" },
   meta: { page: "nf-core-Library", anchor: "using-a-module" },
   samplesheet: { page: "Nodes", anchor: "samplesheet" },

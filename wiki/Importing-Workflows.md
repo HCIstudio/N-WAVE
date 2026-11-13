@@ -19,6 +19,8 @@ For a project, N-WAVE reads `main.nf` (or, without one, the top-most script with
 | An nf-core module or subworkflow (`modules/nf-core/…`) | The nf-core node, with its settings from `nextflow.config` (`ext.args`, …) |
 | A step from your node library, unchanged | That custom node |
 | `STEP(ch_reads)`, `STEP.out.reads` | Connections between steps |
+| `if` / `else if` / `else` and `switch` whose arms call steps | A **Branch** node with each arm's steps, connected as the code reads (see [Branches and loops](#branches-and-loops)) |
+| `for` and `while` loops | Code nodes, with a warning (see [Branches and loops](#branches-and-loops)) |
 | Other channel code (`channel.fromPath(…)`, `.map { … }`, `.branch { … }`, `.view()`) | Channel operator nodes, one per block of code, with the script's variable names |
 | `params.x = 5`, `'text'`, `true` | A Parameters node |
 | File Input, Samplesheet, Filter, Map, Merge and Display Output code N-WAVE wrote | Those nodes again, with their settings and, from a project, their files |
@@ -28,6 +30,37 @@ For a project, N-WAVE reads `main.nf` (or, without one, the top-most script with
 Nothing is dropped: when N-WAVE has no node for something, it keeps the code. A call to a
 process N-WAVE can't read (its file wasn't part of the import) stays as channel code, and the
 banner above the canvas says which.
+
+## Branches and loops
+
+Nextflow chooses steps with Groovy's `if` on the parameters, as nf-core pipelines do for a
+tool (`params.aligner`) or an optional step (`params.skip_qc`). On import:
+
+| In the code | On the canvas |
+| --- | --- |
+| `if (…) { STAR(…) } else { HISAT2(…) }` | A Branch node, a step in each arm |
+| `else if (…)` | One more arm of the same Branch |
+| `if (!params.skip_qc) { FASTQC(…) }` | A Branch whose else arm has no steps (a skip flag) |
+| An `if` inside an arm | A Branch in that arm (nested) |
+| `switch (params.aligner) { case 'star': … }` | A Branch with an arm per case (`case 'a': case 'b':` is one arm, `default` the else), and a warning: it is written back as `if` / `else if`, since Nextflow's strict syntax has no `switch` |
+| `ch_bam = STAR.out.bam` in each arm, `REPORT(ch_bam)` after | A connection from each arm's step into REPORT; only one arm runs, so REPORT reads one |
+| `ch_versions = ch_versions.mix(FASTQC.out.versions)` in an arm | A connection from FASTQC's versions to where `ch_versions` goes, when FASTQC runs |
+| `ch_trimmed = ch_reads` in an arm | A connection that holds in that arm only (dashed in its color) |
+| Other channel code in an arm (`.map { … }`) | A channel operator node in the arm |
+| The same step called in two arms | Two nodes, the second named `…_2` |
+| `for (…) { … }`, `while (…) { … }`, `.recurse()` | Code nodes, with a warning |
+
+Branches stay code when N-WAVE can't show them as steps and connections: an `if` that calls no
+step, or an arm whose step's inputs it can't connect. The export writes branches as `if` /
+`else if` / `else`, each channel the arms set starting as `channel.empty()` before them; it
+passes `nextflow lint`, and import, export, import gives the same script.
+
+**Loops.** Nextflow runs a step once per item of a channel, so a workflow rarely needs a loop:
+`channel.of('a', 'b') | STEP` runs STEP twice. The strict syntax (`nextflow lint`, and Nextflow
+from 26.04) rejects `for` and `while`. N-WAVE keeps an imported loop as code, as written, and
+says so; rewrite it as a channel to run it with a strict Nextflow. Building branches on the
+canvas is on the [Nodes](https://github.com/HCIstudio/N-WAVE/wiki/Nodes#branches-if--else-if--else)
+page.
 
 ## Positions
 

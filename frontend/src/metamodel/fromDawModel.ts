@@ -51,6 +51,7 @@ const NODE_TYPES = new Set([
   "filter",
   "operator",
   "process",
+  "branch",
 ]);
 
 export interface DawCatalog {

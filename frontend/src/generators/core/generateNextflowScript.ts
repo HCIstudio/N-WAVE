@@ -21,7 +21,15 @@ import { buildMixedChannelExpression } from "./mixChannels";
 import { describeCycle, findCycle } from "../../registry/workflowCycles";
 import { lowerSnake, processNamesFor, uniqueName } from "./naming";
 import { formatLayoutComment } from "./layoutComment";
-import { contractedEdges, groupsOf } from "../../groups/groups";
+import { groupsOf } from "../../groups/groups";
+import {
+  type BranchMembership,
+  armLabel,
+  branchChain,
+  branchContents,
+  branchesOf,
+  edgeWhen,
+} from "../../branches/branches";
 import { withGroupSelectors } from "../../groups/inlineGroups";
 import type { ItemShape } from "../../registry/nodeGeneration";
 
@@ -97,8 +105,18 @@ export const generateNextflowScriptWithNames = (
     : "";
 
   const processNames = processNamesFor(nodes);
-  // Groups of steps (#221): each a named workflow, called where its steps would be.
-  const groups = groupsOf(nodes);
+  // Branches (if / else if / else): each arm's nodes inside its block; a
+  // branch in an arm nests. `chainOf`: the branches a node is in, innermost first.
+  const branches = branchesOf(nodes);
+  const chainOf = new Map<string, BranchMembership[]>(nodes.map((node) => [node.id, branchChain(node, nodes)]));
+  const inBranch = (id: string) => (chainOf.get(id) ?? []).length > 0;
+  // Groups of steps (#221): each a named workflow, called where its steps would
+  // be. (Nodes in a branch are written in their arm, not in a group.)
+  const groups = new Map(
+    [...groupsOf(nodes.filter((node) => !inBranch(node.id) && node.type !== "branch"))].filter(
+      ([, members]) => members.length > 0,
+    ),
+  );
   const processNameSet = new Set(processNames.values());
   /** Each group's workflow name: its own, unless a step already has it. */
   const groupWorkflowNames = new Map<string, string>();
@@ -107,7 +125,10 @@ export const generateNextflowScriptWithNames = (
     while (processNameSet.has(name) || [...groupWorkflowNames.values()].includes(name)) name = `${name}_WF`;
     groupWorkflowNames.set(group, name);
   }
-  const order = groups.size === 0 ? stepOrder(nodes, edges, processNames) : groupedOrder(nodes, edges, processNames, groups);
+  const order =
+    groups.size === 0 && branches.size === 0
+      ? stepOrder(nodes, edges, processNames)
+      : groupedOrder(nodes, edges, processNames, groups, branches, chainOf);
   // Lower-case names for channels: unique, apart from the processes' upper-case ones.
   const takenChannels = new Set<string>();
 
@@ -142,8 +163,12 @@ export const generateNextflowScriptWithNames = (
   const layoutNames = new Map(processNames);
 
   // Input nodes: params at the top, channels at the start of the workflow.
+  let branchCount = 0;
   for (const node of order) {
-    if (node.type === "parameters") {
+    if (node.type === "branch") {
+      branchCount += 1;
+      layoutNames.set(node.id, `branch_${branchCount}`);
+    } else if (node.type === "parameters") {
       const parameters = getNodeParameters(node.data);
       const channelNameFor = (parameter: WorkflowParameter) => `ch_${lowerSnake(parameter.name) || "param"}`;
       layoutNames.set(node.id, uniqueName("params", takenChannels));
@@ -264,11 +289,70 @@ export const generateNextflowScriptWithNames = (
     for (const id of ids) scopeOf.set(id, scope);
   }
   for (const [key, value] of channelNameMap) if (emitted.has(value)) outerChannels.set(key, emitted.get(value) as string);
+
+  // Data leaving a branch: the steps after it read one channel per input that
+  // the arms set (`ch_aligned = channel.empty()`, then `ch_aligned =
+  // ALIGN_STAR.out` in its arm). A connection that holds only in an arm (a
+  // channel from outside it passes on) is set there too. Nested: the outer
+  // branch's arm sets its channel from the inner branch's.
+  interface BranchVariable {
+    name: string;
+    /** Per arm: the channels (as named inside that arm) it is set from. */
+    arms: Map<string, string[]>;
+  }
+  const branchVariables = new Map<string, Map<string, BranchVariable>>();
+  /** Each connection that leaves branches: the channel its target reads. */
+  const edgeChannel = new Map<string, string>();
+  const variableFor = (branchId: string, input: string, port: string, named: unknown): BranchVariable => {
+    const byInput = branchVariables.get(branchId) ?? new Map<string, BranchVariable>();
+    branchVariables.set(branchId, byInput);
+    const known = byInput.get(input);
+    if (known) return known;
+    // The script's own name for it (`ch_bam`), else one after the input it feeds.
+    const wanted = typeof named === "string" && /^[A-Za-z_]\w*$/.test(named) ? named : `ch_${lowerSnake(port) || "branch"}`;
+    const variable: BranchVariable = { name: uniqueName(wanted, takenChannels), arms: new Map() };
+    byInput.set(input, variable);
+    return variable;
+  };
+  // In the order of the code (the steps', then the inputs'), so the names are the same each time.
+  const orderIndex = new Map(order.map((node, index) => [node.id, index]));
+  const sortedEdges = [...sortIncomingEdges(edges)].sort(
+    (left, right) =>
+      (orderIndex.get(left.source) ?? 0) - (orderIndex.get(right.source) ?? 0) ||
+      (orderIndex.get(left.target) ?? 0) - (orderIndex.get(right.target) ?? 0) ||
+      String(left.targetHandle).localeCompare(String(right.targetHandle)) ||
+      String(left.sourceHandle).localeCompare(String(right.sourceHandle)),
+  );
+  for (const edge of sortedEdges) {
+    // The branches the data leaves (innermost first): the source's, or the arm it holds in, that the target isn't in.
+    const when = edgeWhen(edge, nodes);
+    const from = when ? [when, ...(chainOf.get(when.id) ?? [])] : (chainOf.get(edge.source) ?? []);
+    const into = new Set((chainOf.get(edge.target) ?? []).map((membership) => membership.id));
+    const left = from.filter((membership) => !into.has(membership.id));
+    if (left.length === 0) continue;
+    const input = `${edge.target}.${edge.targetHandle ?? ""}`;
+    // The outermost (the one the target reads) has the script's name for it; those inside, the input's.
+    const via = (edge.data as { via?: unknown } | undefined)?.via;
+    for (const [index, membership] of [...left.entries()].reverse()) {
+      variableFor(membership.id, input, String(edge.targetHandle ?? ""), index === left.length - 1 ? via : undefined);
+    }
+    let inside = resolveChannelNameForEdge(edge, outerChannels);
+    for (const membership of left) {
+      const variable = variableFor(membership.id, input, String(edge.targetHandle ?? ""), undefined);
+      if (inside) variable.arms.set(membership.arm, [...new Set([...(variable.arms.get(membership.arm) ?? []), inside])]);
+      inside = variable.name;
+    }
+    if (inside) edgeChannel.set(edge.id, inside);
+  }
+  /** A connection's channel: a branch's, when the data leaves one; else as named. */
+  const resolveEdge = (edge: Edge, channels: Map<string, string>): string | null =>
+    edgeChannel.get(edge.id) ?? resolveChannelNameForEdge(edge, channels);
+  // Each group's takes: the channels from outside it, by the names they have there.
   for (const scope of scopes.values()) {
     const takeNames = new Set<string>();
     const takeByRaw = new Map<string, string>();
     for (const edge of sortIncomingEdges(edges.filter((candidate) => scope.ids.has(candidate.target) && !scope.ids.has(candidate.source)))) {
-      const raw = resolveChannelNameForEdge(edge, channelNameMap);
+      const raw = resolveEdge(edge, channelNameMap);
       if (!raw || takeByRaw.has(raw)) continue;
       const base = /^ch_[A-Za-z0-9_]+$/.test(raw)
         ? raw
@@ -280,6 +364,16 @@ export const generateNextflowScriptWithNames = (
     }
     for (const [key, value] of channelNameMap) scope.channels.set(key, takeByRaw.get(value) ?? value);
   }
+
+  /** Each branch's arms' statements (a nested branch: a mark where its block goes). */
+  const branchStatements = new Map<string, Map<string, string[]>>();
+  for (const [id, branch] of branches) branchStatements.set(id, new Map(branch.arms.map((arm) => [arm, []])));
+  const branchMark = (id: string) => `@@NWAVE_BRANCH:${id}@@\n`;
+  /** Where a node's statements go: its innermost arm, if it is in one. */
+  const armOfNode = (id: string): string[] | undefined => {
+    const innermost = (chainOf.get(id) ?? [])[0];
+    return innermost ? branchStatements.get(innermost.id)?.get(innermost.arm) : undefined;
+  };
 
   const processScripts: string[] = [];
   const noteComments: string[] = [];
@@ -311,6 +405,11 @@ export const generateNextflowScriptWithNames = (
   };
 
   for (const node of order) {
+    // A branch: its block goes here (in its own arm, when it nests).
+    if (node.type === "branch" && branches.has(node.id)) {
+      (armOfNode(node.id) ?? stepStatements).push(branchMark(node.id));
+      continue;
+    }
     if (!STEP_TYPES.has(String(node.type))) continue;
     // A group is called where its first step would be (its steps come one after another).
     const scope = scopeOf.get(node.id);
@@ -318,6 +417,7 @@ export const generateNextflowScriptWithNames = (
       scope.callAt = stepStatements.length;
       scope.calledAs = [...scopes.values()].filter((other) => other.callAt !== null).length;
     }
+    const arm = armOfNode(node.id);
     const channels = scope?.channels ?? outerChannels;
     const placement = node.type === "channelOperator" ? placementOf(node.data) : null;
     if (placement) {
@@ -344,7 +444,7 @@ export const generateNextflowScriptWithNames = (
     const firstInputEdges = firstInput ? edgesIntoPort(node, incomingEdges, firstInput) : [];
     const upstreamEdges = firstInputEdges.length > 0 ? firstInputEdges : incomingEdges.slice(0, 1);
     const upstreamNames = upstreamEdges
-      .map((edge) => resolveChannelNameForEdge(edge, channels))
+      .map((edge) => resolveEdge(edge, channels))
       .filter((name): name is string => Boolean(name));
     if (upstreamNames.length === 0 && !standalone) {
       keepImportedDefinition(node, processName);
@@ -380,7 +480,7 @@ export const generateNextflowScriptWithNames = (
       workflowName,
       timestamp,
       date: dateStr,
-      resolveChannelNameForEdge,
+      resolveChannelNameForEdge: resolveEdge,
       buildMixedChannelExpression,
       sanitizeVarName,
       channelNameFor: (base: string) => uniqueName(lowerSnake(base) || "ch", takenChannels),
@@ -422,7 +522,8 @@ export const generateNextflowScriptWithNames = (
     if (node.type !== "channelOperator" && comments.length > 0 && statements.length > 0) {
       statements.splice(statements.length - 1, 0, `\n${indent(comments.join("\n"))}\n`);
     }
-    (node.type === "outputDisplay" ? outputStatements : (scope?.statements ?? stepStatements)).push(statements.join(""));
+    if (arm) arm.push(statements.join(""));
+    else (node.type === "outputDisplay" ? outputStatements : (scope?.statements ?? stepStatements)).push(statements.join(""));
     outputDisplayCounter += generationResult.outputDisplayCounterIncrement ?? 0;
   }
 
@@ -508,6 +609,40 @@ export const generateNextflowScriptWithNames = (
     groupWorkflows.push(`${block}}`);
     groupCalls.push({ at: scope.callAt, order: scope.calledAs, text: `    ${scope.workflow}(${scope.takes.map((take) => take.argument).join(", ")})\n` });
   }
+  // Each branch: its channels, then `if (…) { … } else if (…) { … } else { … }`
+  // where its mark is (nested branches inside their arm's block).
+  const renderBranch = (id: string): string => {
+    const branch = branches.get(id);
+    if (!branch) return "";
+    const variables = [...(branchVariables.get(id)?.values() ?? [])];
+    const body = (arm: string) => {
+      const assignments = variables
+        .filter((variable) => (variable.arms.get(arm) ?? []).length > 0)
+        .map((variable) => `    ${variable.name} = ${buildMixedChannelExpression(variable.arms.get(arm) ?? [])}\n`);
+      const statements = (branchStatements.get(id)?.get(arm) ?? []).map(withNested);
+      const text = withAssignedCalls(naturalize([...statements, ...assignments].join(""), processNameSet))
+        .replace(/^\n+/, "")
+        .replace(/\n+$/, "");
+      return text.trim() ? indent(text) : "";
+    };
+    let text = "\n";
+    for (const variable of variables) text += `    ${variable.name} = channel.empty()\n`;
+    const elseBody = body("else");
+    branch.conditions.forEach((condition, index) => {
+      const arm = branch.arms[index];
+      text += `${index === 0 ? "    " : " "}${armLabel(arm)} (${condition || "true"}) {\n${body(arm)}${body(arm) ? "\n" : ""}    }`;
+    });
+    if (branch.conditions.length === 0) text += `    if (true) {\n    }`;
+    if (elseBody) text += ` else {\n${elseBody}\n    }`;
+    return `${text}\n`;
+  };
+  /** A statement with the blocks of the branches marked in it. */
+  function withNested(statement: string): string {
+    const mark = statement.match(/^@@NWAVE_BRANCH:(.+)@@\n$/);
+    return mark ? renderBranch(mark[1]) : statement;
+  }
+  for (let index = 0; index < stepStatements.length; index += 1) stepStatements[index] = withNested(stepStatements[index]);
+
   // From the last place back; groups at the same place in their order.
   groupCalls.sort((left, right) => right.at - left.at || right.order - left.order);
   for (const call of groupCalls) stepStatements.splice(call.at, 0, call.text);
@@ -596,32 +731,73 @@ const groupedOrder = (
   edges: Edge[],
   names: Map<string, string>,
   groups: Map<string, Node<NodeData>[]>,
+  branches: ReturnType<typeof branchesOf<Node<NodeData>>> = new Map(),
+  chainOf: Map<string, BranchMembership[]> = new Map(),
 ): Node<NodeData>[] => {
-  const contracted = contractedEdges(nodes, edges);
-  const cycle = findCycle(contracted);
-  if (cycle) {
-    const group = cycle.find((id) => id.startsWith("group:"))?.slice("group:".length) ?? "";
-    throw new Error(
-      `Data leaves the group “${group}” and comes back into it through a step outside, so its Nextflow script can't be written. Add that step to the group, or take steps out of it.`
-    );
-  }
-  const grouped = new Set([...groups.values()].flat().map((node) => node.id));
-  const stand = [...groups].map(([group, members]) => ({
-    id: `group:${group}`,
-    type: "group",
-    position: {
-      x: Math.min(...members.map((member) => member.position?.x ?? 0)),
-      y: Math.min(...members.map((member) => member.position?.y ?? 0)),
-    },
-    data: {} as NodeData,
-  }));
-  const standNames = new Map(names);
-  for (const group of groups.keys()) standNames.set(`group:${group}`, group);
-  return stepOrder([...nodes.filter((node) => !grouped.has(node.id)), ...stand], contracted, standNames).flatMap((node) =>
-    node.type === "group" && node.id.startsWith("group:")
-      ? stepOrder(groups.get(node.id.slice("group:".length)) ?? [], edges, names)
-      : [node],
-  );
+  // The nodes of one scope (the workflow, or a branch), each group and each
+  // branch in it standing as one step; a branch then in its own order.
+  const parentOf = (id: string) => (chainOf.get(id) ?? [])[0]?.id ?? null;
+  // A connection that holds in one arm only is read inside that arm: its source comes before the branch.
+  const whenEdges = edges.flatMap((edge) => {
+    const when = (edge.data as { when?: { id?: unknown } } | undefined)?.when;
+    return typeof when?.id === "string" && branches.has(when.id) ? [{ ...edge, id: `${edge.id}:when`, target: when.id }] : [];
+  });
+  const ordered = [...edges, ...whenEdges];
+  const orderScope = (scope: string | null, scopeNodes: Node<NodeData>[]): Node<NodeData>[] => {
+    const clusters = new Map<string, Node<NodeData>[]>();
+    if (scope === null) for (const [group, members] of groups) clusters.set(`group:${group}`, members);
+    for (const [id, branch] of branches) {
+      if (parentOf(id) !== scope) continue;
+      clusters.set(`branch:${id}`, [branch.node, ...branchContents(id, nodes)]);
+    }
+    const clusterOf = new Map<string, string>();
+    for (const [key, members] of clusters) for (const member of members) clusterOf.set(member.id, key);
+    const ids = new Set(scopeNodes.map((node) => node.id));
+    const seen = new Set<string>();
+    const contracted: Edge[] = [];
+    for (const edge of ordered) {
+      if (!ids.has(edge.source) || !ids.has(edge.target)) continue;
+      const source = clusterOf.get(edge.source) ?? edge.source;
+      const target = clusterOf.get(edge.target) ?? edge.target;
+      if (source === target || seen.has(`${source}|${target}`)) continue;
+      seen.add(`${source}|${target}`);
+      contracted.push({ ...edge, id: `${source}|${target}`, source, target });
+    }
+    const cycle = findCycle(contracted);
+    if (cycle) {
+      const looped = cycle.find((id) => clusters.has(id)) ?? "";
+      if (looped.startsWith("branch:") || scope !== null) {
+        throw new Error(
+          "Data leaves a branch (if/else) and comes back into it through a step outside, so its Nextflow script can't be written. Put that step into the branch's arm, or take steps out of it.",
+        );
+      }
+      throw new Error(
+        `Data leaves the group “${looped.slice("group:".length)}” and comes back into it through a step outside, so its Nextflow script can't be written. Add that step to the group, or take steps out of it.`
+      );
+    }
+    const stand = [...clusters].map(([key, members]) => ({
+      id: key,
+      type: "cluster",
+      position: {
+        x: Math.min(...members.map((member) => member.position?.x ?? 0)),
+        y: Math.min(...members.map((member) => member.position?.y ?? 0)),
+      },
+      data: {} as NodeData,
+    }));
+    const standNames = new Map(names);
+    for (const key of clusters.keys()) standNames.set(key, key.replace(/^\w+:/, ""));
+    return stepOrder([...scopeNodes.filter((node) => !clusterOf.has(node.id)), ...stand], contracted, standNames).flatMap((node) => {
+      if (node.type !== "cluster" || !clusters.has(node.id)) return [node];
+      if (node.id.startsWith("group:")) return stepOrder(clusters.get(node.id) ?? [], edges, names);
+      const id = node.id.slice("branch:".length);
+      const branch = branches.get(id);
+      return branch ? [branch.node, ...orderScope(id, branchContents(id, nodes))] : [];
+    });
+  };
+  return orderScope(
+    null,
+    nodes.filter((node) => parentOf(node.id) === null),
+  ).concat(nodes.filter((node) => parentOf(node.id) !== null && !branches.has(parentOf(node.id) as string)));
 };
 
 const stripLeadingComments = (text: string): string =>

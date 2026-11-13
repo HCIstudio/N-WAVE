@@ -78,7 +78,9 @@ or has an issue that is explicitly moved to a later release.
       way to install N-WAVE). A finished course is marked done.
 - [ ] The basics after the nf-core course: **Import and export** (its downloads, and the
       script imported back on the home page), **Your own steps** (a custom process and a node
-      pack), **Large workflows** (in a copy of Demo 3: Fit view, Step in, a group) and **N-WAVE
+      pack), **Large workflows** (in a copy of Demo 3: Fit view, Step in, a group), **Choices in
+      a workflow** (a Branch from the + menu, its condition, an aligner in each arm, the check
+      error gone, the parameter switched, the `if` / `else` in the export) and **N-WAVE
       for studies** (in Global Settings: a feature switch, verbose mode, a test, the ZIP). On a
       page other than the step's, the card says where to go.
 - [ ] The advanced courses on the installation, each from start to end: **Run a workflow**,
@@ -86,7 +88,8 @@ or has an issue that is explicitly moved to a later release.
       Resume with the first step cached, a full run with Resume off),
       **Run an nf-core pipeline** (a full run on the test data from its input nodes),
       **Run limits and clusters** (a SLURM profile saved and in the exported project) and
-      **Read a workflow's structure** (Analyse, an error and its fix, both graph views, the
+      **Read a workflow's structure** (the Branch node and its parameter, Analyse, an error
+      and its fix, both graph views, the
       **if** badges, a group).
 
 ## Building a workflow
@@ -193,6 +196,24 @@ or has an issue that is explicitly moved to a later release.
 - [ ] **When a step runs**: in an imported script with `if (params.aligner == …)`, the steps
       have **if** badges. Changing the parameter's value greys out the other branch straight
       away, and the panel's **When it runs** says which condition holds.
+- [ ] **Branches (if/else)**: an imported `if (params.x == …) { … } else { … }` whose arms
+      call steps is a Branch node with its condition, a lane per arm and dashed lines to the
+      arms' steps; the step after it reads either arm. Switching the parameter changes which
+      arm runs (on the node, and greyed out) without a warning in the workflow check. Both
+      arms run as chosen, the export passes `nextflow lint`, and import, export, import gives
+      the same script.
+- [ ] **Building branches**: the + menu's **Branches** group has If / else, If / else if /
+      else and Switch on a parameter, as Logic nodes (fuchsia). A line from an arm's exit puts
+      a step in that arm (inputs and notes are refused); the panel's conditions, **Add else
+      if**, the bin and the × work; a switch's parameter and cases become `params.x == …`
+      conditions. Two steps of different arms can feed one input; of the same arm, not. The
+      workflow check flags an empty condition and a step reading another arm. The export
+      passes `nextflow lint` and runs the arm the parameter chooses.
+- [ ] **Importing control flow**: scripts with `else if`, `switch`, nested `if`s with skip
+      flags and `ch_versions.mix(…)`, a step called in two arms, and a `for` loop (in
+      `frontend/src/workflows/import/fixtures/branches/`). Each imports as Branches (the
+      switch and the loop with a warning, the loop as code), and import, export, import gives
+      the same script.
 - [ ] **Group steps into a subworkflow**: grouping a suggested group, and steps selected by
       hand. The grouped workflow runs as before, its export passes `nextflow lint`, and it
       imports back grouped. Clicking a group's name renames or ungroups it; in the graph views

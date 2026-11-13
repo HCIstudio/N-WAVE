@@ -11,7 +11,7 @@ import { importNextflowScript } from "../workflows/import/importScript";
 import { useCanvasView } from "./useCanvasView";
 
 const script = import.meta.glob(
-  "../workflows/import/fixtures/channel-set-in-if-else.nf",
+  "../workflows/import/fixtures/code-calls-step.nf",
   {
     query: "?raw",
     import: "default",
@@ -30,9 +30,8 @@ describe("useCanvasView", () => {
     );
     expect(
       result.current.edges.filter((edge) => edge.type === "derived"),
-    ).toHaveLength(2);
+    ).toHaveLength(1);
     expect(result.current.problems.map((problem) => problem.level)).toEqual([
-      "warning",
       "warning",
     ]);
     expect(result.current.problems[0].message).toMatch(

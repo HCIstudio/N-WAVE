@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { addNode, connect, exportAs } from "./fixtures";
+import { readFile } from "node:fs/promises";
+import { addNode, connect, connectHandles, exportAs } from "./fixtures";
 
 // A fresh browser: the courses haven't been offered yet.
 test.describe("courses", () => {
@@ -174,6 +175,63 @@ test.describe("courses", () => {
     await expect(card).toHaveCount(0);
   });
 
+  test("choices in a workflow: a Branch from the + menu lets a parameter choose the aligner", async ({ page }) => {
+    await page.goto("./courses");
+    await page.getByRole("listitem", { name: "Choices in a workflow" }).getByRole("button", { name: "Start" }).click();
+    await expect(page).toHaveURL(/\/workflow\//);
+    const card = page.getByRole("region", { name: "Course" });
+    const check = page.getByRole("button", { name: /^Workflow check/ });
+    // Two aligners into REPORT, which takes one.
+    await expect(card).toContainText("two aligners");
+    await expect(check).not.toHaveAttribute("aria-label", "Workflow check: No problems found");
+    await card.getByRole("button", { name: "Next" }).click();
+
+    await expect(card).toContainText("Under Branches, add If / else");
+    await addNode(page, "If / else");
+    // Lanes come and go as nodes of their own: find the Branch by what it shows.
+    const branch = page.locator(".react-flow__node:has([data-branch])");
+    await expect(branch).toHaveCount(1);
+    await page.keyboard.press("Escape");
+
+    await expect(card).toContainText("set its if condition");
+    await branch.dblclick();
+    await page.getByRole("textbox", { name: "if" }).fill("params.aligner == 'star'");
+    await page.getByRole("button", { name: "Close Panel" }).click();
+
+    // A line from each arm's exit to an aligner.
+    const node = (id: string) => page.locator(`.react-flow__node[data-id="${id}"]`);
+    const drawArm = async (arm: string, id: string) => {
+      await connectHandles(page, branch.locator(`.react-flow__handle[data-handleid="${arm}"]`), node(id).locator('.react-flow__handle[data-handleid="branch"]'));
+    };
+    await expect(card).toContainText("from the if exit to ALIGN_STAR");
+    await drawArm("if", "n-align_star");
+    await expect(card).toContainText("from the else exit to ALIGN_HISAT");
+    await drawArm("else", "n-align_hisat");
+    await expect(page.locator('[data-branch-lane="if"]')).toBeVisible();
+    await expect(page.locator('[data-branch-lane="else"]')).toBeVisible();
+    await expect(check).toHaveAttribute("aria-label", "Workflow check: No problems found");
+
+    await expect(card).toContainText("set aligner to hisat2");
+    await expect(branch.locator("[data-branch-now]")).toHaveAttribute("data-branch-now", "if");
+    await node("n-params").dblclick();
+    await page.getByLabel("Value").first().fill("hisat2");
+    await expect(branch.locator("[data-branch-now]")).toHaveAttribute("data-branch-now", "else");
+    await page.getByRole("button", { name: "Close Panel" }).click();
+
+    await expect(card).toContainText("Open Export");
+    const download = page.waitForEvent("download");
+    await exportAs(page, "Download script");
+    const script = await readFile(await (await download).path(), "utf8");
+    expect(script).toContain("if (params.aligner == 'star') {");
+    expect(script).toContain("} else {");
+    await page.keyboard.press("Escape");
+    await expect(card).toContainText("Add else if");
+    await card.getByRole("button", { name: "Next" }).click();
+    await expect(card).toContainText("Loops");
+    await card.getByRole("button", { name: "Next" }).click();
+    await expect(card).toContainText("That's choices in a workflow");
+  });
+
   test("N-WAVE for studies: feature switches and verbose mode in Global Settings", async ({ page }) => {
     await page.goto("./courses");
     await page.getByRole("listitem", { name: "N-WAVE for studies" }).getByRole("button", { name: "Start" }).click();
@@ -200,7 +258,7 @@ test.describe("courses", () => {
     await page.getByRole("region", { name: "Tutorial" }).getByRole("button", { name: "Not now" }).click();
     await page.getByRole("link", { name: "Courses", exact: true }).click();
     await expect(page.getByRole("heading", { name: "Courses", level: 1 })).toBeVisible();
-    await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(7);
+    await expect(page.getByRole("region", { name: "Basics" }).getByRole("button", { name: "Start" })).toHaveCount(8);
     await expect(page.getByRole("region", { name: "Install N-WAVE" })).toContainText("How to install N-WAVE");
     const advanced = page.getByRole("region", { name: "Advanced" });
     await expect(advanced).toContainText("Needs a full install of N-WAVE.");

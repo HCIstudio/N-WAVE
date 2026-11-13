@@ -75,8 +75,9 @@ Grouping by hand doesn't need the analysis.
 
 ## When a step runs
 
-After an analysis, a step that runs only under a condition (inside an `if`, or its `else`)
-has an **if** badge on its node; hover it to read the condition. Its panel shows **When it
+A step that runs only under a condition (inside an `if`, or its `else`) has an **if** badge on
+its node; hover it to read the condition. Steps in a [Branch](https://github.com/HCIstudio/N-WAVE/wiki/Nodes#branches-if--else-if--else)
+have it straight away; for other code, after an analysis. Its panel shows **When it
 runs**: each condition, and whether it holds.
 
 N-WAVE checks the conditions against the **Parameters** node's values, and a step that won't

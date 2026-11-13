@@ -418,15 +418,35 @@ const aligner = ({ nodes }: CourseContext): unknown =>
     .flatMap((entry) => getNodeParameters(entry.data))
     .find((parameter) => parameter.name === "aligner")?.value;
 
-// #250: in a workflow imported for it, with a choice between two aligners.
+// #250: in a workflow imported for it, with a choice between two aligners (a branch).
 const STRUCTURE: CourseStep[] = [
   {
     text: (
       <>
-        A workflow imported for this course: trimming, a check, one of two aligners (by the <code>aligner</code>{" "}
-        parameter) and a report. The <code>if</code> that chooses is kept as code.
+        A workflow imported for this course: trimming, a check, <strong>one of two aligners</strong>, and a report of
+        whichever ran. In the code an <code>if</code> chooses the aligner, by the parameter <code>aligner</code>.
       </>
     ),
+  },
+  {
+    text: (
+      <>
+        That <code>if</code> is the <strong>Branch</strong> node: its condition reads <code>aligner</code> (the dashed
+        fuchsia line from Parameters). Its <strong>if</strong> exit leads to ALIGN_STAR, its <strong>else</strong> exit to
+        ALIGN_HISAT, each in its lane. REPORT reads whichever ran.
+      </>
+    ),
+    target: "[data-branch]",
+  },
+  {
+    text: (
+      <>
+        Double-click <strong>Parameters</strong> and set <code>aligner</code> to <code>hisat2</code>: the branch now
+        takes the else arm, and ALIGN_STAR greys out (it won&apos;t run).
+      </>
+    ),
+    target: node("n-params"),
+    done: (context) => aligner(context) === "hisat2",
   },
   {
     text: (
@@ -441,8 +461,9 @@ const STRUCTURE: CourseStep[] = [
   {
     text: (
       <>
-        Now an error: in <strong>QC</strong>&apos;s <strong>Code</strong> tab, change <code>{"${reads}"}</code> to{" "}
-        <code>{"${read}"}</code>, then <strong>Analyse</strong> again. The problem shows on the node and in the workflow
+        Now an error: double-click <strong>QC</strong>, open its <strong>Code</strong> tab and{" "}
+        <strong>Edit custom node</strong>. Change <code>{"${reads}"}</code> to <code>{"${read}"}</code>,{" "}
+        <strong>Save Node</strong>, and <strong>Analyse</strong> again. The problem shows on the node and in the workflow
         check.
       </>
     ),
@@ -452,17 +473,17 @@ const STRUCTURE: CourseStep[] = [
   {
     text: (
       <>
-        Change it back to <code>{"${reads}"}</code> and <strong>Analyse</strong> once more: no problems.
+        Change it back to <code>{"${reads}"}</code> the same way and <strong>Analyse</strong> once more: no problems.
       </>
     ),
-    target: node("n-qc"),
+    target: "[data-edit-custom-node]",
     done: ({ analysis }) => analysis !== null && analysis.problems === 0,
   },
   {
     text: (
       <>
         The canvas has other views of the code. Choose <strong>Specification</strong>: every process and channel
-        operation, as the code has them, read-only.
+        operation, as the code has them, read-only; the aligners come after the condition that chooses them.
       </>
     ),
     target: VIEWS,
@@ -481,8 +502,7 @@ const STRUCTURE: CourseStep[] = [
   {
     text: (
       <>
-        Back to the <strong>Editor</strong>. The aligners have <strong>if</strong> badges: they run only when their
-        condition holds.
+        Back to the <strong>Editor</strong>.
       </>
     ),
     target: VIEWS,
@@ -491,21 +511,13 @@ const STRUCTURE: CourseStep[] = [
   {
     text: (
       <>
-        Double-click <strong>Parameters</strong> and set <code>aligner</code> to <code>hisat2</code>: ALIGN_STAR greys
-        out straight away, and ALIGN_HISAT will run.
+        Steps that belong together can be a subworkflow of their own. Select <strong>TRIM</strong> and{" "}
+        <strong>QC</strong> (click one, Ctrl+click or ⌘+click the other), choose{" "}
+        <strong>Group into subworkflow…</strong> above the canvas, name it, and <strong>Group</strong>. (The
+        analysis&apos;s panel suggests groups too.)
       </>
     ),
-    target: node("n-params"),
-    done: (context) => aligner(context) === "hisat2",
-  },
-  {
-    text: (
-      <>
-        <strong>Analyse</strong> again, and in its panel, under <strong>Suggested groups</strong>, choose{" "}
-        <strong>Group into subworkflow…</strong> for steps that belong together, and <strong>Group</strong>.
-      </>
-    ),
-    target: ANALYSE,
+    target: node("n-trim"),
     done: ({ nodes }) => nodes.some((entry) => Boolean((entry.data as { group?: unknown }).group)),
   },
   {

@@ -1,10 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { expect, test } from "./fixtures";
 
-// The hand-written script whose `if` blocks call steps in code.
+// A hand-written script that calls a step in channel code (`ch_reads | TRIM`).
 const script = await readFile(
   new URL(
-    "../src/workflows/import/fixtures/channel-set-in-if-else.nf",
+    "../src/workflows/import/fixtures/code-calls-step.nf",
     import.meta.url,
   ),
   "utf8",
@@ -20,11 +20,11 @@ test.describe("canvas views", () => {
     await page.getByRole("button", { name: "Import", exact: true }).click();
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
 
-    // TRIM is called in the channel code, and its output read there: dashed, with a warning.
-    await expect(page.locator('[data-derived="code"]')).toHaveCount(2);
+    // TRIM is called in the channel code: dashed, with a warning.
+    await expect(page.locator('[data-derived="code"]')).toHaveCount(1);
     await page.getByRole("button", { name: /Workflow check/ }).click();
     await expect(
-      page.getByText(/calls “TRIM”, which the canvas doesn't connect to it/),
+      page.getByText(/“TRIM”, which the canvas doesn.t connect to it/),
     ).toBeVisible();
 
     // The two read-only graphs of the code are in the view switch. They are
@@ -40,6 +40,6 @@ test.describe("canvas views", () => {
     await expect(page.getByRole("button", { name: "Add node" })).toHaveCount(0);
     await titleBlock.getByRole("button", { name: "Back to the editor" }).click();
     await expect(view.getByRole("button", { name: "Editor" })).toHaveAttribute("aria-pressed", "true");
-    await expect(page.locator('[data-derived="code"]')).toHaveCount(2);
+    await expect(page.locator('[data-derived="code"]')).toHaveCount(1);
   });
 });

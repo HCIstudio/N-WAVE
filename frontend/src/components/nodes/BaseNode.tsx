@@ -5,6 +5,7 @@ import {
   type NodeProps,
   useConnection,
   useReactFlow,
+  useStore,
   useUpdateNodeInternals,
 } from "@xyflow/react";
 import { memo, type ReactNode, useEffect } from "react";
@@ -15,6 +16,7 @@ import { useNodeConditions } from "../../execution/NodeConditionsContext";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
+import { canJoinArm } from "../../branches/branches";
 import { acceptsManyConnections } from "../../registry/portArity";
 import { useFeature } from "../../settings/useFeatures";
 import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
@@ -122,6 +124,8 @@ const BaseNode = ({
   );
   const { getNode } = useReactFlow();
   const hintsOn = useFeature("connectionHints");
+  // Branch handles only show in a workflow with a Branch node (a boolean: re-renders when that changes).
+  const hasBranches = useStore((state) => state.nodes.some((node) => node.type === "branch"));
   const openNested = useOpenNestedView();
   const fitOf = (portName: string): { fits: boolean; message?: string } | null => {
     if (!dragFrom || !hintsOn) return null;
@@ -143,10 +147,10 @@ const BaseNode = ({
   const portKey = [...(data.inputs ?? []), ...(data.outputs ?? [])]
     .map((port) => port.name)
     .join("|");
-  // biome-ignore lint/correctness/useExhaustiveDependencies: portKey is the change signal.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: portKey and hasBranches are the change signals (handles come and go).
   useEffect(() => {
     updateNodeInternals(id);
-  }, [id, portKey, updateNodeInternals]);
+  }, [id, portKey, hasBranches, updateNodeInternals]);
 
   // The last run's state for this node wins over a stored status.
   const { summary: run } = useNodeRun(id);
@@ -364,7 +368,17 @@ const BaseNode = ({
         )}
       </div>
 
-      {/* Execution Status Indicator */}
+      {/* Where a branch's line comes in (on top): a line from a Branch's exit puts the node in that arm. */}
+      {hasBranches && canJoinArm({ id, type, data }) && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="branch"
+          title={data.branch ? "In a branch's arm" : "Draw a line from a Branch node's exit here to put this step in that arm"}
+          className={clsx("!h-2 !w-2 !border-0", data.branch ? "!bg-fuchsia-400" : "!bg-fuchsia-300 !opacity-40")}
+        />
+      )}
+            {/* Execution Status Indicator */}
       {status && status !== "disabled" && (
         <div className="absolute top-2 right-2">
           {/* A failed run says so in its label below; the dot only for a stored failure without one. */}
@@ -525,6 +539,17 @@ const BaseNode = ({
           )}
         </div>
       ))}
+      {/* Parameters a branch reads: its dashed line to the branch leaves at the bottom.
+          After the outputs, so it is never taken for one (not connectable either). */}
+      {hasBranches && type === "parameters" && (
+        <Handle
+          type="source"
+          position={Position.Bottom}
+          id="branch-params"
+          isConnectable={false}
+          className="!h-1.5 !w-1.5 !border-0 !bg-fuchsia-300 !opacity-60"
+        />
+      )}
     </div>
   );
 };

@@ -10,6 +10,7 @@ export type CourseId =
   | "import-export"
   | "own-steps"
   | "large-workflows"
+  | "branches"
   | "studies"
   | "run"
   | "failures"

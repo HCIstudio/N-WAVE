@@ -31,6 +31,7 @@ import { validateConnectionWithNodeDefinitions } from "../registry";
 import { connectionLimitMessage } from "../registry/portArity";
 import { cycleThroughConnection, describeCycle } from "../registry/workflowCycles";
 import { logActivity } from "../activity/activityLog";
+import { armProblem } from "../branches/branches";
 
 /** Why a connection can't be made (shown, and recorded in verbose mode), or null when it can. */
 export const connectionProblem = (
@@ -40,6 +41,11 @@ export const connectionProblem = (
 ): string | null => {
   const sourceNode = connection.source ? nodes.find((node) => node.id === connection.source) : undefined;
   const targetNode = connection.target ? nodes.find((node) => node.id === connection.target) : undefined;
+  // From a branch's exit: the node goes into that arm (no data flows).
+  if (sourceNode?.type === "branch") {
+    return targetNode ? armProblem(sourceNode.id, targetNode, nodes) : "Draw the line to a step.";
+  }
+  if (connection.targetHandle === "branch") return "Only a branch's exit puts a step in an arm: draw from the Branch node.";
   const validation = validateConnectionWithNodeDefinitions({ connection, sourceNode, targetNode, nodes, edges });
   if (!validation.valid) return validation.message || "Invalid connection.";
   // Channels flow one way: a connection back into its own path is a loop.
@@ -48,7 +54,7 @@ export const connectionProblem = (
     return `This connection would make a loop (${describeCycle(loop, nodes)}). A step's output can't come back to its own input; use a new node instead.`;
   }
   // Most inputs take one connection; a second would be left out of the run.
-  return connectionLimitMessage(connection, targetNode, edges);
+  return connectionLimitMessage(connection, targetNode, edges, nodes);
 };
 
 /** What verbose mode records when a connection was dropped on an input that refused it. */
@@ -170,6 +176,15 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
 
   const onConnect: OnConnect = useCallback(
     (params) => {
+      // A line from a branch's exit puts the node in that arm.
+      const source = getNodes().find((node) => node.id === params.source);
+      if (source?.type === "branch" && params.target && params.sourceHandle) {
+        const branch = { id: source.id, arm: params.sourceHandle };
+        setNodes((current) => current.map((node) => (node.id === params.target ? { ...node, data: { ...node.data, branch } } : node)));
+        setIsDirty(true);
+        logActivity("branch.armChanged", { branch: source.id, arm: params.sourceHandle, node: params.target });
+        return;
+      }
       const targetIncomingCount = params.target
         ? getEdges().filter((edge) => edge.target === params.target).length
         : 0;
@@ -193,7 +208,7 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
       setEdges((els) => addEdge(newEdge, els));
       setIsDirty(true);
     },
-    [getEdges, setEdges]
+    [getEdges, getNodes, setEdges]
   );
 
   const updateNodeData = useCallback(

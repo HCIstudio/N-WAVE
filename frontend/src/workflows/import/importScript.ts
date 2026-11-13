@@ -21,6 +21,7 @@
 // otherwise the steps are laid out left to right by dependency.
 
 import { FILE_INPUT_OUTPUT } from "../../utils/inputFiles";
+import { armOf } from "../../branches/branches";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import { generateOperatorCode } from "../../generators/core/templateEngine";
@@ -50,7 +51,9 @@ import {
   definedNames,
   embeddedConfig,
   maskSource,
+  readConditionalChain,
   readIncludeItem,
+  type ConditionalChain,
   splitWorkflowStatements,
   topLevelItems,
   usedNames,
@@ -58,7 +61,7 @@ import {
   type Statement,
   type TopLevelItem,
 } from "./nextflowSource";
-import { autoLayout } from "./autoLayout";
+import { autoLayoutBranches } from "./autoLayout";
 import { createProjectReader, namesCalledIn, readNotes } from "./projectReader";
 import type { FileContent } from "../../utils/fileContent";
 import { lowerSnake, processNamesFor, uniqueName } from "../../generators/core/naming";
@@ -72,11 +75,21 @@ export interface ImportedCanvas {
   /** nf-core definitions the nodes use (register them to generate). */
   definitions: NodeDefinition[];
   warnings: string[];
+  /**
+   * The workflow's channels at its end, by the script's names: the node
+   * ports each comes from (a branch's from each arm; `data` for the
+   * connection: the arm it holds in, the name it had).
+   */
+  channels: Record<string, Array<{ nodeId: string; port: string; data?: Record<string, unknown> }>>;
 }
 
 interface Source {
   nodeId: string;
   port: string;
+  /** Read only in this arm of a branch (a channel from outside it that the arm passes on). */
+  when?: { id: string; arm: string };
+  /** The channel the script read it through (a branch's arms set it): its name on the way back. */
+  via?: string;
 }
 
 /** The nf-core catalog (GET /nfcore/catalog), to recognize included modules and subworkflows. */
@@ -674,7 +687,9 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       sourceHandle: from.port,
       target: to.id,
       targetHandle,
-      ...(order > 0 ? { data: { order } } : {}),
+      ...(order > 0 || from.when || from.via
+        ? { data: { ...(order > 0 ? { order } : {}), ...(from.when ? { when: from.when } : {}), ...(from.via ? { via: from.via } : {}) } }
+        : {}),
     });
   };
 
@@ -783,17 +798,24 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   /** Reference file params and the channel each is read into. */
   const fileParams = new Map<string, string>();
 
+  /** Channels a branch's arms each set (`ch_aligned`): the outputs of both. */
+  const branchSources = new Map<string, Source[]>();
+
   /** The node ports an argument reads; null when it does more than adapt them. */
   const resolveArgument = (argument: string): Source[] | null => {
     const text = argument.trim();
     if (glue.has(text)) return resolveArgument(glue.get(text) as string);
+    // A reference, or a channel a branch set (from each arm), named as the script named it.
+    const resolve = (piece: string): Source[] | null => {
+      const name = stripGlue(piece).trim();
+      const set = branchSources.get(name);
+      if (set) return set.map((source) => ({ ...source, via: source.via ?? name }));
+      const reference = resolveReference(name);
+      return reference ? [reference] : null;
+    };
     const tuple = tupleGlueParts(text);
-    if (tuple) {
-      const resolved = tuple.flatMap((part) => splitMix(part).map((piece) => resolveReference(stripGlue(piece))));
-      return resolved.every((entry): entry is Source => entry !== null) ? resolved : null;
-    }
-    const parts = splitMix(stripGlue(text)).map((part) => resolveReference(stripGlue(part)));
-    return parts.every((entry): entry is Source => entry !== null) ? parts : null;
+    const parts = (tuple ? tuple.flatMap((part) => splitMix(part)) : splitMix(stripGlue(text))).map(resolve);
+    return parts.every((entry): entry is Source[] => entry !== null) ? parts.flat() : null;
   };
 
   // Channel operator nodes, one per group of statements.
@@ -802,7 +824,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   const operatorFor = (group: Statement[], label: string | null, later: Array<{ variables: string[] }>) => {
     const defines = new Set(group.flatMap((statement) => definedNames(statement.text)));
     const readLater = new Set(later.flatMap((reads) => reads.variables));
-    const inputs = new Map<string, Source>();
+    const inputs = new Map<string, Source[]>();
     const inputName = (reference: string) => {
       const name = reference.replace(/\.out\.?/, "_").replace(/\W+/g, "_").replace(/_+$/, "").toLowerCase();
       return name || "in";
@@ -828,7 +850,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       const reference = full ?? resolveReference(`${match[1]}.out`);
       if (!reference) return null;
       const name = inputName(full ? match[0] : `${match[1]}.out`);
-      inputs.set(name, reference);
+      inputs.set(name, [reference]);
       return full ? `input.${name}` : `input.${name}${match[2] ? `.${match[2]}` : (match[3] ?? "")}`;
     });
     // Outputs: what later code reads, and channels named like N-WAVE's (`ch_…`).
@@ -836,9 +858,10 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     replaceAll(/(?<![.\w])([A-Za-z_]\w*)(?![\w(])/g, (match) => {
       const name = match[1];
       if (defines.has(name)) return isOutput(name) ? `output.${name}` : `local.${name}`;
-      const reference = sources.get(name);
-      if (!reference) return null;
-      inputs.set(name, reference);
+      // A channel a branch set: from each arm (and from before it, where an arm left it).
+      const references = branchSources.get(name)?.map((source) => ({ ...source, via: source.via ?? name })) ?? (sources.has(name) ? [sources.get(name) as Source] : []);
+      if (references.length === 0) return null;
+      inputs.set(name, references);
       return `input.${name}`;
     });
     const outputs = [...defines].filter(isOutput);
@@ -858,8 +881,11 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       },
       label ?? key,
     );
-    for (const [name, reference] of inputs) connect(reference, node, name, 0);
-    for (const name of outputs) sources.set(name, { nodeId: node.id, port: name });
+    for (const [name, references] of inputs) for (const reference of references) connect(reference, node, name, 0);
+    for (const name of outputs) {
+      sources.set(name, { nodeId: node.id, port: name });
+      branchSources.delete(name);
+    }
   };
 
   /**
@@ -887,7 +913,9 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   // The values params are declared with, as settings.
   const paramValue = (name: string): string | undefined => params.get(name);
 
-  const step = (name: string, args: string[], statementText: string): boolean => {
+  /** Calls whose inputs couldn't all be read (a branch with one stays code). */
+  let incompleteCalls = 0;
+  const step = (name: string, args: string[], statementText: string, key = name): boolean => {
     const local = processes.get(name);
     const include = includes.get(name);
     const named = namedWorkflows.get(name);
@@ -895,7 +923,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     if (named) {
       const library = libraryWorkflowFor(name, named.text);
       if (library) {
-        node = addNode(name, "process", JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(library).defaults)), name);
+        node = addNode(key, "process", JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(library).defaults)), name);
       } else {
         // A workflow only this script has: its code, with the processes and includes only it uses.
         const source = localWorkflowSource(name);
@@ -907,7 +935,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
           { inputs: parsed.inputs, outputs: parsed.outputs },
         );
         const workflow: StoredCustomNode = { ...stored, id: `local-${name.toLowerCase()}`, processType: `local_${name.toLowerCase()}`, ...EMBEDDED_DATES };
-        node = addNode(name, "process", JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(workflow).defaults)), name);
+        node = addNode(key, "process", JSON.parse(JSON.stringify(createNodeDefinitionFromCustomNode(workflow).defaults)), name);
       }
     } else if (local) {
       const channels = new Set(args.flatMap((argument, index) => (readsChannel(argument) ? [index] : [])));
@@ -915,7 +943,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       const isTupleGlue = (argument: string) => tupleGlueParts(glue.get(argument.trim()) ?? argument) !== null;
       const wholeTuples = new Set([...channels].filter((index) => !isTupleGlue(args[index])));
       const made = stepForProcess(name, local, channels, wholeTuples);
-      node = addNode(name, made.type, made.data, name);
+      node = addNode(key, made.type, made.data, name);
     } else if (include) {
       const definition = nfCoreDefinitionFor(include.path);
       if (!definition) {
@@ -931,13 +959,14 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       }
       if (!definitions.some((known) => known.id === definition.id)) definitions.push(definition);
       const data: Partial<NodeData> = JSON.parse(JSON.stringify(definition.defaults ?? {}));
-      node = addNode(name, definition.type, data, name);
+      node = addNode(key, definition.type, data, name);
       applyNfCoreConfig(node, name, settingsFor);
     } else {
       return false;
     }
     steps.set(name, node);
     if (!wireStep(node, args, name)) {
+      incompleteCalls += 1;
       warnings.push(`The inputs of ${name} couldn't all be read: \`${statementText.replace(/\s+/g, " ").slice(0, 120)}\`.`);
     }
     return true;
@@ -1008,6 +1037,14 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     const stored = data.customNodeDefinition as StoredCustomNode | undefined;
     if (stored) {
       const values: Record<string, unknown> = { ...((data.customNodeValues as Record<string, unknown>) ?? {}) };
+      // `x.collect()` (or a channel set to one): all of x's files to one task, as the step's input collects.
+      const collected = new Set<string>();
+      const collects = (text: string, seen = new Set<string>()): boolean => {
+        const trimmed = text.trim();
+        if (/\.collect\(\)$/.test(trimmed)) return true;
+        const next = glue.get(trimmed);
+        return next !== undefined && !seen.has(trimmed) && collects(next, seen.add(trimmed));
+      };
       (stored.arguments ?? []).forEach((argument, index) => {
         const text = args[index];
         if (text === undefined) return;
@@ -1031,6 +1068,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
           complete = false;
           return;
         }
+        if (argument.kind === "path" && collects(text)) collected.add(argument.name);
         const pathFields = argument.fields.filter((field) => field.kind === "path");
         resolved.forEach((from, position) => {
           const port = argument.kind === "path" ? argument.name : pathFields[position]?.name;
@@ -1039,6 +1077,12 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       });
       node.data = {
         ...node.data,
+        ...(collected.size > 0 && {
+          customNodeDefinition: {
+            ...stored,
+            inputs: stored.inputs.map((input) => (collected.has(input.name) ? { ...input, collect: true } : input)),
+          },
+        }),
         customNodeValues: values,
         customNodeValueInputs: stored.inputs.filter((input) => input.kind === "val"),
       };
@@ -1158,17 +1202,6 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     return parameters;
   };
 
-  // Walk the statements: inputs, steps, channel code.
-  let group: Statement[] = [];
-  let groupLabel: string | null = null;
-  let groupEnd = 0;
-  const flush = () => {
-    if (group.length === 0) return;
-    // What every statement after the group reads (glue included).
-    operatorFor(group, groupLabel, [...readsOf.slice(groupEnd + 1), sectionReads]);
-    group = [];
-    groupLabel = null;
-  };
   // Inputs first: steps read them.
   for (const statement of statements) recognizeInput(statement);
   const parameterList = parametersPending();
@@ -1188,49 +1221,317 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     );
     for (const [param, variable] of fileParams) sources.set(variable, { nodeId: node.id, port: param });
   }
-  // Inputs are recognized; reset and walk again for the rest (in order).
-  statements.forEach((statement, index) => {
-    const text = statement.text.trim();
-    if (recognizeInputDry(text)) return;
-    const defined = definedNames(text);
-    if (defined.length === 1 && (glue.has(defined[0]) || selectedFiles.has(defined[0]))) return;
-    const call = callOf(text);
-    if (call && (processes.has(call.name) || includes.has(call.name) || namedWorkflows.has(call.name))) {
-      flush();
-      const args = splitArguments(call.args).map((argument) => {
-        const selected = selectedFiles.get(argument.trim());
-        return selected ? selected : argument;
+  // Branches (if / else if / else, and switch read as one): a Branch node,
+  // each arm's steps, channel code and nested branches in it. A block that
+  // can't be one (a loop in it, a step called twice in an arm, no step called
+  // anywhere in it) stays code, as it is.
+  const stepNames = (name: string) => processes.has(name) || includes.has(name) || namedWorkflows.has(name);
+  const LOOP = /^(?:for|while)\s*\(/;
+  /** Every name the workflow assigns, at any depth (for what code reads). */
+  const assignedAnywhere = new Set([...maskSource(mainText).matchAll(/^\s*([A-Za-z_]\w*)\s*=(?!=)/gm)].map((match) => match[1]));
+  for (const name of knownVariables) assignedAnywhere.add(name);
+  const branchChain = (text: string): ConditionalChain | null => {
+    const chain = readConditionalChain(text);
+    if (!chain) return null;
+    let calls = 0;
+    const armOk = (body: string): boolean => {
+      const called = new Set<string>();
+      return splitWorkflowStatements(body).every((entry) => {
+        const trimmed = entry.text.trim();
+        if (LOOP.test(trimmed)) return false;
+        if (readConditionalChain(trimmed)) {
+          // A nested branch; an if of code alone stays code in the arm.
+          if (branchChain(trimmed)) calls += 1;
+          return !/(?:^|[\s;{])(?:for|while)\s*\(/.test(maskSource(trimmed));
+        }
+        const call = callOf(trimmed);
+        if (call && stepNames(call.name)) {
+          if (called.has(call.name)) return false;
+          called.add(call.name);
+          calls += 1;
+        }
+        return true;
       });
-      if (step(call.name, args, text)) {
-        const node = steps.get(call.name) as Node<NodeData>;
-        for (const argument of args) {
-          const filter = argument.match(/\.filter \{ file -> ((?:file\.name == '(?:[^'\\]|\\.)*'(?: \|\| )?)+) \}$/);
-          if (filter && node.data.operatorType === "filter") {
-            const names = [...filter[1].matchAll(/file\.name == '((?:[^'\\]|\\.)*)'/g)].map((match) => match[1].replace(/\\(.)/g, "$1"));
-            node.data = { ...node.data, selectedFilterFiles: names.map((name) => ({ name, size: 0, content: "" })) };
-          }
+    };
+    return [...chain.bodies, chain.elseBody ?? ""].every(armOk) && calls > 0 ? chain : null;
+  };
+  /** `v = v.mix(a, b)`: the arm adds to v. */
+  const addsTo = (text: string): { name: string; args: string[] } | null => {
+    const match = text.match(/^([A-Za-z_]\w*)\s*=\s*([A-Za-z_]\w*)\s*\.mix\(([\s\S]*)\)$/);
+    return match && match[1] === match[2] ? { name: match[1], args: splitArguments(match[3]) } : null;
+  };
+  /** The channels a branch's arms set (at any depth), and those its code reads otherwise. */
+  const branchUse = (chain: ConditionalChain) => {
+    const writes = new Set<string>();
+    const reads = new Set<string>();
+    const scan = (body: string) => {
+      for (const entry of splitWorkflowStatements(body)) {
+        const trimmed = entry.text.trim();
+        const nested = readConditionalChain(trimmed);
+        if (nested) {
+          [...nested.bodies, nested.elseBody ?? ""].forEach(scan);
+          continue;
         }
-        if (call.assigned) {
-          sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
-          // `samples_ch = RNASEQ(…)`: written back so, for code that reads the name.
-          node.data = { ...node.data, scriptAssigned: call.assigned };
-        }
-        if (statement.comments.length > 0) node.data = { ...node.data, scriptComments: statement.comments };
-        return;
+        const adds = addsTo(trimmed);
+        const defined = definedNames(trimmed);
+        for (const name of defined) writes.add(name);
+        const right = adds ? adds.args.join(", ") : defined.length > 0 ? trimmed.replace(/^[^=]*=/, "") : trimmed;
+        for (const name of usedNames(right, assignedAnywhere).variables) reads.add(name);
+      }
+    };
+    [...chain.bodies, chain.elseBody ?? ""].forEach(scan);
+    return { writes, reads };
+  };
+  /** `v = channel.empty()` right before a branch that sets v without reading it: the branch's. */
+  const emptiedForBranch = (list: Statement[], index: number, name: string): boolean => {
+    const touches = new RegExp(`(?<![.\\w])${name}(?!\\w)`);
+    const next = list.slice(index + 1).find((later) => touches.test(maskSource(later.text)));
+    const chain = next ? branchChain(next.text.trim()) : null;
+    if (!chain) return false;
+    const use = branchUse(chain);
+    return use.writes.has(name) && !use.reads.has(name);
+  };
+  const sameSources = (left: Source[], right: Source[]) =>
+    left.length === right.length &&
+    left.every((source, index) => source.nodeId === right[index].nodeId && source.port === right[index].port && source.when?.id === right[index].when?.id && source.when?.arm === right[index].when?.arm);
+  const currentSources = (name: string): Source[] =>
+    branchSources.get(name) ?? (sources.has(name) ? [sources.get(name) as Source] : []);
+
+  // A step's call: its node (another one when an arm calls a step another arm already did).
+  const callStep = (call: NonNullable<ReturnType<typeof callOf>>, text: string, statement: Statement): boolean => {
+    const args = splitArguments(call.args).map((argument) => {
+      const selected = selectedFiles.get(argument.trim());
+      return selected ? selected : argument;
+    });
+    let key = call.name;
+    for (let count = 2; [...keys.values()].includes(key); count += 1) key = `${call.name}_${count}`;
+    if (!step(call.name, args, text, key)) return false;
+    const node = steps.get(call.name) as Node<NodeData>;
+    for (const argument of args) {
+      const filter = argument.match(/\.filter \{ file -> ((?:file\.name == '(?:[^'\\]|\\.)*'(?: \|\| )?)+) \}$/);
+      if (filter && node.data.operatorType === "filter") {
+        const names = [...filter[1].matchAll(/file\.name == '((?:[^'\\]|\\.)*)'/g)].map((match) => match[1].replace(/\\(.)/g, "$1"));
+        node.data = { ...node.data, selectedFilterFiles: names.map((name) => ({ name, size: 0, content: "" })) };
       }
     }
-    // Channel code: one node per block (a comment or a blank line starts one),
-    // named after its first comment.
-    const label = statement.comments[0]?.match(/^\/\/\s*(.*)$/)?.[1]?.trim() ?? null;
-    if (label !== null || statement.blankBefore || group.length === 0) {
-      flush();
-      // A bare `//` line names nothing: the node is named after its channel.
-      groupLabel = label || null;
+    if (call.assigned) {
+      sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
+      branchSources.delete(call.assigned);
+      // `samples_ch = RNASEQ(…)`: written back so, for code that reads the name.
+      node.data = { ...node.data, scriptAssigned: call.assigned };
     }
-    group.push(statement);
-    groupEnd = index;
-  });
-  flush();
+    if (statement.comments.length > 0) node.data = { ...node.data, scriptComments: statement.comments };
+    return true;
+  };
+
+  let branchCount = 0;
+  type Reads = ReturnType<typeof usedNames>;
+  /**
+   * The statements of the workflow, or of an arm (`membership`): inputs,
+   * steps, branches and channel code, in order. Nodes made for an arm's
+   * statements are in that arm.
+   */
+  const walk = (list: Statement[], membership: { id: string; arm: string } | null, readsAfter: Reads[]) => {
+    const listReads = membership ? list.map((statement) => usedNames(statement.text, assignedAnywhere)) : readsOf;
+    let block: Statement[] = [];
+    let blockLabel: string | null = null;
+    let blockEnd = 0;
+    const adopt = (from: number) => {
+      if (!membership) return;
+      for (const node of nodes.slice(from)) if (!node.data.branch) node.data = { ...node.data, branch: membership };
+    };
+    const flushBlock = () => {
+      if (block.length === 0) return;
+      const mark = nodes.length;
+      operatorFor(block, blockLabel, [...listReads.slice(blockEnd + 1), ...readsAfter, sectionReads]);
+      adopt(mark);
+      block = [];
+      blockLabel = null;
+    };
+    list.forEach((statement, index) => {
+      const text = statement.text.trim();
+      if (!membership && recognizeInputDry(text)) return;
+      const chain = branchChain(text);
+      if (chain && branchable(chain)) {
+        flushBlock();
+        const mark = nodes.length;
+        if (tryBranch(statement, chain, membership, [...listReads.slice(index + 1), ...readsAfter])) {
+          adopt(mark);
+          return;
+        }
+      }
+      const emptied = text.match(/^([A-Za-z_]\w*)\s*=\s*[Cc]hannel\.empty\(\)$/);
+      if (emptied && emptiedForBranch(list, index, emptied[1])) return;
+      const defined = definedNames(text);
+      if (!membership && defined.length === 1 && (glue.has(defined[0]) || selectedFiles.has(defined[0]))) return;
+      if (membership) {
+        // In an arm: `v = v.mix(…)` adds to v; `v = A.out` (or a channel from outside) names it.
+        const adds = addsTo(text);
+        const added = adds ? adds.args.map((argument) => resolveArgument(argument)) : null;
+        if (adds && added?.every((entry) => entry !== null)) {
+          flushBlock();
+          branchSources.set(adds.name, [...currentSources(adds.name), ...(added as Source[][]).flat()]);
+          sources.delete(adds.name);
+          return;
+        }
+        const named = text.match(/^([A-Za-z_]\w*)\s*=\s*([\s\S]+)$/);
+        const from = named && !callOf(text) ? resolveArgument(named[2]) : null;
+        if (named && from) {
+          flushBlock();
+          branchSources.set(named[1], from);
+          sources.delete(named[1]);
+          return;
+        }
+      }
+      const call = callOf(text);
+      if (call && stepNames(call.name)) {
+        flushBlock();
+        const mark = nodes.length;
+        const made = callStep(call, text, statement);
+        adopt(mark);
+        if (made) return;
+      }
+      // Channel code: one node per block (a comment or a blank line starts one),
+      // named after its first comment.
+      const label = statement.comments[0]?.match(/^\/\/\s*(.*)$/)?.[1]?.trim() ?? null;
+      if (label !== null || statement.blankBefore || block.length === 0) {
+        flushBlock();
+        // A bare `//` line names nothing: the node is named after its channel.
+        blockLabel = label || null;
+      }
+      block.push(statement);
+      blockEnd = index;
+    });
+    flushBlock();
+  };
+
+  /**
+   * Whether a branch's channels can be followed: a channel an arm changes
+   * whose value before already depends on another branch's arm stays code
+   * (a connection holds in one arm only).
+   */
+  const branchable = (chain: ConditionalChain): boolean => {
+    const { writes } = branchUse(chain);
+    return [...writes].every((name) => !currentSources(name).some((source) => source.when));
+  };
+
+  /**
+   * A branch, or nothing when a step in it can't be read whole (its inputs):
+   * then the block stays code, as it is, rather than lose what it passes.
+   */
+  const tryBranch = (statement: Statement, chain: ConditionalChain, parent: { id: string; arm: string } | null, readsAfter: Reads[]): boolean => {
+    const saved = {
+      nodes: nodes.length,
+      edges: edges.length,
+      definitions: definitions.length,
+      warnings: warnings.length,
+      kept: kept.length,
+      incomplete: incompleteCalls,
+      branchCount,
+      keys: new Map(keys),
+      steps: new Map(steps),
+      sources: new Map(sources),
+      branchSources: new Map(branchSources),
+      includes: new Map(includes),
+    };
+    branchFrom(statement, chain, parent, readsAfter);
+    if (incompleteCalls === saved.incomplete) return true;
+    nodes.length = saved.nodes;
+    edges.length = saved.edges;
+    definitions.length = saved.definitions;
+    warnings.length = saved.warnings;
+    kept.length = saved.kept;
+    incompleteCalls = saved.incomplete;
+    branchCount = saved.branchCount;
+    for (const [target, original] of [
+      [keys, saved.keys],
+      [steps, saved.steps],
+      [sources, saved.sources],
+      [branchSources, saved.branchSources],
+      [includes, saved.includes],
+    ] as Array<[Map<string, unknown>, Map<string, unknown>]>) {
+      target.clear();
+      for (const [key, value] of original) target.set(key, value);
+    }
+    return false;
+  };
+
+  const branchFrom = (statement: Statement, chain: ConditionalChain, parent: { id: string; arm: string } | null, readsAfter: Reads[]) => {
+    branchCount += 1;
+    const node = addNode(
+      `branch_${branchCount}`,
+      "branch",
+      {
+        ...definitionDefaults("branch"),
+        conditions: chain.conditions,
+        ...(parent ? { branch: parent } : {}),
+        ...(statement.comments.length > 0 ? { scriptComments: statement.comments } : {}),
+      },
+      chain.switchOn ? `Switch on ${chain.switchOn}` : "If",
+    );
+    if (chain.switchOn) {
+      warnings.push(`The switch on ${chain.switchOn} is written as if / else if: Nextflow's strict syntax has no switch.`);
+    }
+    const arms = [...chain.bodies.map((body, index) => ({ arm: armOf(index), body })), { arm: "else", body: chain.elseBody ?? "" }];
+    const before = new Map(sources);
+    const beforeMulti = new Map(branchSources);
+    const firstNode = nodes.length;
+    const changed = new Map<string, Map<string, Source[]>>();
+    for (const { arm, body } of arms) {
+      sources.clear();
+      for (const [name, source] of before) sources.set(name, source);
+      branchSources.clear();
+      for (const [name, list] of beforeMulti) branchSources.set(name, list);
+      walk(body.trim() ? splitWorkflowStatements(body) : [], { id: node.id, arm }, readsAfter);
+      for (const name of new Set([...sources.keys(), ...branchSources.keys(), ...before.keys(), ...beforeMulti.keys()])) {
+        const now = currentSources(name);
+        const was = beforeMulti.get(name) ?? (before.has(name) ? [before.get(name) as Source] : []);
+        if (!sameSources(now, was)) changed.set(name, (changed.get(name) ?? new Map()).set(arm, now));
+      }
+    }
+    sources.clear();
+    for (const [name, source] of before) sources.set(name, source);
+    branchSources.clear();
+    for (const [name, list] of beforeMulti) branchSources.set(name, list);
+    // After the branch: each channel an arm changed, from the arm that ran.
+    const inside = new Set(nodes.slice(firstNode).map((made) => made.id));
+    const only = (source: Source, arm: string): Source => (inside.has(source.nodeId) || source.when ? source : { ...source, when: { id: node.id, arm } });
+    for (const [name, byArm] of changed) {
+      const was = beforeMulti.get(name) ?? (before.has(name) ? [before.get(name) as Source] : []);
+      const isAdd = (list: Source[]) => list.length >= was.length && sameSources(list.slice(0, was.length), was);
+      const anySet = [...byArm.values()].some((list) => !isAdd(list));
+      const result: Source[] = anySet ? [] : [...was];
+      for (const { arm } of arms) {
+        const now = byArm.get(arm);
+        if (!anySet) {
+          for (const source of (now ?? was).slice(was.length)) result.push(only(source, arm));
+          continue;
+        }
+        for (const source of now ?? was) result.push(only(source, arm));
+      }
+      if (result.length === 1 && !result[0].when) {
+        sources.set(name, result[0]);
+        branchSources.delete(name);
+      } else {
+        branchSources.set(name, result);
+        sources.delete(name);
+      }
+    }
+  };
+
+  // Inputs are recognized; walk again for the rest (in order).
+  walk(statements, null, [sectionReads]);
+
+  // Loops: Nextflow's strict syntax has no for or while loops in a workflow; they stay code.
+  const loops = [...maskSource(mainText).matchAll(/(?:^|[\s;{])(for|while)\s*\(/g)].map((match) => match[1]);
+  if (loops.length > 0) {
+    warnings.push(
+      `The workflow has ${[...new Set(loops)].map((loop) => `a ${loop} loop`).join(" and ")}: it stays code as written, but Nextflow's strict syntax (nextflow lint, and Nextflow from 26.04) rejects loops in a workflow. Write it with channels instead (channel.of(…), .map, .combine, or an each input).`,
+    );
+  }
+  if (/\.recurse\s*\(/.test(maskSource(mainText))) {
+    warnings.push("The workflow repeats a step with .recurse() (Nextflow's preview recursion): it stays code as written.");
+  }
 
   // Steps the workflow doesn't call (or a script without a workflow) still show.
   for (const [name, text] of processes) {
@@ -1290,7 +1591,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   }
 
   if (layout.size === 0 || nodes.some((node) => !layout.has(keyOf(node)))) {
-    autoLayout(nodes, edges, new Set(nodes.filter((node) => layout.has(keyOf(node))).map((node) => node.id)));
+    autoLayoutBranches(nodes, edges, new Set(nodes.filter((node) => layout.has(keyOf(node))).map((node) => node.id)));
   }
   if (!entry) warnings.push("No workflow block was found, so connections could not be read.");
   for (const node of nodes) {
@@ -1298,7 +1599,16 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     if (group) node.data = { ...node.data, group };
   }
 
-  return { name: headerName, nodes, edges, definitions, warnings };
+  const channels: ImportedCanvas["channels"] = {};
+  for (const [name, source] of sources) channels[name] = [{ nodeId: source.nodeId, port: source.port }];
+  for (const [name, list] of branchSources) {
+    channels[name] = list.map((source) => ({
+      nodeId: source.nodeId,
+      port: source.port,
+      data: { ...(source.when ? { when: source.when } : {}), via: source.via ?? name },
+    }));
+  }
+  return { name: headerName, nodes, edges, definitions, warnings, channels };
 
   function keyOf(node: Node<NodeData>): string {
     return keys.get(node.id) ?? node.id;

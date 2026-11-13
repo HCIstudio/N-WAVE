@@ -10,6 +10,7 @@ import {
 } from "@xyflow/react";
 import type React from "react";
 import { useState } from "react";
+import { armStyle } from "../../branches/armStyles";
 
 const DerivedEdge: React.FC<EdgeProps> = ({
   sourceX,
@@ -30,23 +31,28 @@ const DerivedEdge: React.FC<EdgeProps> = ({
     targetY,
     targetPosition,
   });
-  const inCode = (data as { kind?: string } | undefined)?.kind === "code";
+  const kind = (data as { kind?: string } | undefined)?.kind;
+  const inCode = kind === "code";
+  const arm = (data as { arm?: string } | undefined)?.arm;
   const label = String((data as { label?: unknown } | undefined)?.label ?? "");
+  // A branch's lines: to an arm's steps in the arm's color, from its parameters in violet.
+  const stroke = kind === "branch" ? armStyle(arm ?? "if").line : kind === "branch-params" ? "#c026d3" : inCode ? "#d97706" : "#9ca3af";
+  const dash = kind === "branch" ? "8 4" : kind === "branch-params" ? "3 3" : inCode ? "6 4" : "2 4";
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: hovering only shows what the line is.
     <g
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      data-derived={inCode ? "code" : "through"}
+      data-derived={kind === "branch" || kind === "branch-params" ? kind : inCode ? "code" : "through"}
     >
       <path d={path} fill="none" stroke="transparent" strokeWidth={16} />
       <BaseEdge
         path={path}
         markerEnd={markerEnd}
         style={{
-          stroke: inCode ? "#d97706" : "#9ca3af",
-          strokeDasharray: inCode ? "6 4" : "2 4",
-          strokeWidth: 1.5,
+          stroke,
+          strokeDasharray: dash,
+          strokeWidth: kind === "branch" ? 2 : 1.5,
         }}
       />
       {hovered && label && (

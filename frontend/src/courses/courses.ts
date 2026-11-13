@@ -118,6 +118,17 @@ export const COURSES: CourseInfo[] = [
     minutes: 8,
     level: "basics",
     topics: ["Minimap", "Nested views", "Groups"],
+    next: "branches",
+  },
+  {
+    id: "branches",
+    course: "branches",
+    title: "Choices in a workflow",
+    summary:
+      "Let a parameter choose between two aligners with a Branch node, and see how if / else if, switches, skip flags and loops come in and go out.",
+    minutes: 7,
+    level: "basics",
+    topics: ["Branch nodes", "if / else if / else", "Switches and skip flags", "Loops"],
     next: "studies",
   },
   {

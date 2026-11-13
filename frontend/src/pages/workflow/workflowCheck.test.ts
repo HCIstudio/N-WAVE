@@ -177,3 +177,13 @@ describe("memoryBytes", () => {
     expect(memoryBytes("lots")).toBeNull();
   });
 });
+
+describe("code placed outside the workflow block", () => {
+  it("isn't flagged as unconnected: it is part of the script as it is", () => {
+    const code = node("code", "channelOperator", { placement: "script", code: "params.reads = \"${projectDir}/reads.txt\"" });
+    const loose = node("loose", "channelOperator", { code: "channel.of(1).view()" });
+    const ids = checkWorkflow([code, loose], [], context()).map((problem) => problem.id);
+    expect(ids).toContain("loose:unconnected");
+    expect(ids).not.toContain("code:unconnected");
+  });
+});

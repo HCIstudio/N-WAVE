@@ -20,6 +20,7 @@ import { useFeature } from "../../../settings/useFeatures";
 /** The glossary entry that explains the nodes of a menu section. */
 const CATEGORY_TERMS: Record<string, GlossaryId> = {
   Operators: "channel-operator",
+  Branches: "branch",
   Core: "process",
   "nf-core Pipelines": "pipeline",
   "Installed nf-core": "module",

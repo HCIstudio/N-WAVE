@@ -71,6 +71,20 @@ const WorkflowPreview: React.FC<{
         const stroke = Math.max(6, width / 120);
         const filled = shape === "pill" || shape === "solid";
         const inset = filled ? 0 : stroke / 2;
+        if (shape === "diamond") {
+          const cx = b.x + b.width / 2;
+          const cy = b.y + b.height / 2;
+          return (
+            <path
+              key={node.id}
+              data-kind={kind}
+              d={`M ${cx} ${b.y + inset} L ${b.x + b.width - inset} ${cy} L ${cx} ${b.y + b.height - inset} L ${b.x + inset} ${cy} Z`}
+              fill="none"
+              stroke={color}
+              strokeWidth={stroke}
+            />
+          );
+        }
         return (
           <rect
             key={node.id}
