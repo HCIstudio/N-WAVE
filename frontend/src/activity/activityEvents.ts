@@ -20,6 +20,7 @@ export const ACTIVITY_TYPES = {
   /** `nodeId`, `nodeType`, `keys`: the settings changed (`values` with NWAVE_VERBOSE_VALUES). */
   "node.configured": "A node's settings changed",
   /** `edgeId`, `source`, `sourceHandle`, `target`, `targetHandle`, `hint` when the ports don't fit. */
+  "branch.armChanged": "A step was put in a branch's arm, or taken out of it",
   "connection.made": "A connection was made",
   "connection.removed": "A connection was removed",
   /** The same, without `edgeId`, and the `reason` shown. */

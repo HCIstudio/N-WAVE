@@ -7,7 +7,8 @@
 //   - a frame around each group of steps (#221).
 
 import type { Edge, Node } from "@xyflow/react";
-import { type BranchArm, branchesOf, paramsRead } from "../branches/branches";
+import { armStyle } from "../branches/armStyles";
+import { armLabel, branchChain, branchConditions, branchesOf, edgeWhen, paramsRead } from "../branches/branches";
 import { getNodeParameters } from "../registry/params";
 import type { LineOwners } from "../analysis/scriptLines";
 import { groupsOf, groupTitle } from "../groups/groups";
@@ -59,6 +60,11 @@ export const codeConnections = (
   for (const node of nodes) {
     const branch = (node.data as { branch?: { id?: unknown } } | undefined)?.branch;
     if (typeof branch?.id === "string") connected.add(`${branch.id}|${node.id}`).add(`${node.id}|${branch.id}`);
+  }
+  // A channel an arm passes on is read in the branch's code: shown by the connection that holds in that arm.
+  for (const edge of edges) {
+    const when = (edge.data as { when?: { id?: unknown } } | undefined)?.when;
+    if (typeof when?.id === "string") connected.add(`${when.id}|${edge.source}`).add(`${edge.source}|${when.id}`);
   }
   const found = new Map<string, CodeConnection>();
   // Masked (no strings or comments), with the script's own line breaks:
@@ -150,19 +156,29 @@ export const groupFrames = (nodes: Node[]): Node<GroupNodeData>[] =>
 
 /** What a branch's lane shows: one arm of the branch, around its steps. */
 export interface BranchLaneData extends Record<string, unknown> {
-  arm: BranchArm;
-  condition: string;
+  arm: string;
+  /** "if params.aligner == 'star'", "else if …", "else". */
+  title: string;
   steps: string[];
 }
 
+/** An arm's title, with the condition it tests (the else: none of them holds). */
+const armTitle = (conditions: string[], arm: string): string => {
+  if (arm === "else") return conditions.length === 1 ? `else (not ${conditions[0]})` : "else (none of the above)";
+  const index = arm === "if" ? 0 : Number(arm.slice("else-if-".length));
+  return `${armLabel(arm)} ${conditions[index] ?? ""}`;
+};
+
 /**
- * A lane around each arm of each branch: "if" (the condition holds) and
- * "else", around the arm's steps. Not part of the workflow.
+ * A lane around each arm of each branch, around the arm's own nodes (a
+ * nested branch's lanes are inside). Not part of the workflow.
  */
-export const branchLanes = (nodes: Node[]): Node<BranchLaneData>[] =>
-  [...branchesOf(nodes as Array<Node & { data: Record<string, unknown> }>)].flatMap(([id, branch]) =>
-    (["if", "else"] as const).flatMap((arm) => {
-      const members = branch[arm];
+export const branchLanes = (nodes: Node[]): Node<BranchLaneData>[] => {
+  const typed = nodes as Array<Node & { data: Record<string, unknown> }>;
+  return [...branchesOf(typed)].flatMap(([id, branch]) =>
+    branch.arms.flatMap((arm) => {
+      // The arm's nodes, those of its nested branches included.
+      const members = typed.filter((node) => branchChain(node, typed).some((link) => link.id === id && link.arm === arm));
       if (members.length === 0) return [];
       // Tight: two arms one row apart don't overlap.
       const side = 14;
@@ -186,22 +202,23 @@ export const branchLanes = (nodes: Node[]): Node<BranchLaneData>[] =>
           connectable: false,
           deletable: false,
           focusable: false,
-          data: { arm, condition: branch.condition, steps: stepLabels(members) },
+          data: { arm, title: armTitle(branch.conditions, arm), steps: stepLabels(members) },
         },
       ];
     }),
   );
+};
 
 /**
- * The lines a branch draws, not the user: from its arm to each step of the
- * arm, and from the Parameters node it reads to the branch. Dashed, not editable.
+ * The lines a branch draws, not the user: from each arm to its own nodes, and
+ * from the Parameters node it reads to the branch. Dashed, not editable.
  */
 export const branchEdges = (nodes: Node[]): Edge[] => {
   const typed = nodes as Array<Node & { data: Record<string, unknown> }>;
   const edges: Edge[] = [];
   for (const [id, branch] of branchesOf(typed)) {
-    for (const arm of ["if", "else"] as const) {
-      for (const member of branch[arm]) {
+    for (const arm of branch.arms) {
+      for (const member of branch.members.get(arm) ?? []) {
         edges.push({
           id: `branch:${id}:${member.id}`,
           source: id,
@@ -212,15 +229,11 @@ export const branchEdges = (nodes: Node[]): Edge[] => {
           deletable: false,
           selectable: false,
           focusable: false,
-          data: {
-            kind: "branch",
-            arm,
-            label: arm === "if" ? `Runs when ${branch.condition}` : `Runs when not ${branch.condition}`,
-          },
+          data: { kind: "branch", arm, label: `Runs in the arm ${armTitle(branch.conditions, arm)}` },
         });
       }
     }
-    const read = new Set(paramsRead(branch.condition));
+    const read = new Set(branch.conditions.flatMap(paramsRead));
     for (const node of typed) {
       if (node.type !== "parameters") continue;
       const names = getNodeParameters(node.data).map((parameter) => parameter.name).filter((name) => read.has(name));
@@ -240,4 +253,21 @@ export const branchEdges = (nodes: Node[]): Edge[] => {
     }
   }
   return edges;
+};
+
+/**
+ * A connection that holds in one arm only (a channel from outside the arm
+ * that it passes on): drawn dashed, in the arm's color, saying when.
+ */
+export const conditionalEdge = (edge: Edge, nodes: Node[]): Edge => {
+  const typed = nodes as Array<Node & { data: Record<string, unknown> }>;
+  const when = edgeWhen(edge, typed);
+  if (!when) return edge;
+  const branch = typed.find((node) => node.id === when.id);
+  const title = branch ? armTitle(branchConditions(branch), when.arm) : when.arm;
+  return {
+    ...edge,
+    style: { ...(edge.style ?? {}), stroke: armStyle(when.arm).line, strokeDasharray: "6 3" },
+    data: { ...(edge.data ?? {}), whenLabel: `Only in the arm ${title}` },
+  };
 };

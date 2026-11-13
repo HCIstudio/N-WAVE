@@ -481,17 +481,27 @@ export const usedNames = (
 };
 
 /**
- * `if (condition) { … } else { … }`: its condition and the code of its arms;
- * null for anything else (no braces, `else if`, code after it).
+ * A chain of conditions: `if (a) { … } else if (b) { … } else { … }`, or a
+ * `switch` read as one (`case 'x':` is `subject == 'x'`, `default:` the else;
+ * cases without code share the next one's). Null for anything else: a block
+ * without braces, a case that falls through to code below it, code after it.
  */
-export const readIfElse = (text: string): { condition: string; ifBody: string; elseBody: string | null } | null => {
+export interface ConditionalChain {
+  conditions: string[];
+  /** One body per condition. */
+  bodies: string[];
+  elseBody: string | null;
+  /** A switch: what it switched on. */
+  switchOn?: string;
+}
+
+export const readConditionalChain = (text: string): ConditionalChain | null => readIfChain(text) ?? readSwitch(text);
+
+const readIfChain = (text: string): ConditionalChain | null => {
   const masked = maskSource(text);
-  const head = masked.match(/^\s*if\s*\(/);
-  if (!head) return null;
-  const open = head[0].length - 1;
-  const close = closingBracket(masked, open);
-  if (close === -1) return null;
-  const condition = text.slice(open + 1, close).trim();
+  const conditions: string[] = [];
+  const bodies: string[] = [];
+  let at = 0;
   const block = (from: number): { body: string; end: number } | null => {
     const start = masked.slice(from).match(/^\s*\{/);
     if (!start) return null;
@@ -499,13 +509,87 @@ export const readIfElse = (text: string): { condition: string; ifBody: string; e
     const end = closingBracket(masked, brace);
     return end === -1 ? null : { body: text.slice(brace + 1, end), end: end + 1 };
   };
-  const ifBlock = block(close + 1);
-  if (!ifBlock || !condition) return null;
-  const rest = masked.slice(ifBlock.end);
-  if (/^\s*$/.test(rest)) return { condition, ifBody: ifBlock.body, elseBody: null };
+  for (;;) {
+    const head = masked.slice(at).match(conditions.length === 0 ? /^\s*if\s*\(/ : /^\s*else\s+if\s*\(/);
+    if (!head) break;
+    const open = at + head[0].length - 1;
+    const close = closingBracket(masked, open);
+    if (close === -1) return null;
+    const condition = text.slice(open + 1, close).replace(/\s+/g, " ").trim();
+    const body = block(close + 1);
+    if (!body || !condition) return null;
+    conditions.push(condition);
+    bodies.push(body.body);
+    at = body.end;
+  }
+  if (conditions.length === 0) return null;
+  const rest = masked.slice(at);
+  if (/^\s*$/.test(rest)) return { conditions, bodies, elseBody: null };
   const keyword = rest.match(/^\s*else\b/);
   if (!keyword) return null;
-  const otherwise = block(ifBlock.end + keyword[0].length);
+  const otherwise = block(at + keyword[0].length);
   if (!otherwise || !/^\s*$/.test(masked.slice(otherwise.end))) return null;
-  return { condition, ifBody: ifBlock.body, elseBody: otherwise.body };
+  return { conditions, bodies, elseBody: otherwise.body };
+};
+
+const readSwitch = (text: string): ConditionalChain | null => {
+  const masked = maskSource(text);
+  const head = masked.match(/^\s*switch\s*\(/);
+  if (!head) return null;
+  const open = head[0].length - 1;
+  const close = closingBracket(masked, open);
+  if (close === -1) return null;
+  const subject = text.slice(open + 1, close).trim();
+  const brace = masked.indexOf("{", close);
+  if (brace === -1 || masked.slice(close + 1, brace).trim()) return null;
+  const end = closingBracket(masked, brace);
+  if (end === -1 || masked.slice(end + 1).trim()) return null;
+  // The labels at the switch's own depth.
+  const labels: Array<{ start: number; end: number; value: string | null }> = [];
+  let depth = 0;
+  for (let index = brace + 1; index < end; index += 1) {
+    const char = masked[index];
+    if (char === "{" || char === "(" || char === "[") depth += 1;
+    else if (char === "}" || char === ")" || char === "]") depth -= 1;
+    if (depth !== 0) continue;
+    const label = masked.slice(index, index + 200).match(/^(case\s+([^:\n]+?)|default)\s*:/);
+    if (label && /[\s;{]/.test(masked[index - 1] ?? " ")) {
+      labels.push({ start: index, end: index + label[0].length, value: label[2] ? text.slice(index + 5, index + 5 + label[2].length).trim() : null });
+      index += label[0].length - 1;
+    }
+  }
+  if (labels.length === 0 || masked.slice(brace + 1, labels[0].start).trim()) return null;
+  const conditions: string[] = [];
+  const bodies: string[] = [];
+  let elseBody: string | null = null;
+  let values: string[] = [];
+  for (const [position, label] of labels.entries()) {
+    const code = text.slice(label.end, labels[position + 1]?.start ?? end);
+    const last = position === labels.length - 1;
+    if (label.value === null) {
+      // default: the last label, its code the else.
+      if (!last || values.length > 0) return null;
+      elseBody = code.replace(/\bbreak\s*;?\s*$/, "");
+      continue;
+    }
+    values.push(label.value);
+    if (!code.trim()) continue;
+    const ends = /\bbreak\s*;?\s*$/.test(code.trim());
+    // Code that falls through into the next case isn't a chain of conditions.
+    if (!ends && !last) return null;
+    conditions.push(values.map((value) => `${subject} == ${value}`).join(" || "));
+    bodies.push(code.replace(/\bbreak\s*;?\s*$/, ""));
+    values = [];
+  }
+  if (values.length > 0 || conditions.length === 0) return null;
+  return { conditions, bodies, elseBody, switchOn: subject };
+};
+
+/**
+ * `if (condition) { … } else { … }`: its condition and the code of its arms;
+ * null for anything else (no braces, `else if`, code after it).
+ */
+export const readIfElse = (text: string): { condition: string; ifBody: string; elseBody: string | null } | null => {
+  const chain = readIfChain(text);
+  return chain && chain.conditions.length === 1 ? { condition: chain.conditions[0], ifBody: chain.bodies[0], elseBody: chain.elseBody } : null;
 };

@@ -209,7 +209,7 @@ describe("starting an advanced course", () => {
     }
     // The if/else is a Branch node, with an aligner in each arm.
     const branch = draft.nodes.find((entry) => entry.type === "branch");
-    expect(branch?.data.condition).toBe("params.aligner == 'star'");
+    expect(branch?.data.conditions).toEqual(["params.aligner == 'star'"]);
     expect(draft.nodes.find((entry) => entry.id === "n-align_star")?.data.branch).toEqual({ id: branch?.id, arm: "if" });
     expect(draft.nodes.find((entry) => entry.id === "n-align_hisat")?.data.branch).toEqual({ id: branch?.id, arm: "else" });
   });

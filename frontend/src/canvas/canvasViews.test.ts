@@ -23,6 +23,10 @@ const connectionsOf = (nodes: Node<NodeData>[], edges: Edge[]) => {
   );
 };
 
+const codeCallsStep = Object.values(
+  import.meta.glob("../workflows/import/fixtures/code-calls-step.nf", { query: "?raw", import: "default", eager: true }),
+)[0] as string;
+
 const conditions = [
   "process QC {",
   "    input:",
@@ -66,34 +70,21 @@ const conditions = [
 
 describe("codeConnections", () => {
   it("finds the steps code calls and the outputs it reads that the canvas doesn't connect", () => {
+    // `ch_trimmed = ch_reads | TRIM`: the code calls TRIM, which the canvas doesn't connect.
+    const { nodes, edges } = importNextflowScript(codeCallsStep);
+    const id = (label: string) => nodes.find((node) => node.data.label === label)?.id;
+    expect(connectionsOf(nodes, edges).map(({ from, to, kind }) => ({ from, to, kind }))).toEqual([
+      { from: id("TRIM"), to: id("ALIGN"), kind: "reads" },
+    ]);
+  });
+
+  it("finds none for branches: their steps are in them, connected as the code reads", () => {
     const { nodes, edges } = importNextflowScript(conditions);
-    const id = (label: string) =>
-      nodes.find((node) => node.data.label === label)?.id;
-    // The if/else that passes a channel from outside stays code.
-    const block = nodes.find(
-      (node) => node.type === "channelOperator" && String(node.data.channelOperatorCode).includes("params.trim"),
-    )?.id;
-    const found = connectionsOf(nodes, edges).map(({ from, to, kind }) => ({
-      from,
-      to,
-      kind,
-    }));
-    expect(found).toEqual(
-      expect.arrayContaining([
-        { from: block, to: id("TRIM"), kind: "calls" },
-        { from: id("TRIM"), to: block, kind: "reads" },
-      ]),
-    );
-    // `if (params.qc) { QC(ch_reads) }` is a branch: QC is connected, and in it.
-    expect(found.some((connection) => connection.to === id("QC") || connection.from === id("QC"))).toBe(false);
+    expect(connectionsOf(nodes, edges)).toEqual([]);
+    // `if (params.qc) { QC(ch_reads) }` and the if/else that passes ch_reads on are branches.
     expect(nodes.find((node) => node.data.label === "QC")?.data.branch).toMatchObject({ arm: "if" });
-    // ALIGN is connected on the canvas.
-    expect(
-      found.some(
-        (connection) =>
-          connection.to === id("ALIGN") || connection.from === id("ALIGN"),
-      ),
-    ).toBe(false);
+    expect(nodes.find((node) => node.data.label === "TRIM")?.data.branch).toMatchObject({ arm: "if" });
+    expect(edges.some((edge) => (edge.data as { when?: { arm?: string } } | undefined)?.when?.arm === "else")).toBe(true);
   });
 
   it.each(

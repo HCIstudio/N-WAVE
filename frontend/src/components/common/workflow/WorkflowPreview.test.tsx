@@ -46,7 +46,7 @@ describe("NodeKindLegend", () => {
   it("names the kinds and explains them on hover", () => {
     render(<NodeKindLegend />);
     const legend = screen.getByRole("list", { name: "Node kinds" });
-    expect(legend.textContent).toBe("Inputsnf-core stepsCustom stepsOperatorsOutputs");
+    expect(legend.textContent).toBe("Inputsnf-core stepsCustom stepsOperatorsLogicOutputs");
     expect(screen.getByText("Inputs").closest("li")?.title).toContain("File Input");
   });
 });

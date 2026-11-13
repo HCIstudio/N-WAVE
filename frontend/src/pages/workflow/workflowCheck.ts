@@ -2,6 +2,7 @@
 // the node it is about where there is one. Errors block the run (it would
 // fail, or do nothing); warnings let it run.
 
+import { branchChain, branchConditions, exclusiveArms } from "../../branches/branches";
 import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
 import { getNodeParameters, validateParameters } from "../../registry/params";
@@ -126,10 +127,16 @@ const checkNodes = (
     // pipeline runs on its own (it checks its inputs below); a branch
     // (if/else) chooses its arms' steps, which hold its connections.
     if (node.type === "branch") {
-      if (!String(node.data.condition ?? "").trim()) {
-        add(node, "branch-condition", "error", `“${label}” has no condition, so it can't choose between its arms.`);
+      const conditions = branchConditions(node);
+      const switchOn = typeof node.data.switchParameter === "string" ? node.data.switchParameter : null;
+      if (switchOn !== null && !switchOn) {
+        add(node, "branch-condition", "error", `“${label}” has no parameter to switch on: choose one in its settings.`);
+      } else if (switchOn !== null && (conditions.length === 0 || ((node.data.switchValues as unknown[]) ?? []).some((value) => !String(value ?? "").trim()))) {
+        add(node, "branch-condition", "error", `“${label}” has a case without a value: give each case one, or remove it.`);
+      } else if (conditions.length === 0 || conditions.some((condition) => !condition)) {
+        add(node, "branch-condition", "error", `“${label}” has an arm without a condition: write one (params.x == 'y'), or remove the arm.`);
       } else if (!nodes.some((other) => (other.data.branch as { id?: unknown } | undefined)?.id === node.id)) {
-        add(node, "branch-steps", "warning", `“${label}” has no steps in its arms, so it chooses nothing.`);
+        add(node, "branch-steps", "warning", `“${label}” has no steps in its arms, so it chooses nothing. Draw lines from its exits to the steps.`);
       }
       continue;
     }
@@ -245,6 +252,19 @@ const checkWorkflowWide = (
       level: "error",
       message: `“${label}” takes one connection on “${inputLabel(node, handle)}” but has ${count}. Connect them to a Merge node (or mix them in a channel operator) and connect that instead.`,
       nodeId: node.id,
+    });
+  }
+  // Data from one arm of a branch into another of the same branch: that arm doesn't run then.
+  for (const edge of edges) {
+    const source = nodes.find((node) => node.id === edge.source);
+    const target = nodes.find((node) => node.id === edge.target);
+    if (!source || !target) continue;
+    if (!exclusiveArms(branchChain(source, nodes), branchChain(target, nodes))) continue;
+    problems.push({
+      id: `arms:${edge.id}`,
+      level: "error",
+      message: `“${String(target.data.label || target.type)}” reads “${String(source.data.label || source.type)}”, which is in another arm of the same branch: only one of them runs. Connect it to a step after the branch instead.`,
+      nodeId: target.id,
     });
   }
   // Ports that don't fit: a warning on the step the connection feeds.

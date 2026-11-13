@@ -6,7 +6,7 @@
 import type { Node } from "@xyflow/react";
 import { useEffect, useMemo } from "react";
 import { logActivity } from "../activity/activityLog";
-import { branchConditions } from "../branches/branches";
+import { branchConditionsByNode } from "../branches/branches";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { conditionsByNode, type NodeConditions, parameterValues, previewConditions } from "./conditions";
 import type { WorkflowAnalysisState } from "./useWorkflowAnalysis";
@@ -29,7 +29,7 @@ export const useStepConditions = (
     [enabled, structureCurrent, analysis],
   );
   // The branches' own (by their steps and conditions, not positions): a branch's arm wins.
-  const branchKey = JSON.stringify(branchesEnabled ? [...branchConditions(nodes)] : []);
+  const branchKey = JSON.stringify(branchesEnabled ? [...branchConditionsByNode(nodes)] : []);
   const byNode = useMemo(() => {
     const branched = new Map<string, string[]>(JSON.parse(branchKey));
     if (!analysed) return branched.size > 0 ? branched : null;

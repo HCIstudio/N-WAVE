@@ -15,6 +15,7 @@ import { useNodeConditions } from "../../execution/NodeConditionsContext";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
+import { canJoinArm } from "../../branches/branches";
 import { acceptsManyConnections } from "../../registry/portArity";
 import { useFeature } from "../../settings/useFeatures";
 import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
@@ -364,14 +365,14 @@ const BaseNode = ({
         )}
       </div>
 
-      {/* A step of a branch's arm: the dashed line from its branch comes in on top. */}
-      {Boolean(data.branch) && (
+      {/* Where a branch's line comes in (on top): a line from a Branch's exit puts the node in that arm. */}
+      {canJoinArm({ id, type, data }) && (
         <Handle
           type="target"
           position={Position.Top}
           id="branch"
-          isConnectable={false}
-          className="!h-2 !w-2 !border-0 !bg-violet-400"
+          title={data.branch ? "In a branch's arm" : "Draw a line from a Branch node's exit here to put this step in that arm"}
+          className={clsx("!h-2 !w-2 !border-0", data.branch ? "!bg-fuchsia-400" : "!bg-fuchsia-300 !opacity-40")}
         />
       )}
             {/* Execution Status Indicator */}

@@ -5,6 +5,13 @@ import { NODE_KIND_ORDER, NODE_KINDS, type NodeKind } from "../../../workflows/n
 export const NodeKindSwatch: React.FC<{ kind: NodeKind }> = ({ kind }) => {
   const { color, shape } = NODE_KINDS[kind];
   const filled = shape === "pill" || shape === "solid";
+  if (shape === "diamond") {
+    return (
+      <svg viewBox="0 0 16 10" className="h-2.5 w-4 shrink-0" aria-hidden="true">
+        <path d="M 8 1 L 14 5 L 8 9 L 2 5 Z" fill="none" stroke={color} strokeWidth={1.5} />
+      </svg>
+    );
+  }
   return (
     <svg viewBox="0 0 16 10" className="h-2.5 w-4 shrink-0" aria-hidden="true">
       <rect

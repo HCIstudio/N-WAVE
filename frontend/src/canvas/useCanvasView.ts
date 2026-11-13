@@ -16,6 +16,7 @@ import {
   type CanvasView,
   type CodeConnection,
   codeConnectionEdge,
+  conditionalEdge,
   codeConnections,
   groupFrames,
 } from "./canvasViews";
@@ -95,9 +96,13 @@ export const useCanvasView = (
   const display = useMemo(() => {
     const frames = [...groupFrames(nodes), ...branchLanes(nodes)];
     const drawn = [...shown.map(codeConnectionEdge), ...branchEdges(nodes)];
+    // Connections that hold in one arm only: dashed, in its color.
+    const shownEdges = edges.some((edge) => (edge.data as { when?: unknown } | undefined)?.when)
+      ? edges.map((edge) => conditionalEdge(edge, nodes))
+      : edges;
     return {
       nodes: frames.length > 0 ? [...frames, ...nodes] : nodes,
-      edges: drawn.length > 0 ? [...edges, ...drawn] : edges,
+      edges: drawn.length > 0 ? [...shownEdges, ...drawn] : shownEdges,
     };
   }, [nodes, edges, shown]);
 

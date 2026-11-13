@@ -4,7 +4,7 @@
 // channel. Edges saved before this rule into a one-connection input still
 // load; the workflow check asks to merge them first.
 
-import { branchOf } from "../branches/branches";
+import { type BranchMembership, branchChain, edgeWhen, exclusiveArms } from "../branches/branches";
 import type { Connection, Edge, Node } from "@xyflow/react";
 import type { NodeData, PortData } from "../components/nodes/BaseNode";
 import { getNodeDefinitionForNode } from "./nodeDefinitions";
@@ -58,21 +58,9 @@ export const connectionLimitMessage = (
   if (!handle || acceptsManyConnections(targetNode, handle)) return null;
   const others = edgesIntoPort(targetNode, edges, handle).filter((edge) => !sameEdge(edge, connection));
   if (others.length === 0) return null;
-  // Each from another arm of the same branch (if/else): only one of them runs.
-  const armOf = (id: string) => {
-    const node = nodes.find((candidate) => candidate.id === id);
-    return node ? branchOf(node, nodes) : null;
-  };
-  const incoming = armOf(connection.source);
-  if (
-    incoming &&
-    others.every((edge) => {
-      const arm = armOf(edge.source);
-      return arm !== null && arm.id === incoming.id && arm.arm !== incoming.arm;
-    })
-  ) {
-    return null;
-  }
+  // Each from an arm that excludes this one's (if/else): only one of them runs.
+  const incoming = armsOf({ source: connection.source, data: undefined }, nodes);
+  if (others.every((edge) => exclusiveArms(armsOf(edge, nodes), incoming))) return null;
   const label = String(targetNode.data.label || targetNode.type);
   return `“${label}” takes one connection${inputName(targetNode, handle)}. To combine several, connect them to a Merge node first, or mix them in a channel operator.`;
 };
@@ -84,9 +72,41 @@ export interface ExtraConnections {
 }
 
 /** One-connection inputs that have more (workflows saved before the rule). */
+/**
+ * Where a connection's data comes from, as branches see it: the arms its
+ * source is in, or the arm it holds in (a channel an arm passes on).
+ */
+const armsOf = (edge: Pick<Edge, "source" | "data">, nodes: Node<NodeData>[]): BranchMembership[] => {
+  const when = edgeWhen(edge, nodes);
+  if (when) {
+    const branch = nodes.find((node) => node.id === when.id);
+    return [when, ...(branch ? branchChain(branch, nodes) : [])];
+  }
+  const source = nodes.find((node) => node.id === edge.source);
+  return source ? branchChain(source, nodes) : [];
+};
+
+/** The most connections into one input that can carry data in one run (those from exclusive arms don't). */
+const connectionsAtOnce = (into: Edge[], nodes: Node<NodeData>[]): number => {
+  const arms = into.map((edge) => armsOf(edge, nodes));
+  // Each connection with those that can run with it; the largest such set (a few connections at most).
+  let most = 0;
+  const pick = (index: number, chosen: number[]) => {
+    if (index === into.length) {
+      most = Math.max(most, chosen.length);
+      return;
+    }
+    if (chosen.every((other) => !exclusiveArms(arms[other], arms[index]))) pick(index + 1, [...chosen, index]);
+    if (chosen.length + (into.length - index - 1) > most) pick(index + 1, chosen);
+  };
+  if (into.length <= 12) pick(0, []);
+  else most = into.length;
+  return most;
+};
+
 export const findExtraConnections = (nodes: Node<NodeData>[], edges: Edge[]): ExtraConnections[] =>
   nodes.flatMap((node) => {
-    // Connections from the arms of one branch (if/else) are one: only one arm runs.
+    // Connections from exclusive arms of a branch (if/else) are one: only one arm runs.
     const byHandle = new Map<string, Edge[]>();
     for (const edge of edges) {
       if (edge.target !== node.id) continue;
@@ -94,22 +114,7 @@ export const findExtraConnections = (nodes: Node<NodeData>[], edges: Edge[]): Ex
       if (handle) byHandle.set(handle, [...(byHandle.get(handle) ?? []), edge]);
     }
     const counts = new Map<string, number>();
-    for (const [handle, into] of byHandle) {
-      const perArm = new Map<string, number>();
-      let others = 0;
-      for (const edge of into) {
-        const source = nodes.find((candidate) => candidate.id === edge.source);
-        const membership = source ? branchOf(source, nodes) : null;
-        if (!membership) others += 1;
-        else perArm.set(`${membership.id}:${membership.arm}`, (perArm.get(`${membership.id}:${membership.arm}`) ?? 0) + 1);
-      }
-      const branches = new Map<string, number>();
-      for (const [key, count] of perArm) {
-        const id = key.slice(0, key.lastIndexOf(":"));
-        branches.set(id, Math.max(branches.get(id) ?? 0, count));
-      }
-      counts.set(handle, others + [...branches.values()].reduce((sum, count) => sum + count, 0));
-    }
+    for (const [handle, into] of byHandle) counts.set(handle, connectionsAtOnce(into, nodes));
     return [...counts]
       .filter(([handle, count]) => count > 1 && !acceptsManyConnections(node, handle))
       .map(([handle, count]) => ({ node, handle, count }));

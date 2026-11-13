@@ -90,23 +90,72 @@ on any node's **Code** tab. Their settings are the ones you declared. See
 [Custom nodes](https://github.com/HCIstudio/N-WAVE/wiki/Custom-Nodes) and
 [Node packs](https://github.com/HCIstudio/N-WAVE/wiki/Node-Packs).
 
-## Branch (if/else)
+## Branches (if / else if / else)
 
-An `if (…) { … } else { … }` in an imported script whose arms call steps: the workflow runs
-one arm's steps, by a condition on its parameters (`params.aligner == 'star'`).
+A **Branch** runs one of several sets of steps, chosen by conditions on the workflow's
+parameters: the first arm whose condition holds runs, and when none does, the **else** arm
+(which may have no steps). It is how nf-core pipelines choose a tool (`aligner`) or skip a step
+(`skip_qc`). Branches are **Logic** nodes (fuchsia, a diamond in the previews): they run no
+tool and change no data, they decide which steps run.
 
-- The **Branch** node shows the condition, the parameter it reads (a dashed violet line from
-  the Parameters node), and which arm runs with the parameters' values now.
-- Its **if** exit leads to the steps that run when the condition holds, its **else** exit to
-  those that run when it doesn't (dashed green and amber lines), each arm framed as a lane.
-  The arm that won't run with the current values is greyed out.
-- Where the arms meet again, the next step reads whichever arm ran: a connection from each
-  arm into the same input (it counts as one).
-- The code is written back as the `if`/`else`, with a channel each arm sets
-  (`ch_aligned = channel.empty()`, then `ch_aligned = ALIGN_STAR.out` in its arm).
-- An arm that does more than call steps and name their outputs (a channel from outside,
-  `.map { … }`) keeps the whole block as channel code. Steps in a branch can't be grouped.
-  The + menu doesn't offer a Branch yet: branches come from imported scripts.
+**On the canvas**
+
+- The Branch node lists its arms: **if** with its condition, each **else if** with its own,
+  and **else**. The arm that runs with the Parameters node's values now says **runs now**; the
+  others are greyed out, and so are their steps. A dashed fuchsia line comes in from the
+  Parameters node the conditions read.
+- Each arm's exit has its color (if green, else if sky, indigo or teal, else amber). Dashed
+  lines in that color lead to the arm's steps, and a lane of that color frames them.
+- Where the arms meet again, the next step has a connection from each arm into the same input.
+  Only one arm runs, so it counts as one connection (the workflow check doesn't flag it).
+- A connection that holds in one arm only, a channel from before the branch that the arm passes
+  on (`else { ch_reads_out = ch_reads }`), is dashed in the arm's color.
+- A branch can be in an arm of another branch (nested). Its steps are in both.
+
+**Building one**
+
+1. In the + menu, under **Branches**: **If / else** (one condition), **If / else if / else**
+   (two to start with) or **Switch on a parameter** (one arm per value of a parameter).
+2. Double-click it to write the conditions (`params.aligner == 'star'`, `!params.skip_qc`,
+   `params.depth > 10 && params.trim`). **Add else if** adds an arm; the bin removes one. For
+   a switch, choose the parameter and give each case its value.
+3. Draw a line from an arm's exit to a step: the step goes into that arm. The panel lists each
+   arm's steps; the × takes one out.
+4. Connect the steps as usual. The step after the branch takes a connection from each arm.
+
+The workflow check says when an arm has no condition, a switch has no parameter or an empty
+case, a branch has no steps, or a step reads a step of another arm of the same branch (only one
+of them runs).
+
+**In the code**
+
+```nextflow
+ch_bam = channel.empty()
+if (params.aligner == 'star') {
+    STAR(ch_reads)
+    ch_bam = STAR.out.bam
+} else if (params.aligner == 'hisat2') {
+    HISAT2(ch_reads)
+    ch_bam = HISAT2.out.bam
+} else {
+    BOWTIE2(ch_reads)
+    ch_bam = BOWTIE2.out.bam
+}
+REPORT(ch_bam)
+```
+
+Each channel the arms set starts empty before the branch and is set in the arm that runs. A
+switch is written this way too: Nextflow's strict syntax has no `switch`.
+
+**Importing** (see [Importing Workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows#branches-and-loops)):
+`if` / `else if` / `else`, nested `if`s, `switch` (read as if / else if), arms with channel code
+(`ch_versions = ch_versions.mix(FASTQC.out.versions)`), and arms that pass on a channel from
+before become branches. A step called in two arms is two nodes (the second named `…_2`).
+Blocks that can't be shown this way stay code: an `if` that calls no step, a loop.
+
+**Limits:** steps in a branch can't be grouped, and a group can't be put in an arm. A
+connection that holds in one arm only comes from an import; on the canvas, put the step that
+passes the channel on in the arm instead.
 
 ## Output
 

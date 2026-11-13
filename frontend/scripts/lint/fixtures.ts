@@ -501,6 +501,16 @@ const branched = (): LintFixture => {
   return { name: "branch-two-aligners", description: "Two aligners, one chosen by a parameter (if/else)", nodes: imported.nodes, edges: imported.edges };
 };
 
+/** Control flow from scripts: if / else if, a switch, nested ifs with skip flags, a step in two arms. */
+const controlFlow = (): LintFixture[] =>
+  // loop.nf is left out: its for loop stays code, and strict syntax rejects loops.
+  ["aligner-chain", "switch", "skip-flags", "same-step"].map((name) => {
+    const imported = importNextflowScript(
+      readFileSync(join(__dirname, "../../src/workflows/import/fixtures/branches", `${name}.nf`), "utf8"),
+    );
+    return { name: `branch-${name}`, description: `Control flow imported from ${name}.nf`, nodes: imported.nodes, edges: imported.edges };
+  });
+
 export const buildLintFixtures = (): LintFixture[] => {
   const starSalmon = rnaseqStarSalmon as unknown as {
     nodes: Node<NodeData>[];
@@ -550,6 +560,7 @@ export const buildLintFixtures = (): LintFixture[] => {
     }),
     dawModelSkeleton(),
     branched(),
+    ...controlFlow(),
     grouped(nfCoreSubworkflowChain(), "grouped-subworkflow-chain", "nf-core subworkflows in groups", {
       INDEX: ["nf-core/bwa/index"],
       TRIM_AND_ALIGN: ["nf-core/subworkflows/fastq_trim_fastp_fastqc", "nf-core/subworkflows/fastq_align_bwa"],

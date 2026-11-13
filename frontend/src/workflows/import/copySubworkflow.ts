@@ -10,7 +10,7 @@ import type { NodeData, PortData } from "../../components/nodes/BaseNode";
 import type { NfCoreSubworkflowCatalogEntry } from "../../registry/nfcore/subworkflow";
 import { nodeDefinitions } from "../../registry/nodeDefinitions";
 import type { WorkflowParameter } from "../../registry/params";
-import { autoLayout } from "./autoLayout";
+import { autoLayoutBranches } from "./autoLayout";
 import { importNextflowScript, type ImportedCanvas, type NfCoreCatalogForImport } from "./importScript";
 import { blockBody, maskSource, topLevelItems, workflowSections } from "./nextflowSource";
 
@@ -165,13 +165,24 @@ export const copySubworkflow = (
     return null;
   };
 
-  // Outputs: a Display Output for each emit.
+  // Outputs: a Display Output for each emit (from each arm, for a channel a branch sets).
   for (const emit of emits) {
-    const from = portOf(simple(emit.expression) ? emit.expression : `emit_${emit.name}`);
+    const reference = simple(emit.expression) ? emit.expression : `emit_${emit.name}`;
+    const single = portOf(reference);
+    const from = single ? [single] : (imported.channels[reference] ?? []);
     const display = newNode("outputDisplay", `copy-output-${emit.name}`, { label: `${title(emit.name)} output`, subtitle: `emit: ${emit.name}` });
     nodes.push(display);
-    if (from) {
-      edges.push({ id: `e-${from.nodeId}.${from.port}-${display.id}.in`, source: from.nodeId, sourceHandle: from.port, target: display.id, targetHandle: "in" });
+    if (from.length > 0) {
+      for (const source of from) {
+        edges.push({
+          id: `e-${source.nodeId}.${source.port}-${display.id}.in`,
+          source: source.nodeId,
+          sourceHandle: source.port,
+          target: display.id,
+          targetHandle: "in",
+          ...("data" in source && source.data ? { data: source.data as Record<string, unknown> } : {}),
+        });
+      }
     } else {
       warnings.push(`The output ${emit.name} (${emit.expression}) couldn't be traced to a step; connect its Display Output by hand.`);
     }
@@ -269,13 +280,14 @@ export const copySubworkflow = (
   warnings.push(
     "Settings nf-core pipelines give these steps in their modules.config (ext.args, ext.prefix) aren't part of the subworkflow; set them on each step.",
   );
-  autoLayout(nodes, edges);
+  autoLayoutBranches(nodes, edges);
   return {
     name: `${workflow.name} (copy)`,
     nodes,
     edges,
     definitions: imported.definitions,
     warnings: [...new Set(warnings)],
+    channels: imported.channels,
   };
 };
 

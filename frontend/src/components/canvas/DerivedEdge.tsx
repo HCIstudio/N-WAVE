@@ -10,7 +10,7 @@ import {
 } from "@xyflow/react";
 import type React from "react";
 import { useState } from "react";
-import { ARM_STYLES } from "../nodes/BranchNode";
+import { armStyle } from "../../branches/armStyles";
 
 const DerivedEdge: React.FC<EdgeProps> = ({
   sourceX,
@@ -33,10 +33,10 @@ const DerivedEdge: React.FC<EdgeProps> = ({
   });
   const kind = (data as { kind?: string } | undefined)?.kind;
   const inCode = kind === "code";
-  const arm = (data as { arm?: "if" | "else" } | undefined)?.arm;
+  const arm = (data as { arm?: string } | undefined)?.arm;
   const label = String((data as { label?: unknown } | undefined)?.label ?? "");
   // A branch's lines: to an arm's steps in the arm's color, from its parameters in violet.
-  const stroke = kind === "branch" ? (arm === "else" ? ARM_STYLES.else.line : ARM_STYLES.if.line) : kind === "branch-params" ? "#8b5cf6" : inCode ? "#d97706" : "#9ca3af";
+  const stroke = kind === "branch" ? armStyle(arm ?? "if").line : kind === "branch-params" ? "#c026d3" : inCode ? "#d97706" : "#9ca3af";
   const dash = kind === "branch" ? "8 4" : kind === "branch-params" ? "3 3" : inCode ? "6 4" : "2 4";
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: hovering only shows what the line is.

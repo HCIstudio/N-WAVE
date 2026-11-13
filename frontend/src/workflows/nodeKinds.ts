@@ -5,11 +5,11 @@
 // shapes, explained by the same legend; the shapes tell them apart without
 // color too.
 
-export type NodeKind = "input" | "nfcore" | "custom" | "operator" | "output";
+export type NodeKind = "input" | "nfcore" | "custom" | "operator" | "logic" | "output";
 
 const INPUT_TYPES = new Set(["fileInput", "samplesheet", "parameters"]);
-/** Filter, Map, Merge and the like, channel code kept from an import, and branches (if/else). */
-const OPERATOR_TYPES = new Set(["operator", "filter", "channelOperator", "branch"]);
+/** Filter, Map, Merge and the like, and channel code kept from an import. */
+const OPERATOR_TYPES = new Set(["operator", "filter", "channelOperator"]);
 
 /** The kind of a node; notes have none. */
 export const nodeKindOf = (node: {
@@ -23,6 +23,8 @@ export const nodeKindOf = (node: {
     return "nfcore";
   }
   if (OPERATOR_TYPES.has(node.type ?? "")) return "operator";
+  // A branch decides which steps run; it reshapes no data.
+  if (node.type === "branch") return "logic";
   // A process that isn't nf-core's: a custom process (or a node kept from an import).
   return "custom";
 };
@@ -36,7 +38,7 @@ export interface NodeKindStyle {
   /** Text on the strip, readable on its color. */
   text: string;
   /** Inputs and outputs are pill-shaped, steps boxes; filled, outlined or dashed. */
-  shape: "pill" | "pill-outline" | "solid" | "outline" | "dashed";
+  shape: "pill" | "pill-outline" | "solid" | "outline" | "dashed" | "diamond";
 }
 
 export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
@@ -72,6 +74,14 @@ export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
     text: "#1f2937",
     shape: "dashed",
   },
+  logic: {
+    label: "Logic",
+    short: "Logic",
+    description: "Branches (if / else if / else): which steps run, chosen by the workflow's parameters. They run no tool.",
+    color: "#e879f9",
+    text: "#4a044e",
+    shape: "diamond",
+  },
   output: {
     label: "Outputs",
     short: "Output",
@@ -82,4 +92,4 @@ export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
   },
 };
 
-export const NODE_KIND_ORDER: NodeKind[] = ["input", "nfcore", "custom", "operator", "output"];
+export const NODE_KIND_ORDER: NodeKind[] = ["input", "nfcore", "custom", "operator", "logic", "output"];
