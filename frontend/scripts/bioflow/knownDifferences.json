@@ -10,5 +10,9 @@
   "grouped-subworkflow-chain": {
     "missingInBioflow": ["FASTQ_TRIM_FASTP_FASTQC -> FASTQ_ALIGN_BWA"],
     "reason": "As in nfcore-subworkflow-chain: BioFlow-Insight 2.1.1 doesn't follow FASTP's reads to the emit `reads` of nf-core/fastq_trim_fastp_fastqc"
+  },
+  "branch-skip-flags": {
+    "missingInBioflow": ["STAR -> REPORT"],
+    "reason": "BioFlow-Insight 2.1.1 doesn't follow STAR's versions to REPORT when the channel is set inside a nested `if` and concatenated in the outer one; a Nextflow run of each arm confirms that REPORT reads them"
   }
 }
