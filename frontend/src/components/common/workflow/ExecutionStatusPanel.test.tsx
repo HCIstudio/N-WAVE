@@ -40,6 +40,14 @@ const failed: Props["status"] = {
   failedNodes: 1,
   currentStage: "Workflow failed",
 };
+// The backend's actual cancellation message (runExit.ts), not "Workflow cancelled".
+const cancelled: Props["status"] = {
+  ...idle,
+  startTime: new Date("2026-10-15T10:00:00Z"),
+  endTime: new Date("2026-10-15T10:00:07Z"),
+  totalNodes: 1,
+  currentStage: "Execution cancelled",
+};
 
 describe("ExecutionStatusPanel", () => {
   let container: HTMLDivElement;
@@ -78,6 +86,11 @@ describe("ExecutionStatusPanel", () => {
     expect(container.querySelector("h3")?.textContent).toBe("Workflow Failed");
     const log = container.querySelector('[aria-label="Run log"]');
     expect(log?.textContent).toContain("ERROR ~ boom");
+  });
+
+  it("is titled Workflow Cancelled after Cancel, not Workflow Complete", () => {
+    render({ status: cancelled });
+    expect(container.querySelector("h3")?.textContent).toBe("Workflow Cancelled");
   });
 
   it("explains a failed run above its steps and its log", () => {
