@@ -62,7 +62,7 @@ describe("the I/O monitor's records by node", () => {
 
   it("says how much is linked, and why the rest isn't", () => {
     expect(describeUnlinked(accesses)).toBe(
-      "88 of 100 recorded accesses are linked to steps; not linked: 10 by processes outside the steps' containers (Nextflow, Docker), 2 to files whose opening the monitor didn't record. 1 task couldn't be found in the records: MERGE.",
+      "88 of 100 recorded accesses are linked to steps; not linked: 10 by processes outside the steps' containers (Nextflow, Docker), 2 to files whose opening the monitor didn't record. 1 task couldn't be linked (without a container of its own, or the monitor missed its files): MERGE.",
     );
     expect(describeUnlinked({ status: "unavailable", reason: "x" })).toBeNull();
   });

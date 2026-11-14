@@ -227,6 +227,9 @@ export const isSplicedPath = (relative: string, runFolder?: string): boolean => 
   return /(^|\/)\.command\.(sh|run|out|err|log|trace|begin|env)\/|\.exitcode\//.test(relative);
 };
 
+/** At least this share of a cgroup's opens in task directories are in one task's, for it to be that task's. */
+const SHARE_OF_OWN = 0.5;
+
 /** How much the paper's sign (.command.sh opened for reading) counts against other opens. */
 const ANCHOR_WEIGHT = 10;
 
@@ -259,39 +262,65 @@ export const linkAccesses = (
   // .command.run): the cgroup that opens the most there is the task's.
   // A cgroup that would win several tasks is Nextflow's own container.
   const votes = new Map<string, Map<string, number>>();
+  // When each cgroup first shows in the process log, and when the monitor started.
+  const firstSeen = new Map<string, number>();
+  for (const fork of forks) if (!firstSeen.has(fork.cgroup) || (firstSeen.get(fork.cgroup) as number) > fork.time) firstSeen.set(fork.cgroup, fork.time);
+  const monitorStart = Math.min(...forks.map((fork) => fork.time), ...accesses.slice(0, 1).map((access) => access.time));
   for (const access of accesses) {
     if (access.type !== "O" || access.result < 0) continue;
     const dir = taskDirOf(access.path);
     if (!dir) continue;
+    // Only the directory's own files count: a task also reads other tasks'
+    // outputs (MultiQC reads them all), and only Nextflow and the task open
+    // these.
+    if (!/^(\.command\.(sh|run|begin|out|err|log|trace|env)|\.exitcode)$/.test(dir.rest)) continue;
     const task = byShortHash.get(dir.dir.slice(0, 9));
     if (!task) continue;
-    const nextflowsOwn = dir.rest === ".command.run" || (dir.rest === ".command.sh" && !isReadOnly(access.flags));
-    if (nextflowsOwn) continue;
+    // Nextflow writes .command.sh and .command.run; the task's bash reads them.
+    const script = dir.rest === ".command.sh" || dir.rest === ".command.run";
+    if (script && !isReadOnly(access.flags)) continue;
     const cgroup = cgroups.at(access.pid, access.time);
     if (cgroup === undefined) continue;
-    const weight = dir.rest === ".command.sh" ? ANCHOR_WEIGHT : 1;
+    const weight = script ? ANCHOR_WEIGHT : 1;
     const forTask = votes.get(task.hash) ?? new Map<string, number>();
     forTask.set(cgroup, (forTask.get(cgroup) ?? 0) + weight);
     votes.set(task.hash, forTask);
   }
-  const winners = new Map<string, string>();
+  // A cgroup that would win several tasks is Nextflow's own container (or
+  // tasks ran without containers of their own and share it). And a task's
+  // container opens files mostly in its own directory: a cgroup with less
+  // than SHARE_OF_OWN of its opens in one task's directory isn't a task's.
+  const spread = new Map<string, { total: number; most: number }>();
   const wins = new Map<string, number>();
-  for (const [hash, forTask] of votes) {
+  for (const forTask of votes.values()) {
     const best = [...forTask.entries()].sort((a, b) => b[1] - a[1])[0];
-    if (best) {
-      winners.set(hash, best[0]);
-      wins.set(best[0], (wins.get(best[0]) ?? 0) + 1);
+    if (best) wins.set(best[0], (wins.get(best[0]) ?? 0) + 1);
+    for (const [cgroup, count] of forTask) {
+      const entry = spread.get(cgroup) ?? { total: 0, most: 0 };
+      entry.total += count;
+      entry.most = Math.max(entry.most, count);
+      spread.set(cgroup, entry);
     }
   }
-  const shared = new Set([...wins.entries()].filter(([, count]) => count > 1).map(([cgroup]) => cgroup));
+  const shared = new Set([
+    ...[...wins.entries()].filter(([, count]) => count > 1).map(([cgroup]) => cgroup),
+    ...[...spread.entries()].filter(([, entry]) => entry.most < SHARE_OF_OWN * entry.total).map(([cgroup]) => cgroup),
+  ]);
   const taskByCgroup = new Map<string, LinkTask>();
   const cgroupOfTask = new Map<string, string>();
-  for (const [hash, forTask] of votes) {
-    const best = [...forTask.entries()].filter(([cgroup]) => !shared.has(cgroup)).sort((a, b) => b[1] - a[1])[0];
+  // Strongest pairs first, each task and each cgroup once.
+  const pairs = [...votes.entries()]
+    .flatMap(([hash, forTask]) => [...forTask.entries()].map(([cgroup, count]) => ({ hash, cgroup, count })))
+    // A task's container is made during the run: a cgroup there from the
+    // monitor's start is the computer's own (its opens here are paths the
+    // monitor mislabeled).
+    .filter((pair) => !shared.has(pair.cgroup) && (firstSeen.get(pair.cgroup) ?? 0) > monitorStart + 1)
+    .sort((a, b) => b.count - a.count);
+  for (const { hash, cgroup } of pairs) {
     const task = byShortHash.get(hash);
-    if (!best || !task) continue;
-    cgroupOfTask.set(hash, best[0]);
-    taskByCgroup.set(best[0], task);
+    if (!task || cgroupOfTask.has(hash) || taskByCgroup.has(cgroup)) continue;
+    cgroupOfTask.set(hash, cgroup);
+    taskByCgroup.set(cgroup, task);
   }
 
   // 2. Every access by a process in a task's cgroup belongs to that task.
@@ -306,13 +335,10 @@ export const linkAccesses = (
     if ((access.type === "O" || access.type === "U") && access.path) pathOfInode.set(access.inode, access.path);
     if (access.type === "O" && access.path) openOfHandle.set(access.handle, { path: access.path, inode: access.inode });
     const cgroup = cgroups.at(access.pid, access.time);
-    if (cgroup === undefined) {
-      unlinked.unknownProcess += 1;
-      continue;
-    }
-    const task = taskByCgroup.get(cgroup);
+    const task = cgroup !== undefined ? taskByCgroup.get(cgroup) : undefined;
     if (!task) {
-      unlinked.outsideTasks += 1;
+      if (cgroup === undefined) unlinked.unknownProcess += 1;
+      else unlinked.outsideTasks += 1;
       continue;
     }
     const opened = access.type === "O" ? { path: access.path, inode: access.inode } : openOfHandle.get(access.handle);
@@ -328,7 +354,7 @@ export const linkAccesses = (
     }
     let entry = linked.get(task.hash);
     if (!entry) {
-      entry = { task, cgroup, pids: new Set(), files: new Map(), start: access.time, end: access.timeEnd };
+      entry = { task, cgroup: cgroupOfTask.get(task.hash) ?? "", pids: new Set(), files: new Map(), start: access.time, end: access.timeEnd };
       linked.set(task.hash, entry);
     }
     entry.pids.add(access.pid);
@@ -373,7 +399,9 @@ export const linkAccesses = (
       file.deleted = true;
     }
   }
-  unlinked.tasksWithoutStart = tasks.filter((task) => !cgroupOfTask.has(task.hash)).map((task) => task.name);
+  unlinked.tasksWithoutStart = tasks
+    .filter((task) => !cgroupOfTask.has(task.hash))
+    .map((task) => task.name);
 
   const result: LinkedTask[] = [...linked.values()].map((entry) => ({
     ...entry.task,

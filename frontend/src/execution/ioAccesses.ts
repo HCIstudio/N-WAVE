@@ -51,7 +51,7 @@ export const describeUnlinked = (accesses: RunAccesses): string | null => {
   ].filter(Boolean);
   const linked = accesses.total - unlinked;
   const steps = tasksWithoutStart.length
-    ? ` ${tasksWithoutStart.length} task${tasksWithoutStart.length === 1 ? "" : "s"} couldn't be found in the records: ${tasksWithoutStart.join(", ")}.`
+    ? ` ${tasksWithoutStart.length} task${tasksWithoutStart.length === 1 ? "" : "s"} couldn't be linked (without a container of ${tasksWithoutStart.length === 1 ? "its" : "their"} own, or the monitor missed ${tasksWithoutStart.length === 1 ? "its" : "their"} files): ${tasksWithoutStart.join(", ")}.`
     : "";
   return `${linked} of ${accesses.total} recorded accesses are linked to steps${parts.length ? `; not linked: ${parts.join(", ")}` : ""}.${steps}`;
 };

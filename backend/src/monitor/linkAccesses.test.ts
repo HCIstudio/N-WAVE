@@ -102,4 +102,14 @@ describe("linking file accesses to steps", () => {
     const gtf = unzip?.files.find((file) => file.path.endsWith("/genes.gtf"));
     expect(gtf).toMatchObject({ bytesWritten: 204286, size: 204286 });
   });
+
+  it("links no task that ran without a container of its own, rather than a wrong one", () => {
+    // The course Run Insight's first workflow: its processes had no container, so Nextflow ran
+    // its tasks in its own, and they share that container's cgroup.
+    const { accesses, forks, tasks } = load("Counting_bases_0");
+    const result = linkAccesses(accesses, forks, tasks);
+    expect(result.tasks).toEqual([]);
+    expect(result.unlinked.tasksWithoutStart.sort()).toEqual(tasks.map((task) => task.name).sort());
+  });
 });
+

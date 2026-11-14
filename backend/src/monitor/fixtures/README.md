@@ -1,7 +1,8 @@
 # I/O monitor logs from real runs
 
 Recorded by N-WAVE's I/O monitor (the eBPF monitor of Witzke et al.) during
-runs of Demo 1 and Demo 3 on Docker Desktop with WSL 2 (kernel 6.18), for the
+runs of Demo 1, Demo 3 and the first workflow of the course Run Insight (whose
+processes had no container of their own) on Docker Desktop with WSL 2 (kernel 6.18), for the
 tests of `linkAccesses.ts`. For each run:
 
 - `file-bpf.csv.gz`, `cgroups.csv.gz`: the monitor's two logs, with the padding

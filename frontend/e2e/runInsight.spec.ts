@@ -80,7 +80,7 @@ test.describe("a recorded run in the demo", () => {
     const note = panel.getByTestId("run-monitor-note");
     await expect(note).toContainText("The I/O monitor recorded 2263 file accesses and 1385 process starts");
     await expect(panel.getByTestId("run-monitor-linked")).toHaveText(
-      "219 of 2263 recorded accesses are linked to steps; not linked: 1396 by processes outside the steps' containers (Nextflow, Docker), 543 by processes started before the monitor, 105 to files whose opening the monitor didn't record.",
+      "216 of 2263 recorded accesses are linked to steps; not linked: 1137 by processes outside the steps' containers (Nextflow, Docker), 543 by processes started before the monitor, 367 to files whose opening the monitor didn't record.",
     );
     // It also says that it missed some: the run's check for lost events.
     await expect(note.getByRole("alert")).toContainText("For 6 of the 26 files the run wrote");

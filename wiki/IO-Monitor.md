@@ -77,11 +77,15 @@ to the node on the canvas, with the method of Witzke et al. (section 5 of their 
 
 N-WAVE adds two things, because on a busy computer the monitor loses or mislabels some opens:
 
-- Besides `.command.sh`, it counts the other files opened in the task's directory (such as
-  `.command.out`, `.command.trace`, `.exitcode` and the outputs), but not those Nextflow writes
-  itself (`.command.sh` and `.command.run`). The cgroup that opens the most there is the
-  task's; `.command.sh` read by a process counts ten times. A cgroup that would win several
-  tasks is Nextflow's own container and is left out.
+- Besides `.command.sh`, it counts the task's other bookkeeping files opened in its directory
+  (`.command.run`, `.command.out`, `.command.trace`, `.exitcode` and the like), but not
+  Nextflow's writing of `.command.sh` and `.command.run`. `.command.sh` or `.command.run` read by
+  a process counts ten times. The strongest task and cgroup go together first, each once.
+- A cgroup that would win several tasks is Nextflow's own container, one with less than half
+  of its opens in one task's directory isn't a task's, and one there from the monitor's start
+  is the computer's own (a task's container is made during the run): all are left out. So tasks that
+  ran without a container of their own (Nextflow runs them in its own when a step has no
+  container) can't be told apart, and aren't linked.
 - A process's cgroup comes from the processes it starts itself where it starts any: a
   container's first process is started outside the container's cgroup and moved into it.
 - A read or write belongs to the file its handle was last opened for: the monitor's file and
@@ -92,7 +96,7 @@ and why: by processes outside the steps' containers (Nextflow itself, Docker), b
 started before the monitor, or to files whose opening the monitor didn't record.
 
 On Demo 1 and Demo 3 recorded on Docker Desktop (WSL 2), every task was linked to a cgroup of its
-own (5 of 5 and 42 of 42).
+own (5 of 5 and 42 of 42). A workflow whose steps had no container linked none, and none wrongly.
 
 ## Switching it on
 
