@@ -19,7 +19,6 @@ export interface NodeGenerationContext {
   outputDisplayCounter: number;
   outputNamingPattern: string;
   workflowName: string;
-  timestamp: number;
   date: string;
   resolveChannelNameForEdge: (
     edge: Edge,
@@ -215,7 +214,6 @@ export const generateOutputDisplayNode: NodeGenerator = ({
   outputDisplayCounter,
   outputNamingPattern,
   workflowName,
-  timestamp,
   date,
 }) => {
   const outputLabel = (node.data.label || "Output")
@@ -242,7 +240,6 @@ export const generateOutputDisplayNode: NodeGenerator = ({
       outputDisplayCounter,
       outputNamingPattern,
       workflowName,
-      timestamp,
       date,
     }),
     processInvocations: [`    ${processName}(${outputInvocationArg})\n`],

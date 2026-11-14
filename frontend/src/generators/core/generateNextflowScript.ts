@@ -98,8 +98,8 @@ export const generateNextflowScriptWithNames = (
     );
   }
 
-  // Only a naming pattern that asks for them puts the time or date in names.
-  const timestamp = outputNamingPattern.includes("{timestamp}") ? Date.now() : 0;
+  // Only a naming pattern that asks for it puts the date in names. {timestamp}
+  // is a Nextflow expression (outputs.ts), resolved per run, not here.
   const dateStr = outputNamingPattern.includes("{date}")
     ? new Date().toISOString().split("T")[0]
     : "";
@@ -478,7 +478,6 @@ export const generateNextflowScriptWithNames = (
       outputDisplayCounter,
       outputNamingPattern,
       workflowName,
-      timestamp,
       date: dateStr,
       resolveChannelNameForEdge: resolveEdge,
       buildMixedChannelExpression,
