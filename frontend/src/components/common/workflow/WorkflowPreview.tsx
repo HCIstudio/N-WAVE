@@ -1,4 +1,6 @@
 import type React from "react";
+import { armStyle } from "../../../branches/armStyles";
+import { branchOf } from "../../../branches/branches";
 import type { WorkflowEdge, WorkflowNode } from "../../../types/backend";
 import { NODE_KINDS, nodeKindOf } from "../../../workflows/nodeKinds";
 
@@ -60,6 +62,29 @@ const WorkflowPreview: React.FC<{
             fill="none"
             stroke="#6b7280"
             strokeWidth={Math.max(3, width / 300)}
+          />
+        );
+      })}
+      {/* A branch's arms: a dashed line from the Branch to each step in an arm, in the arm's color. */}
+      {steps.map((node) => {
+        const membership = branchOf(node, nodes);
+        const branch = membership && boxes.get(membership.id);
+        const member = boxes.get(node.id);
+        if (!membership || !branch || !member) return null;
+        const x1 = branch.x + branch.width;
+        const y1 = branch.y + branch.height / 2;
+        const x2 = member.x + member.width / 2;
+        const y2 = member.y;
+        const stroke = Math.max(3, width / 300);
+        return (
+          <path
+            key={`arm-${node.id}`}
+            data-arm={membership.arm}
+            d={`M ${x1} ${y1} C ${x2} ${y1}, ${x2} ${y1}, ${x2} ${y2}`}
+            fill="none"
+            stroke={armStyle(membership.arm).line}
+            strokeWidth={stroke}
+            strokeDasharray={`${stroke * 3} ${stroke * 2}`}
           />
         );
       })}

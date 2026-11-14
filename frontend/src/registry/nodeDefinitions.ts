@@ -242,29 +242,17 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     generateNextflow: generateChannelOperatorNode,
     executionLabel: "Channel Operator",
   },
-  // Branches (if / else if / else): which steps run, by the parameters. One node type, three starts.
+  // Branches (if / else if / else): which steps run, by the parameters. One node type, two starts.
   {
     id: "branch",
     kind: "logic",
     category: "Branches",
     label: "If / else",
     description:
-      "Runs one of two sets of steps, by a condition on the workflow's parameters (`if (params.trim) { … } else { … }`). Draw lines from its exits to the steps of each arm.",
+      "Runs one set of steps or another, by a condition on the workflow's parameters (`if (params.trim) { … } else { … }`). Add else if arms in its settings for more choices. Draw lines from its exits to the tops of the steps of each arm.",
     type: "branch",
     icon: "GitFork",
     defaults: { label: "If", conditions: [""], inputs: [], outputs: [] },
-    panel: BranchPanel,
-  },
-  {
-    id: "branchElseIf",
-    kind: "logic",
-    category: "Branches",
-    label: "If / else if / else",
-    description:
-      "Chooses one of several sets of steps: the first condition that holds, else the else arm (`if (params.aligner == 'star') … else if (…) … else …`).",
-    type: "branch",
-    icon: "GitFork",
-    defaults: { label: "If", conditions: ["", ""], inputs: [], outputs: [] },
     panel: BranchPanel,
   },
   {

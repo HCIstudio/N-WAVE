@@ -202,11 +202,15 @@ or has an issue that is explicitly moved to a later release.
       arm runs (on the node, and greyed out) without a warning in the workflow check. Both
       arms run as chosen, the export passes `nextflow lint`, and import, export, import gives
       the same script.
-- [ ] **Building branches**: the + menu's **Branches** group has If / else, If / else if /
-      else and Switch on a parameter, as Logic nodes (fuchsia). A line from an arm's exit puts
-      a step in that arm (inputs and notes are refused); the panel's conditions, **Add else
-      if**, the bin and the × work; a switch's parameter and cases become `params.x == …`
-      conditions. Two steps of different arms can feed one input; of the same arm, not. The
+- [ ] **Building branches**: the + menu's **Branches** group has If / else and Switch on a
+      parameter, as Logic nodes (fuchsia). While an arm's line is drawn, the tops of the steps
+      light up ("Into the if arm"), their data ports are greyed out, the line is dashed in the
+      arm's color, no text gets selected and no message pops up; a line to the top puts the step
+      in that arm (inputs and notes are refused). A condition is set in its form (parameter,
+      comparison, value), **New parameter…** adds one to the Parameters node (or makes one),
+      and **Write it as code** takes any condition; **Add else if**, the bin and the × work; a
+      switch's parameter and cases become `params.x == …` conditions. The home page's preview
+      shows dashed lines from the Branch to its arms' steps. Two steps of different arms can feed one input; of the same arm, not. The
       workflow check flags an empty condition and a step reading another arm. The export
       passes `nextflow lint` and runs the arm the parameter chooses.
 - [ ] **Importing control flow**: scripts with `else if`, `switch`, nested `if`s with skip

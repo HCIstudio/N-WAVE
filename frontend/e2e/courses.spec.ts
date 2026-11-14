@@ -193,9 +193,13 @@ test.describe("courses", () => {
     await expect(branch).toHaveCount(1);
     await page.keyboard.press("Escape");
 
-    await expect(card).toContainText("set its if condition");
+    await expect(card).toContainText("choose the parameter aligner");
     await branch.dblclick();
-    await page.getByRole("textbox", { name: "if" }).fill("params.aligner == 'star'");
+    // The form: the parameter, the comparison, the value.
+    await page.getByLabel("Parameter of the if arm").selectOption("aligner");
+    await expect(page.getByLabel("Comparison of the if arm")).toHaveValue("is");
+    await page.getByLabel("Value of the if arm").fill("star");
+    await expect(page.locator("[data-condition]").first()).toContainText("params.aligner == 'star'");
     await page.getByRole("button", { name: "Close Panel" }).click();
 
     // A line from each arm's exit to an aligner.
@@ -203,7 +207,7 @@ test.describe("courses", () => {
     const drawArm = async (arm: string, id: string) => {
       await connectHandles(page, branch.locator(`.react-flow__handle[data-handleid="${arm}"]`), node(id).locator('.react-flow__handle[data-handleid="branch"]'));
     };
-    await expect(card).toContainText("from the if exit to ALIGN_STAR");
+    await expect(card).toContainText("from the if exit to the top of ALIGN_STAR");
     await drawArm("if", "n-align_star");
     await expect(card).toContainText("from the else exit to ALIGN_HISAT");
     await drawArm("else", "n-align_hisat");

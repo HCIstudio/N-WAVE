@@ -1,3 +1,4 @@
+import { armStyle } from "../../../branches/armStyles";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import type { WorkflowEdge, WorkflowNode } from "../../../types/backend";
@@ -34,6 +35,19 @@ describe("WorkflowPreview", () => {
     expect(operator.getAttribute("stroke-dasharray")).toBeTruthy();
     expect(output.getAttribute("fill")).toBe("none");
     expect(Number(output.getAttribute("rx"))).toBeGreaterThan(12);
+  });
+
+  it("draws a dashed line from a Branch to each step in its arms, in the arm's color", () => {
+    const branch = node("b", "branch", { conditions: ["params.trim"] });
+    const star = node("s", "process", { branch: { id: "b", arm: "if" } }, 300);
+    const hisat = node("h", "process", { branch: { id: "b", arm: "else" } }, 300);
+    // In the arm of a branch that is gone: no line.
+    const loose = node("x", "process", { branch: { id: "gone", arm: "if" } }, 600);
+    const { container } = render(<WorkflowPreview nodes={[branch, star, hisat, loose]} edges={[]} />);
+    const arms = [...container.querySelectorAll("path[data-arm]")];
+    expect(arms.map((path) => path.getAttribute("data-arm"))).toEqual(["if", "else"]);
+    expect(arms.map((path) => path.getAttribute("stroke"))).toEqual([armStyle("if").line, armStyle("else").line]);
+    expect(arms.every((path) => path.getAttribute("stroke-dasharray"))).toBe(true);
   });
 
   it("says when there is nothing to draw", () => {

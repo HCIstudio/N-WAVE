@@ -15,11 +15,11 @@ export const BranchLaneNode: React.FC<NodeProps> = ({ data }) => {
     <section
       aria-label={`Branch arm ${title}`}
       data-branch-lane={arm}
-      className={clsx("pointer-events-none h-full w-full rounded-lg border-2 border-dashed", style.lane)}
+      className={clsx("pointer-events-none h-full w-full select-none rounded-lg border-2 border-dashed", style.lane)}
     >
       <header
         title={`${steps.join(", ")}: ${title}`}
-        className={clsx("pointer-events-auto truncate whitespace-nowrap px-2 text-[11px] font-medium leading-5", style.text)}
+        className={clsx("pointer-events-auto select-none truncate whitespace-nowrap px-2 text-[11px] font-medium leading-5", style.text)}
       >
         {title}
       </header>
