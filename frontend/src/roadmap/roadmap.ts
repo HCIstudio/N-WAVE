@@ -164,7 +164,7 @@ export const RELEASES: RoadmapRelease[] = [
     version: "1.6",
     name: "Import/Export",
     status: "released",
-    milestone: 5,
+    milestone: 13,
     goal: "Bring existing Nextflow projects in, export without losing anything, and exchange workflows in a language-neutral format.",
     summary: "Import and export, workflow analysis, branches and courses.",
     why: "Your existing work shouldn't have to be rebuilt by hand.",
