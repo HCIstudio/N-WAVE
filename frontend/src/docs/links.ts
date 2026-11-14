@@ -19,6 +19,7 @@ export const WIKI_PAGES = {
   "Run-Profiles": "Run profiles",
   Settings: "Global Settings",
   "Exporting-Projects": "Exporting projects",
+  "Importing-Workflows": "Importing workflows",
   Troubleshooting: "Troubleshooting",
   "How-N-WAVE-Explains-Things": "How N-WAVE explains things",
   "Workflow-Analysis": "Workflow analysis",
