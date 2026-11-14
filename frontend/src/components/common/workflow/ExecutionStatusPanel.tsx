@@ -92,6 +92,8 @@ interface ExecutionStatusPanelProps {
   onShowLogLine?: (line: number) => void;
   /** Every step of the run, done, running or waiting (the bar by step). */
   stages?: RunStage[];
+  /** Shows an earlier run on the canvas (History's **Show on canvas**). */
+  onShowRun?: (runId: string) => void;
 }
 
 export interface RunStep {
@@ -169,6 +171,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   logHighlight,
   onShowLogLine,
   stages = [],
+  onShowRun,
 }) => {
   const [maximized, setMaximized] = useState(false);
   // Global Settings → Features can switch the Performance tab off.
@@ -441,6 +444,8 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               workflowId={workflowId}
               refreshKey={`${runId ?? ""}:${status.isRunning}`}
               labelFor={canvasLabelFor}
+              onShowRun={status.isRunning ? undefined : onShowRun}
+              shownRunId={runId}
             />
           </div>
         )}

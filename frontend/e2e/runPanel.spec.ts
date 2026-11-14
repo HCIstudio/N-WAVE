@@ -22,9 +22,10 @@ test.describe("run panel", () => {
     await expect(page.locator("[data-needs-install]")).toContainText("Needs a full install of N-WAVE.");
   });
 
-  test("the Runs bar opens the run panel, with no runs in the demo", async ({ page }) => {
+  test("the Runs bar opens the run panel; an example without a recorded run has none", async ({ page }) => {
     await page.goto("./");
-    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
+    // Demo 1 and Demo 3 have recorded runs (runInsight.spec.ts); Demo 2 has none.
+    await page.getByRole("link", { name: /Demo 2 - nf-core\/rnaseq pipeline/ }).click();
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
 
     await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();

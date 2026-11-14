@@ -8,7 +8,13 @@ import {
   type RunReportKind,
   runReportUrl,
 } from "../../../api/runs";
-import { MEMORY_WARNING_SHARE, summarizeTrace, type TraceSummary } from "../../../execution/traceSummary";
+import {
+  describeIo,
+  MEMORY_WARNING_SHARE,
+  summarizeTrace,
+  type TraceIo,
+  type TraceSummary,
+} from "../../../execution/traceSummary";
 import { formatDuration } from "../../../notifications/runNotifications";
 import { formatBytes } from "../../../utils/fileContent";
 import { useFeature } from "../../../settings/useFeatures";
@@ -79,6 +85,25 @@ const taskCounts = (summary: TraceSummary): string => {
   return `${summary.tasks} task${summary.tasks === 1 ? "" : "s"}${notes.length ? `: ${notes.join(", ")}` : ""}`;
 };
 
+/** Bytes in a cell: all reads (or writes), and below what reached the disk. */
+const IoCell: React.FC<{ all: number | null; disk: number | null; diskLabel: string }> = ({
+  all,
+  disk,
+  diskLabel,
+}) => (
+  <td className="py-1 pr-2">
+    {all === null ? "–" : formatBytes(all)}
+    {disk !== null && all !== null && (
+      <span className="block text-gray-600">
+        {formatBytes(disk)} {diskLabel}
+      </span>
+    )}
+  </td>
+);
+
+/** The trace has the bytes read and written (runs from v1.7 on). */
+const hasIo = (io: TraceIo) => io.read !== null || io.written !== null;
+
 type State =
   | { status: "loading" }
   | { status: "loaded"; reports: Record<RunReportKind, boolean>; summary: TraceSummary | null }
@@ -147,6 +172,7 @@ const RunPerformance: React.FC<{
             {summary.wallTime > 0 ? `Took ${formatDuration(summary.wallTime)}` : "No step ran"}
             {summary.cpuHours >= 0.01 ? ` · ${summary.cpuHours.toFixed(2)} CPU hours` : ""} ·{" "}
             {taskCounts(summary)}
+            {hasIo(summary.io) ? ` · ${describeIo(summary.io, formatBytes)}` : ""}
           </p>
 
           {nearLimit && nearLimit.length > 0 && (
@@ -172,6 +198,16 @@ const RunPerformance: React.FC<{
                 <th className="py-1 pr-2 font-medium">Time</th>
                 <th className="py-1 pr-2 font-medium">Longest task</th>
                 <th className="py-1 pr-2 font-medium">Peak memory</th>
+                {hasIo(summary.io) && (
+                  <>
+                    <th className="py-1 pr-2 font-medium" title="All bytes read (rchar), below: from the disk (read_bytes)">
+                      Read
+                    </th>
+                    <th className="py-1 pr-2 font-medium" title="All bytes written (wchar), below: to the disk (write_bytes)">
+                      Wrote
+                    </th>
+                  </>
+                )}
                 <th className="w-1/3 py-1 font-medium">When</th>
               </tr>
             </thead>
@@ -204,6 +240,12 @@ const RunPerformance: React.FC<{
                       {entry.peakRss ? formatBytes(entry.peakRss) : "–"}
                       {entry.memory ? <span className="text-gray-600"> of {formatBytes(entry.memory)}</span> : null}
                     </td>
+                    {hasIo(summary.io) && (
+                      <>
+                        <IoCell all={entry.io.read} disk={entry.io.fromDisk} diskLabel="from disk" />
+                        <IoCell all={entry.io.written} disk={entry.io.toDisk} diskLabel="to disk" />
+                      </>
+                    )}
                     <td className="py-1">
                       {width > 0 ? (
                         <div className="relative h-3 rounded bg-gray-100" aria-hidden>

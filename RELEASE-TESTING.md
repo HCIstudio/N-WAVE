@@ -153,6 +153,17 @@ or has an issue that is explicitly moved to a later release.
       it and shows how the run ended.
 - [ ] The runs overview on the home page, and **Stop all**.
 - [ ] Performance tab, execution report and timeline after a run.
+- [ ] Bytes read and written (v1.7): after Demo 1 and Demo 3, the Performance tab has **Read**
+      and **Wrote** per step (with *from disk* and *to disk* below), and the run's total in the
+      line above the table. A node's **Results** tab starts with one line such as "2 tasks, 12 s,
+      peak 4.0 MB, read 1.2 MB, wrote 300 KB". The numbers match `execution_trace.txt` in
+      `nwave_reports/<run>/` (`rchar`, `wchar`, `read_bytes`, `write_bytes`). A run from the
+      previous release still opens, without the two columns.
+- [ ] **Show on canvas** (History): an earlier run's nodes show **Results ready**, their
+      **Results** tab its line, and the **Performance** tab opens for it. Not offered while a run
+      goes.
+- [ ] In the browser demo: Demo 1 and Demo 3 have one recorded run each under **History**, with
+      **Show on canvas**; a file of a recorded task says the demo keeps numbers, not files.
 - [ ] Browser notifications at the end of a run, and when the backend is lost and back.
 - [ ] A **run profile** (SLURM, if a cluster or a test setup is available): the profile's config,
       a run through it, and the profile in the exported project.

@@ -1,0 +1,160 @@
+{
+ "run": {
+  "id": "Demo_1_-_Text_basics_1794662306940",
+  "workflowId": "builtin:demo-basic",
+  "workflowName": "Demo 1 - Text basics",
+  "status": "succeeded",
+  "startedAt": "2026-11-14T13:18:26.942Z",
+  "finishedAt": "2026-11-14T13:20:04.389Z"
+ },
+ "log": "N-WAVE run: Demo_1_-_Text_basics_1794662306940\nN-WAVE limits: 4 CPUs, 4 GB memory, time limit 1440 min\nUnable to find image 'nextflow/nextflow:25.04.4' locally\n25.04.4: Pulling from nextflow/nextflow\n48aae78033bb: Pulling fs layer\n166e1e7c6f21: Pulling fs layer\n1079b0d2e549: Pulling fs layer\nb32084d69388: Pulling fs layer\n7c242b779769: Pulling fs layer\n2b98c9726d5d: Pulling fs layer\n357d006f1eea: Pulling fs layer\n357d006f1eea: Download complete\n7c242b779769: Download complete\nb32084d69388: Download complete\n48aae78033bb: Download complete\n1079b0d2e549: Download complete\n92abdd0630f6: Download complete\nb32084d69388: Pull complete\n166e1e7c6f21: Download complete\n2b98c9726d5d: Download complete\n2b98c9726d5d: Pull complete\n166e1e7c6f21: Pull complete\n1079b0d2e549: Pull complete\n7c242b779769: Pull complete\n357d006f1eea: Pull complete\n48aae78033bb: Pull complete\nDigest: sha256:d3cd004054b75335b6ba3588feb90c943b58080d3537c7d38f74927f308501fe\nStatus: Downloaded newer image for nextflow/nextflow:25.04.4\nNextflow 26.10.6 is available - Please consider updating your version to it\n\n N E X T F L O W   ~  version 25.04.4\n\nLaunching `./workflow/Demo_1_-_Text_basics.nf` [naughty_ptolemy] DSL2 - revision: e0c11d54f2\n\n[-        ] FILTER         -\n[-        ] FILTER_2       -\n[-        ] MAP            -\n[-        ] MERGE          -\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (2)\n[17/cf0750] FILTER (1)     | 0 of 1\n[f6/92220f] FILTER_2 (1)   | 0 of 1\n[-        ] MAP            -\n[-        ] MERGE          -\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (2)\n[17/cf0750] FILTER (1)     | 0 of 1\n[f6/92220f] FILTER_2 (1)   | 0 of 1\n[-        ] MAP            -\n[-        ] MERGE          -\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (2)\n[17/cf0750] FILTER (1)     | 0 of 1\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[-        ] MAP            -\n[-        ] MERGE          -\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (3)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 0 of 1\n[-        ] MERGE          -\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (3)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 1 of 1 ✔\n[-        ] MERGE          | 0 of 1\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (4)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 1 of 1 ✔\n[9d/4f832b] MERGE          | 0 of 1\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (4)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 1 of 1 ✔\n[9d/4f832b] MERGE          | 1 of 1 ✔\n[-        ] DISPLAY_OUTPUT -\n\nexecutor >  local (5)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 1 of 1 ✔\n[9d/4f832b] MERGE          | 1 of 1 ✔\n[c6/a40439] DISPLAY_OUTPUT | 0 of 1\n\nexecutor >  local (5)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 1 of 1 ✔\n[9d/4f832b] MERGE          | 1 of 1 ✔\n[c6/a40439] DISPLAY_OUTPUT | 1 of 1 ✔\n\nexecutor >  local (5)\n[17/cf0750] FILTER (1)     | 1 of 1 ✔\n[f6/92220f] FILTER_2 (1)   | 1 of 1 ✔\n[23/094bf1] MAP (1)        | 1 of 1 ✔\n[9d/4f832b] MERGE          | 1 of 1 ✔\n[c6/a40439] DISPLAY_OUTPUT | 1 of 1 ✔\n\n\nNextflow execution completed successfully\nResults available in: /app/results/Demo_1_-_Text_basics_1794662306940\n",
+ "reports": {
+  "report": false,
+  "timeline": false,
+  "trace": true
+ },
+ "tasks": [
+  {
+   "hash": "f6/92220f",
+   "name": "FILTER_2 (1)",
+   "process": "FILTER_2",
+   "status": "succeeded",
+   "exitCode": 0
+  },
+  {
+   "hash": "17/cf0750",
+   "name": "FILTER (1)",
+   "process": "FILTER",
+   "status": "succeeded",
+   "exitCode": 0
+  },
+  {
+   "hash": "23/094bf1",
+   "name": "MAP (1)",
+   "process": "MAP",
+   "status": "succeeded",
+   "exitCode": 0
+  },
+  {
+   "hash": "9d/4f832b",
+   "name": "MERGE",
+   "process": "MERGE",
+   "status": "succeeded",
+   "exitCode": 0
+  },
+  {
+   "hash": "c6/a40439",
+   "name": "DISPLAY_OUTPUT",
+   "process": "DISPLAY_OUTPUT",
+   "status": "succeeded",
+   "exitCode": 0
+  }
+ ],
+ "trace": [
+  {
+   "hash": "f6/92220f",
+   "name": "FILTER_2 (1)",
+   "process": "FILTER_2",
+   "status": "COMPLETED",
+   "exit": 0,
+   "attempt": 1,
+   "submit": 1794662370134,
+   "start": 1794662370245,
+   "complete": 1794662387228,
+   "duration": 17094,
+   "realtime": 6,
+   "cpu": 160,
+   "peakRss": 0,
+   "cpus": 1,
+   "memory": 2147483648,
+   "rchar": 114891,
+   "wchar": 1550,
+   "readBytes": 0,
+   "writeBytes": 4096
+  },
+  {
+   "hash": "17/cf0750",
+   "name": "FILTER (1)",
+   "process": "FILTER",
+   "status": "COMPLETED",
+   "exit": 0,
+   "attempt": 1,
+   "submit": 1794662370162,
+   "start": 1794662370271,
+   "complete": 1794662387533,
+   "duration": 17371,
+   "realtime": 11,
+   "cpu": 80,
+   "peakRss": 0,
+   "cpus": 1,
+   "memory": 2147483648,
+   "rchar": 114896,
+   "wchar": 1922,
+   "readBytes": 0,
+   "writeBytes": 4096
+  },
+  {
+   "hash": "23/094bf1",
+   "name": "MAP (1)",
+   "process": "MAP",
+   "status": "COMPLETED",
+   "exit": 0,
+   "attempt": 1,
+   "submit": 1794662387604,
+   "start": 1794662387633,
+   "complete": 1794662392274,
+   "duration": 4670,
+   "realtime": 6,
+   "cpu": 57.1,
+   "peakRss": 0,
+   "cpus": 1,
+   "memory": 2147483648,
+   "rchar": 63377,
+   "wchar": 1922,
+   "readBytes": 0,
+   "writeBytes": 4096
+  },
+  {
+   "hash": "9d/4f832b",
+   "name": "MERGE",
+   "process": "MERGE",
+   "status": "COMPLETED",
+   "exit": 0,
+   "attempt": 1,
+   "submit": 1794662392502,
+   "start": 1794662392586,
+   "complete": 1794662397693,
+   "duration": 5191,
+   "realtime": 5,
+   "cpu": 66.7,
+   "peakRss": 0,
+   "cpus": 1,
+   "memory": 2147483648,
+   "rchar": 64673,
+   "wchar": 3276,
+   "readBytes": 0,
+   "writeBytes": 4096
+  },
+  {
+   "hash": "c6/a40439",
+   "name": "DISPLAY_OUTPUT",
+   "process": "DISPLAY_OUTPUT",
+   "status": "COMPLETED",
+   "exit": 0,
+   "attempt": 1,
+   "submit": 1794662397834,
+   "start": 1794662397896,
+   "complete": 1794662401613,
+   "duration": 3779,
+   "realtime": 21,
+   "cpu": 53.3,
+   "peakRss": 0,
+   "cpus": 1,
+   "memory": 2147483648,
+   "rchar": 87913,
+   "wchar": 3922,
+   "readBytes": 0,
+   "writeBytes": 8192
+  }
+ ]
+}

@@ -81,6 +81,29 @@ describe("RunPerformance", () => {
     expect(rows[2]?.cells[4]?.textContent).toBe("– of 4.0 GB");
   });
 
+  it("shows what each step read and wrote, and what of it reached the disk", async () => {
+    const MB = 1024 ** 2;
+    getRunTrace.mockResolvedValue([
+      task("STAR", { realtime: 120_000, rchar: 2.3 * GB, wchar: 1.1 * GB, readBytes: 0, writeBytes: 1.1 * GB }),
+      task("FASTQC", { rchar: 30 * MB, wchar: 2 * MB, readBytes: null, writeBytes: null }),
+    ]);
+    render(<RunPerformance runId="io_1" />);
+    const table = await screen.findByRole("table", { name: "Steps by time" });
+    const [header, star, fastqc] = within(table).getAllByRole("row") as HTMLTableRowElement[];
+    expect([...(header?.cells ?? [])].map((cell) => cell.textContent)).toContain("Read");
+    expect(star?.cells[5]?.textContent).toBe("2.3 GB0 B from disk");
+    expect(star?.cells[6]?.textContent).toBe("1.1 GB1.1 GB to disk");
+    expect(fastqc?.cells[5]?.textContent).toBe("30.0 MB");
+    expect(screen.getByTestId("run-performance-summary").textContent).toContain("read 2.3 GB, wrote 1.1 GB");
+  });
+
+  it("has no Read and Wrote columns for a trace from before they were recorded", async () => {
+    render(<RunPerformance runId="mag_1" />);
+    const table = await screen.findByRole("table", { name: "Steps by time" });
+    expect(within(table).queryByText("Read")).toBeNull();
+    expect(screen.getByTestId("run-performance-summary").textContent).not.toContain("read");
+  });
+
   it("says when a run has no reports", async () => {
     listRunReports.mockRejectedValue(new Error("404"));
     render(<RunPerformance runId="old_1" />);

@@ -17,6 +17,12 @@ const RAW_TRACE = [
   "2\t4e/c82d68\tBAD (1)\tBAD\t-\tFAILED\t3\t1\t1793192415201\t1793192415211\t1793192415263\t62\t52\t-\t-\t1\t-\t-",
 ].join("\n");
 
+// With the I/O fields N-WAVE records since v1.7.
+const IO_TRACE = [
+  "task_id\thash\tname\tprocess\ttag\tstatus\texit\tattempt\tsubmit\tstart\tcomplete\tduration\trealtime\t%cpu\tpeak_rss\tcpus\tmemory\ttime\trchar\twchar\tread_bytes\twrite_bytes",
+  "1\t3f/a1b2c3\tCOUNT (1)\tCOUNT\t-\tCOMPLETED\t0\t1\t1793192407519\t1793192407616\t1793192409647\t2128\t2012\t98.5\t5033984\t1\t-\t-\t1048576\t2048\t0\t4096",
+].join("\n");
+
 // The default fields and formatting, as nf-core pipelines write them.
 const NFCORE_TRACE = [
   "task_id\thash\tnative_id\tname\tstatus\texit\tsubmit\tduration\trealtime\t%cpu\tpeak_rss\tpeak_vmem\trchar\twchar",
@@ -51,9 +57,24 @@ describe("run reports", () => {
         peakRss: 5033984,
         cpus: 1,
         memory: null,
+        // Written before N-WAVE recorded the I/O fields: the run still opens.
+        rchar: null,
+        wchar: null,
+        readBytes: null,
+        writeBytes: null,
       },
       expect.objectContaining({ name: "BAD (1)", status: "FAILED", exit: 3, cpu: null, peakRss: null }),
     ]);
+  });
+
+  it("reads the bytes a task read and wrote", () => {
+    expect(buildReportsConfig("bee_1")).toMatch(/fields = '.*,rchar,wchar,read_bytes,write_bytes'/);
+    expect(parseTrace(IO_TRACE)[0]).toMatchObject({
+      rchar: 1_048_576,
+      wchar: 2048,
+      readBytes: 0,
+      writeBytes: 4096,
+    });
   });
 
   it("reads a trace as nf-core pipelines write it", () => {
@@ -65,6 +86,9 @@ describe("run reports", () => {
       realtime: 58_200,
       cpu: 95.4,
       peakRss: Math.round(1.2 * 1024 ** 3),
+      rchar: 1024 ** 2,
+      wchar: 2 * 1024 ** 2,
+      readBytes: null,
     });
     expect(task?.submit).toBe(Date.parse("2026-10-27T10:50:20.123"));
     expect(parseTraceDuration("1h 2m 3s")).toBe(3_723_000);

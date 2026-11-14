@@ -40,6 +40,10 @@ const TRACE_FIELDS = [
   "cpus",
   "memory",
   "time",
+  "rchar",
+  "wchar",
+  "read_bytes",
+  "write_bytes",
 ];
 
 /** Config that turns the report, timeline and trace on for the run `runId`. */
@@ -121,6 +125,16 @@ export interface TraceTask {
   /** What the task asked for. */
   cpus: number | null;
   memory: number | null;
+  /**
+   * Bytes the task read and wrote: `rchar` and `wchar` count every read and
+   * write, also those served from or kept in the page cache; `read_bytes` and
+   * `write_bytes` only what reached the disk. Null in traces from before
+   * N-WAVE recorded them.
+   */
+  rchar: number | null;
+  wchar: number | null;
+  readBytes: number | null;
+  writeBytes: number | null;
 }
 
 const missing = (value: string | undefined): boolean =>
@@ -190,6 +204,10 @@ export const parseTrace = (text: string): TraceTask[] => {
       peakRss: parseTraceBytes(get("peak_rss")),
       cpus: number(get("cpus")),
       memory: parseTraceBytes(get("memory")),
+      rchar: parseTraceBytes(get("rchar")),
+      wchar: parseTraceBytes(get("wchar")),
+      readBytes: parseTraceBytes(get("read_bytes")),
+      writeBytes: parseTraceBytes(get("write_bytes")),
     };
   });
 };

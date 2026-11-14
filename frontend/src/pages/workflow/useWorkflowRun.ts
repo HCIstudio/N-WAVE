@@ -166,6 +166,20 @@ export const useWorkflowRun = ({
     executionStatus.showStatus();
   }, [executionStatus.showStatus]);
 
+  /**
+   * An earlier run on the canvas: its nodes show what they did in it, and the
+   * Performance tab its numbers. Not while a run goes.
+   */
+  const showRun = useCallback(
+    (runId: string) => {
+      if (latest.current.isRunning) return;
+      setLastRunId(runId);
+      setPanelTab("performance");
+      openPanel();
+    },
+    [latest, openPanel],
+  );
+
   const showLog = useCallback(() => {
     setError(null);
     setPanelTab("log");
@@ -454,6 +468,7 @@ export const useWorkflowRun = ({
     panelMinimized,
     setPanelMinimized,
     openPanel,
+    showRun,
     showLog,
     logHighlight,
     showLogLine,

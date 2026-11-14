@@ -148,7 +148,9 @@ const RunDetails: React.FC<{
   /** Link to the run's workflow (the list of every workflow's runs). */
   linkWorkflow?: boolean;
   labelFor?: (process: string) => string | undefined;
-}> = ({ run, onChange, linkWorkflow = false, labelFor }) => {
+  /** Shows the run on the canvas; null when it is shown already. */
+  onShowRun?: ((runId: string) => void) | null;
+}> = ({ run, onChange, linkWorkflow = false, labelFor, onShowRun }) => {
   const [log, setLog] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [stopping, setStopping] = useState(false);
@@ -222,6 +224,16 @@ const RunDetails: React.FC<{
         />
       )}
       {run.status !== "running" && <RunReportButtons runId={run.id} />}
+      {run.status !== "running" && onShowRun !== undefined && (
+        <button
+          type="button"
+          onClick={() => onShowRun?.(run.id)}
+          disabled={onShowRun === null}
+          className="self-start rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-60"
+        >
+          {onShowRun === null ? "Shown on the canvas" : "Show on canvas"}
+        </button>
+      )}
       {run.status === "succeeded" && (
         <section aria-label="Run results" className="space-y-1 text-gray-800">
           <RunResultsList runId={run.id} label="Run reports" />
@@ -230,7 +242,7 @@ const RunDetails: React.FC<{
       {run.status !== "running" && performanceOn && (
         <details className="rounded border border-gray-200 text-gray-800">
           <summary className="cursor-pointer px-2 py-1 text-sm font-medium">
-            Time and memory per step
+            Time, memory and bytes per step
           </summary>
           <RunPerformance runId={run.id} showLinks={false} labelFor={labelFor} />
         </details>
@@ -257,7 +269,11 @@ const RunHistory: React.FC<{
   refreshKey?: unknown;
   /** The canvas name of the node that runs a Nextflow process, if any. */
   labelFor?: (process: string) => string | undefined;
-}> = ({ workflowId, everyWorkflow = false, refreshKey, labelFor }) => {
+  /** Shows an earlier run on the canvas. */
+  onShowRun?: (runId: string) => void;
+  /** The run the canvas shows. */
+  shownRunId?: string | null;
+}> = ({ workflowId, everyWorkflow = false, refreshKey, labelFor, onShowRun, shownRunId }) => {
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -368,6 +384,7 @@ const RunHistory: React.FC<{
             onChange={() => setReload((count) => count + 1)}
             linkWorkflow={everyWorkflow}
             labelFor={labelFor}
+            onShowRun={onShowRun ? (current.id === shownRunId ? null : onShowRun) : undefined}
           />
         ) : (
           <p className="text-sm text-gray-700">

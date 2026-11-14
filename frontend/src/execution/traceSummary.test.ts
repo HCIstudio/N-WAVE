@@ -67,6 +67,27 @@ describe("summarizeTrace", () => {
     expect(summary.processes.map((entry) => entry.label).sort()).toEqual(["ALIGN:SORT", "FASTQC", "QUANT:SORT"]);
   });
 
+  it("adds up what each step read and wrote, without cached tasks", () => {
+    const MB = 1024 ** 2;
+    const summary = summarizeTrace([
+      task("STAR", { rchar: 2 * GB, wchar: 1 * GB, readBytes: 512 * MB, writeBytes: 1 * GB }),
+      task("STAR", { rchar: 1 * GB, wchar: 0, readBytes: 0, writeBytes: 0 }),
+      task("STAR", { status: "CACHED", rchar: 9 * GB, wchar: 9 * GB, readBytes: 9 * GB, writeBytes: 9 * GB }),
+      task("FASTQC", { rchar: 10 * MB, wchar: 1 * MB, readBytes: null, writeBytes: null }),
+    ]);
+    const star = summary.processes.find((entry) => entry.label === "STAR");
+    expect(star?.io).toEqual({ read: 3 * GB, written: 1 * GB, fromDisk: 512 * MB, toDisk: 1 * GB });
+    const fastqc = summary.processes.find((entry) => entry.label === "FASTQC");
+    expect(fastqc?.io).toEqual({ read: 10 * MB, written: 1 * MB, fromDisk: null, toDisk: null });
+    expect(summary.io).toEqual({ read: 3 * GB + 10 * MB, written: 1 * GB + 1 * MB, fromDisk: 512 * MB, toDisk: 1 * GB });
+  });
+
+  it("has no bytes for a trace from before they were recorded", () => {
+    const summary = summarizeTrace([task("A")]);
+    expect(summary.io).toEqual({ read: null, written: null, fromDisk: null, toDisk: null });
+    expect(summary.processes[0].io.read).toBeNull();
+  });
+
   it("copes with a trace without times or memory", () => {
     const summary = summarizeTrace([task("A", { start: null, complete: null, realtime: null, peakRss: null, memory: null })]);
     expect(summary).toMatchObject({ wallTime: 0, start: null, end: null });
