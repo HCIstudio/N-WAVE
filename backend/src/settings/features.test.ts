@@ -26,12 +26,14 @@ describe("features", () => {
     vi.restoreAllMocks();
   });
 
-  it("has every feature on, the workflow check blocking and verbose mode off, by default", () => {
+  it("has every feature on, the workflow check blocking, and verbose mode and the I/O monitor off, by default", () => {
     const { features, locked } = readFeatures();
     expect(locked).toEqual([]);
     expect(features.workflowCheck).toBe("block");
     expect(features.verbose).toBe(false);
-    for (const id of FEATURE_IDS.filter((id) => id !== "workflowCheck" && id !== "verbose")) {
+    // The I/O monitor runs a privileged container: only when switched on.
+    expect(features.ioMonitor).toBe(false);
+    for (const id of FEATURE_IDS.filter((id) => !["workflowCheck", "verbose", "ioMonitor"].includes(id))) {
       expect(features[id], id).toBe(true);
     }
   });

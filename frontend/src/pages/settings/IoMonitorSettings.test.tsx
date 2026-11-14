@@ -1,0 +1,43 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const getIoMonitorStatus = vi.fn();
+vi.mock("../../api/runs", () => ({ getIoMonitorStatus: () => getIoMonitorStatus() }));
+const saveFeatures = vi.fn();
+vi.mock("../../api/settings", async (original) => ({
+  ...(await original<typeof import("../../api/settings")>()),
+  saveFeatures: (features: unknown) => saveFeatures(features),
+}));
+
+const { default: IoMonitorSettings } = await import("./IoMonitorSettings");
+const { resetFeatures } = await import("../../settings/useFeatures");
+
+describe("IoMonitorSettings", () => {
+  beforeEach(() => {
+    resetFeatures({}, []);
+    saveFeatures.mockImplementation(async (features: unknown) => ({ features, locked: [] }));
+  });
+
+  it("is off by default, names the privileges and the paper, and switches on", async () => {
+    getIoMonitorStatus.mockResolvedValue({ available: true, image: "nwave-iomonitor:dev", imagePresent: true, kernel: "6.18.58", system: "Docker Desktop" });
+    render(<IoMonitorSettings />);
+    const box = screen.getByRole("checkbox", { name: /Monitor file accesses during runs/ });
+    expect((box as HTMLInputElement).checked).toBe(false);
+    expect(screen.getByText(/privileged/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "arXiv:2408.00411" }).getAttribute("href")).toBe(
+      "https://arxiv.org/abs/2408.00411",
+    );
+    expect((await screen.findByTestId("io-monitor-status")).textContent).toContain("It can run here: Docker on Docker Desktop, kernel 6.18.58");
+    await userEvent.click(box);
+    expect(saveFeatures).toHaveBeenCalledWith(expect.objectContaining({ ioMonitor: true }));
+  });
+
+  it("says why it can't run here", async () => {
+    getIoMonitorStatus.mockResolvedValue({ available: false, reason: "The monitor's image nwave-iomonitor:dev isn't on this computer.", image: "x", imagePresent: false });
+    render(<IoMonitorSettings />);
+    expect((await screen.findByTestId("io-monitor-status")).textContent).toBe(
+      "It can't run here: The monitor's image nwave-iomonitor:dev isn't on this computer.",
+    );
+  });
+});

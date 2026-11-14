@@ -107,5 +107,6 @@ export const answerRecordedRun = async (
   if (rest === "reports") return { status: 200, data: recorded.reports };
   if (rest === "trace") return { status: 200, data: { id: recorded.run.id, tasks: recorded.trace } };
   if (rest === "tasks") return { status: 200, data: { id: recorded.run.id, tasks: recorded.tasks } };
+  if (rest === "monitor") return { status: 200, data: recorded.monitor ?? { status: "off" } };
   return { status: 404, data: { message: RECORDED_RUN_NOTE } };
 };

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { nodeIdForProcess } from "../../../execution/nodeRuns";
-import RunPerformance, { RunReportButtons } from "./RunPerformance";
+import RunPerformance, { RunMonitorNote, RunReportButtons } from "./RunPerformance";
 import StageProgress from "./StageProgress";
 import type { RunStage } from "../../../execution/runStages";
 import { useFeature } from "../../../settings/useFeatures";
@@ -479,6 +479,12 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             className="min-h-0 flex-1 overflow-y-auto"
           >
             {failureCard && <div className="p-2 pb-0">{failureCard}</div>}
+            {/* Whether the I/O monitor records this run (read again as tasks finish). */}
+            {runId && (
+              <div className="px-4 pt-3">
+                <RunMonitorNote key={`${runId}:${tasksDone}:${status.isRunning}`} runId={runId} />
+              </div>
+            )}
             {/* Progress Overview */}
             <div className="p-4 border-b border-gray-300">
               <div className="grid grid-cols-2 gap-4 mb-3">

@@ -1,0 +1,16 @@
+--- a/testdir/bpf.cpp
++++ b/testdir/bpf.cpp
+@@ -362,7 +362,13 @@
+     {
+         u64 id = bpf_get_current_pid_tgid();
+         struct save_t saved = {};
++#if LINUX_VERSION_CODE >= KERNEL_VERSION(6, 13, 0)
++        // Since Linux 6.13, struct file counts its references in f_ref
++        // (a file_ref_t that holds the count minus one) instead of f_count.
++        if (file->f_ref.refcnt.counter <= 0)
++#else
+         if (file->f_count.counter <= 1)
++#endif
+         {
+             saved.inode = file->f_inode->i_ino;
+             saved.unlinked_inode = (file->f_inode->i_nlink == 0);

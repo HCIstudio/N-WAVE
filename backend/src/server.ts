@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import { createApp } from "./app";
 import connectDB from "./config/db";
 import { stopOrphanedRuns } from "./execution/orphanedRuns";
+import { removeOrphanedMonitors } from "./monitor/ioMonitor";
 import { stopAllRuns } from "./execution/runRegistry";
 import { STOP_GRACE_MS } from "./execution/runner";
 
@@ -27,6 +28,11 @@ const server = app.listen(PORT, HOST, () => {
 stopOrphanedRuns().then(
   (count) => count > 0 && console.log(`Stopped what was left of ${count} interrupted run(s).`),
   (error: unknown) => console.warn("Could not check for interrupted runs:", error)
+);
+// I/O monitors of those runs run until stopped: their logs are kept.
+removeOrphanedMonitors().then(
+  (count) => count > 0 && console.log(`Stopped ${count} I/O monitor(s) of interrupted runs.`),
+  (error: unknown) => console.warn("Could not check for I/O monitors left running:", error)
 );
 
 // On `docker stop` or Ctrl-C, stop the runs (they record why) before going.

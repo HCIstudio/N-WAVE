@@ -2,9 +2,11 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { ChartColumn, ChartGantt, ExternalLink } from "lucide-react";
 import {
+  getRunMonitor,
   getRunTrace,
   listRunReports,
   listRunTasks,
+  type RunMonitorSummary,
   type RunReportKind,
   runReportUrl,
 } from "../../../api/runs";
@@ -101,6 +103,47 @@ const IoCell: React.FC<{ all: number | null; disk: number | null; diskLabel: str
   </td>
 );
 
+/** What the I/O monitor did in the run, when it was on. */
+export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
+  const [summary, setSummary] = useState<RunMonitorSummary | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    getRunMonitor(runId).then(
+      (next) => !cancelled && setSummary(next),
+      () => !cancelled && setSummary(null),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [runId]);
+  if (!summary || summary.status === "off") return null;
+  if (summary.status === "running") {
+    return <p className="text-xs text-gray-700" data-testid="run-monitor-note">The I/O monitor is on for this run.</p>;
+  }
+  if (summary.status !== "recorded") {
+    return (
+      <p className="rounded border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900" data-testid="run-monitor-note">
+        The I/O monitor was switched on, but couldn't record this run: {summary.reason}
+      </p>
+    );
+  }
+  return (
+    <div data-testid="run-monitor-note" className="space-y-1 text-xs text-gray-700">
+      <p>
+        The I/O monitor recorded {summary.accesses ?? 0} file accesses and {summary.processes ?? 0} process starts
+        {summary.kernel ? ` (kernel ${summary.kernel})` : ""}.
+      </p>
+      {(summary.incompleteFiles ?? 0) > 0 && (
+        <p role="alert" className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
+          For {summary.incompleteFiles} of the {summary.checkedFiles} files the run wrote, the monitor recorded fewer
+          bytes than the files have ({formatBytes(summary.missingBytes ?? 0)} missing): events were lost, or recorded for
+          another file. The views of this run miss some accesses.
+        </p>
+      )}
+    </div>
+  );
+};
+
 /** The trace has the bytes read and written (runs from v1.7 on). */
 const hasIo = (io: TraceIo) => io.read !== null || io.written !== null;
 
@@ -174,6 +217,8 @@ const RunPerformance: React.FC<{
             {taskCounts(summary)}
             {hasIo(summary.io) ? ` · ${describeIo(summary.io, formatBytes)}` : ""}
           </p>
+
+          <RunMonitorNote runId={runId} />
 
           {nearLimit && nearLimit.length > 0 && (
             <ul aria-label="Memory hints" className="space-y-1">
