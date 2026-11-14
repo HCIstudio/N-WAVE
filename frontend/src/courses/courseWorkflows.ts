@@ -189,10 +189,14 @@ workflow {
 export const INSIGHT_SCRIPT = `// Four samples: each is made, then counted, then all are summed up in one
 // report. Counting reads each sample line by line and works hard on it, so
 // it is the step that sets the runtime: the course Run Insight points at it.
+// Each step runs in a container of its own, as nf-core's do: the I/O
+// monitor tells steps apart by their containers.
 
 params.samples = 4
 
 process MAKE_SAMPLE {
+    container 'ubuntu:24.04'
+
     input:
     val id
 
@@ -206,6 +210,8 @@ process MAKE_SAMPLE {
 }
 
 process COUNT_BASES {
+    container 'ubuntu:24.04'
+
     input:
     path sample
 
@@ -219,6 +225,8 @@ process COUNT_BASES {
 }
 
 process REPORT {
+    container 'ubuntu:24.04'
+
     input:
     path counts
 
