@@ -384,7 +384,7 @@ describe("BottomBar", () => {
       show();
       const user = await open();
       await user.click(button("Use 2 CPUs"));
-      await user.click(button("✕"));
+      await user.click(button("Close Execution Settings"));
       expect(screen.getByText("Unsaved Changes")).toBeTruthy();
       await user.click(button("Close Without Saving"));
       expect(screen.queryByText("Unsaved Changes")).toBeNull();
