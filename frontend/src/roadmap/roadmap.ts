@@ -43,7 +43,7 @@ export interface TodayFeature {
 }
 
 /** The minor version this file was last brought up to date for. */
-export const ROADMAP_UPDATED_FOR = "1.5";
+export const ROADMAP_UPDATED_FOR = "1.6";
 
 /** The issue that plans the releases below, with their order and dependencies. */
 export const ROADMAP_ISSUE = 189;
@@ -81,8 +81,18 @@ export const TODAY: TodayFeature[] = [
     wiki: "Settings",
   },
   {
+    title: "Bring your Nextflow in",
+    text: "Import scripts and whole projects, nf-core style pipelines with their if / else branches too, and export them again unchanged.",
+    wiki: "Importing-Workflows",
+  },
+  {
+    title: "See a workflow's structure",
+    text: "Check its code with nextflow lint and BioFlow-Insight, read its specification and process dependency graphs, and group steps into subworkflows.",
+    wiki: "Workflow-Analysis",
+  },
+  {
     title: "Take it anywhere",
-    text: "Export a runnable Nextflow project that works without N-WAVE.",
+    text: "Export a runnable Nextflow project that works without N-WAVE, a diagram, or a language-neutral DAW model.",
     wiki: "Exporting-Projects",
   },
 ];
@@ -153,9 +163,10 @@ export const RELEASES: RoadmapRelease[] = [
   {
     version: "1.6",
     name: "Import/Export",
-    status: "in-progress",
+    status: "released",
     milestone: 5,
     goal: "Bring existing Nextflow projects in, export without losing anything, and exchange workflows in a language-neutral format.",
+    summary: "Import and export, workflow analysis, branches and courses.",
     why: "Your existing work shouldn't have to be rebuilt by hand.",
     features: [
       { title: "Cleaner exported Nextflow", issue: 40, status: "released" },
@@ -168,13 +179,13 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "Group steps into a subworkflow", issue: 221, status: "released" },
       { title: "Export and import through the FONDA workflow metamodel", issue: 194, status: "released" },
       { title: "Courses for every major feature", issue: 241, status: "released" },
-      { title: "Tested on a local installation before the release", issue: 224 },
+      { title: "Tested on a local installation before the release", issue: 224, status: "released" },
     ],
   },
   {
     version: "1.7",
     name: "Run Insight",
-    status: "planned",
+    status: "in-progress",
     milestone: 9,
     goal: "See how each step reads and writes data, what limited a run, and what would make it faster.",
     why: "Long runs become explainable, and you can try settings before you spend hours.",
@@ -210,7 +221,6 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "Interaction steps: a run waits for your decision", issue: 196 },
       { title: "nf-interact: interactions as a Nextflow plugin", issue: 201 },
       { title: "A course for its features", issue: 253 },
-      { title: "Tested on a local installation before the release", issue: 258 },
     ],
   },
   {
@@ -222,8 +232,6 @@ export const RELEASES: RoadmapRelease[] = [
     why: "The right question at the right moment.",
     features: [
       { title: "Rules for when an interaction is available", issue: 197 },
-      { title: "A course for its features", issue: 254 },
-      { title: "Tested on a local installation before the release", issue: 259 },
     ],
   },
   {
@@ -239,8 +247,6 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "An API for interaction steps in other workflow systems", issue: 199 },
       { title: "Run N-WAVE on shared research infrastructure", issue: 200 },
       { title: "An archived, citable release", issue: 202 },
-      { title: "Courses for its features", issue: 255 },
-      { title: "Tested on a local and a shared installation before the release", issue: 260 },
     ],
   },
 ];
