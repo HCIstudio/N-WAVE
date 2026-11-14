@@ -16,6 +16,7 @@ describe("RunBottlenecks", () => {
     expect(readRunResources("N-WAVE run: x\nN-WAVE limits: 4 CPUs, 4 GB memory, time limit 1440 min\n")).toEqual({
       cpus: 4,
       memory: 4 * 1024 ** 3,
+      cpusPerTask: 4,
     });
     expect(readRunResources("nothing")).toBeNull();
     expect(formatSeconds(19.37)).toBe("19.4 s");

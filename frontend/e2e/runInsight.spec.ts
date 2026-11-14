@@ -177,14 +177,14 @@ test.describe("a recorded run in the demo", () => {
     const whatIf = panel.getByRole("region", { name: "What if" });
     const result = whatIf.getByTestId("what-if-result");
     await expect(result).toContainText("Predicted 3 min 30 s");
-    await whatIf.getByRole("slider", { name: /CPUs/ }).fill("2");
+    await whatIf.getByRole("slider", { name: /computer/ }).fill("2");
     await expect(result).toContainText("% slower than the 3 min 39 s measured");
-    await whatIf.getByRole("slider", { name: /CPUs/ }).fill("16");
+    await whatIf.getByRole("slider", { name: /computer/ }).fill("16");
     await expect(result).toContainText("Less certain");
 
-    // Execution Settings: the run's limits (4 CPUs, 4 GB), predicted from the run on the canvas.
+    // Execution Settings: the workflow's limit per step (4 CPUs), predicted from the run on the canvas.
     await panel.getByRole("button", { name: "Minimize run panel" }).click();
     await page.getByRole("button", { name: "Execution Settings" }).click();
-    await expect(page.getByTestId("settings-prediction")).toContainText("predicts 3 min 30 s (it took 3 min 39 s with 4 CPUs and 4 GB)");
+    await expect(page.getByTestId("settings-prediction")).toContainText("predicts 3 min 30 s (it took 3 min 39 s with at most 4 CPUs per step, on 4 CPUs)");
   });
 });

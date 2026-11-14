@@ -74,8 +74,12 @@ with **What limited this run**:
 Below **What limited this run**, **What if?** changes the run's resources in its model and says
 at once how long the run would take, and which chain of steps would set the time:
 
-- **CPUs** and **Memory**: what the run gets. More CPUs let more tasks run at once; more
-  memory helps where the tasks' memory held them back.
+- **CPUs**: the CPUs the run's tasks share, the computer's or a cluster's. More let more tasks
+  run at once.
+- **Most CPUs per step**: N-WAVE's **Maximum CPU Cores**. It caps what each step may ask for
+  (Nextflow's `process.resourceLimits`); it doesn't limit how many tasks run at once, which is
+  as many as the computer has CPUs. A step whose tasks ask for one CPU doesn't change with it.
+- **Memory**: more helps where the tasks' memory held them back.
 - **Give a step the CPUs first**: that step, and the steps it waits for, get the CPUs before
   the others.
 - **A run profile's resources**: a cluster profile's queue of jobs, each with the profile's CPUs
@@ -95,6 +99,26 @@ the measured runtime. On the demo's recorded runs (4 CPUs, 4 GB):
 | --- | --- | --- |
 | Demo 1 | 19.9 s | 19.4 s (2.5 % less) |
 | Demo 3 | 218.6 s | 209.7 s (4 % less) |
+
+Compared with real runs with other settings, on the same computer (4 CPUs, Docker Desktop with
+WSL 2). The runs with 2 and 4 CPUs in all ran Demo 3's exported workflow with Nextflow's local
+executor limited to that many CPUs, without the I/O monitor:
+
+| Fitted on the run with | Predicted for | Predicted | Measured |
+| --- | --- | --- | --- |
+| 4 CPUs | 4 CPUs (itself) | 173.8 s | 185.7 s (6 % less) |
+| 2 CPUs | 2 CPUs (itself) | 238.1 s | 243.9 s (2 % less) |
+| 4 CPUs | 2 CPUs | 323.4 s | 243.9 s (33 % more) |
+| 2 CPUs | 4 CPUs | 129.5 s | 185.7 s (30 % less) |
+| 4 CPUs, I/O monitor on | 2 CPUs | 377.7 s | 243.9 s (55 % more) |
+| 4 CPUs, I/O monitor on | 4 CPUs, Maximum CPU Cores 2 | 209.7 s | 212.4 s (1 % less) |
+
+So the model fits the run it came from, and it **overrates what CPUs change**: on Demo 3, half
+or twice the CPUs changed the runtime by about a quarter, and the model said by a half.
+Steps' tasks run faster when fewer share the CPUs, and Nextflow starts tasks in its own order;
+the model keeps each task's time from the run it was fitted to. A run with the I/O monitor on is
+slower (its probes see every file the computer opens): fit the model to a run without it to
+predict runs without it.
 
 It knows less than Nextflow does: it doesn't model the time Nextflow takes to notice a finished
 task and submit the next one, the order in which Nextflow starts waiting tasks, or files

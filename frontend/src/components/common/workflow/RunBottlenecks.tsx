@@ -8,6 +8,8 @@ import { buildRunModel, measuredRuntime, type ModelResources, type ModelStep, pr
 import { wikiUrl } from "../../../docs/links";
 import { useRunDefaults } from "../../../settings/useRunDefaults";
 import WhatIf from "./WhatIf";
+import { useServerLimits } from "../../../settings/useServerLimits";
+import { memoryBytes } from "../../../utils/memory";
 
 export const BOTTLEMOD_PAPER = "https://doi.org/10.1145/3676151.3719382";
 
@@ -20,7 +22,11 @@ export const LIMIT_COLOURS: Record<string, { colour: string; label: string }> = 
 };
 const colourOf = (key: string) => (LIMIT_COLOURS[key.startsWith("input:") ? "input" : key] ?? LIMIT_COLOURS.input)?.colour;
 
-/** The run's limits from its log's first lines ("N-WAVE limits: 4 CPUs, 4 GB memory"). */
+/**
+ * The run's limits from its log's first lines ("N-WAVE limits: 4 CPUs, 4 GB
+ * memory"): the most one step's task may ask for (Nextflow's
+ * process.resourceLimits), the CPUs also as `cpus` until the computer's are known.
+ */
 /** The prediction for the limits in Execution Settings, from the run shown on the canvas. */
 export const SettingsPrediction: React.FC<{ state: RunModelState | null | "unavailable"; cpus: number; memory: number }> = ({
   state,
@@ -28,18 +34,20 @@ export const SettingsPrediction: React.FC<{ state: RunModelState | null | "unava
   memory,
 }) => {
   if (!state || state === "unavailable" || !(cpus > 0) || !(memory > 0)) return null;
+  // The workflow's Maximum CPU Cores caps each step; its tasks share the computer's CPUs.
   let predicted: number;
   try {
-    predicted = predictRun(state.model, { cpus, memory }).total;
+    predicted = predictRun(state.model, { ...state.resources, cpusPerTask: cpus }).total;
   } catch {
     return null;
   }
-  const far = Math.max(cpus / state.resources.cpus, state.resources.cpus / cpus, memory / state.resources.memory, state.resources.memory / memory) > 2;
+  const measuredCap = state.resources.cpusPerTask ?? state.resources.cpus;
+  const far = Math.max(cpus / measuredCap, measuredCap / cpus) > 2;
+  void memory;
   return (
     <p className="mt-4 rounded-md border border-panel-border p-3 text-sm text-text" data-testid="settings-prediction">
       With these limits, the model of the run shown on the canvas predicts <strong>{formatSeconds(predicted)}</strong>{" "}
-      (it took {formatSeconds(state.measured)} with {state.resources.cpus} CPUs and{" "}
-      {Math.round(state.resources.memory / 1024 ** 3)} GB).{" "}
+      (it took {formatSeconds(state.measured)} with at most {measuredCap} CPUs per step, on {state.resources.cpus} CPUs).{" "}
       {far ? "Less certain: these limits are far from that run's. " : ""}An estimate; BottleMod, Lößer et al.
     </p>
   );
@@ -49,7 +57,7 @@ export const readRunResources = (log: string): ModelResources | null => {
   const match = log.match(/N-WAVE limits: (\d+) CPUs?, ([\d.]+) ([KMGT]B) memory/);
   if (!match) return null;
   const unit = { KB: 1024, MB: 1024 ** 2, GB: 1024 ** 3, TB: 1024 ** 4 }[match[3] as "KB"] ?? 1;
-  return { cpus: Number(match[1]), memory: Number(match[2]) * unit };
+  return { cpus: Number(match[1]), memory: Number(match[2]) * unit, cpusPerTask: Number(match[1]) };
 };
 
 export interface RunModelState {
@@ -61,6 +69,12 @@ export interface RunModelState {
 /** The run's BottleMod model, from its trace and log, on the canvas it ran. */
 export const useRunModel = (runId: string | null, nodes: Node[], edges: Edge[]): RunModelState | null | "unavailable" => {
   const [state, setState] = useState<RunModelState | null | "unavailable">(null);
+  // The run's tasks share the server's CPUs (Nextflow runs as many at once as
+  // there are); the run's limit caps each step. The demo has no server: its
+  // recorded runs had the limit at the computer's CPUs.
+  const server = useServerLimits();
+  const serverCpus = server?.maxCpus;
+  const serverMemory = server ? memoryBytes(server.maxMemory) : Number.NaN;
   // biome-ignore lint/correctness/useExhaustiveDependencies: the model is of the run; the canvas is read once per run.
   useEffect(() => {
     setState(null);
@@ -78,7 +92,12 @@ export const useRunModel = (runId: string | null, nodes: Node[], edges: Edge[]):
             return typeof label === "string" && label ? label : id;
           },
         });
-        const resources = readRunResources(log);
+        const limits = readRunResources(log);
+        const resources = limits && {
+          ...limits,
+          cpus: Math.max(limits.cpus, serverCpus ?? 0),
+          memory: Math.max(limits.memory, Number.isFinite(serverMemory) ? serverMemory : 0),
+        };
         if (model.length === 0 || !resources) {
           setState("unavailable");
           return;
@@ -90,7 +109,7 @@ export const useRunModel = (runId: string | null, nodes: Node[], edges: Edge[]):
     return () => {
       cancelled = true;
     };
-  }, [runId]);
+  }, [runId, serverCpus, serverMemory]);
   return state;
 };
 
@@ -109,7 +128,9 @@ export const PredictionLine: React.FC<{ insight: RunInsight; resources: ModelRes
   <p className="text-sm" data-testid="bottleneck-prediction">
     Predicted <strong>{formatSeconds(insight.predicted)}</strong>, measured{" "}
     <strong>{formatSeconds(insight.measured)}</strong> ({percent(insight.error)}). An estimate fitted to this run,
-    with its {resources.cpus} CPUs and {Math.round(resources.memory / 1024 ** 3)} GB of memory.
+    with its {resources.cpus} CPUs
+    {resources.cpusPerTask && resources.cpusPerTask < resources.cpus ? ` (at most ${resources.cpusPerTask} per step)` : ""} and{" "}
+    {Math.round(resources.memory / 1024 ** 3)} GB of memory.
   </p>
 );
 

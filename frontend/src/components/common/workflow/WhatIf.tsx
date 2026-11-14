@@ -20,7 +20,10 @@ export const profileResources = (profile: RunProfile): { cpus: number; memoryGb:
 };
 
 export interface WhatIfSettings {
+  /** The CPUs the run's tasks share. */
   cpus: number;
+  /** The most CPUs one step's task may ask for (Maximum CPU Cores). */
+  cpusPerTask?: number;
   /** GB. */
   memoryGb: number;
   /** A step that gets the CPUs first (with the steps it waits for). */
@@ -48,7 +51,7 @@ export interface WhatIfResult {
 
 /** The prediction for other settings: milliseconds, so it follows the sliders. */
 export const predictWhatIf = (model: ModelStep[], measured: ModelResources, settings: WhatIfSettings): WhatIfResult => {
-  const resources = { cpus: settings.cpus, memory: settings.memoryGb * 1024 ** 3 };
+  const resources = { cpus: settings.cpus, memory: settings.memoryGb * 1024 ** 3, cpusPerTask: settings.cpusPerTask };
   const lessCertain = distanceFromMeasured(settings, measured) > CERTAIN_WITHIN;
   try {
     const prediction = predictRun(model, resources, { priority: settings.priority ?? undefined });
@@ -80,6 +83,7 @@ const WhatIf: React.FC<{
   const id = useId();
   const [settings, setSettings] = useState<WhatIfSettings>({
     cpus: resources.cpus,
+    cpusPerTask: resources.cpusPerTask,
     memoryGb: Math.round(resources.memory / 1024 ** 3),
     priority: null,
   });
@@ -93,7 +97,7 @@ const WhatIf: React.FC<{
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs text-gray-800" htmlFor={`${id}-cpus`}>
-          CPUs: <strong>{settings.cpus}</strong>
+          CPUs (the computer&apos;s, or a cluster&apos;s): <strong>{settings.cpus}</strong>
           <input
             id={`${id}-cpus`}
             type="range"
@@ -101,6 +105,18 @@ const WhatIf: React.FC<{
             max={Math.max(32, resources.cpus * 4)}
             value={settings.cpus}
             onChange={(event) => setSettings({ ...settings, cpus: Number(event.target.value) })}
+            className="block w-full accent-nextflow-green"
+          />
+        </label>
+        <label className="block text-xs text-gray-800" htmlFor={`${id}-per-step`}>
+          Most CPUs per step (Maximum CPU Cores): <strong>{settings.cpusPerTask ?? settings.cpus}</strong>
+          <input
+            id={`${id}-per-step`}
+            type="range"
+            min={1}
+            max={settings.cpus}
+            value={Math.min(settings.cpusPerTask ?? settings.cpus, settings.cpus)}
+            onChange={(event) => setSettings({ ...settings, cpusPerTask: Number(event.target.value) })}
             className="block w-full accent-nextflow-green"
           />
         </label>
@@ -138,7 +154,7 @@ const WhatIf: React.FC<{
               defaultValue=""
               onChange={(event) => {
                 const profile = profiles.find((candidate) => candidate.name === event.target.value);
-                if (profile) setSettings({ ...settings, cpus: profile.cpus, memoryGb: profile.memoryGb });
+                if (profile) setSettings({ ...settings, cpus: profile.cpus, cpusPerTask: undefined, memoryGb: profile.memoryGb });
               }}
               className="mt-1 block w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs"
             >
@@ -176,6 +192,9 @@ const WhatIf: React.FC<{
           {result.lessCertain
             ? `Less certain: these settings are far from the ${resources.cpus} CPUs and ${Math.round(resources.memory / 1024 ** 3)} GB the model was fitted to.`
             : "An estimate from this run's measurements."}{" "}
+          {settings.cpus !== resources.cpus
+            ? "The model overrates what CPUs change: on Demo 3, half or twice the CPUs changed the runtime by about a quarter, and the model said by a half. "
+            : ""}
           BottleMod, Lößer et al. (
           <a href={BOTTLEMOD_PAPER} target="_blank" rel="noreferrer" className="text-nextflow-green underline">
             ICPE '25

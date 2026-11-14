@@ -47,10 +47,20 @@ export interface ModelStep {
 }
 
 export interface ModelResources {
+  /** The CPUs the run's tasks share: how many run at once (the computer's, or a cluster's). */
   cpus: number;
   /** Bytes. */
   memory: number;
+  /**
+   * The most CPUs one step's task may ask for (N-WAVE's Maximum CPU Cores:
+   * Nextflow's process.resourceLimits); unset, what the tasks asked for.
+   */
+  cpusPerTask?: number;
 }
+
+/** The CPUs a step's task reserves: what it asked for, capped by the run's limit. */
+export const reservedCpus = (step: ModelStep, resources: ModelResources): number =>
+  Math.max(1, Math.min(step.cpusPerTask, resources.cpusPerTask ?? Number.POSITIVE_INFINITY));
 
 /** What limited a step in an interval: CPU time, the CPUs or memory its tasks reserve, or an input. */
 export type Limit = { kind: "cpu" } | { kind: "slots" } | { kind: "memory" } | { kind: "input"; from: string };
@@ -104,7 +114,7 @@ const EPSILON_SECONDS = 1e-3;
 
 /** How many of a step's tasks can run at once with these resources. */
 export const slotsFor = (step: ModelStep, resources: ModelResources): number => {
-  const byCpu = Math.floor(resources.cpus / Math.max(step.cpusPerTask, 1));
+  const byCpu = Math.floor(resources.cpus / reservedCpus(step, resources));
   const byMemory = step.memoryPerTask ? Math.floor(resources.memory / step.memoryPerTask) : Number.POSITIVE_INFINITY;
   return Math.max(1, Math.min(step.tasks, byCpu, byMemory));
 };
@@ -135,7 +145,7 @@ export const predictRun = (
     const cpuSeconds = Math.max(step.cpuSeconds, EPSILON_SECONDS);
     const taskSeconds = Math.max(step.taskSeconds, EPSILON_SECONDS);
     const slots = slotsFor(step, resources);
-    const cpusPerTask = Math.max(step.cpusPerTask, 1);
+    const cpusPerTask = reservedCpus(step, resources);
     // Requirements per percent of progress.
     const needs = [
       new PPoly([0, 100], [[cpuSeconds / 100]]),
