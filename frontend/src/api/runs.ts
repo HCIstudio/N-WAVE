@@ -248,3 +248,52 @@ export const getRunMonitor = async (runId: string): Promise<RunMonitorSummary> =
   );
   return response.data;
 };
+
+/** What one task did with one file, as the I/O monitor recorded it. */
+export interface TaskFile {
+  /** Relative to the run's folder. */
+  path: string;
+  inode: number;
+  bytesRead: number;
+  bytesWritten: number;
+  reads: number;
+  writes: number;
+  /** The highest offset reached: at least the file's size. */
+  size: number;
+  /** Seconds after the task's first recorded access. */
+  firstAccess: number;
+  lastAccess: number;
+  firstRead: number | null;
+  lastRead: number | null;
+  firstWrite: number | null;
+  lastWrite: number | null;
+  deleted: boolean;
+}
+
+/** A task with the file accesses linked to it. */
+export interface LinkedTask {
+  hash: string;
+  name: string;
+  process: string;
+  cgroup: string;
+  pids: number;
+  /** Its first and last recorded access (epoch seconds). */
+  start: number;
+  end: number;
+  files: TaskFile[];
+}
+
+/** The I/O monitor's records of a run, linked to its tasks. */
+export type RunAccesses =
+  | { status: "off" | "running" | "unavailable" | "failed"; reason?: string }
+  | {
+      status: "recorded";
+      tasks: LinkedTask[];
+      unlinked: { outsideTasks: number; unknownProcess: number; unknownFile: number; tasksWithoutStart: string[] };
+      total: number;
+    };
+
+export const getRunAccesses = async (runId: string): Promise<RunAccesses> => {
+  const response = await api.get<RunAccesses>(`/execute/runs/${encodeURIComponent(runId)}/accesses`);
+  return response.data;
+};

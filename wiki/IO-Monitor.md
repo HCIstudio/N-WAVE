@@ -61,6 +61,39 @@ The monitor can't be limited to the run's processes in the kernel on Docker Desk
 containers see other process ids than the kernel does, so the monitor's filter by process
 can't find them.
 
+## Which step made an access
+
+The monitor records processes and files, not steps. N-WAVE links each access to the task, and so
+to the node on the canvas, with the method of Witzke et al. (section 5 of their paper):
+
+1. Each task's work directory is in Nextflow's log, which N-WAVE already reads to show a run's
+   tasks.
+2. The task's first process is the one that opens the task's `.command.sh` for reading.
+3. Docker gives each task's container its own cgroup, so all processes of the task share that
+   process's cgroup. The monitor's process log (`cgroups.csv`) records the cgroup of every
+   process that starts a new one.
+4. Every access by a process in that cgroup belongs to the task; the task belongs to the node
+   that runs its process.
+
+N-WAVE adds two things, because on a busy computer the monitor loses or mislabels some opens:
+
+- Besides `.command.sh`, it counts the other files opened in the task's directory (such as
+  `.command.out`, `.command.trace`, `.exitcode` and the outputs), but not those Nextflow writes
+  itself (`.command.sh` and `.command.run`). The cgroup that opens the most there is the
+  task's; `.command.sh` read by a process counts ten times. A cgroup that would win several
+  tasks is Nextflow's own container and is left out.
+- A process's cgroup comes from the processes it starts itself where it starts any: a
+  container's first process is started outside the container's cgroup and moved into it.
+- A read or write belongs to the file its handle was last opened for: the monitor's file and
+  handle ids repeat on a busy computer.
+
+Accesses that can't be linked are counted, not dropped. The **Performance** tab says how many,
+and why: by processes outside the steps' containers (Nextflow itself, Docker), by processes that
+started before the monitor, or to files whose opening the monitor didn't record.
+
+On Demo 1 and Demo 3 recorded on Docker Desktop (WSL 2), every task was linked to a cgroup of its
+own (5 of 5 and 42 of 42).
+
 ## Switching it on
 
 1. Build the monitor's image once, in the N-WAVE folder:

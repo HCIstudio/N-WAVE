@@ -11,6 +11,7 @@ vi.mock("../../../api/runs", () => ({
   runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
   getRunTrace: vi.fn(async () => []),
   getRunMonitor: vi.fn(async () => ({ status: "off" })),
+  getRunAccesses: vi.fn(async () => ({ status: "off" })),
   listRunTasks: vi.fn(async () => []),
 }));
 

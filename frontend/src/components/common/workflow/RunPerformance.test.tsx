@@ -6,10 +6,12 @@ const listRunReports = vi.fn();
 const getRunTrace = vi.fn();
 const listRunTasks = vi.fn();
 const getRunMonitor = vi.fn();
+const getRunAccesses = vi.fn();
 vi.mock("../../../api/runs", () => ({
   listRunReports: (id: string) => listRunReports(id),
   getRunTrace: (id: string) => getRunTrace(id),
   getRunMonitor: (id: string) => getRunMonitor(id),
+  getRunAccesses: (id: string) => getRunAccesses(id),
   listRunTasks: (id: string) => listRunTasks(id),
   runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
 }));
@@ -109,6 +111,12 @@ describe("RunPerformance", () => {
 
   it("says what the I/O monitor recorded, and warns when it lost events", async () => {
     getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 5120, processes: 87, checkedFiles: 12, incompleteFiles: 0, kernel: "6.18.58" });
+    getRunAccesses.mockResolvedValue({
+      status: "recorded",
+      tasks: [],
+      unlinked: { outsideTasks: 300, unknownProcess: 20, unknownFile: 0, tasksWithoutStart: [] },
+      total: 5120,
+    });
     const { unmount } = render(<RunPerformance runId="m1" />);
     const note = await screen.findByTestId("run-monitor-note");
     expect(note.textContent).toContain("The I/O monitor recorded 5120 file accesses and 87 process starts (kernel 6.18.58).");
@@ -118,6 +126,9 @@ describe("RunPerformance", () => {
     );
     expect(within(note).getByRole("link", { name: "Report how it works on yours" })).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
+    expect((await screen.findByTestId("run-monitor-linked")).textContent).toBe(
+      "4800 of 5120 recorded accesses are linked to steps; not linked: 300 by processes outside the steps' containers (Nextflow, Docker), 20 by processes started before the monitor.",
+    );
     unmount();
 
     getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 10, processes: 2, checkedFiles: 12, incompleteFiles: 3, missingBytes: 2048 });
