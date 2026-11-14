@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -28,7 +28,10 @@ describe("IoMonitorSettings", () => {
     expect(screen.getByRole("link", { name: "arXiv:2408.00411" }).getAttribute("href")).toBe(
       "https://arxiv.org/abs/2408.00411",
     );
-    expect((await screen.findByTestId("io-monitor-status")).textContent).toContain("It can run here: Docker on Docker Desktop, kernel 6.18.58");
+    // The line says "Checking…" until the answer is there.
+    await waitFor(() =>
+      expect(screen.getByTestId("io-monitor-status").textContent).toContain("It can run here: Docker on Docker Desktop, kernel 6.18.58"),
+    );
     await userEvent.click(box);
     expect(saveFeatures).toHaveBeenCalledWith(expect.objectContaining({ ioMonitor: true }));
   });
@@ -36,8 +39,10 @@ describe("IoMonitorSettings", () => {
   it("says why it can't run here", async () => {
     getIoMonitorStatus.mockResolvedValue({ available: false, reason: "The monitor's image nwave-iomonitor:dev isn't on this computer.", image: "x", imagePresent: false });
     render(<IoMonitorSettings />);
-    expect((await screen.findByTestId("io-monitor-status")).textContent).toBe(
-      "It can't run here: The monitor's image nwave-iomonitor:dev isn't on this computer.",
+    await waitFor(() =>
+      expect(screen.getByTestId("io-monitor-status").textContent).toBe(
+        "It can't run here: The monitor's image nwave-iomonitor:dev isn't on this computer.",
+      ),
     );
   });
 });
