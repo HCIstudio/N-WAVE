@@ -94,6 +94,32 @@ describe("RunHistory", () => {
     ).toContain("runs “fastqc”, which isn't installed");
   });
 
+  it("shows a finished run on the canvas, and says when it is shown", async () => {
+    const onShowRun = vi.fn();
+    act(() => root.render(<RunHistory workflowId="wf1" onShowRun={onShowRun} shownRunId={null} />));
+    await flush();
+    const buttons = container.querySelectorAll('[aria-label="Earlier runs"] button');
+    act(() => (buttons[1] as HTMLButtonElement).click());
+    await flush();
+    const show = [...container.querySelectorAll("button")].find((button) => button.textContent === "Show on canvas");
+    expect(show).toBeTruthy();
+    act(() => show?.click());
+    expect(onShowRun).toHaveBeenCalledWith("bee_1");
+
+    act(() => root.render(<RunHistory workflowId="wf1" onShowRun={onShowRun} shownRunId="bee_1" />));
+    await flush();
+    const shown = [...container.querySelectorAll("button")].find((button) => button.textContent === "Shown on the canvas");
+    expect(shown?.hasAttribute("disabled")).toBe(true);
+  });
+
+  it("has no Show on canvas without a canvas (the home page's list)", async () => {
+    act(() => root.render(<RunHistory workflowId="wf1" />));
+    await flush();
+    act(() => (container.querySelectorAll('[aria-label="Earlier runs"] button')[1] as HTMLButtonElement).click());
+    await flush();
+    expect(container.textContent).not.toContain("Show on canvas");
+  });
+
   it("shows the line an explanation went by in the run's log", async () => {
     Element.prototype.scrollIntoView = vi.fn();
     act(() => root.render(<RunHistory workflowId="wf1" />));
@@ -202,7 +228,7 @@ describe("RunHistory", () => {
       expect(container.querySelector('[aria-label="Log of run bee_2"]')?.textContent).toContain("log of bee_2");
       expect(container.querySelector('[aria-label="Why the run failed"]')).toBeNull();
       expect(container.textContent).not.toContain("Execution report");
-      expect(container.textContent).not.toContain("Time and memory per step");
+      expect(container.textContent).not.toContain("Time, memory and bytes per step");
     } finally {
       resetFeatures();
     }
@@ -214,6 +240,6 @@ describe("RunHistory", () => {
     act(() => (container.querySelector('[aria-label="Earlier runs"] button') as HTMLButtonElement).click());
     await flush();
     expect(container.textContent).toContain("Execution report");
-    expect(container.textContent).toContain("Time and memory per step");
+    expect(container.textContent).toContain("Time, memory and bytes per step");
   });
 });

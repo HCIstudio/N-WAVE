@@ -30,6 +30,21 @@ export interface ProcessTrace {
   memory: number | null;
   /** The highest peak memory / requested memory of its tasks (0–1+). */
   memoryShare: number | null;
+  /** Bytes its tasks read and wrote together; null when the trace has none. */
+  io: TraceIo;
+}
+
+/**
+ * What tasks read and wrote (bytes). `read`/`written` count every read and
+ * write (Nextflow's `rchar`/`wchar`), also those the page cache served or
+ * kept; `fromDisk`/`toDisk` only what reached the disk (`read_bytes`,
+ * `write_bytes`). Null where the trace doesn't record them.
+ */
+export interface TraceIo {
+  read: number | null;
+  written: number | null;
+  fromDisk: number | null;
+  toDisk: number | null;
 }
 
 export interface TraceSummary {
@@ -46,7 +61,29 @@ export interface TraceSummary {
   end: number | null;
   /** Slowest first (by running time of its tasks together). */
   processes: ProcessTrace[];
+  /** What the run's tasks read and wrote together. */
+  io: TraceIo;
 }
+
+const emptyIo = (): TraceIo => ({ read: null, written: null, fromDisk: null, toDisk: null });
+
+const addTo = (sum: number | null, value: number | null | undefined): number | null =>
+  value === null || value === undefined ? sum : (sum ?? 0) + value;
+
+/** Adds a task's bytes to `io` (in place). */
+const addIo = (io: TraceIo, task: TraceTask): void => {
+  io.read = addTo(io.read, task.rchar);
+  io.written = addTo(io.written, task.wchar);
+  io.fromDisk = addTo(io.fromDisk, task.readBytes);
+  io.toDisk = addTo(io.toDisk, task.writeBytes);
+};
+
+/** The bytes a set of tasks read and wrote; cached tasks ran in another run. */
+export const sumTraceIo = (tasks: TraceTask[]): TraceIo => {
+  const io = emptyIo();
+  for (const task of tasks) if (task.status !== "CACHED") addIo(io, task);
+  return io;
+};
 
 const lastPart = (process: string) => process.split(":").pop() ?? process;
 
@@ -83,6 +120,7 @@ export const summarizeTrace = (
         peakRss: null,
         memory: null,
         memoryShare: null,
+        io: emptyIo(),
       } satisfies ProcessTrace);
     entry.tasks += 1;
     const cached = task.status === "CACHED";
@@ -100,6 +138,7 @@ export const summarizeTrace = (
       entry.start = minOf(entry.start, task.start);
       entry.end = maxOf(entry.end, task.complete);
       cpuMs += realtime * ((task.cpu ?? 0) / 100);
+      addIo(entry.io, task);
     }
     if (task.peakRss !== null && (entry.peakRss === null || task.peakRss > entry.peakRss)) {
       entry.peakRss = task.peakRss;
@@ -136,5 +175,16 @@ export const summarizeTrace = (
     start,
     end,
     processes,
+    io: sumTraceIo(tasks),
   };
+};
+
+/** "read 2.3 GB, wrote 1.1 GB", or null when the trace has no bytes. */
+export const describeIo = (io: TraceIo, format: (bytes: number) => string): string | null => {
+  if (io.read === null && io.written === null) return null;
+  const parts = [
+    io.read !== null ? `read ${format(io.read)}` : null,
+    io.written !== null ? `wrote ${format(io.written)}` : null,
+  ].filter(Boolean);
+  return parts.join(", ");
 };

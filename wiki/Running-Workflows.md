@@ -1,5 +1,7 @@
 Runs need an [installation](https://github.com/HCIstudio/N-WAVE/wiki/Installation); the
-browser demo can't run workflows. Click **Run Workflow** (the green ▶ in the bottom bar) or
+browser demo can't run workflows. It has one recorded run of Demo 1 and of Demo 3, made on an
+installation: open the example, then **History** in the run panel. The demo keeps their numbers
+and log, not their files. Click **Run Workflow** (the green ▶ in the bottom bar) or
 press Ctrl+Enter. If the [workflow check](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows#the-workflow-check)
 finds a problem, Run is disabled and its tooltip says why.
 
@@ -23,20 +25,45 @@ how the run ended, instead of starting it again.
   **Timeline** open Nextflow's own reports in a new tab. Below them: how long the run took, its
   CPU hours, and how many tasks were cached, retried or failed. A table lists the steps, slowest
   first, with their total and longest task time and their peak memory next to the memory they
-  had, plus a bar for when each ran. A step that used 90% or more of its memory gets a hint: it
-  is the first to fail with exit status 137 (out of memory).
+  had, how much it read and wrote, plus a bar for when each ran. A step that used 90% or more of
+  its memory gets a hint: it is the first to fail with exit status 137 (out of memory).
 - **Log**: the full output as it arrives, with a **Copy** button.
 - **History**: the workflow's earlier runs, each with its outcome, log, results, its report
-  buttons and the same time and memory per step.
+  buttons and the same time, memory and bytes per step. **Show on canvas** puts a finished run
+  on the canvas: the nodes show what they did in it, their **Results** tab its numbers, and the
+  **Performance** tab opens for it.
 
 On the canvas, each node shows **Running**, **Results ready**, **Failed** or **Reused from
 cache**. Double-click a node and open **Results** to see the files its tasks produced, with a
-preview of text files. **Cancel run** stops Nextflow and its tasks.
+preview of text files. Above them, one line sums up the step from the trace, for example
+"4 tasks, 3 min, peak 6.1 GB, read 2.3 GB, wrote 1.1 GB". **Cancel run** stops Nextflow and its tasks.
 
 While a run goes, the workflow is locked: nodes can't be changed until it ends.
 
 When a run fails, N-WAVE explains common reasons in plain language and links to
 [Troubleshooting](https://github.com/HCIstudio/N-WAVE/wiki/Troubleshooting).
+
+## Bytes read and written
+
+Every run's trace records how many bytes each task read and wrote. Nextflow measures four
+numbers per task; the **Performance** tab shows them per step, and the step's **Results** tab
+in one line:
+
+| In N-WAVE | Nextflow's field | What it counts |
+| --- | --- | --- |
+| **Read** | `rchar` | Every byte the task's processes read: from files, pipes and the page cache. |
+| **Wrote** | `wchar` | Every byte they wrote, also what stays in the page cache. |
+| *from disk* (below **Read**) | `read_bytes` | Only what had to be read from the disk. |
+| *to disk* (below **Wrote**) | `write_bytes` | Only what was sent to the disk. |
+
+So **Read** is usually larger than *from disk*: a file read twice, or read soon after another
+step wrote it, comes from memory. *from disk* is often 0 B on a computer with enough memory,
+and on Docker Desktop (Windows and macOS), whose virtual machine caches the files. Cached tasks
+ran in an earlier run and aren't counted. Runs from before N-WAVE recorded these numbers open as
+before, without the two columns.
+
+The numbers are totals per task: they don't say which files a step read, or when. They work on
+every installation and need no privileges.
 
 ## Execution settings
 

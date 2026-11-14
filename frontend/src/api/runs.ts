@@ -192,6 +192,15 @@ export interface TraceTask {
   /** What the task asked for. */
   cpus: number | null;
   memory: number | null;
+  /**
+   * Bytes read and written: `rchar`/`wchar` count every read and write (also
+   * from and to the page cache), `readBytes`/`writeBytes` only what reached
+   * the disk. Null (or missing) in traces from before v1.7.
+   */
+  rchar?: number | null;
+  wchar?: number | null;
+  readBytes?: number | null;
+  writeBytes?: number | null;
 }
 
 /** The run's trace: each task's times and resource use. */
