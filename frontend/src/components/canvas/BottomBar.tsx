@@ -257,6 +257,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
                     }
                     setShowExecutionSettings(false);
                   }}
+                  aria-label="Close Execution Settings"
                   className="text-text-light hover:text-text transition-colors p-1 hover:bg-accent rounded"
                 >
                   ✕

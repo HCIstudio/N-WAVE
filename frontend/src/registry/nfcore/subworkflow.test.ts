@@ -92,7 +92,6 @@ describe("generating nf-core subworkflow calls", () => {
       outputDisplayCounter: 1,
       outputNamingPattern: "",
       workflowName: "wf",
-      timestamp: 0,
       date: "",
       resolveChannelNameForEdge: (edge) => `${edge.source}_out`,
       buildMixedChannelExpression: (names) =>
@@ -174,7 +173,6 @@ describe("generating nf-core subworkflow calls", () => {
       outputDisplayCounter: 1,
       outputNamingPattern: "",
       workflowName: "wf",
-      timestamp: 0,
       date: "",
       resolveChannelNameForEdge: () => "ch_reads",
       buildMixedChannelExpression: (names) => names[0],

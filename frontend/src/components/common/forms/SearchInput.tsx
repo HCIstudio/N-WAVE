@@ -1,4 +1,5 @@
 import type React from "react";
+import { useEffect, useRef } from "react";
 
 interface SearchInputProps {
   value: string;
@@ -7,6 +8,8 @@ interface SearchInputProps {
   placeholder: string;
   containerClassName?: string;
   inputClassName?: string;
+  /** Focuses the input once, when it mounts (e.g. a menu that just opened). */
+  focusOnMount?: boolean;
 }
 
 const SearchInput: React.FC<SearchInputProps> = ({
@@ -16,7 +19,13 @@ const SearchInput: React.FC<SearchInputProps> = ({
   placeholder,
   containerClassName = "",
   inputClassName = "",
+  focusOnMount = false,
 }) => {
+  const inputRef = useRef<HTMLInputElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: focus once, on mount only.
+  useEffect(() => {
+    if (focusOnMount) inputRef.current?.focus();
+  }, []);
   // Default input classes, allowing overrides and additions via inputClassName
   const defaultInputClasses =
     "w-full pl-10 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 transition-colors border-accent bg-background text-text shadow-sm focus:border-nextflow-green focus:ring-nextflow-green";
@@ -56,6 +65,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
         </div>
       )}
       <input
+        ref={inputRef}
         type="text"
         placeholder={placeholder}
         value={value}

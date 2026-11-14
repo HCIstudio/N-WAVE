@@ -185,7 +185,6 @@ describe("Display Output template", () => {
     outputDisplayCounter: 3,
     outputNamingPattern: "{workflow_name}_{date}_{process_name}",
     workflowName: "Flow",
-    timestamp: 123,
     date: "2026-10-18",
   };
 
@@ -229,7 +228,9 @@ describe("Display Output template", () => {
       outputNamingPattern: "",
       selectedFileName: "a.txt",
     });
-    expect(code).toContain("Flow_123_save_out_03_Result");
+    // {timestamp} is a Nextflow expression, resolved per run: exporting the
+    // same workflow twice gives the same file either way.
+    expect(code).toContain("Flow_${workflow.sessionId}_save_out_03_Result");
   });
 });
 

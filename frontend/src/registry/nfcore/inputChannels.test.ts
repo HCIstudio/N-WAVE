@@ -53,7 +53,6 @@ const generate = (
     outputDisplayCounter: 1,
     outputNamingPattern: "",
     workflowName: "wf",
-    timestamp: 0,
     date: "",
     resolveChannelNameForEdge: (edge) => `${edge.targetHandle}_up`,
     buildMixedChannelExpression: (names) => `${names.join(".mix(")})`,

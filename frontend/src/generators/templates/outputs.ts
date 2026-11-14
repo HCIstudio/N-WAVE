@@ -16,7 +16,6 @@ export function generateOutputDisplayProcess(
     outputDisplayCounter: number;
     outputNamingPattern: string;
     workflowName: string;
-    timestamp: number;
     date: string;
     processName: string;
   }
@@ -32,20 +31,24 @@ export function generateOutputDisplayProcess(
     outputDisplayCounter,
     outputNamingPattern,
     workflowName,
-    timestamp,
     date,
   } = config;
 
-  // Replace variables in the pattern
+  // Replace variables in the pattern. {timestamp} becomes a Nextflow
+  // expression resolved per run, not a value baked in at export time:
+  // otherwise exporting the same workflow twice (or running the same
+  // exported project more than once) wouldn't give the same files.
   const safePattern =
     outputNamingPattern || "{workflow_name}_{timestamp}_{process_name}";
+  const TIMESTAMP_TOKEN = "NWAVETIMESTAMPTOKEN";
   const basePattern = safePattern
     .replace(/\{workflow_name\}/g, workflowName)
-    .replace(/\{timestamp\}/g, String(timestamp))
+    .replace(/\{timestamp\}/g, TIMESTAMP_TOKEN)
     .replace(/\{date\}/g, date)
     .replace(/\{process_name\}/g, processName)
     // A file-name prefix that is safe in GStrings, shell and `path "..."`.
-    .replace(/[^A-Za-z0-9._-]/g, "_");
+    .replace(/[^A-Za-z0-9._-]/g, "_")
+    .replace(TIMESTAMP_TOKEN, "${workflow.sessionId}");
 
   let outputPattern: string;
   let processScript: string;

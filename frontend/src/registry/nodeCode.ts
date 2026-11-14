@@ -99,7 +99,6 @@ export const getNodeCode = (node: Node<NodeData>): NodeCode | null => {
     outputDisplayCounter: 1,
     outputNamingPattern: "{workflow_name}_{timestamp}",
     workflowName: "workflow",
-    timestamp: 0,
     date: "",
     resolveChannelNameForEdge: (edge) =>
       placeholderChannelName(edge.targetHandle ?? "in"),

@@ -91,6 +91,7 @@ const ProcessDropdown: React.FC<ProcessDropdownProps> = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder="Search nodes..."
+          focusOnMount
         />
         <button
           type="button"

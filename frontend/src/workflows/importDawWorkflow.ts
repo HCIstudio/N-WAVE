@@ -74,13 +74,19 @@ export const importDawWorkflow = async ({
   const canvas = fromDawModel(model, nfCoreCatalog);
   registerDynamicNodeDefinitions([...canvas.definitions, ...(nfCoreCatalog ? nfCoreDefinitions(canvas.nodes, nfCoreCatalog) : [])]);
   if (canvas.nodes.length === 0) warnings.push("The model has no tasks or storages to show.");
+  // The model's settings over the defaults, so a setting it doesn't have is
+  // still set. Keeps the model's own key order: exporting as a DAW model
+  // again then gives back the same file, not DEFAULT_EXECUTION_SETTINGS's order.
+  const executionSettings: Record<string, unknown> = { ...(canvas.executionSettings ?? {}) };
+  for (const [key, value] of Object.entries(DEFAULT_EXECUTION_SETTINGS)) {
+    if (!(key in executionSettings)) executionSettings[key] = value;
+  }
   return {
     name: name?.trim() || canvas.name || "Imported DAW model",
     description: description?.trim() || canvas.description || "Imported from a DAW model.",
     nodes: canvas.nodes,
     edges: canvas.edges,
-    // The model's settings over the defaults, so a setting it doesn't have is still set.
-    executionSettings: { ...DEFAULT_EXECUTION_SETTINGS, ...(canvas.executionSettings ?? {}) } as ExecutionSettings,
+    executionSettings: executionSettings as unknown as ExecutionSettings,
     originType: "imported",
     sourceFormat: "visual",
     sourceKey: sourceKey?.trim() || null,

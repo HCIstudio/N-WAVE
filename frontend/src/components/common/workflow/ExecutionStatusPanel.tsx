@@ -184,7 +184,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   };
   // Opened before any run in this session: only the history has content.
   const hasRun = Boolean(status.startTime) || status.isRunning;
-  const isCancelled = status.currentStage === "Workflow cancelled";
+  const isCancelled = /cancelled/i.test(status.currentStage ?? "");
   const isFailed =
     !status.isRunning &&
     !isCancelled &&
