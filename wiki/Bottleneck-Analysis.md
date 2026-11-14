@@ -69,6 +69,23 @@ with **What limited this run**:
   each step waited for. Making a step outside this chain faster doesn't make the run
   faster. **Show the chain on the canvas** outlines its nodes.
 
+## What if?
+
+Below **What limited this run**, **What if?** changes the run's resources in its model and says
+at once how long the run would take, and which chain of steps would set the time:
+
+- **CPUs** and **Memory**: what the run gets. More CPUs let more tasks run at once; more
+  memory helps where the tasks' memory held them back.
+- **Give a step the CPUs first**: that step, and the steps it waits for, get the CPUs before
+  the others.
+- **A run profile's resources**: a cluster profile's queue of jobs, each with the profile's CPUs
+  and memory.
+
+The model takes milliseconds, so the prediction follows the sliders. It was fitted to the run
+it came from: settings more than twice or less than half of that run's are marked **Less
+certain**. **Execution Settings → Resources** shows the same prediction for the workflow's
+limits, from the run shown on the canvas.
+
 ## How good it is
 
 The model is an **estimate** fitted to the run it came from, and N-WAVE always shows it next to

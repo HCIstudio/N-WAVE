@@ -163,4 +163,28 @@ test.describe("a recorded run in the demo", () => {
     await limited.getByRole("button", { name: "Hide the chain on the canvas" }).click();
     await expect(page.locator('.react-flow__node[data-id="star_align"]')).not.toHaveClass(/critical-chain/);
   });
+
+  test("what if: Demo 3's model predicts other resources as they change, also in Execution Settings", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("link", { name: /Demo 3 - nf-core\/rnaseq rebuilt from nodes/ }).click();
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
+    const panel = page.getByRole("region", { name: "Run panel" });
+    await panel.getByRole("tab", { name: "History" }).click();
+    await panel.getByRole("list", { name: "Earlier runs" }).getByRole("button").first().click();
+    await panel.getByRole("button", { name: "Show on canvas" }).click();
+
+    const whatIf = panel.getByRole("region", { name: "What if" });
+    const result = whatIf.getByTestId("what-if-result");
+    await expect(result).toContainText("Predicted 3 min 30 s");
+    await whatIf.getByRole("slider", { name: /CPUs/ }).fill("2");
+    await expect(result).toContainText("% slower than the 3 min 39 s measured");
+    await whatIf.getByRole("slider", { name: /CPUs/ }).fill("16");
+    await expect(result).toContainText("Less certain");
+
+    // Execution Settings: the run's limits (4 CPUs, 4 GB), predicted from the run on the canvas.
+    await panel.getByRole("button", { name: "Minimize run panel" }).click();
+    await page.getByRole("button", { name: "Execution Settings" }).click();
+    await expect(page.getByTestId("settings-prediction")).toContainText("predicts 3 min 30 s (it took 3 min 39 s with 4 CPUs and 4 GB)");
+  });
 });

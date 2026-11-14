@@ -73,8 +73,12 @@ export interface RunPrediction {
   total: number;
 }
 
-/** Steps in an order where each comes after the steps it gets data from. */
-export const orderSteps = (steps: ModelStep[]): ModelStep[] => {
+/**
+ * Steps in an order where each comes after the steps it gets data from;
+ * `first` (with the steps it waits for) before the others: it gets the CPUs
+ * first.
+ */
+export const orderSteps = (steps: ModelStep[], first?: string): ModelStep[] => {
   const byId = new Map(steps.map((step) => [step.id, step]));
   const done = new Set<string>();
   const ordered: ModelStep[] = [];
@@ -90,6 +94,8 @@ export const orderSteps = (steps: ModelStep[]): ModelStep[] => {
     done.add(step.id);
     ordered.push(step);
   };
+  const prioritised = first ? byId.get(first) : undefined;
+  if (prioritised) visit(prioritised, new Set());
   for (const step of [...steps].sort((a, b) => a.measured.start - b.measured.start)) visit(step, new Set());
   return ordered;
 };
@@ -104,8 +110,12 @@ export const slotsFor = (step: ModelStep, resources: ModelResources): number => 
 };
 
 /** Predicts the run with these resources. */
-export const predictRun = (steps: ModelStep[], resources: ModelResources): RunPrediction => {
-  const ordered = orderSteps(steps);
+export const predictRun = (
+  steps: ModelStep[],
+  resources: ModelResources,
+  options: { priority?: string } = {},
+): RunPrediction => {
+  const ordered = orderSteps(steps, options.priority);
   // The time span the model covers: long enough for the slowest case.
   const horizon =
     Math.max(

@@ -6,6 +6,8 @@ import { nodeIdForProcess } from "../../../execution/nodeRuns";
 import { type RunInsight, limitKey, runInsight } from "../../../insight/bottlemod/runInsight";
 import { buildRunModel, measuredRuntime, type ModelResources, type ModelStep, predictRun } from "../../../insight/bottlemod/runModel";
 import { wikiUrl } from "../../../docs/links";
+import { useRunDefaults } from "../../../settings/useRunDefaults";
+import WhatIf from "./WhatIf";
 
 export const BOTTLEMOD_PAPER = "https://doi.org/10.1145/3676151.3719382";
 
@@ -19,6 +21,30 @@ export const LIMIT_COLOURS: Record<string, { colour: string; label: string }> = 
 const colourOf = (key: string) => (LIMIT_COLOURS[key.startsWith("input:") ? "input" : key] ?? LIMIT_COLOURS.input)?.colour;
 
 /** The run's limits from its log's first lines ("N-WAVE limits: 4 CPUs, 4 GB memory"). */
+/** The prediction for the limits in Execution Settings, from the run shown on the canvas. */
+export const SettingsPrediction: React.FC<{ state: RunModelState | null | "unavailable"; cpus: number; memory: number }> = ({
+  state,
+  cpus,
+  memory,
+}) => {
+  if (!state || state === "unavailable" || !(cpus > 0) || !(memory > 0)) return null;
+  let predicted: number;
+  try {
+    predicted = predictRun(state.model, { cpus, memory }).total;
+  } catch {
+    return null;
+  }
+  const far = Math.max(cpus / state.resources.cpus, state.resources.cpus / cpus, memory / state.resources.memory, state.resources.memory / memory) > 2;
+  return (
+    <p className="mt-4 rounded-md border border-panel-border p-3 text-sm text-text" data-testid="settings-prediction">
+      With these limits, the model of the run shown on the canvas predicts <strong>{formatSeconds(predicted)}</strong>{" "}
+      (it took {formatSeconds(state.measured)} with {state.resources.cpus} CPUs and{" "}
+      {Math.round(state.resources.memory / 1024 ** 3)} GB).{" "}
+      {far ? "Less certain: these limits are far from that run's. " : ""}An estimate; BottleMod, Lößer et al.
+    </p>
+  );
+};
+
 export const readRunResources = (log: string): ModelResources | null => {
   const match = log.match(/N-WAVE limits: (\d+) CPUs?, ([\d.]+) ([KMGT]B) memory/);
   if (!match) return null;
@@ -33,10 +59,12 @@ export interface RunModelState {
 }
 
 /** The run's BottleMod model, from its trace and log, on the canvas it ran. */
-export const useRunModel = (runId: string, nodes: Node[], edges: Edge[]): RunModelState | null | "unavailable" => {
+export const useRunModel = (runId: string | null, nodes: Node[], edges: Edge[]): RunModelState | null | "unavailable" => {
   const [state, setState] = useState<RunModelState | null | "unavailable">(null);
   // biome-ignore lint/correctness/useExhaustiveDependencies: the model is of the run; the canvas is read once per run.
   useEffect(() => {
+    setState(null);
+    if (!runId) return;
     let cancelled = false;
     Promise.all([getRunTrace(runId), getRunLog(runId).catch(() => "")]).then(
       ([trace, log]) => {
@@ -141,6 +169,7 @@ const RunBottlenecks: React.FC<{
   shownChain?: boolean;
 }> = ({ runId, nodes, edges, onShowChain, shownChain = false }) => {
   const state = useRunModel(runId, nodes, edges);
+  const { defaults } = useRunDefaults();
   if (state === null) return <p className="text-sm text-gray-700">Modelling the run…</p>;
   if (state === "unavailable") {
     return (
@@ -188,6 +217,7 @@ const RunBottlenecks: React.FC<{
           </button>
         )}
       </div>
+      <WhatIf model={state.model} resources={state.resources} measured={state.measured} profiles={defaults.runProfiles} />
       <p className="text-xs text-gray-600">
         Modelled with BottleMod by Lößer et al., "BottleMod: Modeling Data Flows and Tasks for Fast Bottleneck Analysis" (
         <a href={BOTTLEMOD_PAPER} target="_blank" rel="noreferrer" className="text-nextflow-green underline">

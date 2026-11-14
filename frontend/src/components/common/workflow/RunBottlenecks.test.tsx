@@ -35,6 +35,6 @@ describe("RunBottlenecks", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Show the chain on the canvas" }));
     expect(onShowChain).toHaveBeenCalledWith(["gunzip_gtf", "gtf_filter", "star_index", "star_align", "bam_sort_stats", "multiqc"]);
-    expect(screen.getByRole("link", { name: "ICPE '25" }).getAttribute("href")).toBe("https://doi.org/10.1145/3676151.3719382");
+    expect(screen.getAllByRole("link", { name: "ICPE '25" })[0]?.getAttribute("href")).toBe("https://doi.org/10.1145/3676151.3719382");
   });
 });
