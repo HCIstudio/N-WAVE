@@ -36,7 +36,9 @@ how the run ended, instead of starting it again.
 On the canvas, each node shows **Running**, **Results ready**, **Failed** or **Reused from
 cache**. Double-click a node and open **Results** to see the files its tasks produced, with a
 preview of text files. Above them, one line sums up the step from the trace, for example
-"4 tasks, 3 min, peak 6.1 GB, read 2.3 GB, wrote 1.1 GB". **Cancel run** stops Nextflow and its tasks.
+"4 tasks, 3 min, peak 6.1 GB, read 2.3 GB, wrote 1.1 GB". With the
+[I/O monitor](https://github.com/HCIstudio/N-WAVE/wiki/IO-Monitor) on, **Files read and
+written** follows: each file, when and how the step read or wrote it. **Cancel run** stops Nextflow and its tasks.
 
 While a run goes, the workflow is locked: nodes can't be changed until it ends.
 

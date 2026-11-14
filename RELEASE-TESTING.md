@@ -168,6 +168,11 @@ or has an issue that is explicitly moved to a later release.
       also after **Cancel** and after restarting the backend during a run.
 - [ ] With the I/O monitor on, the **Performance** tab says how many recorded accesses are
       linked to steps, and why the rest isn't. Every task of Demo 1 and Demo 3 is linked.
+- [ ] A monitored run's node **Results**: **Files read and written** lists the task's files
+      with bytes, **When** and **How** (bulk, streaming, in parts); **Follow** on a file the
+      next step reads (Demo 3: Trim Galore's `*_val_2.fq.gz`, read by STAR alignment) shows both
+      steps' reads and writes over time, with a hover note. A run without the monitor says how
+      to switch it on. The views credit Witzke et al. and link the paper.
 - [ ] The I/O monitor on each platform: Linux (a distribution kernel), Docker Desktop on Windows
       (WSL 2) and on macOS. Where it can't run, the run goes on and says why.
 - [ ] The I/O monitor is a beta feature: **Global Settings → I/O monitor** has the **Beta** label

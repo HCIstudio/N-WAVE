@@ -268,6 +268,8 @@ export interface TaskFile {
   firstWrite: number | null;
   lastWrite: number | null;
   deleted: boolean;
+  /** Its reads and writes: [seconds since the task's first access, offset, bytes, "R" | "W"], at most 300. */
+  samples: [number, number, number, "R" | "W"][];
 }
 
 /** A task with the file accesses linked to it. */

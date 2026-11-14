@@ -98,6 +98,28 @@ started before the monitor, or to files whose opening the monitor didn't record.
 On Demo 1 and Demo 3 recorded on Docker Desktop (WSL 2), every task was linked to a cgroup of its
 own (5 of 5 and 42 of 42). A workflow whose steps had no container linked none, and none wrongly.
 
+## Reading the views
+
+With the monitor on for a run, a node's **Results** tab (double-click the node; for an earlier
+run, **History → Show on canvas** first) has **Files read and written**, after the task list.
+For a step with several tasks, choose the task. It shows what Witzke et al. show in their paper:
+
+- **Files**: each file the task read or wrote, with the bytes read and written, and **When**:
+  a bar from its first to its last access, over the task's running time.
+- **How**: whether the task read (or wrote) the file **in bulk** (in less than a fifth of its
+  time), **streaming** (over more than three fifths of it, as it went) or **in parts**, with
+  the share of the time; **at once** for a single read or write. This is their Fig. 4.
+- **Follow**: a file's reads and writes over the run's time, by every task that touched it,
+  with the offset in the file going up. A file one step writes and the next reads shows both
+  (their Fig. 5): the next step reads it through a link in its own folder, which leads to
+  the same file. Hover a mark for the task, the bytes and the offset. Reads are blue, writes
+  orange.
+
+What the views show is what the monitor recorded: where it lost events, files or bytes are
+missing, and a file can show reads that belong to another one opened at the same time. The
+**Performance** tab says when that happened. Without the monitor, the section says how to
+switch it on.
+
 ## Switching it on
 
 1. Build the monitor's image once, in the N-WAVE folder:

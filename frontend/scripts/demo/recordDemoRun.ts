@@ -67,5 +67,6 @@ const recording: Record<string, unknown> = {
 };
 
 const file = join(__dirname, "..", "..", "src", "demo", "recordedRuns", `${name}.json`);
-writeFileSync(file, `${JSON.stringify(recording, null, 1)}\n`);
+// Compact: the recordings are data, and large.
+writeFileSync(file, `${JSON.stringify(recording)}\n`);
 process.stdout.write(`Recorded ${runId} as ${file}\n`);

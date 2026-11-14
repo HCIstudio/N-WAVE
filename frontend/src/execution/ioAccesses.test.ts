@@ -18,6 +18,7 @@ const file = (path: string, bytesRead: number, bytesWritten: number): TaskFile =
   firstWrite: null,
   lastWrite: null,
   deleted: false,
+  samples: [],
 });
 const task = (process: string, hash: string, files: TaskFile[]): LinkedTask => ({
   hash,

@@ -85,4 +85,47 @@ test.describe("a recorded run in the demo", () => {
     // It also says that it missed some: the run's check for lost events.
     await expect(note.getByRole("alert")).toContainText("For 6 of the 26 files the run wrote");
   });
+
+  test("a step's files from the I/O monitor, followed from the step that wrote one to the step that read it", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("link", { name: /Demo 3 - nf-core\/rnaseq rebuilt from nodes/ }).click();
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
+    const panel = page.getByRole("region", { name: "Run panel" });
+    await panel.getByRole("tab", { name: "History" }).click();
+    await panel.getByRole("list", { name: "Earlier runs" }).getByRole("button").first().click();
+    await panel.getByRole("button", { name: "Show on canvas" }).click();
+    await panel.getByRole("button", { name: "Minimize run panel" }).click();
+
+    await page.locator('.react-flow__node[data-id="star_align"]').dblclick();
+    // Demo 3's notice about its nf-core modules covers the panel's tabs: the keyboard reaches them.
+    await page.getByRole("tab", { name: "Results" }).focus();
+    await page.keyboard.press("Enter");
+    const view = page.getByRole("region", { name: "File accesses of this step" });
+    await view.getByRole("combobox").selectOption({ label: "STAR_ALIGNMENT (WT_REP1)" });
+    // From the recording: STAR read the trimmed reads TRIM_GALORE (WT_REP1) wrote.
+    const row = view.getByRole("table", { name: "Files of STAR_ALIGNMENT (WT_REP1)" }).getByRole("row").filter({ hasText: "WT_REP1_2_val_2.fq.gz" });
+    await expect(row).toContainText("3.2 MB");
+    await row.getByRole("button", { name: "Follow" }).click();
+    const chart = view.getByRole("figure", { name: "Reads and writes of WT_REP1_2_val_2.fq.gz over time" });
+    await expect(chart).toContainText("TRIM_GALORE (WT_REP1)");
+    await expect(chart).toContainText("STAR_ALIGNMENT (WT_REP1)");
+    await expect(view).toContainText("arXiv:2408.00411");
+  });
+
+  test("Demo 1's steps: the files the I/O monitor saw them read and write", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("link", { name: /Demo 1 - Text basics/ }).click();
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
+    const panel = page.getByRole("region", { name: "Run panel" });
+    await panel.getByRole("tab", { name: "History" }).click();
+    await panel.getByRole("list", { name: "Earlier runs" }).getByRole("button").first().click();
+    await panel.getByRole("button", { name: "Show on canvas" }).click();
+    await panel.getByRole("button", { name: "Minimize run panel" }).click();
+    await page.locator('.react-flow__node[data-id="demo-map-uppercase"]').dblclick();
+    await page.getByRole("tab", { name: "Results" }).click();
+    const files = page.getByRole("table", { name: "Files of MAP (1)" });
+    await expect(files.getByRole("row").filter({ hasText: "bee_movie_filtered_mapped.txt" })).toBeVisible();
+  });
 });

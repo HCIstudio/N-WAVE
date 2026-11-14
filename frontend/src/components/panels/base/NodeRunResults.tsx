@@ -10,6 +10,7 @@ import {
 import { useNodeRun } from "../../../execution/RunTasksContext";
 import { getErrorMessage } from "../../../utils/errors";
 import NodeTraceLine from "./NodeTraceLine";
+import NodeIoView from "./NodeIoView";
 
 const TEXT_FILE = /\.(txt|csv|tsv|json|log|md|ya?ml|out|tab|bed|gtf|gff3?|sam|vcf)$/i;
 const PREVIEW_LIMIT = 200_000;
@@ -172,6 +173,7 @@ const NodeRunResults: React.FC<{ nodeId: string }> = ({ nodeId }) => {
         .
       </p>
       <NodeTraceLine runId={runId} summary={summary} />
+      {summary.status !== "running" && <NodeIoView runId={runId} hashes={summary.tasks.map((task) => task.hash)} />}
       <ul className="space-y-2">
         {summary.tasks.map((task, index) => (
           <TaskResults
