@@ -189,6 +189,17 @@ export const COURSES: CourseInfo[] = [
     minutes: 10,
     level: "advanced",
     topics: ["Analyse", "Specification graph", "Process dependency graph"],
+    next: "insight",
+  },
+  {
+    id: "insight",
+    course: "insight",
+    title: "Run Insight",
+    summary:
+      "See how each step reads and writes its data, what limited a run and which steps set its time, and what other resources would change.",
+    minutes: 15,
+    level: "advanced",
+    topics: ["Bytes read and written", "I/O monitor", "What limited a run", "What if"],
   },
 ];
 

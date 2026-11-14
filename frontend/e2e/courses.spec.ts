@@ -269,8 +269,22 @@ test.describe("courses", () => {
     await expect(advanced.getByRole("button", { name: "Start" })).toHaveCount(0);
     // All five are written: none is "coming soon", each needs an installation.
     await expect(advanced.getByText("Coming soon")).toHaveCount(0);
-    await expect(advanced.getByText("Needs a full install", { exact: true })).toHaveCount(5);
+    await expect(advanced.getByText("Needs a full install", { exact: true })).toHaveCount(6);
     await page.goto("./");
     await expect(page.getByRole("region", { name: "Tutorial" })).toHaveCount(0);
   });
+});
+
+test("the course Run Insight is under Advanced: what it teaches, and that it needs an installation", async ({ page }) => {
+  await page.goto("./courses");
+  const advanced = page.getByRole("region", { name: "Advanced" });
+  const card = advanced.getByRole("listitem", { name: "Run Insight" });
+  await expect(card).toContainText("See how each step reads and writes its data, what limited a run");
+  for (const topic of ["Bytes read and written", "I/O monitor", "What limited a run", "What if"]) {
+    await expect(card).toContainText(topic);
+  }
+  await expect(card).toContainText("Needs a full install");
+  // It comes after Read a workflow's structure.
+  const names = await advanced.locator("li[aria-label]").evaluateAll((items) => items.map((item) => item.getAttribute("aria-label")));
+  expect(names.slice(-2)).toEqual(["Read a workflow's structure", "Run Insight"]);
 });

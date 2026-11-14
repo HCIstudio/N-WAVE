@@ -530,10 +530,104 @@ const STRUCTURE: CourseStep[] = [
   },
 ];
 
+// #251: in a workflow imported for it, whose counting step sets the runtime.
+const PERFORMANCE_TAB = `${RUN_PANEL} [role="tab"]`;
+const INSIGHT: CourseStep[] = [
+  {
+    text: (
+      <>
+        A workflow made for this course: <strong>MAKE_SAMPLE</strong> writes four samples, <strong>COUNT_BASES</strong>{" "}
+        counts the bases in each, and <strong>REPORT</strong> sums them up. One of them takes most of the time; this
+        course finds out which, and why.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        Optional: to see each step&apos;s files too, switch on <strong>Global Settings → I/O monitor</strong> before the
+        run (Linux and Docker Desktop; it runs a privileged container). Without it, the course goes on with the rest.
+      </>
+    ),
+  },
+  {
+    text: (
+      <>
+        <strong>Run</strong> the workflow, and wait for it to end.
+      </>
+    ),
+    target: RUN,
+    done: ended,
+  },
+  {
+    text: (
+      <>
+        Open the run panel&apos;s <strong>Performance</strong> tab: each step&apos;s time, memory, and the bytes it{" "}
+        <strong>Read</strong> and <strong>Wrote</strong>, from Nextflow&apos;s trace.
+      </>
+    ),
+    target: PERFORMANCE_TAB,
+    done: ({ clicked }) => clicked.has("Performance"),
+  },
+  {
+    text: (
+      <>
+        Further down, <strong>What limited this run</strong>: a model of the run (BottleMod) predicts its runtime, next
+        to the measured one. Each step&apos;s bar is coloured by what limited it: CPU, its tasks&apos; running time, or
+        waiting for a step before it. COUNT_BASES works hard on every line, and the report waits for it.
+      </>
+    ),
+    target: RUN_PANEL,
+  },
+  {
+    text: (
+      <>
+        <strong>Show the chain on the canvas</strong>: the steps that set the runtime. Making a step outside the chain
+        faster doesn&apos;t make the run faster.
+      </>
+    ),
+    target: RUN_PANEL,
+    done: ({ clicked }) => clicked.has("Show the chain on the canvas"),
+  },
+  {
+    text: (
+      <>
+        How a step reads and writes: double-click <strong>COUNT_BASES</strong> and open <strong>Results</strong>. With
+        the I/O monitor on, <strong>Files read and written</strong> says when it read each sample, and whether it read
+        it as it went (streaming) or all at once. <strong>Follow</strong> a sample: MAKE_SAMPLE writes it, then
+        COUNT_BASES reads it.
+      </>
+    ),
+    target: node("n-count_bases"),
+    done: ({ clicked }) => clicked.has("Results"),
+  },
+  {
+    text: (
+      <>
+        Back in <strong>Performance</strong>, <strong>What if?</strong>: move <strong>CPUs</strong>. The model
+        predicts the runtime at once, and which steps would set it. Far from the run&apos;s CPUs, it says it is less
+        certain.
+      </>
+    ),
+    target: RUN_PANEL,
+  },
+  {
+    text: (
+      <>
+        Try it: set the workflow&apos;s <strong>Execution Settings → Resources</strong> to fewer CPUs (the prediction
+        shows there too), run again, and compare.{" "}
+        <strong>That&apos;s Run Insight.</strong> The wiki pages I/O Monitor and Bottleneck Analysis say how both work.
+      </>
+    ),
+    target: EXECUTION_SETTINGS,
+  },
+];
+
 export const ADVANCED_COURSE_STEPS = {
   run: RUN_COURSE,
   failures: FAILURES,
   pipeline: PIPELINE,
   clusters: CLUSTERS,
   structure: STRUCTURE,
+  insight: INSIGHT,
 };

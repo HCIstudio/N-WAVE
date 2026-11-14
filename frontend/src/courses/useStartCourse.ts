@@ -11,7 +11,7 @@ import { DEFAULT_EXECUTION_SETTINGS } from "../pages/workflow/executionSettings"
 import { getApiErrorMessage } from "../utils/errors";
 import { importNextflowWorkflow } from "../workflows/importNextflowWorkflow";
 import { type CourseId, setActiveCourse } from "./courseState";
-import { BRANCHES_SCRIPT, FAILING_SCRIPT, STRUCTURE_SCRIPT } from "./courseWorkflows";
+import { BRANCHES_SCRIPT, FAILING_SCRIPT, INSIGHT_SCRIPT, STRUCTURE_SCRIPT } from "./courseWorkflows";
 
 /** The name of the workflow the nf-core course builds. */
 export const NFCORE_COURSE_WORKFLOW = "My nf-core quality check";
@@ -59,6 +59,11 @@ const IMPORTED_SCRIPTS: Partial<Record<CourseId, { name: string; description: st
     name: "Two aligners",
     description: "Imported for the course Read a workflow's structure.",
     rawSource: STRUCTURE_SCRIPT,
+  },
+  insight: {
+    name: "Counting bases",
+    description: "Imported for the course Run Insight.",
+    rawSource: INSIGHT_SCRIPT,
   },
 };
 

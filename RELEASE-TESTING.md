@@ -90,7 +90,10 @@ or has an issue that is explicitly moved to a later release.
       **Run limits and clusters** (a SLURM profile saved and in the exported project) and
       **Read a workflow's structure** (the Branch node and its parameter, Analyse, an error
       and its fix, both graph views, the
-      **if** badges, a group).
+      **if** badges, a group) and
+      **Run Insight** (v1.7: a run of its workflow, the Performance tab's bytes, what limited
+      the run with COUNT_BASES in the chain, the chain on the canvas, with the I/O monitor on
+      COUNT_BASES's files, What if?, and the prediction in Execution Settings).
 
 ## Building a workflow
 
