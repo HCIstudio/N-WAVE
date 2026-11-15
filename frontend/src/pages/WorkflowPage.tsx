@@ -1,3 +1,4 @@
+import type { SaveNodeData } from "../components/panels/base/saveNodeData";
 import { Loader } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -455,17 +456,23 @@ const WorkflowPageContent: React.FC = () => {
     ]
   );
 
-  const handleUpdateNodeData = useCallback(
-    async (nodeId: string, data: Partial<NodeData>) => {
+  const handleUpdateNodeData: SaveNodeData = useCallback(
+    async (nodeId, data, options) => {
       const current = nodes.find((node) => node.id === nodeId);
       const isNoop =
         current &&
         Object.entries(data).every(([key, value]) => current.data[key] === value);
       if (isNoop) return;
+      // What a panel works out by itself isn't an edit: an example stays as it is
+      // (no copy offered), and a running workflow isn't changed.
+      if (options?.derived) {
+        if (!readOnly && !isRunning) updateNodeData(nodeId, data);
+        return;
+      }
       if (!(await ensureEditable())) return;
       updateNodeData(nodeId, data);
     },
-    [nodes, ensureEditable, updateNodeData]
+    [nodes, ensureEditable, updateNodeData, readOnly, isRunning]
   );
 
   const handleWorkflowNameChange = useCallback(

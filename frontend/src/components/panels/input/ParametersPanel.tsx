@@ -1,3 +1,4 @@
+import type { SaveNodeData } from "../base/saveNodeData";
 import type React from "react";
 import { useEffect, useId, useMemo } from "react";
 import type { Node } from "@xyflow/react";
@@ -16,7 +17,7 @@ import Term from "../../common/ui/Term";
 
 interface ParametersPanelProps {
   node: Node<NodeData>;
-  onSave: (nodeId: string, data: Partial<NodeData>) => void;
+  onSave: SaveNodeData;
 }
 
 const fieldClassName =
@@ -77,7 +78,7 @@ const ParametersPanel: React.FC<ParametersPanelProps> = ({ node, onSave }) => {
   const summary = summarizeParameters(parameters);
 
   useEffect(() => {
-    if (node.data.subtitle !== summary) onSave(node.id, { subtitle: summary });
+    if (node.data.subtitle !== summary) onSave(node.id, { subtitle: summary }, { derived: true });
   }, [node.id, node.data.subtitle, onSave, summary]);
 
   const save = (next: WorkflowParameter[]) => {

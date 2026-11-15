@@ -170,6 +170,28 @@ test.describe("canvas flow", () => {
     await expect(page.getByText(/Demo 1 - Text basics Copy/)).toHaveCount(0);
   });
 
+  test("opening a node's settings in a built-in demo asks nothing; an edit asks, and Just look closes", async ({ page }) => {
+    await page.goto("./workflow/builtin:demo-basic");
+    const dialog = page.getByRole("dialog", { name: "Make your own copy to edit" });
+    // Merge's panel works out its file type by itself when it opens: not an edit.
+    for (const id of ["demo-merge", "demo-filter-bee"]) {
+      await page.locator(`.react-flow__node[data-id="${id}"]`).dblclick();
+      await expect(page.getByRole("button", { name: "Close Panel" })).toBeVisible();
+      await page.waitForTimeout(300);
+      await expect(dialog).toHaveCount(0);
+      await page.getByRole("button", { name: "Close Panel" }).click();
+    }
+    // A real edit asks; Just look closes the question and it stays closed.
+    await page.locator('.react-flow__node[data-id="demo-merge"]').dblclick();
+    await page.getByLabel("Separator").fill("--");
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Just look" }).click();
+    await expect(dialog).toHaveCount(0);
+    await page.waitForTimeout(500);
+    await expect(dialog).toHaveCount(0);
+    await expect(page).toHaveURL(/builtin:demo-basic/);
+  });
+
   test("a connection's × button removes it", async ({ page }) => {
     await page.goto("./");
     await page.getByRole("button", { name: "New Workflow" }).click();
