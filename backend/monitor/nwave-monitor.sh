@@ -34,14 +34,34 @@ grep -qw vfs_read /proc/kallsyms 2>/dev/null || unavailable "the kernel doesn't 
 # Kernel headers, which BCC compiles the probes against: the host's, else the
 # kernel's own (kheaders), else the distribution's package (as their
 # entrypoint does). WSL 2 and Docker Desktop kernels have no package.
-if [ ! -e "/lib/modules/$KERNEL/build/include" ] && [ ! -e /sys/kernel/kheaders.tar.xz ]; then
-  modprobe kheaders >> "$LOG" 2>&1 || true
+# A host's headers count when they are complete: Docker Desktop's VM can link
+# build/ to a folder with part of them.
+HOST_HEADERS="/lib/modules/$KERNEL/build"
+[ -e "$HOST_HEADERS/include/linux/kconfig.h" ] || HOST_HEADERS=
+LOADED_KHEADERS=
+if [ -z "$HOST_HEADERS" ] && [ ! -e /sys/kernel/kheaders.tar.xz ]; then
+  modprobe kheaders >> "$LOG" 2>&1 && LOADED_KHEADERS=1
   if [ ! -e /sys/kernel/kheaders.tar.xz ]; then
     (apt-get update && apt-get install -y "linux-headers-$KERNEL") >> "$LOG" 2>&1 || true
+    [ -e "/lib/modules/$KERNEL/build/include/linux/kconfig.h" ] && HOST_HEADERS="/lib/modules/$KERNEL/build"
   fi
 fi
-if [ ! -e "/lib/modules/$KERNEL/build/include" ] && [ ! -e /sys/kernel/kheaders.tar.xz ]; then
+if [ -z "$HOST_HEADERS" ] && [ ! -e /sys/kernel/kheaders.tar.xz ]; then
   unavailable "no kernel headers for $KERNEL (no package, and the kernel has no kheaders module)"
+fi
+# Left to itself, BCC unpacks kheaders into /tmp/kheaders-<kernel> when it
+# first needs them, loading the module and unloading it after. Both programs
+# start at once, and one could unload it while the other still reads it
+# ("Failed to compile BPF module"): unpack them once here, and point both at them.
+if [ -z "$HOST_HEADERS" ]; then
+  if [ ! -d "/tmp/kheaders-$KERNEL" ]; then
+    mkdir -p "/tmp/kheaders-$KERNEL.part" \
+      && tar -xJf /sys/kernel/kheaders.tar.xz -C "/tmp/kheaders-$KERNEL.part" >> "$LOG" 2>&1 \
+      && mv "/tmp/kheaders-$KERNEL.part" "/tmp/kheaders-$KERNEL" \
+      || unavailable "the kernel's own headers (kheaders) couldn't be unpacked"
+  fi
+  [ -n "$LOADED_KHEADERS" ] && { rmmod kheaders >> "$LOG" 2>&1 || true; }
+  export BCC_KERNEL_SOURCE="/tmp/kheaders-$KERNEL"
 fi
 
 # Where the run's folder is as the kernel names it: from the root of the
