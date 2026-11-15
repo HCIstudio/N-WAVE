@@ -173,6 +173,12 @@ or has an issue that is explicitly moved to a later release.
       next step reads (Demo 3: Trim Galore's `*_val_2.fq.gz`, read by STAR alignment) shows both
       steps' reads and writes over time, with a hover note. A run without the monitor says how
       to switch it on. The views credit Witzke et al. and link the paper.
+- [ ] The check of the work folders (I/O monitor): after a monitored Demo 1 and Demo 3, the log
+      and **Performance** say how many of the files in the steps' work folders the monitor saw
+      no open of; each step's **Files read and written** says how many of its own files it saw
+      and names a few it missed, under the **Beta** note. The numbers match
+      `nwave_monitor/<run>/monitor.json` (`workFolders`). In the browser demo, Demo 1's MAP says
+      "7 of the 9 files".
 - [ ] The I/O monitor on each platform: Linux (a distribution kernel), Docker Desktop on Windows
       (WSL 2) and on macOS. Where it can't run, the run goes on and says why.
 - [ ] The I/O monitor is a beta feature: **Global Settings → I/O monitor** has the **Beta** label

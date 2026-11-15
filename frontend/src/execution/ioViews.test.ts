@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import type { LinkedTask, RunAccesses, TaskFile } from "../api/runs";
-import { accessPattern, describePattern, fileName, followFile, handedOn } from "./ioViews";
+import {
+  accessPattern,
+  describePattern,
+  describeStepFolders,
+  fileName,
+  followFile,
+  handedOn,
+  stepWorkFolders,
+} from "./ioViews";
 
 const file = (path: string, extra: Partial<TaskFile> = {}): TaskFile => ({
   path,
@@ -63,5 +71,22 @@ describe("how a step reads and writes its files", () => {
       { time: 1010.5, offset: 0, bytes: 200, type: "R", task: "ALIGN" },
     ]);
     expect(handedOn(accesses)).toEqual([{ path: "w/x/r.trim.fq", writer: "TRIM", readers: ["ALIGN"] }]);
+  });
+
+  it("says how many of a step's work-folder files the monitor saw, and names a few it missed", () => {
+    const folders = [
+      { folder: "aa/111111ff", files: 9, missed: 3, missedFiles: [".command.begin", ".command.out", ".command.err"] },
+      { folder: "aa/222222ff", files: 9, missed: 2, missedFiles: [".command.begin", "sub/x.txt"] },
+      { folder: "bb/333333ff", files: 4, missed: 0, missedFiles: [] },
+    ];
+    expect(stepWorkFolders(undefined, ["aa/111111"])).toBeNull();
+    expect(stepWorkFolders(folders, ["cc/444444"])).toBeNull();
+    const step = stepWorkFolders(folders, ["aa/111111", "aa/222222"]);
+    expect(step).toEqual({ folders: 2, files: 18, missed: 5, examples: [".command.begin", ".command.out", ".command.err"] });
+    expect(describeStepFolders(step as NonNullable<typeof step>)).toBe(
+      "The monitor saw 13 of the 18 files in this step's 2 work folders; it missed 5 (.command.begin, .command.out, .command.err, …), so these views lack their accesses.",
+    );
+    const all = stepWorkFolders(folders, ["bb/333333"]);
+    expect(describeStepFolders(all as NonNullable<typeof all>)).toBe("The monitor saw all 4 files in this step's work folder.");
   });
 });

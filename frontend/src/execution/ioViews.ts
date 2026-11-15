@@ -2,7 +2,7 @@
 // measured as Witzke et al. do ("Low-level I/O Monitoring for Scientific
 // Workflows", arXiv:2408.00411, Fig. 4 and 5).
 
-import type { RunAccesses, TaskFile } from "../api/runs";
+import type { RunAccesses, TaskFile, WorkFolderCheck } from "../api/runs";
 
 /**
  * How long a task read (or wrote) a file, as a share of its running time:
@@ -80,4 +80,32 @@ export const handedOn = (
   return [...writers.entries()]
     .map(([path, writer]) => ({ path, writer, readers: [...(readers.get(path) ?? [])].filter((name) => name !== writer) }))
     .filter((entry) => entry.readers.length > 0);
+};
+
+/** How many of a step's work-folder files the monitor saw, from the tasks with these hashes ("58/618e11"). */
+export interface StepFolders {
+  folders: number;
+  files: number;
+  missed: number;
+  /** A few of the files it missed, by name. */
+  examples: string[];
+}
+
+export const stepWorkFolders = (folders: WorkFolderCheck[] | undefined, hashes: string[]): StepFolders | null => {
+  const own = (folders ?? []).filter((folder) => hashes.some((hash) => folder.folder.startsWith(hash)));
+  if (own.length === 0) return null;
+  return {
+    folders: own.length,
+    files: own.reduce((sum, folder) => sum + folder.files, 0),
+    missed: own.reduce((sum, folder) => sum + folder.missed, 0),
+    examples: [...new Set(own.flatMap((folder) => folder.missedFiles.map(fileName)))].slice(0, 3),
+  };
+};
+
+/** The sentence next to a step's views. */
+export const describeStepFolders = ({ folders, files, missed, examples }: StepFolders): string => {
+  const where = folders === 1 ? "this step's work folder" : `this step's ${folders} work folders`;
+  if (missed === 0) return `The monitor saw all ${files} files in ${where}.`;
+  const named = examples.length > 0 ? ` (${examples.join(", ")}${missed > examples.length ? ", …" : ""})` : "";
+  return `The monitor saw ${files - missed} of the ${files} files in ${where}; it missed ${missed}${named}, so these views lack their accesses.`;
 };

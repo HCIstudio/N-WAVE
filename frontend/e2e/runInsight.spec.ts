@@ -82,8 +82,14 @@ test.describe("a recorded run in the demo", () => {
     await expect(panel.getByTestId("run-monitor-linked")).toHaveText(
       "216 of 2263 recorded accesses are linked to steps; not linked: 1137 by processes outside the steps' containers (Nextflow, Docker), 543 by processes started before the monitor, 367 to files whose opening the monitor didn't record.",
     );
-    // It also says that it missed some: the run's check for lost events.
-    await expect(note.getByRole("alert")).toContainText("For 6 of the 26 files the run wrote");
+    // It also says that it missed some: the run's checks for lost events.
+    await expect(note.getByTestId("run-monitor-work-folders")).toHaveText(
+      "Of the 46 files in the steps' work folders, the monitor saw no open of 17: their accesses were lost, and the views of this run lack them. Each step's Results say how many of its files.",
+    );
+    await expect(note.getByRole("alert").filter({ hasText: "For 6 of the 26 files the run wrote" })).toBeVisible();
+    // A beta feature: what is under test, and where to report.
+    await expect(note.getByRole("note")).toContainText("Under test: on Docker Desktop and WSL 2 the monitor sees the whole machine");
+    await expect(note.getByRole("link", { name: "Report how it works on yours" })).toHaveAttribute("href", /beta_feedback\.yml/);
   });
 
   test("a step's files from the I/O monitor, followed from the step that wrote one to the step that read it", async ({ page }) => {
@@ -127,5 +133,11 @@ test.describe("a recorded run in the demo", () => {
     await page.getByRole("tab", { name: "Results" }).click();
     const files = page.getByRole("table", { name: "Files of MAP (1)" });
     await expect(files.getByRole("row").filter({ hasText: "bee_movie_filtered_mapped.txt" })).toBeVisible();
+    // Next to the views: in beta, and how many of the step's files the monitor missed.
+    const view = page.getByRole("region", { name: "File accesses of this step" });
+    await expect(view.getByRole("note")).toContainText("Under test:");
+    await expect(view.getByTestId("io-view-work-folders")).toHaveText(
+      "The monitor saw 7 of the 9 files in this step's work folder; it missed 2 (.command.begin, .command.err), so these views lack their accesses.",
+    );
   });
 });

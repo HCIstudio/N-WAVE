@@ -53,4 +53,13 @@ describe("a run's accesses by task", () => {
     fs.rmSync(path.join(out, MONITOR_FILES.accesses));
     expect(readRunAccesses(runDir, "r1")).toMatchObject({ status: "recorded", total: accesses.total });
   });
+
+  it("passes on the check of the work folders made when the monitor stopped", () => {
+    const out = makeRun();
+    const folders = [{ folder: "86/91258e441d196075a64b3b2a6d150b", files: 9, missed: 4, missedFiles: [".command.begin"] }];
+    writeMonitorSummary(out, { status: "recorded", workFolders: { files: 9, missed: 4, folders } });
+    expect(readRunAccesses(runDir, "r1")).toMatchObject({ status: "recorded", workFolders: folders });
+    // Also when the linking was kept from before.
+    expect(readRunAccesses(runDir, "r1")).toMatchObject({ status: "recorded", workFolders: folders });
+  });
 });

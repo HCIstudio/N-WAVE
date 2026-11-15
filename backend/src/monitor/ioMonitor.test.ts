@@ -109,5 +109,13 @@ describe("the I/O monitor", () => {
     expect(describeMonitorSummary({ status: "recorded", accesses: 5, processes: 1, checkedFiles: 9, incompleteFiles: 2, missingBytes: 512 })).toContain(
       "For 2 of the 9 files the run wrote, it recorded fewer bytes than the files have (512 bytes): events were lost, or recorded for another file.",
     );
+    // The files in the steps' work folders it saw no open of.
+    const workFolders = { files: 46, missed: 17, folders: [] };
+    expect(describeMonitorSummary({ status: "recorded", accesses: 5, processes: 1, workFolders })).toBe(
+      "N-WAVE: the I/O monitor recorded 5 file accesses and 1 process starts. Of the 46 files in the steps' work folders, it saw no open of 17: their accesses were lost.\n",
+    );
+    expect(describeMonitorSummary({ status: "recorded", accesses: 5, processes: 1, workFolders: { ...workFolders, missed: 0 } })).toContain(
+      "It saw all 46 files in the steps' work folders.",
+    );
   });
 });

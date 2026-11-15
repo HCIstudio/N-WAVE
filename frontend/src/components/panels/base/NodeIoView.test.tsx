@@ -61,6 +61,25 @@ describe("NodeIoView", () => {
     expect(screen.getByRole("link", { name: "arXiv:2408.00411" }).getAttribute("href")).toBe("https://arxiv.org/abs/2408.00411");
     await userEvent.click(screen.getAllByRole("button", { name: "Follow" })[0] as HTMLElement);
     expect(screen.getByRole("img", { name: "Offsets of s1.fq read and written over time" })).toBeTruthy();
+    // A beta feature: what is under test, and where to report.
+    expect(screen.getByRole("note").textContent).toContain("Under test: on Docker Desktop and WSL 2 the monitor sees the whole machine");
+    expect(screen.getByRole("link", { name: "Report how it works on yours" })).toBeTruthy();
+    // A run from before the check of the work folders: no line about it.
+    expect(screen.queryByTestId("io-view-work-folders")).toBeNull();
+  });
+
+  it("says how many of the step's work-folder files the monitor missed", async () => {
+    getRunAccesses.mockResolvedValue({
+      ...recorded,
+      workFolders: [
+        { folder: "aa/111111x", files: 9, missed: 2, missedFiles: [".command.begin", ".command.err"] },
+        { folder: "bb/222222x", files: 9, missed: 0, missedFiles: [] },
+      ],
+    });
+    render(<NodeIoView runId="r3" hashes={["aa/111111"]} />);
+    expect((await screen.findByTestId("io-view-work-folders")).textContent).toBe(
+      "The monitor saw 7 of the 9 files in this step's work folder; it missed 2 (.command.begin, .command.err), so these views lack their accesses.",
+    );
   });
 
   it("says how to turn the monitor on when it was off for the run", async () => {

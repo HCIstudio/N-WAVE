@@ -1,7 +1,16 @@
 import type React from "react";
 import { useEffect, useMemo, useState } from "react";
 import { getRunAccesses, type LinkedTask, type RunAccesses, type TaskFile } from "../../../api/runs";
-import { accessPattern, describePattern, fileName, followFile } from "../../../execution/ioViews";
+import {
+  accessPattern,
+  describePattern,
+  describeStepFolders,
+  fileName,
+  followFile,
+  stepWorkFolders,
+} from "../../../execution/ioViews";
+import { BetaNote } from "../../common/ui/BetaBadge";
+import { IO_MONITOR_SWITCH } from "../../../settings/ioMonitorSwitch";
 import { useFeature } from "../../../settings/useFeatures";
 import { formatBytes } from "../../../utils/fileContent";
 import { wikiUrl } from "../../../docs/links";
@@ -213,9 +222,19 @@ const NodeIoView: React.FC<{ runId: string; hashes: string[] }> = ({ runId, hash
     );
   }
   const task = own.find((candidate) => candidate.hash === taskHash) ?? own[0];
+  const folders = stepWorkFolders(accesses.workFolders, hashes);
   return (
     <section aria-label="File accesses of this step" className="space-y-2 rounded-md border border-panel-border p-3">
       <h3 className="text-sm font-semibold text-text">Files read and written</h3>
+      <BetaNote feature={IO_MONITOR_SWITCH.label}>{IO_MONITOR_SWITCH.beta}</BetaNote>
+      {folders && (
+        <p
+          data-testid="io-view-work-folders"
+          className={`text-xs ${folders.missed > 0 ? "rounded-md border border-yellow-500/40 bg-yellow-900/20 p-2 text-yellow-100" : "text-text-light"}`}
+        >
+          {describeStepFolders(folders)}
+        </p>
+      )}
       {own.length === 0 ? (
         <p className="text-xs text-text-light">The monitor's records have no accesses of this step's tasks.</p>
       ) : (
