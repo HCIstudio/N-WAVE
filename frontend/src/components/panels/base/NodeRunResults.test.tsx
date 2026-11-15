@@ -6,7 +6,9 @@ import type { NodeRunSummary } from "../../../execution/nodeRuns";
 
 const listTaskFiles = vi.fn();
 const getTaskFileText = vi.fn();
+const getRunTrace = vi.fn();
 vi.mock("../../../api/runs", () => ({
+  getRunTrace: (...args: unknown[]) => getRunTrace(...args),
   listTaskFiles: (...args: unknown[]) => listTaskFiles(...args),
   getTaskFileText: (...args: unknown[]) => getTaskFileText(...args),
   taskFileUrl: (runId: string, hash: string, path: string) =>
@@ -58,6 +60,8 @@ describe("NodeRunResults", () => {
   beforeEach(() => {
     listTaskFiles.mockReset();
     getTaskFileText.mockReset();
+    getRunTrace.mockReset();
+    getRunTrace.mockResolvedValue([]);
   });
 
   it("asks to run the workflow when there is no run", () => {

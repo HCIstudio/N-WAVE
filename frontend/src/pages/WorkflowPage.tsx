@@ -329,7 +329,8 @@ const WorkflowPageContent: React.FC = () => {
     showToast,
     showError,
   });
-  const runTasks = useRunTasks(isDemoMode ? null : run.lastRunId, isRunning, nodes);
+  // In the demo, the last run is a recorded one shown from History.
+  const runTasks = useRunTasks(run.lastRunId, isRunning, nodes);
   // Resume can be switched off in Global Settings → Features.
   const resumeOn = useFeature("resume");
   const resume = useRunResume({
@@ -869,7 +870,8 @@ const WorkflowPageContent: React.FC = () => {
           canCancel={run.canCancel}
           // Always there: minimized, it is the Runs bar.
           isVisible
-          runId={isDemoMode ? null : run.lastRunId}
+          runId={run.lastRunId}
+          onShowRun={run.showRun}
           output={run.output}
           workflowId={workflowId}
           tab={run.panelTab}

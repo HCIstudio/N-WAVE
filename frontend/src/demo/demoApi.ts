@@ -10,6 +10,7 @@ import { demoCustomNodes } from "./demoCustomNodes";
 import { demoStore, DemoStoreError, type WorkflowPayload } from "./demoStore";
 import { demoActivity } from "./demoActivity";
 import type { ActivityEvent } from "../activity/activityEvents";
+import { answerRecordedRun } from "./recordedRuns";
 
 interface DemoResponse<T = unknown> {
   data: T;
@@ -151,8 +152,27 @@ const EXECUTION_DISABLED_MESSAGE =
   "Workflow execution is disabled in the hosted demo. Download the Docker version to run workflows for real. You can still build, edit, import and inspect the generated Nextflow script here.";
 
 const demoApi = {
-  get<T = unknown>(url: string): Promise<DemoResponse<T>> {
+  get<T = unknown>(
+    url: string,
+    config?: { params?: Record<string, unknown> },
+  ): Promise<DemoResponse<T>> {
     const path = normalize(url);
+    // Runs: the examples' recorded runs.
+    if (path === "/execute/runs" || path.startsWith("/execute/runs/")) {
+      const query = {
+        ...queryOf(url),
+        ...Object.fromEntries(
+          Object.entries(config?.params ?? {}).map(([key, value]) => [key, String(value)]),
+        ),
+      };
+      return answerRecordedRun(path, query).then((answer) =>
+        !answer
+          ? fail(404, `No demo handler for GET ${path}`)
+          : answer.status === 200
+            ? ok(answer.data as T)
+            : fail(answer.status, (answer.data as { message: string }).message),
+      );
+    }
     if (path === "/custom-nodes") {
       return ok(demoCustomNodes.list() as T);
     }
@@ -263,10 +283,6 @@ const demoApi = {
       } as T);
     }
 
-    // No runs happen in the demo, so there is no run history.
-    if (path === "/execute/runs") {
-      return ok({ runs: [] } as T);
-    }
     if (path === "/execute/caches") {
       return ok({ bytes: 0, folders: 0 } as T);
     }
