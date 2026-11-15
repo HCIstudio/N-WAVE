@@ -77,6 +77,13 @@ describe("run limits", () => {
     );
   });
 
+  it("limits the tasks running at once to the run's CPUs and memory, not just each task", () => {
+    // Without executor.$local, Nextflow's local executor runs as many tasks
+    // at once as the machine has CPUs, whatever each task is capped to.
+    const limits = resolveRunLimits({ maxCpus: 2, maxMemory: "3 GB" }, ceiling);
+    expect(buildResourceLimitsConfig(limits)).toContain(["executor {", "  $local {", "    cpus = 2", "    memory = '3.GB'", "  }", "}"].join("\n"));
+  });
+
   it("caps each task at the run's time limit", () => {
     const limits = resolveRunLimits({ maxCpus: 4, maxMemory: "4 GB" }, ceiling);
     expect(buildResourceLimitsConfig(limits, 24 * 60 * 60_000)).toContain(

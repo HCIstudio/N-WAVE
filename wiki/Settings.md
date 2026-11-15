@@ -29,6 +29,9 @@ allow them in the site settings (the icon left of the address) and reload the pa
 ## Run limits
 
 **Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout**: the most any run may use.
+The CPUs and memory limit each step, and all steps running at the same time together: with 4
+cores, a run uses at most 4, however many tasks are ready (on a cluster, through a run profile,
+the cluster's scheduler decides).
 Workflows use these unless they set lower ones (*Execution Settings → Resources*, with
 **Use the global limits** turned off). A workflow's limits above these are lowered to them, and
 its settings say so. The page shows what the server allows: higher values are lowered to
