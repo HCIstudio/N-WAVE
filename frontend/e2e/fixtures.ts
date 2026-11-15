@@ -53,6 +53,11 @@ export const addNode = async (page: Page, label: string): Promise<Locator> => {
     .first()
     .click();
   await expect(nodes).toHaveCount(before + 1);
+  // A node added out of view makes the canvas zoom out to it (after 50 ms,
+  // for 300 ms): until that is done the node isn't where it will be, and a
+  // click or double-click on it can miss.
+  await page.waitForTimeout(100);
+  await canvasSettled(page);
   return nodes.nth(before);
 };
 
