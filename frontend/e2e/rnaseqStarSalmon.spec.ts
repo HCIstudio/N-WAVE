@@ -67,6 +67,12 @@ test.describe("RNA-seq (STAR + Salmon) example", () => {
       barBox?.y ?? 0
     );
     expect(bannerBox?.y).toBeLessThan((page.viewportSize()?.height ?? 0) / 2);
+    // The list of components folds away; a node's panel opens over the notice, its tabs clickable.
+    await expect(banner.getByText("Show which")).toBeVisible();
+    await page.locator(`[data-id="${example.nodes.find((node) => node.type !== "note")?.id}"]`).dblclick();
+    await page.getByRole("tab", { name: "Code" }).click();
+    await page.getByRole("tab", { name: "Settings" }).click();
+    await page.getByRole("button", { name: "Close Panel" }).click();
     await banner.getByRole("button", { name: "Install them" }).click();
     await expect(banner).toHaveCount(0, { timeout: 60_000 });
 

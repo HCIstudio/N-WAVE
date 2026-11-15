@@ -11,7 +11,8 @@ interface CanvasNoticesProps {
 
 /**
  * Notices at the top of the canvas, clear of the bottom bar and the demo
- * banner. While a run goes the canvas is locked: a frame and a notice say
+ * banner. They belong to the canvas: node panels (z-index 10 and up) open
+ * over them, never under. While a run goes the canvas is locked: a frame and a notice say
  * so (the edit guards block the edits).
  */
 const CanvasNotices: React.FC<CanvasNoticesProps> = ({
@@ -30,7 +31,7 @@ const CanvasNotices: React.FC<CanvasNoticesProps> = ({
     {(isRunning ||
       missingNfCoreComponents.length > 0 ||
       importWarnings.length > 0) && (
-      <div className="pointer-events-none absolute left-1/2 top-4 z-30 flex w-[min(42rem,calc(100%-9rem))] -translate-x-1/2 flex-col gap-2">
+      <div className="pointer-events-none absolute left-1/2 top-4 z-[9] flex w-[min(42rem,calc(100%-9rem))] -translate-x-1/2 flex-col gap-2">
         {isRunning && (
           <output
             aria-label="Workflow locked"
