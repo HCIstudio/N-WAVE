@@ -52,11 +52,17 @@ const MissingNfCoreBanner: React.FC<{
           <>
             This workflow uses {components.length} nf-core component
             {components.length === 1 ? "" : "s"} that{" "}
-            {components.length === 1 ? "isn't" : "aren't"} installed:{" "}
-            {components.join(", ")}. Their nodes generate no code until they
-            are.
+            {components.length === 1 ? "isn't" : "aren't"} installed
+            {components.length === 1 ? `: ${components[0]}` : ""}. Their nodes
+            generate no code until they are.
             {cancelled &&
               " Installing was cancelled; what finished stays installed."}
+            {components.length > 1 && (
+              <details className="mt-1">
+                <summary className="cursor-pointer text-xs font-medium">Show which</summary>
+                <p className="mt-1 text-xs">{components.join(", ")}</p>
+              </details>
+            )}
           </>
         )}
       </p>

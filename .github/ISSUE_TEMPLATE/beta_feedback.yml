@@ -1,0 +1,57 @@
+name: Beta feature test report
+description: How a beta feature (marked Beta in N-WAVE) worked on your machine
+title: "[Beta] "
+labels: ["testing"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Beta features work, but are still being checked on different machines. Reports from
+        yours, good or bad, show where they hold up and what to improve. Please leave out
+        anything private: file paths with your name, data, or hostnames.
+  - type: input
+    id: feature
+    attributes:
+      label: Which beta feature?
+      placeholder: I/O monitor
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: N-WAVE version
+      description: On the home page, or in Global Settings.
+    validations:
+      required: true
+  - type: dropdown
+    id: setup
+    attributes:
+      label: Where does N-WAVE run?
+      options:
+        - Linux, Docker Engine
+        - Windows, Docker Desktop (WSL 2)
+        - Windows, WSL 2 with Docker Engine inside it
+        - macOS, Docker Desktop
+        - Something else (say below)
+    validations:
+      required: true
+  - type: input
+    id: machine
+    attributes:
+      label: The machine
+      description: The kernel (`uname -r`, or `docker info --format '{{.KernelVersion}}'`), CPUs and memory.
+      placeholder: 6.8.0-49-generic, 8 CPUs, 16 GB
+  - type: textarea
+    id: tried
+    attributes:
+      label: What did you run?
+      description: A built-in demo, or a workflow of your own (what it does, how many steps).
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: How did it go?
+      description: What worked, what didn't, and what N-WAVE said about it (for the I/O monitor, its note on lost or unlinked accesses). Screenshots help.
+    validations:
+      required: true

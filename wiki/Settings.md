@@ -29,6 +29,9 @@ allow them in the site settings (the icon left of the address) and reload the pa
 ## Run limits
 
 **Maximum CPU Cores**, **Maximum Memory** and **Execution Timeout**: the most any run may use.
+The CPUs and memory limit each step, and all steps running at the same time together: with 4
+cores, a run uses at most 4, however many tasks are ready (on a cluster, through a run profile,
+the cluster's scheduler decides).
 Workflows use these unless they set lower ones (*Execution Settings → Resources*, with
 **Use the global limits** turned off). A workflow's limits above these are lowered to them, and
 its settings say so. The page shows what the server allows: higher values are lowered to
@@ -87,6 +90,14 @@ fixed by the installation too.
 
 Every run records which features were on when it started (in the run history, `runs.json` in
 N-WAVE's data folder), so runs can be compared later.
+
+### Beta features
+
+A switch marked **Beta** is a feature that works, but is still being tested on different
+machines: what it shows can be incomplete on some of them, and it says where. It is off until
+you turn it on. **Report how it works on yours** opens a short form on GitHub (the feature,
+N-WAVE's version, where it runs, what you ran and how it went); every report helps decide what
+to improve, and when the feature leaves beta. Leave out anything private.
 
 ### Fixing switches for an installation
 

@@ -1,6 +1,7 @@
 // The Merge operator's settings: the separator, and the merged file's type
 // (from the incoming files' extensions).
 
+import type { SaveNodeData } from "../base/saveNodeData";
 import type { Node } from "@xyflow/react";
 import type React from "react";
 import { useEffect } from "react";
@@ -10,7 +11,7 @@ import type { NodeData } from "../../nodes/BaseNode";
 
 const MergePanel: React.FC<{
   node: Node<NodeData>;
-  onSave: (nodeId: string, data: Partial<NodeData>) => void;
+  onSave: SaveNodeData;
 }> = ({ node, onSave }) => {
   const { incomingFiles, handleDataChange: set } = useOperatorPanel(node, onSave);
   const { mergeOperation = "join", mergeJoinSeparator = "\\n" } = node.data;
@@ -28,8 +29,8 @@ const MergePanel: React.FC<{
 
   // The generated code reads joinType: keep it one of the types offered.
   useEffect(() => {
-    if (node.data.joinType !== joinType) set("joinType", joinType);
-  }, [node.data.joinType, joinType, set]);
+    if (node.data.joinType !== joinType) onSave(node.id, { joinType }, { derived: true });
+  }, [node.id, node.data.joinType, joinType, onSave]);
 
   return (
     <div className="space-y-3">

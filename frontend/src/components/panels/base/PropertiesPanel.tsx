@@ -1,3 +1,4 @@
+import type { SaveNodeData } from "./saveNodeData";
 import type React from "react";
 import { useState, useEffect, memo } from "react";
 import { useNodeConditions } from "../../../execution/NodeConditionsContext";
@@ -28,7 +29,7 @@ interface PropertiesPanelProps {
   /** True while the workflow runs: settings are shown but can't change. */
   locked?: boolean;
   onClose: () => void;
-  onSave: (nodeId: string, data: Partial<NodeData>) => void;
+  onSave: SaveNodeData;
   onDelete: (node: Node<NodeData>) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;

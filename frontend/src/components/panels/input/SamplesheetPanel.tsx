@@ -1,3 +1,4 @@
+import type { SaveNodeData } from "../base/saveNodeData";
 import type React from "react";
 import { type ChangeEvent, useEffect, useId, useMemo, useRef } from "react";
 import type { Node } from "@xyflow/react";
@@ -18,7 +19,7 @@ import Term from "../../common/ui/Term";
 
 interface SamplesheetPanelProps {
   node: Node<NodeData>;
-  onSave: (nodeId: string, data: Partial<NodeData>) => void;
+  onSave: SaveNodeData;
 }
 
 const fieldClassName =
@@ -71,7 +72,7 @@ const SamplesheetPanel: React.FC<SamplesheetPanelProps> = ({
 
   useEffect(() => {
     if (node.data.subtitle !== summary) {
-      onSave(node.id, { subtitle: summary });
+      onSave(node.id, { subtitle: summary }, { derived: true });
     }
   }, [node.id, node.data.subtitle, onSave, summary]);
 

@@ -45,6 +45,7 @@ test.describe("saving from two tabs", () => {
     await expect(page.locator(".react-flow__node", { hasText: "Display Output" })).toBeVisible();
 
     // Another conflict: keep tab A's version as a copy instead.
+    await other.bringToFront();
     await addNode(other, "Map");
     await save(other);
     const original = page.url();

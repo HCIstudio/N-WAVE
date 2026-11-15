@@ -1,3 +1,4 @@
+import type { SaveNodeData } from "../../components/panels/base/saveNodeData";
 import type React from "react";
 import type { Node } from "@xyflow/react";
 import type { NodeData } from "../../components/nodes/BaseNode";
@@ -11,7 +12,7 @@ interface NodePanelsProps {
   panels: ReturnType<typeof useNodePanels>;
   /** True while a run locks the workflow: settings show but can't change. */
   locked: boolean;
-  onNodeDataChange: (nodeId: string, data: Partial<NodeData>) => void;
+  onNodeDataChange: SaveNodeData;
   onDeleteNode: (node: Node<NodeData>) => void;
   onConvertToCustom: (node: Node<NodeData>, moduleSource?: string) => Promise<void>;
   onEditCustomNode: (customNodeId: string) => void;

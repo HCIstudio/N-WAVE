@@ -137,8 +137,9 @@ or has an issue that is explicitly moved to a later release.
 - [ ] Demo 2 and Demo 3 run on their test data (the first run downloads the containers).
 - [ ] The run panel: live log, copying the log, run history, reopening an earlier run.
 - [ ] **Cancel** stops the run, and its containers are gone (`docker ps`).
-- [ ] Run limits (CPUs, memory, time limit) from Global Settings apply; a run over the time
-      limit stops and says so.
+- [ ] Run limits (CPUs, memory, time limit) from Global Settings apply, to each step and to
+      all steps at once (with 2 CPUs, at most two 1-CPU tasks run at the same time); a run over
+      the time limit stops and says so.
 - [ ] A failing run (for example a custom process that exits with an error): the failure
       explanation next to the log, with its evidence lines (**Show in log**), how sure it is,
       the failing node marked, and the wiki link.
@@ -228,6 +229,8 @@ or has an issue that is explicitly moved to a later release.
 
 ## Global Settings and studies
 
+- [ ] A **Beta** feature's switch has the Beta label, says what is under test, and **Report
+      how it works on yours** opens the Beta feature test report form on GitHub.
 - [ ] Each **feature switch** in Global Settings → Features removes what it says, and brings it
       back. Switches fixed for the installation (`NWAVE_FEATURES`) can't be changed in the UI.
 - [ ] **Verbose mode**: events are recorded for each area above, the recording indicator shows,
