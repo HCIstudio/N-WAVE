@@ -190,7 +190,7 @@ export const RELEASES: RoadmapRelease[] = [
     goal: "See how each step reads and writes data, what limited a run, and what would make it faster.",
     why: "Long runs become explainable, and you can try settings before you spend hours.",
     features: [
-      { title: "Bytes read and written by each step", issue: 271 },
+      { title: "Bytes read and written by each step", issue: 271, status: "released" },
       { title: "Which files each step reads and writes, and how (I/O monitoring, opt-in)", issue: 102 },
       { title: "What limited a run: bottlenecks over time, with BottleMod", issue: 276 },
       { title: "What if: the predicted runtime with other resources", issue: 277 },
