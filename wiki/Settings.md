@@ -91,6 +91,14 @@ fixed by the installation too.
 Every run records which features were on when it started (in the run history, `runs.json` in
 N-WAVE's data folder), so runs can be compared later.
 
+### Beta features
+
+A switch marked **Beta** is a feature that works, but is still being tested on different
+machines: what it shows can be incomplete on some of them, and it says where. It is off until
+you turn it on. **Report how it works on yours** opens a short form on GitHub (the feature,
+N-WAVE's version, where it runs, what you ran and how it went); every report helps decide what
+to improve, and when the feature leaves beta. Leave out anything private.
+
 ### Fixing switches for an installation
 
 Whoever runs N-WAVE can fix switches when it starts, so they can't be changed in the app. A

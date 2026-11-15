@@ -5,9 +5,19 @@ import type { FeatureId, Features, WorkflowCheckMode } from "../../api/settings"
 import { useFeatures } from "../../settings/useFeatures";
 import { logActivity } from "../../activity/activityLog";
 import { getApiErrorMessage } from "../../utils/errors";
+import { BetaBadge, BetaNote } from "../../components/common/ui/BetaBadge";
+
+/** A feature switch: its name, what turning it off changes, and, for a beta feature, what is still being tested. */
+export interface FeatureSwitch {
+  id: Exclude<FeatureId, "workflowCheck">;
+  label: string;
+  off: string;
+  /** In beta: works, but is still being tested on different machines (what is being checked). */
+  beta?: string;
+}
 
 /** Each switch: its name and what turning it off changes. */
-export const FEATURE_SWITCHES: { id: Exclude<FeatureId, "workflowCheck">; label: string; off: string }[] = [
+export const FEATURE_SWITCHES: FeatureSwitch[] = [
   {
     id: "connectionHints",
     label: "Connection hints",
@@ -166,10 +176,12 @@ const FeatureSettings: React.FC = () => {
               />
               <span>
                 <span className="font-medium">{feature.label}</span>
+                {feature.beta && <BetaBadge className="ml-2 align-middle" />}
                 {isLocked(feature.id) && <LockedNote />}
                 <span id={`${id}-${feature.id}-off`} className="block text-xs text-text-light">
                   Off: {feature.off}
                 </span>
+                {feature.beta && <BetaNote feature={feature.label}>{feature.beta}</BetaNote>}
               </span>
             </label>
           </li>
