@@ -47,9 +47,13 @@ export interface ModelStep {
 }
 
 export interface ModelResources {
-  /** The CPUs the run's tasks share: how many run at once (the computer's, or a cluster's). */
+  /**
+   * The CPUs the run's tasks share: how many run at once. On this computer,
+   * N-WAVE's Maximum CPU Cores (Nextflow's local executor is limited to it);
+   * on a cluster, what its queue gives.
+   */
   cpus: number;
-  /** Bytes. */
+  /** Bytes: on this computer, the run's memory limit, which its tasks share too. */
   memory: number;
   /**
    * The most CPUs one step's task may ask for (N-WAVE's Maximum CPU Cores:
@@ -57,6 +61,30 @@ export interface ModelResources {
    */
   cpusPerTask?: number;
 }
+
+/**
+ * The most CPUs a run's tasks reserved at the same time (what they asked
+ * for, from the trace). A task that ends when another starts doesn't overlap it.
+ */
+export const peakReservedCpus = (
+  trace: Array<{ status: string; start: number | null; complete: number | null; cpus: number | null }>,
+): number => {
+  const events: Array<[number, number]> = [];
+  for (const task of trace) {
+    if (task.status === "CACHED" || task.start === null || task.complete === null) continue;
+    const cpus = Math.max(1, task.cpus ?? 1);
+    events.push([task.start, cpus], [task.complete, -cpus]);
+  }
+  // Ends before starts at the same moment.
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let now = 0;
+  let peak = 0;
+  for (const [, change] of events) {
+    now += change;
+    peak = Math.max(peak, now);
+  }
+  return peak;
+};
 
 /** The CPUs a step's task reserves: what it asked for, capped by the run's limit. */
 export const reservedCpus = (step: ModelStep, resources: ModelResources): number =>

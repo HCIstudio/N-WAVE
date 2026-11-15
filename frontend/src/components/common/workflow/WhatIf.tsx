@@ -20,7 +20,7 @@ export const profileResources = (profile: RunProfile): { cpus: number; memoryGb:
 };
 
 export interface WhatIfSettings {
-  /** The CPUs the run's tasks share. */
+  /** The CPUs the run's tasks share: on this computer, Maximum CPU Cores; with a cluster profile, its queue's. */
   cpus: number;
   /** The most CPUs one step's task may ask for (Maximum CPU Cores). */
   cpusPerTask?: number;
@@ -97,26 +97,15 @@ const WhatIf: React.FC<{
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs text-gray-800" htmlFor={`${id}-cpus`}>
-          CPUs (the computer&apos;s, or a cluster&apos;s): <strong>{settings.cpus}</strong>
+          Maximum CPU Cores (all steps at once, on a computer with that many): <strong>{settings.cpus}</strong>
           <input
             id={`${id}-cpus`}
             type="range"
             min={1}
             max={Math.max(32, resources.cpus * 4)}
             value={settings.cpus}
-            onChange={(event) => setSettings({ ...settings, cpus: Number(event.target.value) })}
-            className="block w-full accent-nextflow-green"
-          />
-        </label>
-        <label className="block text-xs text-gray-800" htmlFor={`${id}-per-step`}>
-          Most CPUs per step (Maximum CPU Cores): <strong>{settings.cpusPerTask ?? settings.cpus}</strong>
-          <input
-            id={`${id}-per-step`}
-            type="range"
-            min={1}
-            max={settings.cpus}
-            value={Math.min(settings.cpusPerTask ?? settings.cpus, settings.cpus)}
-            onChange={(event) => setSettings({ ...settings, cpusPerTask: Number(event.target.value) })}
+            // Nextflow's local executor runs the tasks within the limit, and no step may ask for more.
+            onChange={(event) => setSettings({ ...settings, cpus: Number(event.target.value), cpusPerTask: Number(event.target.value) })}
             className="block w-full accent-nextflow-green"
           />
         </label>
@@ -193,7 +182,7 @@ const WhatIf: React.FC<{
             ? `Less certain: these settings are far from the ${resources.cpus} CPUs and ${Math.round(resources.memory / 1024 ** 3)} GB the model was fitted to.`
             : "An estimate from this run's measurements."}{" "}
           {settings.cpus !== resources.cpus
-            ? "The model overrates what CPUs change: on Demo 3, half or twice the CPUs changed the runtime by about a quarter, and the model said by a half. "
+            ? "The model overrates what CPUs change: on Demo 3, half the CPUs made the run 32 % slower and twice the CPUs 24 % faster, and the model said 86 % and 45 %. "
             : ""}
           BottleMod, Lößer et al. (
           <a href={BOTTLEMOD_PAPER} target="_blank" rel="noreferrer" className="text-nextflow-green underline">

@@ -9,7 +9,7 @@ vi.mock("../../../api/runs", () => ({
   getRunTrace: async () => demo3.trace,
   getRunLog: async () => demo3.log,
 }));
-const { default: RunBottlenecks, formatSeconds, readRunResources } = await import("./RunBottlenecks");
+const { default: RunBottlenecks, formatSeconds, readRunResources, sharedResources } = await import("./RunBottlenecks");
 
 describe("RunBottlenecks", () => {
   it("reads the run's limits from its log", () => {
@@ -21,6 +21,21 @@ describe("RunBottlenecks", () => {
     expect(readRunResources("nothing")).toBeNull();
     expect(formatSeconds(19.37)).toBe("19.4 s");
     expect(formatSeconds(218.6)).toBe("3 min 39 s");
+  });
+
+  it("models a run's tasks sharing its limits, and an older run's sharing the computer's CPUs", () => {
+    const limits = { cpus: 2, memory: 4 * 1024 ** 3, cpusPerTask: 2 };
+    const task = (start: number, complete: number) => ({ status: "COMPLETED", start, complete, cpus: 1 });
+    // Nextflow ran at most 2 one-CPU tasks at once: the run's limit is what they shared.
+    const limited = [task(0, 10), task(0, 10), task(10, 20), task(10, 20)];
+    expect(sharedResources(limits, limited, { cpus: 4, memory: 16 * 1024 ** 3 })).toEqual(limits);
+    // Four at once with a limit of 2: a run from before N-WAVE limited the executor.
+    const older = [task(0, 10), task(0, 10), task(1, 10), task(2, 12)];
+    expect(sharedResources(limits, older, { cpus: 4, memory: 16 * 1024 ** 3 })).toEqual({
+      cpus: 4,
+      memory: 16 * 1024 ** 3,
+      cpusPerTask: 2,
+    });
   });
 
   it("shows Demo 3's predicted and measured runtime, what limited each step, and the chain on the canvas", async () => {

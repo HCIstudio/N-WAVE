@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { getRunLog, getRunTrace } from "../../../api/runs";
 import { nodeIdForProcess } from "../../../execution/nodeRuns";
 import { type RunInsight, limitKey, runInsight } from "../../../insight/bottlemod/runInsight";
-import { buildRunModel, measuredRuntime, type ModelResources, type ModelStep, predictRun } from "../../../insight/bottlemod/runModel";
+import {
+  buildRunModel,
+  measuredRuntime,
+  type ModelResources,
+  type ModelStep,
+  peakReservedCpus,
+  predictRun,
+} from "../../../insight/bottlemod/runModel";
 import { wikiUrl } from "../../../docs/links";
 import { useRunDefaults } from "../../../settings/useRunDefaults";
 import WhatIf from "./WhatIf";
@@ -22,11 +29,6 @@ export const LIMIT_COLOURS: Record<string, { colour: string; label: string }> = 
 };
 const colourOf = (key: string) => (LIMIT_COLOURS[key.startsWith("input:") ? "input" : key] ?? LIMIT_COLOURS.input)?.colour;
 
-/**
- * The run's limits from its log's first lines ("N-WAVE limits: 4 CPUs, 4 GB
- * memory"): the most one step's task may ask for (Nextflow's
- * process.resourceLimits), the CPUs also as `cpus` until the computer's are known.
- */
 /** The prediction for the limits in Execution Settings, from the run shown on the canvas. */
 export const SettingsPrediction: React.FC<{ state: RunModelState | null | "unavailable"; cpus: number; memory: number }> = ({
   state,
@@ -34,25 +36,51 @@ export const SettingsPrediction: React.FC<{ state: RunModelState | null | "unava
   memory,
 }) => {
   if (!state || state === "unavailable" || !(cpus > 0) || !(memory > 0)) return null;
-  // The workflow's Maximum CPU Cores caps each step; its tasks share the computer's CPUs.
+  // The workflow's limits cap each step, and its tasks share them (Nextflow's local executor).
   let predicted: number;
   try {
-    predicted = predictRun(state.model, { ...state.resources, cpusPerTask: cpus }).total;
+    predicted = predictRun(state.model, { cpus, memory, cpusPerTask: cpus }).total;
   } catch {
     return null;
   }
   const measuredCap = state.resources.cpusPerTask ?? state.resources.cpus;
   const far = Math.max(cpus / measuredCap, measuredCap / cpus) > 2;
-  void memory;
   return (
     <p className="mt-4 rounded-md border border-panel-border p-3 text-sm text-text" data-testid="settings-prediction">
       With these limits, the model of the run shown on the canvas predicts <strong>{formatSeconds(predicted)}</strong>{" "}
-      (it took {formatSeconds(state.measured)} with at most {measuredCap} CPUs per step, on {state.resources.cpus} CPUs).{" "}
+      (it took {formatSeconds(state.measured)} with Maximum CPU Cores at {measuredCap}
+      {state.resources.cpus > measuredCap ? `, its tasks sharing ${state.resources.cpus} CPUs` : ""}).{" "}
       {far ? "Less certain: these limits are far from that run's. " : ""}An estimate; BottleMod, Lößer et al.
     </p>
   );
 };
 
+/**
+ * What a run's tasks shared. N-WAVE limits Nextflow's local executor to the
+ * run's limits (since 1.6.4), so its tasks share Maximum CPU Cores and the
+ * memory limit. Runs from before ran as many tasks at once as the computer
+ * had CPUs: their trace shows more CPUs reserved at once than the limit, and
+ * they are modelled with the computer's CPUs and memory.
+ */
+export const sharedResources = (
+  limits: ModelResources,
+  trace: Parameters<typeof peakReservedCpus>[0],
+  server: { cpus?: number; memory?: number } = {},
+): ModelResources => {
+  const peak = peakReservedCpus(trace);
+  if (peak <= limits.cpus) return limits;
+  return {
+    ...limits,
+    cpus: Math.max(peak, server.cpus ?? 0),
+    memory: Math.max(limits.memory, server.memory !== undefined && Number.isFinite(server.memory) ? server.memory : 0),
+  };
+};
+
+/**
+ * The run's limits from its log's first lines ("N-WAVE limits: 4 CPUs, 4 GB
+ * memory"): the most one step's task may ask for (Nextflow's
+ * process.resourceLimits), and what its tasks share (sharedResources).
+ */
 export const readRunResources = (log: string): ModelResources | null => {
   const match = log.match(/N-WAVE limits: (\d+) CPUs?, ([\d.]+) ([KMGT]B) memory/);
   if (!match) return null;
@@ -69,9 +97,9 @@ export interface RunModelState {
 /** The run's BottleMod model, from its trace and log, on the canvas it ran. */
 export const useRunModel = (runId: string | null, nodes: Node[], edges: Edge[]): RunModelState | null | "unavailable" => {
   const [state, setState] = useState<RunModelState | null | "unavailable">(null);
-  // The run's tasks share the server's CPUs (Nextflow runs as many at once as
-  // there are); the run's limit caps each step. The demo has no server: its
-  // recorded runs had the limit at the computer's CPUs.
+  // The run's tasks share its limits; a run from before N-WAVE limited
+  // Nextflow's executor shared the server's CPUs. The demo has no server:
+  // its recorded runs had the limit at the computer's CPUs.
   const server = useServerLimits();
   const serverCpus = server?.maxCpus;
   const serverMemory = server ? memoryBytes(server.maxMemory) : Number.NaN;
@@ -93,11 +121,7 @@ export const useRunModel = (runId: string | null, nodes: Node[], edges: Edge[]):
           },
         });
         const limits = readRunResources(log);
-        const resources = limits && {
-          ...limits,
-          cpus: Math.max(limits.cpus, serverCpus ?? 0),
-          memory: Math.max(limits.memory, Number.isFinite(serverMemory) ? serverMemory : 0),
-        };
+        const resources = limits && sharedResources(limits, trace, { cpus: serverCpus, memory: serverMemory });
         if (model.length === 0 || !resources) {
           setState("unavailable");
           return;

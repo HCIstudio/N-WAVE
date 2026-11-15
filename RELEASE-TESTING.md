@@ -195,10 +195,12 @@ or has an issue that is explicitly moved to a later release.
       measured runtime, a bar per step coloured by what limited it with a sentence under it,
       the chain that set the runtime, and **Show the chain on the canvas** outlining its nodes.
       Credits BottleMod and links the paper.
-- [ ] **What if?** (Performance, below What limited this run): CPUs, memory, a step first and a
-      run profile change the predicted runtime at once; settings far from the run's say **Less
-      certain**. **Execution Settings → Resources** shows the prediction for the workflow's
-      limits after **Show on canvas**. Compare it with a real run with those limits.
+- [ ] **What if?** (Performance, below What limited this run): **Maximum CPU Cores**, memory, a
+      step first and a run profile change the predicted runtime at once; settings far from the
+      run's say **Less certain**. **Execution Settings → Resources** shows the prediction for the
+      workflow's limits after **Show on canvas**. Compare it with a real run with those limits:
+      with Maximum CPU Cores at 2, the run's tasks share 2 CPUs, and its own model (What limited
+      this run) predicts it within about 10 %.
 - [ ] **Show on canvas** (History): an earlier run's nodes show **Results ready**, their
       **Results** tab its line, and the **Performance** tab opens for it. Not offered while a run
       goes.

@@ -34,16 +34,17 @@ describe("what if", () => {
     expect(four.chain[four.chain.length - 1]).toBe("MultiQC");
   });
 
-  it("caps each step's CPUs as Maximum CPU Cores does: Demo 3's steps ask for one, so a cap of 2 changes nothing", () => {
+  it("caps each step's CPUs as Maximum CPU Cores does: Demo 3's steps ask for one, so a cap alone changes nothing", () => {
     const capped = predictRun(model, { ...measured, cpusPerTask: 2 }).total;
     expect(capped).toBeCloseTo(predictRun(model, measured).total, 6);
-    // A real run of Demo 3 with Maximum CPU Cores at 2, on the same 4 CPUs, took 212.4 s.
-    expect(Math.abs(capped / 212.4 - 1)).toBeLessThan(0.05);
+    // On this computer Maximum CPU Cores also limits the tasks running at once: 2 shared CPUs.
+    const two = predictWhatIf(model, measured, { cpus: 2, cpusPerTask: 2, memoryGb: 4, priority: null });
+    expect(two.predicted as number).toBeGreaterThan(capped);
   });
 
   it("fits the runs it came from, and overrates what CPUs change (Demo 3, without the I/O monitor)", () => {
-    // Real runs of Demo 3's exported workflow, Nextflow's local executor limited to 4 and to
-    // 2 CPUs in all (fixtures/): 185.7 s and 243.9 s.
+    // Real runs of Demo 3 in N-WAVE with Maximum CPU Cores at 4 and at 2, which limit
+    // Nextflow's local executor to that many CPUs in all (fixtures/): 190.1 s and 247.4 s.
     const modelOfRun = (trace: unknown) =>
       buildRunModel({
         trace: trace as Parameters<typeof buildRunModel>[0]["trace"],
@@ -53,15 +54,16 @@ describe("what if", () => {
       });
     const four = modelOfRun(trace4);
     const two = modelOfRun(trace2);
-    expect(measuredRuntime(four)).toBeCloseTo(185.7, 0);
-    expect(measuredRuntime(two)).toBeCloseTo(243.9, 0);
-    const at = (model: typeof four, cpus: number) => predictRun(model, { cpus, memory: 4 * 1024 ** 3 }).total;
-    // Each fits its own run within 10 %.
-    expect(Math.abs(at(four, 4) / 185.7 - 1)).toBeLessThan(0.1);
-    expect(Math.abs(at(two, 2) / 243.9 - 1)).toBeLessThan(0.1);
-    // Across the two, it is about a third off, in the direction of more effect (what the wiki says).
-    expect(at(four, 2) / 243.9 - 1).toBeGreaterThan(0.2);
-    expect(at(two, 4) / 185.7 - 1).toBeLessThan(-0.2);
+    expect(measuredRuntime(four)).toBeCloseTo(190.1, 0);
+    expect(measuredRuntime(two)).toBeCloseTo(247.4, 0);
+    const at = (model: typeof four, cpus: number) => predictRun(model, { cpus, memory: 4 * 1024 ** 3, cpusPerTask: cpus }).total;
+    // Each fits its own run within 10 % (181.4 s and 243.2 s).
+    expect(Math.abs(at(four, 4) / 190.1 - 1)).toBeLessThan(0.1);
+    expect(Math.abs(at(two, 2) / 247.4 - 1)).toBeLessThan(0.1);
+    // Across the two, it is about a third off, in the direction of more effect (what the wiki
+    // says): 336.9 s for the 247.4 s run, 132.9 s for the 190.1 s one.
+    expect(at(four, 2) / 247.4 - 1).toBeGreaterThan(0.2);
+    expect(at(two, 4) / 190.1 - 1).toBeLessThan(-0.2);
   });
 
   it("gives a step the CPUs first when asked", () => {
@@ -84,12 +86,12 @@ describe("what if", () => {
     const result = screen.getByTestId("what-if-result");
     const before = result.textContent;
     expect(before).toContain("Predicted 3 min 30 s");
-    fireEvent.change(screen.getByRole("slider", { name: /computer/ }), { target: { value: "2" } });
+    fireEvent.change(screen.getByRole("slider", { name: /Maximum CPU Cores/ }), { target: { value: "2" } });
     expect(result.textContent).not.toBe(before);
     expect(result.textContent).toMatch(/% slower than the 3 min 39 s measured/);
     // Measured on Demo 3: the model overrates what CPUs change, and says so.
     expect(result.textContent).toContain("The model overrates what CPUs change");
-    fireEvent.change(screen.getByRole("slider", { name: /computer/ }), { target: { value: "16" } });
+    fireEvent.change(screen.getByRole("slider", { name: /Maximum CPU Cores/ }), { target: { value: "16" } });
     expect(result.textContent).toContain("Less certain");
   });
 });
