@@ -546,7 +546,9 @@ const INSIGHT: CourseStep[] = [
     text: (
       <>
         Optional: to see each step&apos;s files too, switch on <strong>Global Settings → I/O monitor</strong> before the
-        run (Linux and Docker Desktop; it runs a privileged container). Without it, the course goes on with the rest.
+        run (Linux and Docker Desktop; it runs a privileged container). It is a <strong>Beta</strong> feature: on
+        Docker Desktop and WSL 2 it can miss file accesses, and it says how many. Without it, the course goes on with
+        the rest.
       </>
     ),
   },
@@ -604,9 +606,9 @@ const INSIGHT: CourseStep[] = [
   {
     text: (
       <>
-        Back in <strong>Performance</strong>, <strong>What if?</strong>: move <strong>CPUs</strong>. The model
-        predicts the runtime at once, and which steps would set it. Far from the run&apos;s CPUs, it says it is less
-        certain.
+        Back in <strong>Performance</strong>, <strong>What if?</strong>: move <strong>Maximum CPU Cores</strong>,
+        the CPUs all the run&apos;s tasks share. The model predicts the runtime at once, and which steps would set it.
+        Far from the run&apos;s CPUs, it says it is less certain.
       </>
     ),
     target: RUN_PANEL,
