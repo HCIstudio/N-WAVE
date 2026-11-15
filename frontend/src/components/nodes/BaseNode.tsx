@@ -16,7 +16,8 @@ import { useNodeConditions } from "../../execution/NodeConditionsContext";
 import { useNodeProblems } from "../../execution/NodeProblemsContext";
 import { useNodeRun } from "../../execution/RunTasksContext";
 import { NODE_KINDS, nodeKindOf } from "../../workflows/nodeKinds";
-import { canJoinArm } from "../../branches/branches";
+import { armLabel, armProblem, canJoinArm } from "../../branches/branches";
+import { useArmDrag } from "../../branches/useArmDrag";
 import { acceptsManyConnections } from "../../registry/portArity";
 import { useFeature } from "../../settings/useFeatures";
 import { nestedEntryOf } from "../../workflows/nested/nestedEntry";
@@ -118,14 +119,23 @@ const BaseNode = ({
   // The selector gives a string, so nodes only re-render when a drag starts
   // or ends, not on every pointer move.
   const dragFrom = useConnection((connection) =>
-    connection.inProgress && connection.fromHandle?.type === "source"
+    connection.inProgress && connection.fromHandle?.type === "source" && connection.fromNode.type !== "branch"
       ? `${connection.fromNode.id}\n${connection.fromHandle.id ?? ""}`
       : "",
   );
-  const { getNode } = useReactFlow();
+  const { getNode, getNodes } = useReactFlow();
+  // A branch's arm line is being drawn: the top connection point is where it goes, the data ports aren't.
+  const armDrag = useArmDrag();
   const hintsOn = useFeature("connectionHints");
   // Branch handles only show in a workflow with a Branch node (a boolean: re-renders when that changes).
   const hasBranches = useStore((state) => state.nodes.some((node) => node.type === "branch"));
+  const joinsArm = hasBranches && canJoinArm({ id, type, data });
+  // While an arm's line is drawn: whether this node can go into that arm (null), or why not.
+  const armRefusal =
+    armDrag && joinsArm
+      ? armProblem(armDrag.branch, { id, type, data } as Node<NodeData>, getNodes() as Node<NodeData>[])
+      : null;
+  const armTarget = Boolean(armDrag) && joinsArm && armRefusal === null;
   const openNested = useOpenNestedView();
   const fitOf = (portName: string): { fits: boolean; message?: string } | null => {
     if (!dragFrom || !hintsOn) return null;
@@ -316,11 +326,13 @@ const BaseNode = ({
               fit?.fits === true && "!bg-nextflow-green ring-4 ring-nextflow-green/40",
               fit?.fits === false && "!bg-yellow-400 ring-4 ring-yellow-300/70",
               !fit && "!bg-gray-400",
+              armDrag && "!bg-gray-300 !opacity-30",
             )}
             data-fit={fit ? (fit.fits ? "fits" : "mismatch") : undefined}
             data-connections={many ? "many" : "one"}
-            title={fit?.message}
-            isConnectable={isConnectable}
+            data-unavailable={armDrag ? "true" : undefined}
+            title={armDrag ? "A branch's line goes to the top of a step, not to its data ports" : fit?.message}
+            isConnectable={isConnectable && !armDrag}
             onMouseDown={onMouseDown}
           />
           {(port.label || many || dragging) && (
@@ -369,14 +381,38 @@ const BaseNode = ({
       </div>
 
       {/* Where a branch's line comes in (on top): a line from a Branch's exit puts the node in that arm. */}
-      {hasBranches && canJoinArm({ id, type, data }) && (
-        <Handle
-          type="target"
-          position={Position.Top}
-          id="branch"
-          title={data.branch ? "In a branch's arm" : "Draw a line from a Branch node's exit here to put this step in that arm"}
-          className={clsx("!h-2 !w-2 !border-0", data.branch ? "!bg-fuchsia-400" : "!bg-fuchsia-300 !opacity-40")}
-        />
+      {joinsArm && (
+        <>
+          <Handle
+            type="target"
+            position={Position.Top}
+            id="branch"
+            title={
+              armRefusal ??
+              (armTarget
+                ? `Drop here: puts this step in the ${armLabel(armDrag?.arm ?? "")} arm`
+                : data.branch
+                  ? "In a branch's arm"
+                  : "Draw a line from a Branch node's exit here to put this step in that arm")
+            }
+            data-arm-target={armDrag ? (armTarget ? "fits" : "refused") : undefined}
+            isConnectable={!dragFrom && (!armDrag || armTarget)}
+            onMouseDown={onMouseDown}
+            className={clsx(
+              "!border-0",
+              armTarget
+                ? "!h-4 !w-4 !bg-fuchsia-500 ring-4 ring-fuchsia-300/70 animate-pulse"
+                : "!h-2 !w-2",
+              !armTarget && (data.branch ? "!bg-fuchsia-400" : "!bg-fuchsia-300 !opacity-40"),
+              (dragFrom || (armDrag && !armTarget)) && "!opacity-20",
+            )}
+          />
+          {armTarget && (
+            <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded border border-fuchsia-400 bg-white px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-800 shadow-sm">
+              Into the {armLabel(armDrag?.arm ?? "")} arm
+            </div>
+          )}
+        </>
       )}
             {/* Execution Status Indicator */}
       {status && status !== "disabled" && (
@@ -521,8 +557,13 @@ const BaseNode = ({
             // border, then 12px). Its outputs touch the outer card's border
             // from outside (the handle is centred on its offset), so they
             // look attached without covering the cards.
-            className={clsx("!w-3 !h-3 !bg-gray-400", hasStepsInside ? "!-right-[19px]" : "!-right-1.5")}
-            isConnectable={port.isConnectable ?? true}
+            className={clsx(
+              "!w-3 !h-3 !bg-gray-400",
+              hasStepsInside ? "!-right-[19px]" : "!-right-1.5",
+              armDrag && "!bg-gray-300 !opacity-30",
+            )}
+            data-unavailable={armDrag ? "true" : undefined}
+            isConnectable={(port.isConnectable ?? true) && !armDrag}
             onMouseDown={onMouseDown}
           />
           {port.label && (

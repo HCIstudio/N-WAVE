@@ -43,7 +43,9 @@ export const connectionProblem = (
   const targetNode = connection.target ? nodes.find((node) => node.id === connection.target) : undefined;
   // From a branch's exit: the node goes into that arm (no data flows).
   if (sourceNode?.type === "branch") {
-    return targetNode ? armProblem(sourceNode.id, targetNode, nodes) : "Draw the line to a step.";
+    if (!targetNode) return "Draw the line to a step.";
+    if (connection.targetHandle !== "branch") return "A branch's line goes to the top of a step, not to its data ports.";
+    return armProblem(sourceNode.id, targetNode, nodes);
   }
   if (connection.targetHandle === "branch") return "Only a branch's exit puts a step in an arm: draw from the Branch node.";
   const validation = validateConnectionWithNodeDefinitions({ connection, sourceNode, targetNode, nodes, edges });
@@ -164,6 +166,12 @@ export const WorkflowProvider: FC<PropsWithChildren> = ({ children }) => {
       };
       const currentNodes = getNodes();
       const currentEdges = getEdges();
+      // A branch's line passing its own exits, or other steps' data ports (greyed out while it is
+      // drawn): not a connection anyone means, so no message. A line from a data port to a step's
+      // arm point is the same the other way round.
+      const from = currentNodes.find((node) => node.id === connection.source);
+      if (from?.type === "branch" && (connection.target === connection.source || connection.targetHandle !== "branch")) return false;
+      if (from?.type !== "branch" && connection.targetHandle === "branch") return false;
       const problem = connectionProblem(connection, currentNodes, currentEdges);
       if (problem) {
         showToast(problem, "error");

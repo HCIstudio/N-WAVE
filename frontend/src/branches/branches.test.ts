@@ -201,6 +201,8 @@ describe("a branch built on the canvas", () => {
     const { nodes, edges } = built();
     expect(connectionProblem({ source: "b", sourceHandle: "else", target: "trim", targetHandle: "branch" }, nodes, edges)).toBeNull();
     expect(connectionProblem({ source: "b", sourceHandle: "if", target: "p", targetHandle: "branch" }, nodes, edges)).toMatch(/can't be in a branch's arm/);
+    // Not to a data port: the line goes to the top of the step.
+    expect(connectionProblem({ source: "b", sourceHandle: "if", target: "trim", targetHandle: "in" }, nodes, edges)).toMatch(/top of a step/);
     expect(connectionProblem({ source: "trim", sourceHandle: "out", target: "star", targetHandle: "branch" }, nodes, edges)).toMatch(/Only a branch's exit/);
     // A second aligner into the report: from another arm, it's allowed.
     const one = edges.filter((edge) => edge.id !== "e4");

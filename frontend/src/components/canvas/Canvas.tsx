@@ -1,3 +1,4 @@
+import ConnectionLine from "./ConnectionLine";
 import React, { type FC, useEffect, useRef } from "react";
 import {
   ReactFlow,
@@ -140,6 +141,7 @@ const Canvas: FC<CanvasProps> = ({
         onConnectStart={onConnectStart}
         onConnectEnd={onConnectEnd}
         connectionMode={ConnectionMode.Loose}
+        connectionLineComponent={ConnectionLine}
         deleteKeyCode={["Backspace", "Delete"]}
         className="bg-background"
         proOptions={{ hideAttribution: true }}

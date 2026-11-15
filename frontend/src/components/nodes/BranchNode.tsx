@@ -9,7 +9,8 @@ import { GitFork } from "lucide-react";
 import type React from "react";
 import { evaluateCondition, parameterValues } from "../../analysis/conditions";
 import { armStyle } from "../../branches/armStyles";
-import { armLabel, branchArms, branchConditions, paramsRead } from "../../branches/branches";
+import { armLabel, armProblem, branchArms, branchConditions, paramsRead } from "../../branches/branches";
+import { useArmDrag } from "../../branches/useArmDrag";
 import { NODE_KINDS } from "../../workflows/nodeKinds";
 import type { NodeData } from "./BaseNode";
 
@@ -23,8 +24,19 @@ export const runningArm = (conditions: string[], params: ReturnType<typeof param
   return "else";
 };
 
-const BranchNode: React.FC<NodeProps<Node<NodeData>>> = ({ data, selected }) => {
+/** Starting a line from an exit selects no text (the node's labels, or the canvas behind it). */
+const noTextSelection = (event: React.MouseEvent) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
+
+const BranchNode: React.FC<NodeProps<Node<NodeData>>> = ({ id, type, data, selected }) => {
   const nodes = useNodes<Node<NodeData>>();
+  const armDrag = useArmDrag();
+  // Another branch's arm line is being drawn: this branch can go into that arm (nested), or why not.
+  const nestRefusal =
+    armDrag && armDrag.branch !== id ? armProblem(armDrag.branch, { id, type, data } as Node<NodeData>, nodes) : null;
+  const nestTarget = Boolean(armDrag) && armDrag?.branch !== id && nestRefusal === null;
   const conditions = branchConditions({ data });
   const arms = branchArms({ data });
   const running = conditions.length > 0 ? runningArm(conditions, parameterValues(nodes)) : null;
@@ -36,13 +48,25 @@ const BranchNode: React.FC<NodeProps<Node<NodeData>>> = ({ data, selected }) => 
       data-branch-now={running ?? "unknown"}
       aria-label={`Branch: ${conditions.map((condition, index) => `${index === 0 ? "if" : "else if"} ${condition}`).join(", ")}${conditions.length > 0 ? ", else" : ""}`}
       className={clsx(
-        "relative w-64 rounded-lg border-2 bg-fuchsia-50 text-gray-900 shadow-sm",
+        "relative w-64 select-none rounded-lg border-2 bg-fuchsia-50 text-gray-900 shadow-sm",
         selected ? "border-fuchsia-600 ring-2 ring-fuchsia-300" : "border-fuchsia-400",
       )}
     >
-      {/* Steps in an arm of another branch: its line comes in on top. */}
-      {Boolean(data.branch) && (
-        <Handle type="target" position={Position.Top} id="branch" isConnectable={false} className="!h-2 !w-2 !border-0 !bg-fuchsia-400" />
+      {/* In an arm of another branch (nested): that arm's line comes in on top. */}
+      {(Boolean(data.branch) || nestTarget) && (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id="branch"
+          isConnectable={nestTarget}
+          onMouseDown={noTextSelection}
+          data-arm-target={nestTarget ? "fits" : undefined}
+          title={nestTarget ? `Drop here: puts this branch in the ${armLabel(armDrag?.arm ?? "")} arm` : "In another branch's arm"}
+          className={clsx(
+            "!border-0",
+            nestTarget ? "!h-4 !w-4 !bg-fuchsia-500 ring-4 ring-fuchsia-300/70 animate-pulse" : "!h-2 !w-2 !bg-fuchsia-400",
+          )}
+        />
       )}
       <div
         className="flex items-center gap-1 rounded-t-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
@@ -66,12 +90,18 @@ const BranchNode: React.FC<NodeProps<Node<NodeData>>> = ({ data, selected }) => 
           const style = armStyle(arm);
           const condition = arm === "else" ? null : conditions[index];
           const runs = running === arm;
+          const drawing = armDrag?.branch === id && armDrag.arm === arm;
           return (
             <li
               key={arm}
               data-arm={arm}
               data-runs={running === null ? "unknown" : String(runs)}
-              className={clsx("relative flex items-baseline gap-1.5 py-0.5 pl-3 pr-5", running !== null && !runs && "opacity-40")}
+              data-drawing={drawing ? "true" : undefined}
+              className={clsx(
+                "relative flex items-baseline gap-1.5 py-0.5 pl-3 pr-5",
+                running !== null && !runs && !drawing && "opacity-40",
+                drawing && "bg-fuchsia-100",
+              )}
             >
               <span className={clsx("shrink-0 text-[10px] font-semibold uppercase", style.text)}>{armLabel(arm)}</span>
               {condition !== null && <code className="min-w-0 break-words font-mono text-[11px]">{condition}</code>}
@@ -80,9 +110,10 @@ const BranchNode: React.FC<NodeProps<Node<NodeData>>> = ({ data, selected }) => 
                 type="source"
                 position={Position.Right}
                 id={arm}
-                title={`Draw a line to a step to put it in the ${armLabel(arm)} arm`}
+                title={`Draw a line to the top of a step to put it in the ${armLabel(arm)} arm`}
+                onMouseDown={noTextSelection}
                 style={{ backgroundColor: style.line }}
-                className="!h-2.5 !w-2.5 !border-0"
+                className="!h-3 !w-3 !border-2 !border-white"
               />
             </li>
           );

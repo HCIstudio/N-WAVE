@@ -114,13 +114,19 @@ tool and change no data, they decide which steps run.
 
 **Building one**
 
-1. In the + menu, under **Branches**: **If / else** (one condition), **If / else if / else**
-   (two to start with) or **Switch on a parameter** (one arm per value of a parameter).
-2. Double-click it to write the conditions (`params.aligner == 'star'`, `!params.skip_qc`,
-   `params.depth > 10 && params.trim`). **Add else if** adds an arm; the bin removes one. For
-   a switch, choose the parameter and give each case its value.
-3. Draw a line from an arm's exit to a step: the step goes into that arm. The panel lists each
-   arm's steps; the × takes one out.
+1. In the + menu, under **Branches**: **If / else**, or **Switch on a parameter** (one arm
+   per value of a parameter).
+2. Double-click it and set each condition in its form: a parameter, a comparison and a value
+   (**aligner** **is** `star`, **min_depth** **is more than** `10`, **skip_qc** **is off**).
+   The form lists the Parameters node's parameters; **New parameter…** adds one there (and
+   makes the Parameters node if the workflow has none). For anything else, **Write it as
+   code** takes any Groovy condition, such as `params.depth > 10 && params.trim`.
+   **Add else if** adds an arm; the bin removes one. For a switch, choose the parameter and
+   give each case its value.
+3. Draw a line from an arm's exit (on the right of the Branch node) to the top of a step: the
+   step goes into that arm. While the line is drawn, the points on top of the steps light up
+   and say which arm; the data ports are greyed out, as the line can't go there. The panel
+   lists each arm's steps; the × takes one out.
 4. Connect the steps as usual. The step after the branch takes a connection from each arm.
 
 The workflow check says when an arm has no condition, a switch has no parameter or an empty

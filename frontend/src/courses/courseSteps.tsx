@@ -521,8 +521,9 @@ const BRANCHES: CourseStep[] = [
   {
     text: (
       <>
-        Double-click the <strong>Branch</strong> node and set its <strong>if</strong> condition to{" "}
-        <code>params.aligner == &apos;star&apos;</code>. A condition is Groovy on the workflow&apos;s parameters.
+        Double-click the <strong>Branch</strong> node. For its <strong>if</strong>, choose the parameter{" "}
+        <strong>aligner</strong>, keep <strong>is</strong> and type <strong>star</strong>. In the code that is{" "}
+        <code>params.aligner == &apos;star&apos;</code>.
       </>
     ),
     target: "[data-branch]",
@@ -536,8 +537,9 @@ const BRANCHES: CourseStep[] = [
   {
     text: (
       <>
-        Each arm has an exit on the right of the Branch node. Draw a line from the <strong>if</strong> exit to{" "}
-        <strong>ALIGN_STAR</strong>: it goes into that arm, framed in its lane.
+        Each arm has an exit on the right of the Branch node. Draw a line from the <strong>if</strong> exit to the
+        top of <strong>ALIGN_STAR</strong>, where a point lights up (the data ports grey out): the step goes into
+        that arm, framed in its lane.
       </>
     ),
     target: "[data-branch]",

@@ -6,12 +6,15 @@
 import type { Node } from "@xyflow/react";
 import { Plus, Trash2, X } from "lucide-react";
 import type React from "react";
-import { useId } from "react";
+import { useId, useState } from "react";
 import { evaluateCondition, parameterValues } from "../../../analysis/conditions";
 import { armStyle } from "../../../branches/armStyles";
 import { armLabel, armOf, branchArms, branchConditions } from "../../../branches/branches";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
-import { getNodeParameters } from "../../../registry/params";
+import { nodeDefinitions } from "../../../registry/nodeDefinitions";
+import { getNodeParameters, type WorkflowParameter } from "../../../registry/params";
+import { summarizeParameters } from "../input/ParametersPanel";
+import ConditionField from "./ConditionField";
 import type { NodeData } from "../../nodes/BaseNode";
 
 interface BranchPanelProps {
@@ -35,12 +38,16 @@ export const switchConditions = (parameter: string, values: string[]): string[] 
 
 const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
   const fieldId = useId();
+  // Removing a condition renumbers the arms after it: their fields start again from what they hold.
+  const [layout, setLayout] = useState(0);
   const { nodes, setNodes, setIsDirty } = useWorkflowContext();
   const conditions = branchConditions(node);
   const arms = branchArms(node);
   const switchOn = typeof node.data.switchParameter === "string" ? node.data.switchParameter : null;
   const switchValues = Array.isArray(node.data.switchValues) ? (node.data.switchValues as unknown[]).map(String) : [];
   const parameters = nodes.filter((other) => other.type === "parameters").flatMap((other) => getNodeParameters(other.data));
+  // What a condition can compare: the values, not reference files.
+  const valueParameters = parameters.filter((parameter) => parameter.type !== "file");
   const values = parameterValues(nodes);
 
   const setConditions = (next: string[]) => onSave(node.id, { conditions: next, condition: undefined });
@@ -69,6 +76,26 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
     );
     setIsDirty(true);
   };
+  // A parameter added from a condition: into the Parameters node, or a new one left of the branch.
+  const addParameter = (parameter: WorkflowParameter) => {
+    setNodes((current) => {
+      const withParameter = (data: Record<string, unknown>) => {
+        const list = [...getNodeParameters(data), parameter];
+        return { ...data, parameters: list, subtitle: summarizeParameters(list) };
+      };
+      const holder = current.find((other) => other.type === "parameters");
+      if (holder) return current.map((other) => (other.id === holder.id ? { ...other, data: withParameter(other.data) as NodeData } : other));
+      const defaults = nodeDefinitions.find((definition) => definition.id === "parameters")?.defaults ?? {};
+      const created: Node<NodeData> = {
+        id: `node-${Date.now()}`,
+        type: "parameters",
+        position: { x: node.position.x - 320, y: node.position.y },
+        data: withParameter({ label: "Parameters", icon: "Settings2", ...defaults }) as NodeData,
+      };
+      return [...current, created];
+    });
+    setIsDirty(true);
+  };
   const takeOut = (id: string) => {
     setNodes((current) => current.map((other) => (other.id === id ? { ...other, data: { ...other.data, branch: undefined } } : other)));
     setIsDirty(true);
@@ -78,7 +105,7 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
     <div className="space-y-4 text-sm text-text">
       <p className="text-xs text-text-light">
         The workflow runs one arm&apos;s steps: the first arm whose condition holds, else the <strong>else</strong> arm. To
-        put a step in an arm, draw a line from the arm&apos;s exit on the Branch node to the step.
+        put a step in an arm, draw a line from the arm&apos;s exit on the Branch node to the top of the step.
       </p>
 
       {switchOn !== null ? (
@@ -149,18 +176,15 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
               const arm = index === 0 ? "if" : `else-if-${index}`;
               const holds = condition ? evaluateCondition(condition, values) : null;
               return (
-                <li key={arm} className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <label htmlFor={`${fieldId}-${arm}`} className={`w-14 shrink-0 text-xs font-semibold uppercase ${armStyle(arm).text}`}>
-                      {armLabel(arm)}
-                    </label>
-                    <input
-                      id={`${fieldId}-${arm}`}
-                      value={condition}
-                      placeholder="params.aligner == 'star'"
-                      onChange={(event) => setConditions(conditions.map((other, at) => (at === index ? event.target.value : other)))}
-                      className={inputClass}
-                    />
+                <li key={`${layout}-${arm}`} className="space-y-0.5">
+                  <ConditionField
+                    label={armLabel(arm)}
+                    labelClass={armStyle(arm).text}
+                    condition={condition}
+                    parameters={valueParameters}
+                    onChange={(next) => setConditions(conditions.map((other, at) => (at === index ? next : other)))}
+                    onAddParameter={addParameter}
+                  >
                     {conditions.length > 1 && (
                       <button
                         type="button"
@@ -168,15 +192,16 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
                         onClick={() => {
                           removeArm(index);
                           setConditions(conditions.filter((_, at) => at !== index));
+                          setLayout((count) => count + 1);
                         }}
                         className="rounded p-1 text-text-light hover:bg-accent"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
                       </button>
                     )}
-                  </div>
+                  </ConditionField>
                   {condition && holds === null && (
-                    <p className="pl-16 text-xs text-text-light">Decided when the workflow runs (it can&apos;t be told from the parameters now).</p>
+                    <p className="pl-2 text-xs text-text-light">Decided when the workflow runs (it can&apos;t be told from the parameters now).</p>
                   )}
                 </li>
               );
@@ -190,8 +215,8 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
             <Plus className="h-3.5 w-3.5" aria-hidden /> Add else if
           </button>
           <p className="text-xs text-text-light">
-            A condition is Groovy on the parameters: <code>params.aligner == &apos;star&apos;</code>,{" "}
-            <code>!params.skip_qc</code>, <code>params.depth &gt; 10 &amp;&amp; params.trim</code>.
+            Each condition compares a parameter of the workflow; <strong>Write it as code</strong> takes any Groovy
+            condition, such as <code>params.depth &gt; 10 &amp;&amp; params.trim</code>.
           </p>
         </fieldset>
       )}
