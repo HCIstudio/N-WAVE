@@ -110,9 +110,13 @@ describe("RunPerformance", () => {
   it("says what the I/O monitor recorded, and warns when it lost events", async () => {
     getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 5120, processes: 87, checkedFiles: 12, incompleteFiles: 0, kernel: "6.18.58" });
     const { unmount } = render(<RunPerformance runId="m1" />);
-    expect((await screen.findByTestId("run-monitor-note")).textContent).toBe(
-      "The I/O monitor recorded 5120 file accesses and 87 process starts (kernel 6.18.58).",
+    const note = await screen.findByTestId("run-monitor-note");
+    expect(note.textContent).toContain("The I/O monitor recorded 5120 file accesses and 87 process starts (kernel 6.18.58).");
+    // A beta feature: what is under test, and where to report.
+    expect(within(note).getByRole("note").textContent).toContain(
+      "Under test: on Docker Desktop and WSL 2 the monitor sees the whole machine and can miss file accesses.",
     );
+    expect(within(note).getByRole("link", { name: "Report how it works on yours" })).toBeTruthy();
     expect(screen.queryByRole("alert")).toBeNull();
     unmount();
 
@@ -124,7 +128,9 @@ describe("RunPerformance", () => {
   it("says why the I/O monitor couldn't record a run, and nothing when it was off", async () => {
     getRunMonitor.mockResolvedValue({ status: "unavailable", reason: "no kernel headers for 6.1.0." });
     const { unmount } = render(<RunPerformance runId="m3" />);
-    expect((await screen.findByTestId("run-monitor-note")).textContent).toContain("couldn't record this run: no kernel headers");
+    const note = await screen.findByTestId("run-monitor-note");
+    expect(note.textContent).toContain("couldn't record this run: no kernel headers");
+    expect(within(note).getByRole("note").textContent).toContain("Under test:");
     unmount();
     getRunMonitor.mockResolvedValue({ status: "off" });
     render(<RunPerformance runId="m4" />);

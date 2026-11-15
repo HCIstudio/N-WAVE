@@ -11,6 +11,8 @@ vi.mock("../../api/settings", async (original) => ({
 }));
 
 const { default: IoMonitorSettings } = await import("./IoMonitorSettings");
+const { IO_MONITOR_SWITCH } = await import("../../settings/ioMonitorSwitch");
+const { betaReportUrl } = await import("../../components/common/ui/BetaBadge");
 const { resetFeatures } = await import("../../settings/useFeatures");
 
 describe("IoMonitorSettings", () => {
@@ -34,6 +36,21 @@ describe("IoMonitorSettings", () => {
     );
     await userEvent.click(box);
     expect(saveFeatures).toHaveBeenCalledWith(expect.objectContaining({ ioMonitor: true }));
+  });
+
+  it("is a beta feature: says what is under test and links to the test report form", async () => {
+    getIoMonitorStatus.mockResolvedValue({ available: true, image: "nwave-iomonitor:dev", imagePresent: true });
+    render(<IoMonitorSettings />);
+    expect(IO_MONITOR_SWITCH.beta).toBeTruthy();
+    const note = screen.getByRole("note");
+    expect(note.textContent).toContain(
+      "Under test: on Docker Desktop and WSL 2 the monitor sees the whole machine and can miss file accesses.",
+    );
+    expect(screen.getByRole("link", { name: "Report how it works on yours" }).getAttribute("href")).toBe(
+      betaReportUrl("I/O monitor"),
+    );
+    expect(screen.getAllByText("Beta").length).toBeGreaterThan(0);
+    await waitFor(() => expect(screen.getByTestId("io-monitor-status").textContent).toContain("It can run here"));
   });
 
   it("says why it can't run here", async () => {

@@ -4,6 +4,23 @@ the eBPF monitor of Witzke et al.,
 ([their code](https://github.com/CRC-FONDA/workflow-monitoring)), run next to a run. It is
 **off** by default and needs an installation; the browser demo can't use it.
 
+## Beta
+
+The I/O monitor is a **beta** feature: it works, but is still being tested on different
+machines. Global Settings and the run panel's note on the monitor mark it **Beta**. What is
+under test: on Docker Desktop and WSL 2 the monitor sees the whole machine, not only N-WAVE's
+runs, and on a busy machine it can miss file accesses. N-WAVE checks every monitored run for
+that and says what was missed ([Lost events](#lost-events)). What is known on each platform is
+in [Where it works](#where-it-works).
+
+To report how it works on your machine, follow **Report how it works on yours** next to the
+**Beta** label, or open the
+[Beta feature test report](https://github.com/HCIstudio/N-WAVE/issues/new?template=beta_feedback.yml&title=%5BBeta%5D%20I%2FO%20monitor)
+form on GitHub: N-WAVE's version, where it runs (Linux, Docker Desktop on Windows or macOS), the
+kernel (`docker info --format '{{.KernelVersion}}'`), what you ran, and what the run's
+**Performance** tab said about lost or unlinked accesses. Reports from every platform help, also
+when everything worked. Leave out anything private, such as paths with your name.
+
 ## What it does
 
 When it is on, every run starts the monitor in a container of its own before Nextflow starts,
@@ -63,7 +80,7 @@ you control, and not on installations shared by several people.
 
 ## Where it works
 
-The monitor needs a Linux kernel with kprobes and eBPF, privileged containers, and the kernel's
+What is known so far, from the tests and from reports. The monitor needs a Linux kernel with kprobes and eBPF, privileged containers, and the kernel's
 headers. N-WAVE looks for the headers on the host (`/lib/modules`), then in the kernel itself
 (`kheaders`), then installs the distribution's package.
 

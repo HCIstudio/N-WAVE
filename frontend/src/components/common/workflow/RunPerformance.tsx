@@ -1,4 +1,6 @@
 import type React from "react";
+import { BetaNote } from "../ui/BetaBadge";
+import { IO_MONITOR_SWITCH } from "../../../settings/ioMonitorSwitch";
 import { useEffect, useState } from "react";
 import { ChartColumn, ChartGantt, ExternalLink } from "lucide-react";
 import {
@@ -117,14 +119,28 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
     };
   }, [runId]);
   if (!summary || summary.status === "off") return null;
+  // The run panel is light: its own grey, readable there.
+  const beta = (
+    <BetaNote feature={IO_MONITOR_SWITCH.label} className="text-gray-700">
+      {IO_MONITOR_SWITCH.beta}
+    </BetaNote>
+  );
   if (summary.status === "running") {
-    return <p className="text-xs text-gray-700" data-testid="run-monitor-note">The I/O monitor is on for this run.</p>;
+    return (
+      <div data-testid="run-monitor-note" className="space-y-1 text-xs text-gray-700">
+        <p>The I/O monitor is on for this run.</p>
+        {beta}
+      </div>
+    );
   }
   if (summary.status !== "recorded") {
     return (
-      <p className="rounded border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900" data-testid="run-monitor-note">
-        The I/O monitor was switched on, but couldn't record this run: {summary.reason}
-      </p>
+      <div data-testid="run-monitor-note" className="space-y-1 text-xs">
+        <p className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
+          The I/O monitor was switched on, but couldn't record this run: {summary.reason}
+        </p>
+        {beta}
+      </div>
     );
   }
   return (
@@ -140,6 +156,7 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
           another file. The views of this run miss some accesses.
         </p>
       )}
+      {beta}
     </div>
   );
 };

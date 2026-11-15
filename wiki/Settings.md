@@ -118,7 +118,8 @@ in the app.
 
 **I/O monitor → Monitor file accesses during runs** records every file a run's steps open, read
 and write, with the eBPF monitor of Witzke et al. It is **off** by default: it runs in a
-privileged container. The section says whether it can run on this computer. See
+privileged container. It is a **Beta** feature ([Beta features](#beta-features)): on Docker
+Desktop and WSL 2 the monitor sees the whole machine and can miss file accesses. The section says whether it can run on this computer. See
 [I/O monitor](https://github.com/HCIstudio/N-WAVE/wiki/IO-Monitor) for what it records,
 the privileges and where it works.
 

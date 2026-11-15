@@ -168,6 +168,11 @@ or has an issue that is explicitly moved to a later release.
       also after **Cancel** and after restarting the backend during a run.
 - [ ] The I/O monitor on each platform: Linux (a distribution kernel), Docker Desktop on Windows
       (WSL 2) and on macOS. Where it can't run, the run goes on and says why.
+- [ ] The I/O monitor is a beta feature: **Global Settings → I/O monitor** has the **Beta** label
+      and says what is under test (Docker Desktop and WSL 2: the whole machine, missed accesses);
+      a monitored run's note in the run panel (**Steps** and **Performance**) has it too, and
+      **Report how it works on yours** opens the Beta feature test report form titled
+      "[Beta] I/O monitor". Send a report from each platform tested.
 - [ ] **Clear** in the run cache keeps a run's monitor logs (they aren't cache); deleting the
       run's folder under `results/` removes them with it.
 - [ ] **Show on canvas** (History): an earlier run's nodes show **Results ready**, their

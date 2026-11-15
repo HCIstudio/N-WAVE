@@ -5,6 +5,8 @@ import { getIoMonitorStatus, type IoMonitorStatus } from "../../api/runs";
 import { logActivity } from "../../activity/activityLog";
 import { useFeatures } from "../../settings/useFeatures";
 import { getApiErrorMessage } from "../../utils/errors";
+import { BetaBadge, BetaNote } from "../../components/common/ui/BetaBadge";
+import { IO_MONITOR_SWITCH } from "../../settings/ioMonitorSwitch";
 
 export const IO_MONITOR_PAPER = "https://arxiv.org/abs/2408.00411";
 
@@ -69,6 +71,7 @@ const IoMonitorSettings: React.FC = () => {
         />
         <span>
           <span className="font-medium">Monitor file accesses during runs</span>
+          <BetaBadge className="ml-2 align-middle" />
           {isLocked && (
             <span className="ml-2 inline-flex items-center gap-1 text-xs text-text-light">
               <Lock className="h-3 w-3" aria-hidden />
@@ -76,6 +79,7 @@ const IoMonitorSettings: React.FC = () => {
             </span>
           )}
           <span className="block text-xs text-text-light">For every run on this N-WAVE.</span>
+          <BetaNote feature={IO_MONITOR_SWITCH.label}>{IO_MONITOR_SWITCH.beta}</BetaNote>
         </span>
       </label>
 
