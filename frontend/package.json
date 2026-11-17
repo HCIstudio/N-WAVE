@@ -21,13 +21,13 @@
   "dependencies": {
     "@tailwindcss/forms": "^0.5.11",
     "@xyflow/react": "^12.12.1",
-    "axios": "^1.21.0",
+    "axios": "^1.21.1",
     "clsx": "^2.1.1",
     "fflate": "^0.8.3",
     "lucide-react": "^0.577.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "react-dropzone": "^20.1.4",
+    "react-dropzone": "^20.2.0",
     "react-router": "^7.18.5",
     "yaml": "^2.9.1"
   },
@@ -36,7 +36,7 @@
     "@playwright/test": "1.65.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.8",
+    "@testing-library/user-event": "^14.6.9",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",
@@ -47,7 +47,7 @@
     "postcss": "^8.5.32",
     "tailwindcss": "^3",
     "typescript": "~7.0.2",
-    "vite": "^6.4.5",
+    "vite": "^6.4.6",
     "vite-node": "^2.1.9",
     "vitest": "^2.1.9"
   },
