@@ -3,7 +3,9 @@ import { BetaNote } from "../ui/BetaBadge";
 import { IO_MONITOR_SWITCH } from "../../../settings/ioMonitorSwitch";
 import { useEffect, useState } from "react";
 import { ChartColumn, ChartGantt, ExternalLink } from "lucide-react";
+import { describeUnlinked } from "../../../execution/ioAccesses";
 import {
+  getRunAccesses,
   getRunMonitor,
   getRunTrace,
   listRunReports,
@@ -108,10 +110,21 @@ const IoCell: React.FC<{ all: number | null; disk: number | null; diskLabel: str
 /** What the I/O monitor did in the run, when it was on. */
 export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
   const [summary, setSummary] = useState<RunMonitorSummary | null>(null);
+  const [linked, setLinked] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     getRunMonitor(runId).then(
-      (next) => !cancelled && setSummary(next),
+      (next) => {
+        if (cancelled) return;
+        setSummary(next);
+        // How many of the accesses are linked to steps, and why the rest isn't.
+        if (next.status === "recorded") {
+          getRunAccesses(runId).then(
+            (accesses) => !cancelled && setLinked(describeUnlinked(accesses)),
+            () => {},
+          );
+        }
+      },
       () => !cancelled && setSummary(null),
     );
     return () => {
@@ -149,6 +162,7 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
         The I/O monitor recorded {summary.accesses ?? 0} file accesses and {summary.processes ?? 0} process starts
         {summary.kernel ? ` (kernel ${summary.kernel})` : ""}.
       </p>
+      {linked && <p data-testid="run-monitor-linked">{linked}</p>}
       {(summary.incompleteFiles ?? 0) > 0 && (
         <p role="alert" className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
           For {summary.incompleteFiles} of the {summary.checkedFiles} files the run wrote, the monitor recorded fewer

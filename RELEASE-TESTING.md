@@ -166,6 +166,8 @@ or has an issue that is explicitly moved to a later release.
       **Performance** tab says it too, and `nwave_monitor/<run>/` holds `file-bpf.csv`,
       `cgroups.csv`, `monitor.log` and `monitor.json`. `docker ps` shows no monitor after the run,
       also after **Cancel** and after restarting the backend during a run.
+- [ ] With the I/O monitor on, the **Performance** tab says how many recorded accesses are
+      linked to steps, and why the rest isn't. Every task of Demo 1 and Demo 3 is linked.
 - [ ] The I/O monitor on each platform: Linux (a distribution kernel), Docker Desktop on Windows
       (WSL 2) and on macOS. Where it can't run, the run goes on and says why.
 - [ ] The I/O monitor is a beta feature: **Global Settings → I/O monitor** has the **Beta** label

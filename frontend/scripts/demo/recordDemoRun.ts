@@ -36,10 +36,14 @@ const origin = Number(runId.match(/_(\d{13})$/)?.[1] ?? Date.parse(String(run.st
 const id = runId.replace(/_\d{13}$/, "_0");
 const since = (iso: unknown) => (typeof iso === "string" ? Date.parse(iso) - origin : undefined);
 const sinceMs = (ms: unknown) => (typeof ms === "number" ? ms - origin : null);
+const secondsSince = (seconds: number) => Math.round(seconds * 1000 - origin) / 1000;
 const log = ((await get(`${base}/log`, true)) as string)
   .split(runId)
   .join(id)
   .replace(/Completed at: \d\d-\w{3}-\d{4} \d\d:\d\d:\d\d/g, "Completed at: {completedAt}");
+
+const monitor = (await get(`${base}/monitor`)) as Record<string, unknown>;
+const accesses = (await get(`${base}/accesses`)) as { tasks?: Array<{ start: number; end: number }> };
 
 const recording: Record<string, unknown> = {
   run: { ...run, id, workflowId, startedAt: since(run.startedAt), finishedAt: since(run.finishedAt) },
@@ -53,6 +57,13 @@ const recording: Record<string, unknown> = {
     start: sinceMs(task.start),
     complete: sinceMs(task.complete),
   })),
+  // What the I/O monitor recorded, if it was on, linked to the run's tasks:
+  // its start and stop in ms, each task's first and last access in seconds.
+  monitor: { ...monitor, startedAt: since(monitor.startedAt), stoppedAt: since(monitor.stoppedAt) },
+  accesses: {
+    ...accesses,
+    tasks: accesses.tasks?.map((task) => ({ ...task, start: secondsSince(task.start), end: secondsSince(task.end) })),
+  },
 };
 
 const file = join(__dirname, "..", "..", "src", "demo", "recordedRuns", `${name}.json`);
