@@ -140,4 +140,27 @@ test.describe("a recorded run in the demo", () => {
       "The monitor saw 7 of the 9 files in this step's work folder; it missed 2 (.command.begin, .command.err), so these views lack their accesses.",
     );
   });
+
+  test("what limited Demo 3's run: predicted next to measured, each step's limits, and the chain on the canvas", async ({ page }) => {
+    await page.goto("./");
+    await page.getByRole("link", { name: /Demo 3 - nf-core\/rnaseq rebuilt from nodes/ }).click();
+    await expect(page.locator(".react-flow__node").first()).toBeVisible();
+    await page.getByRole("region", { name: "Runs" }).getByRole("button", { name: "Expand run panel" }).click();
+    const panel = page.getByRole("region", { name: "Run panel" });
+    await panel.getByRole("tab", { name: "History" }).click();
+    await panel.getByRole("list", { name: "Earlier runs" }).getByRole("button").first().click();
+    await panel.getByRole("button", { name: "Show on canvas" }).click();
+
+    const limited = panel.getByRole("region", { name: "What limited this run" });
+    await expect(limited.getByTestId("bottleneck-prediction")).toContainText("Predicted 3 min 30 s, measured 3 min 39 s (4 % less)");
+    await expect(limited.getByRole("list", { name: "What limited each step" })).toContainText(
+      "STAR alignment: limited by waiting for STAR index",
+    );
+    await expect(limited.getByTestId("bottleneck-chain")).toContainText("STAR index → STAR alignment");
+    await limited.getByRole("button", { name: "Show the chain on the canvas" }).click();
+    await expect(page.locator('.react-flow__node[data-id="star_align"]')).toHaveClass(/critical-chain/);
+    await expect(page.locator('.react-flow__node[data-id="fastqc_raw"]')).not.toHaveClass(/critical-chain/);
+    await limited.getByRole("button", { name: "Hide the chain on the canvas" }).click();
+    await expect(page.locator('.react-flow__node[data-id="star_align"]')).not.toHaveClass(/critical-chain/);
+  });
 });

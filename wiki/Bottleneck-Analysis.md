@@ -46,6 +46,29 @@ The model is fitted to the run's trace:
 Steps earlier in the workflow get the CPUs first, as the paper shares its link between two
 downloads.
 
+## What limited this run
+
+After a run, its **Performance** tab (in History: **Show on canvas**, then **Performance**) ends
+with **What limited this run**:
+
+- **Predicted** and **measured**: how long the model says the run takes, next to how long it
+  took, and how far apart they are. It is an estimate, fitted to this run, with the CPUs and
+  memory the run had.
+- **What limited each step**: a bar per step over the run's time, coloured by what limited it
+  in each interval, as in the paper's Fig. 4 and 8:
+  - **CPU**: the step used all the CPU time it could get.
+  - **Its tasks' running time**: its tasks ran as fast as they do, as many at once as the CPUs
+    they asked for allow. More CPUs only help a step limited by this if it has tasks waiting.
+  - **Memory**: the memory its tasks asked for kept some of them waiting.
+  - **Waiting for an input**: it waited for a step before it.
+
+  The thin grey bar below is when the step ran in the measured run. Under each bar, a sentence
+  says the same, for example "STAR alignment: limited by waiting for STAR index for 42 %, then
+  its tasks' running time for 58 %."
+- **The chain that set the runtime**: from the step that ends last, back through the inputs
+  each step waited for. Making a step outside this chain faster doesn't make the run
+  faster. **Show the chain on the canvas** outlines its nodes.
+
 ## How good it is
 
 The model is an **estimate** fitted to the run it came from, and N-WAVE always shows it next to

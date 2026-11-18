@@ -510,6 +510,11 @@ const WorkflowPageContent: React.FC = () => {
   // under the pointer is highlighted, and a run stops editing. Nodes of a
   // read-only workflow stay draggable: dropping one opens an editable copy.
   // The editor draws a frame around each group's steps.
+  // The chain of steps that set a run's runtime, highlighted from the Performance tab.
+  const [criticalChain, setChainState] = useState<string[]>([]);
+  const setCriticalChain = useCallback((ids: string[] | null) => setChainState(ids ?? []), []);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: another run, or a new one, clears it.
+  useEffect(() => setChainState([]), [run.lastRunId]);
   const canvasNodes = useMemo(
     () =>
       canvasView.nodes.map((node) =>
@@ -518,13 +523,14 @@ const WorkflowPageContent: React.FC = () => {
           : {
               ...node,
               data: { ...node.data, isHighlight: node.id === panels.highlightedId },
+              className: criticalChain.includes(node.id) ? "critical-chain" : node.className,
               selectable: true,
               draggable: !isRunning,
               connectable: !isRunning,
               deletable: !isRunning,
             },
       ),
-    [canvasView.nodes, panels.highlightedId, isRunning]
+    [canvasView.nodes, panels.highlightedId, isRunning, criticalChain]
   );
   const groupActions = useMemo(
     () => ({ rename: grouping.startRename, ungroup: (group: string) => void grouping.ungroup(group), editable: !isRunning }),
@@ -872,6 +878,9 @@ const WorkflowPageContent: React.FC = () => {
           isVisible
           runId={run.lastRunId}
           onShowRun={run.showRun}
+          edges={edges}
+          onShowChain={setCriticalChain}
+          shownChain={criticalChain.length > 0}
           output={run.output}
           workflowId={workflowId}
           tab={run.panelTab}

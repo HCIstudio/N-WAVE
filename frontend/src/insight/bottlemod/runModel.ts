@@ -136,7 +136,11 @@ export const predictRun = (steps: ModelStep[], resources: ModelResources): RunPr
       clampBelow(freeCpu, Math.min(resources.cpus, slots * Math.max(step.cpuUsePerTask, 0.01))),
       clampBelow(freeReserved, slots * cpusPerTask),
     ];
-    if (step.memoryPerTask) {
+    // Memory counts where it lets fewer of the step's tasks run at once than the CPUs do.
+    const memoryBinds =
+      step.memoryPerTask !== null &&
+      Math.floor(resources.memory / step.memoryPerTask) < Math.min(step.tasks, Math.floor(resources.cpus / cpusPerTask));
+    if (memoryBinds && step.memoryPerTask) {
       needs.push(new PPoly([0, 100], [[(taskSeconds * step.memoryPerTask) / 100]]));
       ins.push(clampBelow(freeMemory, slots * step.memoryPerTask));
     }
@@ -184,7 +188,7 @@ export const predictRun = (steps: ModelStep[], resources: ModelResources): RunPr
     const rate = extendTo(progress.derivative(), horizon, 0);
     freeCpu = clampAbove(freeCpu.sub(rate.mul(cpuSeconds / 100)), 0);
     freeReserved = clampAbove(freeReserved.sub(rate.mul((taskSeconds * cpusPerTask) / 100)), 0);
-    if (step.memoryPerTask) freeMemory = clampAbove(freeMemory.sub(rate.mul((taskSeconds * step.memoryPerTask) / 100)), 0);
+    if (memoryBinds && step.memoryPerTask) freeMemory = clampAbove(freeMemory.sub(rate.mul((taskSeconds * step.memoryPerTask) / 100)), 0);
   }
   const all = [...predictions.values()];
   const total = Math.max(...all.map((p) => p.end)) - Math.min(...all.map((p) => p.start));

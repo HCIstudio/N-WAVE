@@ -191,6 +191,10 @@ or has an issue that is explicitly moved to a later release.
 - [ ] BottleMod (v1.7): `pnpm exec vitest run src/insight` passes: the port matches the
       recorded results of BottleMod's Python on the paper's examples, and the models of the
       recorded Demo 1 and Demo 3 runs predict their runtimes within 15 % and 25 %.
+- [ ] **What limited this run** (Performance, after Demo 1 and Demo 3): predicted next to
+      measured runtime, a bar per step coloured by what limited it with a sentence under it,
+      the chain that set the runtime, and **Show the chain on the canvas** outlining its nodes.
+      Credits BottleMod and links the paper.
 - [ ] **Show on canvas** (History): an earlier run's nodes show **Results ready**, their
       **Results** tab its line, and the **Performance** tab opens for it. Not offered while a run
       goes.

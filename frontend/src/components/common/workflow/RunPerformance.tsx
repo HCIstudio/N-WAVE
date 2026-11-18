@@ -24,6 +24,8 @@ import {
 import { formatDuration } from "../../../notifications/runNotifications";
 import { formatBytes } from "../../../utils/fileContent";
 import { useFeature } from "../../../settings/useFeatures";
+import type { Edge, Node } from "@xyflow/react";
+import RunBottlenecks from "./RunBottlenecks";
 
 const REPORT_LINKS: { kind: RunReportKind; label: string; icon: React.ReactNode }[] = [
   { kind: "report", label: "Execution report", icon: <ChartColumn className="h-4 w-4" aria-hidden /> },
@@ -204,7 +206,12 @@ const RunPerformance: React.FC<{
   showLinks?: boolean;
   /** The canvas name of the node that runs a Nextflow process, if any. */
   labelFor?: (process: string) => string | undefined;
-}> = ({ runId, showLinks = true, labelFor }) => {
+  /** The canvas the run ran on: for its model (what limited it). */
+  canvas?: { nodes: Node[]; edges: Edge[] };
+  /** Highlights the chain of steps that set the runtime on the canvas. */
+  onShowChain?: (nodeIds: string[] | null) => void;
+  shownChain?: boolean;
+}> = ({ runId, showLinks = true, labelFor, canvas, onShowChain, shownChain }) => {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -350,6 +357,15 @@ const RunPerformance: React.FC<{
               })}
             </tbody>
           </table>
+          {canvas && summary.wallTime > 0 && (
+            <RunBottlenecks
+              runId={runId}
+              nodes={canvas.nodes}
+              edges={canvas.edges}
+              onShowChain={onShowChain}
+              shownChain={shownChain}
+            />
+          )}
         </>
       )}
     </section>
