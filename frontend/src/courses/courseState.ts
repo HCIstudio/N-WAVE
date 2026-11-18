@@ -16,7 +16,8 @@ export type CourseId =
   | "failures"
   | "pipeline"
   | "clusters"
-  | "structure";
+  | "structure"
+  | "insight";
 export type CoursePart = "home" | "canvas";
 
 export interface ActiveCourse {

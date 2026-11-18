@@ -213,6 +213,26 @@ describe("starting an advanced course", () => {
     expect(draft.nodes.find((entry) => entry.id === "n-align_star")?.data.branch).toEqual({ id: branch?.id, arm: "if" });
     expect(draft.nodes.find((entry) => entry.id === "n-align_hisat")?.data.branch).toEqual({ id: branch?.id, arm: "else" });
   });
+
+  it("imports four samples, their counting and the report, with the node the course names", async () => {
+    const { result } = renderHook(() => useStartCourse(), { wrapper });
+    await result.current.start("insight");
+    const [url, draft] = post.mock.lastCall as [string, { name: string; nodes: Node<NodeData>[]; edges: unknown[] }];
+    expect(url).toBe("/workflows");
+    expect(draft.name).toBe("Counting bases");
+    const ids = draft.nodes.map((entry) => entry.id);
+    for (const id of ["n-make_sample", "n-count_bases", "n-report"]) expect(ids).toContain(id);
+    expect(draft.edges.length).toBeGreaterThanOrEqual(2);
+  });
+
+});
+
+describe("the Run Insight course's tasks", () => {
+  it("names the steps it points at, and ends in the wiki's pages", () => {
+    const steps = COURSE_STEPS.insight;
+    expect(steps.some((step) => step.target?.includes("n-count_bases"))).toBe(true);
+    expect(JSON.stringify(steps.map((step) => step.done?.toString() ?? ""))).toContain("Show the chain on the canvas");
+  });
 });
 
 describe("the advanced courses on the Courses page", () => {
@@ -238,6 +258,7 @@ describe("the advanced courses on the Courses page", () => {
       "Run an nf-core pipeline",
       "Run limits and clusters",
       "Read a workflow's structure",
+      "Run Insight",
     ]) {
       const card = within(advanced).getByRole("listitem", { name: title });
       expect(within(card).getByRole("button", { name: "Start" })).toBeTruthy();

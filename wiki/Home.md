@@ -60,6 +60,10 @@ links there.
   - **Read a workflow's structure**: in a workflow imported for the course, a Branch node
     (if/else) that a parameter switches between two aligners, Analyse (and an error it
     finds), the Specification and Dependencies views, and a group.
+  - **Run Insight**: in a workflow imported for the course, whose counting step sets the
+    runtime: the bytes each step read and wrote, what limited the run and the chain of steps
+    that set its time, with the I/O monitor how a step reads its files, and what other CPUs
+    would change.
 
 Every major feature gets a course: the plan is in
 [#241](https://github.com/HCIstudio/N-WAVE/issues/241), and each release from v1.7 on brings

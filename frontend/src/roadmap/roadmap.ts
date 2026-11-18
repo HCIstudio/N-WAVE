@@ -194,7 +194,7 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "Which files each step reads and writes, and how (I/O monitoring, opt-in)", issue: 102, status: "released" },
       { title: "What limited a run: bottlenecks over time, with BottleMod", issue: 276, status: "released" },
       { title: "What if: the predicted runtime with other resources", issue: 277, status: "released" },
-      { title: "A course for its features", issue: 251 },
+      { title: "A course for its features", issue: 251, status: "released" },
       { title: "Tested on a local installation before the release", issue: 256 },
     ],
   },

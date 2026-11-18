@@ -90,6 +90,35 @@ export const REFERENCES: Reference[] = [
     about: "A metamodel that describes data analysis workflows across workflow languages.",
     usedFor: [{ text: "Export and import as a DAW model, and abstract workflows as placeholders", wiki: "DAW-Model" }],
   },
+  {
+    id: "io-monitoring",
+    authors: "Witzke, J., Lößer, A., Bountris, V., Schintke, F., Scheuermann, B.",
+    title: "Low-level I/O Monitoring for Scientific Workflows",
+    venue: "arXiv:2408.00411",
+    year: 2024,
+    doi: "10.48550/arXiv.2408.00411",
+    url: "https://github.com/CRC-FONDA/workflow-monitoring",
+    about: "Records every file access of a workflow's tasks with eBPF, and links the accesses to the tasks.",
+    usedFor: [
+      { text: "The I/O monitor next to a run (Global Settings, opt-in)", wiki: "IO-Monitor" },
+      { text: "Linking file accesses to steps", wiki: "IO-Monitor", anchor: "which-step-made-an-access" },
+      { text: "A step's files read and written, streaming or bulk, and followed from step to step", wiki: "IO-Monitor", anchor: "reading-the-views" },
+    ],
+  },
+  {
+    id: "bottlemod",
+    authors: "Lößer, A., Witzke, J., Schintke, F., Scheuermann, B.",
+    title: "BottleMod: Modeling Data Flows and Tasks for Fast Bottleneck Analysis",
+    venue: "Proceedings of the 16th ACM/SPEC International Conference on Performance Engineering (ICPE '25)",
+    year: 2025,
+    doi: "10.1145/3676151.3719382",
+    url: "https://github.com/bottlemod/bottlemod",
+    about: "Models a workflow's tasks by their data and resource needs, to find what limits them and predict their runtime.",
+    usedFor: [
+      { text: "What limited a run, and the chain of steps that set its time", wiki: "Bottleneck-Analysis", anchor: "what-limited-this-run" },
+      { text: "What if? Predicted runtime with other resources", wiki: "Bottleneck-Analysis", anchor: "what-if" },
+    ],
+  },
 ];
 
 export const doiUrl = (doi: string): string => `https://doi.org/${doi}`;
