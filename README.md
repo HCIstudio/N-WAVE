@@ -229,12 +229,13 @@ research tools below, used as their authors publish them. The **References** pag
   Lößer, Bountris, Schintke, Scheuermann: *Low-level I/O Monitoring for Scientific
   Workflows*. arXiv:2408.00411, 2024.
   [doi:10.48550/arXiv.2408.00411](https://doi.org/10.48550/arXiv.2408.00411).
-  Code: [github.com/CRC-FONDA/workflow-monitoring](https://github.com/CRC-FONDA/workflow-monitoring).
+  Code: [github.com/CRC-FONDA/workflow-monitoring](https://github.com/CRC-FONDA/workflow-monitoring), used with the
+  authors' permission (`backend/monitor`).
 - **BottleMod** (what limited a run, and what if): Lößer, Witzke, Schintke, Scheuermann:
   *BottleMod: Modeling Data Flows and Tasks for Fast Bottleneck Analysis*. ICPE '25.
   [doi:10.1145/3676151.3719382](https://doi.org/10.1145/3676151.3719382).
   Code: [github.com/bottlemod/bottlemod](https://github.com/bottlemod/bottlemod); N-WAVE runs a
-  TypeScript port of it (`frontend/src/insight/bottlemod`).
+  TypeScript port of it (`frontend/src/insight/bottlemod`), used with the authors' permission.
 
 To cite N-WAVE, see [`CITATION.cff`](CITATION.cff).
 
