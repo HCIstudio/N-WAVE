@@ -6,12 +6,14 @@ import {
   buildMonitorDockerArgs,
   checkRecordedWrites,
   describeMonitorSummary,
+  finishInterruptedMonitors,
   monitorContainerName,
   monitorDir,
   parseMonitorLine,
   readMonitorPrefix,
   readIoMonitorConfig,
   readMonitorSummary,
+  waitForStoppingMonitors,
   writeMonitorSummary,
 } from "./ioMonitor";
 
@@ -117,5 +119,60 @@ describe("the I/O monitor", () => {
     expect(describeMonitorSummary({ status: "recorded", accesses: 5, processes: 1, workFolders: { ...workFolders, missed: 0 } })).toContain(
       "It saw all 46 files in the steps' work folders.",
     );
+  });
+
+  it("finishes, at the next start, a summary left running when N-WAVE stopped during a run", async () => {
+    dir = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-monitor-"));
+    const runDir = path.join(dir, "run_0");
+    const outDir = path.join(runDir, monitorDir("run_0"));
+    const prefix = "/srv/nwave/results/run_0";
+    const make = (relative: string, content: string) => {
+      fs.mkdirSync(path.dirname(path.join(runDir, relative)), { recursive: true });
+      fs.writeFileSync(path.join(runDir, relative), content);
+    };
+    // The monitor ran: its logs, and the summary written when it started.
+    writeMonitorSummary(outDir, { status: "running", kernel: "6.18", startedAt: new Date(0).toISOString() });
+    fs.writeFileSync(path.join(outDir, "monitor.log"), `prefix: ${prefix} (depth 5)\n`);
+    const row = (type: string, handle: number, size: number, file = "") =>
+      `1.0,1.1,100,0.1,0.1,0.1,0.1,7,${type},${size},${handle},0,${size},0x00008241,${file ? `${prefix}/${file}:/srv:` : ""}`;
+    fs.writeFileSync(
+      path.join(outDir, "file-bpf.csv"),
+      [
+        "time_start,time_end,pid,utime_start,utime_end,stime_start,stime_end,inode,type,result,handle,offset,size,flags,path",
+        row("O", 1, 0, "nextflow/work/ab/cdef01/out.txt"),
+        row("W", 1, 4),
+      ].join("\n"),
+    );
+    fs.writeFileSync(path.join(outDir, "cgroups.csv"), "1.0,1,2,3\n");
+    make("nextflow/work/ab/cdef01/out.txt", "four");
+    make("nextflow/work/ab/cdef01/.command.err", "");
+    // Another run whose monitor finished as usual, and one without a monitor.
+    writeMonitorSummary(path.join(dir, "run_1", monitorDir("run_1")), { status: "recorded", accesses: 3 });
+    fs.mkdirSync(path.join(dir, "run_2"));
+    const runs = [
+      { id: "run_0", dir: runDir },
+      { id: "run_1", dir: path.join(dir, "run_1") },
+      { id: "run_2", dir: path.join(dir, "run_2") },
+    ];
+
+    expect(finishInterruptedMonitors(runs)).toBe(1);
+    expect(readMonitorSummary(runDir, "run_0")).toMatchObject({
+      status: "recorded",
+      reason: "N-WAVE stopped during the run; the monitor recorded until then.",
+      kernel: "6.18",
+      accesses: 2,
+      processes: 1,
+      checkedFiles: 1,
+      incompleteFiles: 0,
+      workFolders: { files: 2, missed: 1 },
+    });
+    expect(readMonitorSummary(runDir, "run_0")?.stoppedAt).toEqual(expect.any(String));
+    expect(readMonitorSummary(path.join(dir, "run_1"), "run_1")).toEqual({ status: "recorded", accesses: 3 });
+    // Once finished, it stays as it is.
+    expect(finishInterruptedMonitors(runs)).toBe(0);
+    // With no monitor stopping, shutting down doesn't wait.
+    const t0 = Date.now();
+    await waitForStoppingMonitors(5_000);
+    expect(Date.now() - t0).toBeLessThan(1_000);
   });
 });

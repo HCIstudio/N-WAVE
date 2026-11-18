@@ -283,6 +283,107 @@ const waitForReady = (
     logs.on("exit", () => finish({ ready: false, reason: "it stopped before its probes were loaded" }));
   });
 
+/** What the monitor's logs say about a run, once it has stopped: what it recorded, and what it lost. */
+const summarizeMonitor = (options: {
+  runDir: string;
+  outDir: string;
+  kernel?: string;
+  startedAt?: string;
+  stoppedAt?: string;
+  reason?: string;
+}): MonitorSummary => {
+  const { runDir, outDir } = options;
+  let log = "";
+  let accessLog = "";
+  try {
+    log = fs.readFileSync(path.join(outDir, MONITOR_FILES.log), "utf8");
+    accessLog = fs.readFileSync(path.join(outDir, MONITOR_FILES.accesses), "utf8");
+  } catch {
+    // No logs: the summary says what is known.
+  }
+  const prefix = readMonitorPrefix(log);
+  const check = prefix
+    ? checkRecordedWrites(accessLog, prefix, (relative) => {
+        try {
+          return fs.statSync(path.join(runDir, relative)).size;
+        } catch {
+          return null;
+        }
+      })
+    : { files: 0, incomplete: 0, missingBytes: 0 };
+  // Files older than the monitor (a resumed run's cached steps) aren't counted.
+  const since = options.startedAt ? Date.parse(options.startedAt) : 0;
+  const workFolders = prefix ? checkWorkFolders(runDir, openedPaths(accessLog, prefix), since) : undefined;
+  return {
+    status: "recorded",
+    ...(options.reason ? { reason: options.reason } : {}),
+    ...(options.kernel ? { kernel: options.kernel } : {}),
+    ...(options.startedAt ? { startedAt: options.startedAt } : {}),
+    ...(options.stoppedAt ? { stoppedAt: options.stoppedAt } : {}),
+    accesses: lineCount(path.join(outDir, MONITOR_FILES.accesses)),
+    processes: lineCount(path.join(outDir, MONITOR_FILES.processes)),
+    checkedFiles: check.files,
+    incompleteFiles: check.incomplete,
+    missingBytes: check.missingBytes,
+    workFolders,
+  };
+};
+
+/** Monitors being stopped after their run: N-WAVE waits for them before it shuts down. */
+const stopping = new Set<Promise<MonitorSummary>>();
+
+/**
+ * Waits, at most `timeoutMs`, for the monitors still stopping to write their
+ * summary. A monitor that takes longer is finished at the next start
+ * (finishInterruptedMonitors).
+ */
+export const waitForStoppingMonitors = async (timeoutMs: number): Promise<void> => {
+  if (stopping.size === 0) return;
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    Promise.allSettled([...stopping]),
+    new Promise((resolve) => {
+      timer = setTimeout(resolve, timeoutMs);
+    }),
+  ]);
+  clearTimeout(timer);
+};
+
+/**
+ * Summaries still "running" when N-WAVE starts: their run ended while N-WAVE
+ * stopped (no run goes on at a start), before the monitor's summary was
+ * written. Their logs are complete once the monitors left behind are stopped
+ * (removeOrphanedMonitors), so they are summed up as after a run. Returns
+ * how many were finished.
+ */
+export const finishInterruptedMonitors = (runs: Array<{ id: string; dir: string }>): number => {
+  let finished = 0;
+  for (const run of runs) {
+    const summary = readMonitorSummary(run.dir, run.id);
+    if (summary?.status !== "running") continue;
+    const outDir = path.join(run.dir, monitorDir(run.id));
+    let stoppedAt: string | undefined;
+    try {
+      stoppedAt = fs.statSync(path.join(outDir, MONITOR_FILES.accesses)).mtime.toISOString();
+    } catch {
+      // No access log: nothing was recorded.
+    }
+    writeMonitorSummary(
+      outDir,
+      summarizeMonitor({
+        runDir: run.dir,
+        outDir,
+        kernel: summary.kernel,
+        startedAt: summary.startedAt,
+        stoppedAt,
+        reason: "N-WAVE stopped during the run; the monitor recorded until then.",
+      }),
+    );
+    finished += 1;
+  }
+  return finished;
+};
+
 /**
  * Starts the monitor for a run; null (with the reason written to the run's
  * monitor.json and passed to `say`) when it can't run. The run goes on
@@ -334,48 +435,19 @@ export const startIoMonitor = async (options: {
 
   let stopped: Promise<MonitorSummary> | null = null;
   const stop = (): Promise<MonitorSummary> => {
-    stopped ??= (async () => {
+    if (stopped) return stopped;
+    stopped = (async () => {
       // The entrypoint stops both programs; their logs are written as they go.
       await runShell(`docker kill --signal INT ${shellQuote(containerName)}`, 30_000);
       const waited = await runShell(`docker wait ${shellQuote(containerName)}`, 90_000);
       if (!waited.ok) await runShell(`docker kill ${shellQuote(containerName)}`, 30_000);
       await runShell(`docker rm -f ${shellQuote(containerName)}`, 30_000);
-      let log = "";
-      let accessLog = "";
-      try {
-        log = fs.readFileSync(path.join(outDir, MONITOR_FILES.log), "utf8");
-        accessLog = fs.readFileSync(path.join(outDir, MONITOR_FILES.accesses), "utf8");
-      } catch {
-        // No logs: the summary says what is known.
-      }
-      const prefix = readMonitorPrefix(log);
-      const check = prefix
-        ? checkRecordedWrites(accessLog, prefix, (relative) => {
-            try {
-              return fs.statSync(path.join(options.runDir, relative)).size;
-            } catch {
-              return null;
-            }
-          })
-        : { files: 0, incomplete: 0, missingBytes: 0 };
-      const workFolders = prefix
-        ? checkWorkFolders(options.runDir, openedPaths(accessLog, prefix), Date.parse(startedAt))
-        : undefined;
-      const summary: MonitorSummary = {
-        status: "recorded",
-        kernel: ready.kernel,
-        startedAt,
-        stoppedAt: new Date().toISOString(),
-        accesses: lineCount(path.join(outDir, MONITOR_FILES.accesses)),
-        processes: lineCount(path.join(outDir, MONITOR_FILES.processes)),
-        checkedFiles: check.files,
-        incompleteFiles: check.incomplete,
-        missingBytes: check.missingBytes,
-        workFolders,
-      };
+      const summary = summarizeMonitor({ runDir: options.runDir, outDir, kernel: ready.kernel, startedAt, stoppedAt: new Date().toISOString() });
       writeMonitorSummary(outDir, summary);
       return summary;
     })();
+    stopping.add(stopped);
+    void stopped.finally(() => stopping.delete(stopped as Promise<MonitorSummary>)).catch(() => {});
     return stopped;
   };
   return { kernel: ready.kernel, stop };

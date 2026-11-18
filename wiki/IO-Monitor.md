@@ -25,7 +25,9 @@ when everything worked. Leave out anything private, such as paths with your name
 ## What it does
 
 When it is on, every run starts the monitor in a container of its own before Nextflow starts,
-and stops it after the run ends. Its two programs load small probes into the Linux kernel
+and stops it after the run ends. If N-WAVE itself stops or restarts during a run, it stops the
+run and the monitor with it; the monitor's summary is written then, or, if that takes too long,
+when N-WAVE starts again. Its two programs load small probes into the Linux kernel
 (eBPF, through [BCC](https://github.com/iovisor/bcc)):
 
 - `fileaccess.py` records each open, read, write and close of a file under the run's folder:
