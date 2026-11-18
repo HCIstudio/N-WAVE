@@ -9,12 +9,14 @@ Its tests compare it with what the authors' own Python gives, recorded in
 `recordPython.py`:
 
 ```bash
-# Their func.py, ppoly.py, task.py and custom_scipy/ next to this Dockerfile:
-cp -r /path/to/bottlemod/{custom_scipy,func.py,ppoly.py,task.py} scripts/bottlemod/
 docker build -t bottlemod-python scripts/bottlemod
 docker run --rm -v "$PWD/scripts/bottlemod:/golden:ro" bottlemod-python python /golden/recordPython.py \
   > frontend/src/insight/bottlemod/fixtures/bottlemod-python.json
 ```
+
+The image clones their repository at the commit the port follows (`BOTTLEMOD_COMMIT` in the
+`Dockerfile`, noted in `frontend/src/insight/bottlemod/README.md`) and keeps it in
+`/bottlemod/UPSTREAM_COMMIT`.
 
 The Dockerfile builds SciPy 1.15.1 with their modified `_ppoly.pyx`, against
 the NumPy, Cython and Python of that SciPy's time: their own Dockerfile
