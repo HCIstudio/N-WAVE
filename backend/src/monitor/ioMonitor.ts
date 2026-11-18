@@ -13,6 +13,7 @@
 import { type ChildProcess, exec, spawn } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { checkWorkFolders, openedPaths, type WorkFoldersCheck } from "./workFolders";
 import { shellQuote } from "../execution/command";
 import { readCommandOutput } from "../execution/shell";
 
@@ -67,6 +68,8 @@ export interface MonitorSummary {
   /** Of those, files with fewer bytes recorded than on disk: events were lost. */
   incompleteFiles?: number;
   missingBytes?: number;
+  /** The files in the steps' work folders, and those the monitor saw no open of (workFolders.ts). */
+  workFolders?: WorkFoldersCheck;
   /** Lines in the logs (without headers). */
   accesses?: number;
   processes?: number;
@@ -355,6 +358,9 @@ export const startIoMonitor = async (options: {
             }
           })
         : { files: 0, incomplete: 0, missingBytes: 0 };
+      const workFolders = prefix
+        ? checkWorkFolders(options.runDir, openedPaths(accessLog, prefix), Date.parse(startedAt))
+        : undefined;
       const summary: MonitorSummary = {
         status: "recorded",
         kernel: ready.kernel,
@@ -365,6 +371,7 @@ export const startIoMonitor = async (options: {
         checkedFiles: check.files,
         incompleteFiles: check.incomplete,
         missingBytes: check.missingBytes,
+        workFolders,
       };
       writeMonitorSummary(outDir, summary);
       return summary;
@@ -380,7 +387,13 @@ export const describeMonitorSummary = (summary: MonitorSummary): string => {
   const lost = summary.incompleteFiles
     ? ` For ${summary.incompleteFiles} of the ${summary.checkedFiles} files the run wrote, it recorded fewer bytes than the files have (${summary.missingBytes} bytes): events were lost, or recorded for another file.`
     : "";
-  return `N-WAVE: the I/O monitor recorded ${summary.accesses ?? 0} file accesses and ${summary.processes ?? 0} process starts.${lost}\n`;
+  const folders = summary.workFolders;
+  const missed = folders?.files
+    ? folders.missed
+      ? ` Of the ${folders.files} files in the steps' work folders, it saw no open of ${folders.missed}: their accesses were lost.`
+      : ` It saw all ${folders.files} files in the steps' work folders.`
+    : "";
+  return `N-WAVE: the I/O monitor recorded ${summary.accesses ?? 0} file accesses and ${summary.processes ?? 0} process starts.${lost}${missed}\n`;
 };
 
 /** Monitors left behind by a backend that stopped (they run until stopped). */

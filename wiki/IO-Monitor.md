@@ -7,7 +7,8 @@ the eBPF monitor of Witzke et al.,
 ## Beta
 
 The I/O monitor is a **beta** feature: it works, but is still being tested on different
-machines. Global Settings and the run panel's note on the monitor mark it **Beta**. What is
+machines. Global Settings, the run panel's note on the monitor and the views of its results
+mark it **Beta**. What is
 under test: on Docker Desktop and WSL 2 the monitor sees the whole machine, not only N-WAVE's
 runs, and on a busy machine it can miss file accesses. N-WAVE checks every monitored run for
 that and says what was missed ([Lost events](#lost-events)). What is known on each platform is
@@ -57,6 +58,18 @@ file. The run's log and the **Performance** tab then say for how many files, and
 of that run miss some accesses. (Files written
 without `write()`, such as copies made with `copy_file_range`, aren't checked.)
 
+That check can't see a file whose opening was lost altogether. So N-WAVE also compares the
+files in the steps' work folders with the files the monitor saw. Every file a task's work
+folder holds was opened when it was made (by the task, or by Nextflow for it), so the monitor
+should have an open of each. A file it has none of was missed. Links to a step's inputs aren't
+counted (no file is made for them), nor files from before the monitor started (the cached
+steps of a resumed run). The check is made when the monitor stops, and kept in `monitor.json`:
+
+- the run's log and the **Performance** tab say how many of the files in the work folders the
+  monitor saw no open of;
+- each step's **Files read and written** says how many of its own files it saw, and names a few
+  it missed.
+
 The monitor can't be limited to the run's processes in the kernel on Docker Desktop: its
 containers see other process ids than the kernel does, so the monitor's filter by process
 can't find them.
@@ -98,6 +111,28 @@ started before the monitor, or to files whose opening the monitor didn't record.
 On Demo 1 and Demo 3 recorded on Docker Desktop (WSL 2), every task was linked to a cgroup of its
 own (5 of 5 and 42 of 42). A workflow whose steps had no container linked none, and none wrongly.
 
+## Reading the views
+
+With the monitor on for a run, a node's **Results** tab (double-click the node; for an earlier
+run, **History → Show on canvas** first) has **Files read and written**, after the task list.
+For a step with several tasks, choose the task. It shows what Witzke et al. show in their paper:
+
+- **Files**: each file the task read or wrote, with the bytes read and written, and **When**:
+  a bar from its first to its last access, over the task's running time.
+- **How**: whether the task read (or wrote) the file **in bulk** (in less than a fifth of its
+  time), **streaming** (over more than three fifths of it, as it went) or **in parts**, with
+  the share of the time; **at once** for a single read or write. This is their Fig. 4.
+- **Follow**: a file's reads and writes over the run's time, by every task that touched it,
+  with the offset in the file going up. A file one step writes and the next reads shows both
+  (their Fig. 5): the next step reads it through a link in its own folder, which leads to
+  the same file. Hover a mark for the task, the bytes and the offset. Reads are blue, writes
+  orange.
+
+What the views show is what the monitor recorded: where it lost events, files or bytes are
+missing, and a file can show reads that belong to another one opened at the same time. The
+**Performance** tab says when that happened, and the line above the files says how many of the
+step's own files the monitor missed. Without the monitor, the section says how to switch it on.
+
 ## Switching it on
 
 1. Build the monitor's image once, in the N-WAVE folder:
@@ -123,7 +158,7 @@ headers. N-WAVE looks for the headers on the host (`/lib/modules`), then in the 
 
 | Platform | Tested | Result |
 | --- | --- | --- |
-| Windows, Docker Desktop with WSL 2 (kernel 6.18, Microsoft) | yes | Runs. There is no header package for this kernel; the kernel's own headers (`kheaders`) are used. On a busy computer it misses part of the accesses (on Demo 3, a quarter of the bytes the checked files were written with), and the run says so. |
+| Windows, Docker Desktop with WSL 2 (kernel 6.18, Microsoft) | yes | Runs. There is no header package for this kernel; the kernel's own headers (`kheaders`) are used. On a busy computer it misses part of the accesses, and the run says so: on the recorded runs of Demo 1 and Demo 3 it saw no open of 17 of the 46 and 210 of the 583 files in the steps' work folders (about a third), and on Demo 3 a quarter of the bytes the checked files were written with. |
 | Linux with a distribution kernel | not yet | Expected to run: headers from the host or the distribution's package. A computer that does little else loses fewer events. |
 | macOS, Docker Desktop | not yet | Unknown: Docker Desktop's virtual machine has its own kernel. |
 

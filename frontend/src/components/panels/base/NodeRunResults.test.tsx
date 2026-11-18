@@ -9,6 +9,7 @@ const getTaskFileText = vi.fn();
 const getRunTrace = vi.fn();
 vi.mock("../../../api/runs", () => ({
   getRunTrace: (...args: unknown[]) => getRunTrace(...args),
+  getRunAccesses: async () => ({ status: "off" }),
   listTaskFiles: (...args: unknown[]) => listTaskFiles(...args),
   getTaskFileText: (...args: unknown[]) => getTaskFileText(...args),
   taskFileUrl: (runId: string, hash: string, path: string) =>

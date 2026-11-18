@@ -131,9 +131,22 @@ describe("RunPerformance", () => {
     );
     unmount();
 
-    getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 10, processes: 2, checkedFiles: 12, incompleteFiles: 3, missingBytes: 2048 });
+    getRunMonitor.mockResolvedValue({
+      status: "recorded",
+      accesses: 10,
+      processes: 2,
+      checkedFiles: 12,
+      incompleteFiles: 3,
+      missingBytes: 2048,
+      workFolders: { files: 46, missed: 17, folders: [] },
+    });
     render(<RunPerformance runId="m2" />);
-    expect((await screen.findByRole("alert")).textContent).toContain("For 3 of the 12 files the run wrote, the monitor recorded fewer bytes than the files have (2.0 KB missing)");
+    expect((await screen.findByTestId("run-monitor-work-folders")).textContent).toBe(
+      "Of the 46 files in the steps' work folders, the monitor saw no open of 17: their accesses were lost, and the views of this run lack them. Each step's Results say how many of its files.",
+    );
+    const alerts = (await screen.findAllByRole("alert")).map((alert) => alert.textContent);
+    expect(alerts).toHaveLength(2);
+    expect(alerts[1]).toContain("For 3 of the 12 files the run wrote, the monitor recorded fewer bytes than the files have (2.0 KB missing)");
   });
 
   it("says why the I/O monitor couldn't record a run, and nothing when it was off", async () => {

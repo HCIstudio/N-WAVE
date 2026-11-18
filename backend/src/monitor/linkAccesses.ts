@@ -175,7 +175,23 @@ export interface TaskFile {
   lastWrite: number | null;
   /** Deleted by the task. */
   deleted: boolean;
+  /**
+   * Its reads and writes over time, for following a file from step to step:
+   * [seconds since the task's first access, offset, bytes, "R" | "W"]. At
+   * most MAX_SAMPLES, evenly spread, with the first and last.
+   */
+  samples: [number, number, number, "R" | "W"][];
 }
+
+/** Reads and writes kept per file and task for the offsets over time. */
+export const MAX_SAMPLES = 300;
+
+/** At most `max` of `items`, evenly spread, keeping the first and the last. */
+export const thin = <T>(items: T[], max: number): T[] => {
+  if (items.length <= max) return items;
+  const step = (items.length - 1) / (max - 1);
+  return Array.from({ length: max }, (_, i) => items[Math.round(i * step)] as T);
+};
 
 export interface LinkedTask extends LinkTask {
   cgroup: string;
@@ -376,6 +392,7 @@ export const linkAccesses = (
         firstWrite: null,
         lastWrite: null,
         deleted: false,
+        samples: [],
       };
       entry.files.set(fileKey, file);
     }
@@ -383,6 +400,9 @@ export const linkAccesses = (
     file.lastAccess = Math.max(file.lastAccess, access.time);
     // A read or write that returned bytes (their check: 0 < result <= size).
     const transferred = access.result > 0 && access.result <= access.size ? access.result : 0;
+    if ((access.type === "R" || access.type === "W") && transferred > 0) {
+      file.samples.push([access.time, access.offset, transferred, access.type]);
+    }
     if (access.type === "R" && transferred > 0) {
       file.bytesRead += transferred;
       file.reads += 1;
@@ -418,6 +438,9 @@ export const linkAccesses = (
         lastRead: file.lastRead === null ? null : file.lastRead - entry.start,
         firstWrite: file.firstWrite === null ? null : file.firstWrite - entry.start,
         lastWrite: file.lastWrite === null ? null : file.lastWrite - entry.start,
+        samples: thin(file.samples, MAX_SAMPLES).map(
+          ([time, offset, bytes, type]) => [Math.round((time - entry.start) * 1000) / 1000, offset, bytes, type] as [number, number, number, "R" | "W"],
+        ),
       }))
       .sort((a, b) => b.bytesRead + b.bytesWritten - (a.bytesRead + a.bytesWritten)),
   }));

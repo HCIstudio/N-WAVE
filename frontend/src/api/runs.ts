@@ -240,6 +240,18 @@ export interface RunMonitorSummary {
   incompleteFiles?: number;
   missingBytes?: number;
   processes?: number;
+  /** The files in the steps' work folders, and those the monitor saw no open of. */
+  workFolders?: { files: number; missed: number; folders: WorkFolderCheck[] };
+}
+
+/** One task's work folder: its files, and those the I/O monitor saw no open of (missed). */
+export interface WorkFolderCheck {
+  /** In the work directory, e.g. "58/618e11d8bdd358338d6f9d4183ca2d". */
+  folder: string;
+  files: number;
+  missed: number;
+  /** The first few it missed, in the folder. */
+  missedFiles: string[];
 }
 
 export const getRunMonitor = async (runId: string): Promise<RunMonitorSummary> => {
@@ -268,6 +280,8 @@ export interface TaskFile {
   firstWrite: number | null;
   lastWrite: number | null;
   deleted: boolean;
+  /** Its reads and writes: [seconds since the task's first access, offset, bytes, "R" | "W"], at most 300. */
+  samples: [number, number, number, "R" | "W"][];
 }
 
 /** A task with the file accesses linked to it. */
@@ -291,6 +305,8 @@ export type RunAccesses =
       tasks: LinkedTask[];
       unlinked: { outsideTasks: number; unknownProcess: number; unknownFile: number; tasksWithoutStart: string[] };
       total: number;
+      /** The check of the work folders, by task (runs recorded before it have none). */
+      workFolders?: WorkFolderCheck[];
     };
 
 export const getRunAccesses = async (runId: string): Promise<RunAccesses> => {

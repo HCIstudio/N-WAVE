@@ -163,6 +163,17 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
         {summary.kernel ? ` (kernel ${summary.kernel})` : ""}.
       </p>
       {linked && <p data-testid="run-monitor-linked">{linked}</p>}
+      {summary.workFolders && summary.workFolders.files > 0 && (
+        <p
+          data-testid="run-monitor-work-folders"
+          role={summary.workFolders.missed > 0 ? "alert" : undefined}
+          className={summary.workFolders.missed > 0 ? "rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900" : undefined}
+        >
+          {summary.workFolders.missed > 0
+            ? `Of the ${summary.workFolders.files} files in the steps' work folders, the monitor saw no open of ${summary.workFolders.missed}: their accesses were lost, and the views of this run lack them. Each step's Results say how many of its files.`
+            : `The monitor saw all ${summary.workFolders.files} files in the steps' work folders.`}
+        </p>
+      )}
       {(summary.incompleteFiles ?? 0) > 0 && (
         <p role="alert" className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
           For {summary.incompleteFiles} of the {summary.checkedFiles} files the run wrote, the monitor recorded fewer
