@@ -320,6 +320,37 @@ describe("useExecutionStatus", () => {
     });
   });
 
+  it("stays cancelled while the run stops: Nextflow's last progress lines don't make it look complete", async () => {
+    const { result } = setup("run-8");
+    act(() => result.current.startExecution());
+    const feed = (lines: string[]) =>
+      act(() => result.current.parseNextflowOutput(lines.join("\n")));
+    feed(["executor >  local (3)", "[ab/cd1234] STAR_ALIGNMENT (s1) | 1 of 4"]);
+    await act(() => result.current.cancelExecution());
+    // What Nextflow prints while it stops, before the backend's ending line.
+    feed([
+      "executor >  local (4)",
+      "[ab/cd1234] STAR_ALIGNMENT (s1) | 2 of 4",
+      "Launching `main.nf` [tiny_turing] DSL2 - revision: 1",
+      "N-WAVE: removed 1 task container of the stopped run.",
+    ]);
+    expect(result.current.status).toMatchObject({ isRunning: false, currentStage: "Workflow cancelled" });
+    feed(["Execution cancelled"]);
+    expect(result.current.status.currentStage).toBe("Execution cancelled");
+    // The next run reads its lines again.
+    act(() => result.current.startExecution());
+    feed(["executor >  local (1)"]);
+    expect(result.current.status.currentStage).toBe("Executor: local (1 processes running)");
+  });
+
+  it("shows how a run ended that finished before Cancel took effect", async () => {
+    const { result } = setup("run-9");
+    act(() => result.current.startExecution());
+    await act(() => result.current.cancelExecution());
+    act(() => result.current.parseNextflowOutput("Nextflow execution completed successfully"));
+    expect(result.current.status.currentStage).toBe("Nextflow execution completed successfully");
+  });
+
   it("doesn't cancel without a run ID", async () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const { result } = setup(null);
