@@ -35,6 +35,8 @@ import { getApiErrorMessage } from "../utils/errors";
 import { findFreePosition } from "../utils/nodePlacement";
 import CanvasNotices from "./workflow/CanvasNotices";
 import CopyPromptDialog from "./workflow/CopyPromptDialog";
+import { SettingsPrediction, useRunModel } from "../components/common/workflow/RunBottlenecks";
+import { memoryBytes } from "../utils/memory";
 import SaveConflictDialog from "./workflow/SaveConflictDialog";
 import NodePanels from "./workflow/NodePanels";
 import { useCanvasHistory } from "./workflow/useCanvasHistory";
@@ -510,6 +512,8 @@ const WorkflowPageContent: React.FC = () => {
   // under the pointer is highlighted, and a run stops editing. Nodes of a
   // read-only workflow stay draggable: dropping one opens an editable copy.
   // The editor draws a frame around each group's steps.
+  // The model of the run shown on the canvas, for the prediction in Execution Settings.
+  const runModel = useRunModel(isRunning ? null : run.lastRunId, nodes, edges);
   // The chain of steps that set a run's runtime, highlighted from the Performance tab.
   const [criticalChain, setChainState] = useState<string[]>([]);
   const setCriticalChain = useCallback((ids: string[] | null) => setChainState(ids ?? []), []);
@@ -778,7 +782,13 @@ const WorkflowPageContent: React.FC = () => {
               : undefined
           }
           settingsExtra={
-            resumeOn ? (
+            <>
+              <SettingsPrediction
+                state={runModel}
+                cpus={runSettings.resources?.maxCpus ?? 0}
+                memory={memoryBytes(runSettings.resources?.maxMemory ?? "")}
+              />
+              {resumeOn ? (
               <NeedsInstall>
                 <RunCacheSettings
                   cache={resume.cache}
@@ -788,7 +798,8 @@ const WorkflowPageContent: React.FC = () => {
                   error={resume.error}
                 />
               </NeedsInstall>
-            ) : undefined
+              ) : null}
+            </>
           }
         />
         <CopyPromptDialog

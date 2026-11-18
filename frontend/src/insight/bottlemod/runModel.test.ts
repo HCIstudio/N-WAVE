@@ -6,7 +6,7 @@ import { demoWorkflowSeed } from "../../demo/demoWorkflow";
 import rnaseq from "../../demo/rnaseqStarSalmonExample.json";
 import { nodeIdForProcess } from "../../execution/nodeRuns";
 import { lastOf } from "./ppoly";
-import { buildRunModel, measuredRuntime, orderSteps, predictRun, slotsFor } from "./runModel";
+import { buildRunModel, measuredRuntime, orderSteps, peakReservedCpus, predictRun, slotsFor } from "./runModel";
 
 // The demo's recorded runs of Demo 1 and Demo 3 (real runs on an
 // installation with 4 CPUs and 4 GB), on their own canvases.
@@ -58,5 +58,14 @@ describe("a BottleMod model of a run", () => {
     expect(slotsFor(step, { cpus: 4, memory: 64 * 1024 ** 3 })).toBe(2);
     expect(slotsFor(step, { cpus: 8, memory: 4 * 1024 ** 3 })).toBe(2);
     expect(slotsFor(step, { cpus: 1, memory: 1 })).toBe(1);
+  });
+
+  it("finds the most CPUs a run's tasks reserved at once, a task ending as another starts not overlapping it", () => {
+    const task = (start: number, complete: number, cpus = 1, status = "COMPLETED") => ({ status, start, complete, cpus });
+    expect(peakReservedCpus([])).toBe(0);
+    expect(peakReservedCpus([task(0, 10), task(10, 20), task(20, 30)])).toBe(1);
+    expect(peakReservedCpus([task(0, 10, 2), task(5, 15), task(6, 8, 1, "CACHED")])).toBe(3);
+    // The recorded Demo 3 run had Maximum CPU Cores at 4: never more than 4 at once.
+    expect(peakReservedCpus(demo3.trace as Parameters<typeof peakReservedCpus>[0])).toBeLessThanOrEqual(4);
   });
 });

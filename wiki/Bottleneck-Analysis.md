@@ -69,6 +69,31 @@ with **What limited this run**:
   each step waited for. Making a step outside this chain faster doesn't make the run
   faster. **Show the chain on the canvas** outlines its nodes.
 
+## What if?
+
+Below **What limited this run**, **What if?** changes the run's resources in its model and says
+at once how long the run would take, and which chain of steps would set the time:
+
+- **Maximum CPU Cores**: what the run's tasks share on this computer. N-WAVE limits Nextflow's
+  local executor to it, so the tasks running at once ask for at most that many CPUs together,
+  and it also caps what each step may ask for (Nextflow's `process.resourceLimits`). More let
+  more tasks run at once. A computer can't give more than it has: set it no higher than its CPUs.
+- **Memory**: the run's memory limit, which the tasks running at once share (those that ask for
+  memory). More helps where the tasks' memory held them back.
+- **Give a step the CPUs first**: that step, and the steps it waits for, get the CPUs before
+  the others.
+- **A run profile's resources**: a cluster profile's queue of jobs, each with the profile's CPUs
+  and memory.
+
+A run's model takes what its tasks shared from its limits. Runs made before N-WAVE limited the
+executor (before 1.6.4) ran as many tasks at once as the computer had CPUs; their trace shows it,
+and their model takes the computer's CPUs.
+
+The model takes milliseconds, so the prediction follows the sliders. It was fitted to the run
+it came from: settings more than twice or less than half of that run's are marked **Less
+certain**. **Execution Settings → Resources** shows the same prediction for the workflow's
+limits, from the run shown on the canvas.
+
 ## How good it is
 
 The model is an **estimate** fitted to the run it came from, and N-WAVE always shows it next to
@@ -78,6 +103,31 @@ the measured runtime. On the demo's recorded runs (4 CPUs, 4 GB):
 | --- | --- | --- |
 | Demo 1 | 19.9 s | 19.4 s (2.5 % less) |
 | Demo 3 | 218.6 s | 209.7 s (4 % less) |
+
+Compared with real runs with other settings, on the same computer (4 CPUs, Docker Desktop with
+WSL 2): Demo 3 run in N-WAVE with **Maximum CPU Cores** at 4 and at 2, which limit Nextflow's
+local executor to that many CPUs in all, without the I/O monitor, twice each. The two runs at 4
+CPUs took 190.1 s and 187.6 s, the two at 2 CPUs 247.4 s and 251.1 s. Each model is fitted on
+one run and compared with the mean of the two runs it predicts:
+
+| Fitted on the run with | Predicted for | Predicted | Measured (mean) |
+| --- | --- | --- | --- |
+| 4 CPUs | 4 CPUs (itself) | 181.4 s | 190.1 s (5 % less) |
+| 2 CPUs | 2 CPUs (itself) | 243.2 s | 247.4 s (2 % less) |
+| 4 CPUs | 2 CPUs | 336.9 s | 249.3 s (35 % more) |
+| 2 CPUs | 4 CPUs | 132.9 s | 188.9 s (30 % less) |
+| 4 CPUs, I/O monitor on | 2 CPUs | 377.7 s | 249.3 s (52 % more) |
+
+The same comparison made earlier on Demo 3's exported workflow, with the executor limited by
+hand, came out the same: 33 % more and 30 % less across the two settings.
+
+So the model fits the run it came from, and it **overrates what CPUs change**: on Demo 3, half
+the CPUs made the run 32 % slower and twice the CPUs 24 % faster, and the model said 86 % and
+45 %.
+Steps' tasks run faster when fewer share the CPUs, and Nextflow starts tasks in its own order;
+the model keeps each task's time from the run it was fitted to. A run with the I/O monitor on is
+slower (its probes see every file the computer opens): fit the model to a run without it to
+predict runs without it.
 
 It knows less than Nextflow does: it doesn't model the time Nextflow takes to notice a finished
 task and submit the next one, the order in which Nextflow starts waiting tasks, or files

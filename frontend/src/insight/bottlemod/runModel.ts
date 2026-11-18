@@ -47,10 +47,48 @@ export interface ModelStep {
 }
 
 export interface ModelResources {
+  /**
+   * The CPUs the run's tasks share: how many run at once. On this computer,
+   * N-WAVE's Maximum CPU Cores (Nextflow's local executor is limited to it);
+   * on a cluster, what its queue gives.
+   */
   cpus: number;
-  /** Bytes. */
+  /** Bytes: on this computer, the run's memory limit, which its tasks share too. */
   memory: number;
+  /**
+   * The most CPUs one step's task may ask for (N-WAVE's Maximum CPU Cores:
+   * Nextflow's process.resourceLimits); unset, what the tasks asked for.
+   */
+  cpusPerTask?: number;
 }
+
+/**
+ * The most CPUs a run's tasks reserved at the same time (what they asked
+ * for, from the trace). A task that ends when another starts doesn't overlap it.
+ */
+export const peakReservedCpus = (
+  trace: Array<{ status: string; start: number | null; complete: number | null; cpus: number | null }>,
+): number => {
+  const events: Array<[number, number]> = [];
+  for (const task of trace) {
+    if (task.status === "CACHED" || task.start === null || task.complete === null) continue;
+    const cpus = Math.max(1, task.cpus ?? 1);
+    events.push([task.start, cpus], [task.complete, -cpus]);
+  }
+  // Ends before starts at the same moment.
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let now = 0;
+  let peak = 0;
+  for (const [, change] of events) {
+    now += change;
+    peak = Math.max(peak, now);
+  }
+  return peak;
+};
+
+/** The CPUs a step's task reserves: what it asked for, capped by the run's limit. */
+export const reservedCpus = (step: ModelStep, resources: ModelResources): number =>
+  Math.max(1, Math.min(step.cpusPerTask, resources.cpusPerTask ?? Number.POSITIVE_INFINITY));
 
 /** What limited a step in an interval: CPU time, the CPUs or memory its tasks reserve, or an input. */
 export type Limit = { kind: "cpu" } | { kind: "slots" } | { kind: "memory" } | { kind: "input"; from: string };
@@ -73,8 +111,12 @@ export interface RunPrediction {
   total: number;
 }
 
-/** Steps in an order where each comes after the steps it gets data from. */
-export const orderSteps = (steps: ModelStep[]): ModelStep[] => {
+/**
+ * Steps in an order where each comes after the steps it gets data from;
+ * `first` (with the steps it waits for) before the others: it gets the CPUs
+ * first.
+ */
+export const orderSteps = (steps: ModelStep[], first?: string): ModelStep[] => {
   const byId = new Map(steps.map((step) => [step.id, step]));
   const done = new Set<string>();
   const ordered: ModelStep[] = [];
@@ -90,6 +132,8 @@ export const orderSteps = (steps: ModelStep[]): ModelStep[] => {
     done.add(step.id);
     ordered.push(step);
   };
+  const prioritised = first ? byId.get(first) : undefined;
+  if (prioritised) visit(prioritised, new Set());
   for (const step of [...steps].sort((a, b) => a.measured.start - b.measured.start)) visit(step, new Set());
   return ordered;
 };
@@ -98,14 +142,18 @@ const EPSILON_SECONDS = 1e-3;
 
 /** How many of a step's tasks can run at once with these resources. */
 export const slotsFor = (step: ModelStep, resources: ModelResources): number => {
-  const byCpu = Math.floor(resources.cpus / Math.max(step.cpusPerTask, 1));
+  const byCpu = Math.floor(resources.cpus / reservedCpus(step, resources));
   const byMemory = step.memoryPerTask ? Math.floor(resources.memory / step.memoryPerTask) : Number.POSITIVE_INFINITY;
   return Math.max(1, Math.min(step.tasks, byCpu, byMemory));
 };
 
 /** Predicts the run with these resources. */
-export const predictRun = (steps: ModelStep[], resources: ModelResources): RunPrediction => {
-  const ordered = orderSteps(steps);
+export const predictRun = (
+  steps: ModelStep[],
+  resources: ModelResources,
+  options: { priority?: string } = {},
+): RunPrediction => {
+  const ordered = orderSteps(steps, options.priority);
   // The time span the model covers: long enough for the slowest case.
   const horizon =
     Math.max(
@@ -125,7 +173,7 @@ export const predictRun = (steps: ModelStep[], resources: ModelResources): RunPr
     const cpuSeconds = Math.max(step.cpuSeconds, EPSILON_SECONDS);
     const taskSeconds = Math.max(step.taskSeconds, EPSILON_SECONDS);
     const slots = slotsFor(step, resources);
-    const cpusPerTask = Math.max(step.cpusPerTask, 1);
+    const cpusPerTask = reservedCpus(step, resources);
     // Requirements per percent of progress.
     const needs = [
       new PPoly([0, 100], [[cpuSeconds / 100]]),
