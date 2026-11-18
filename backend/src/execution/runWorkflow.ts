@@ -49,6 +49,8 @@ import { isLaunchGateBusy, isLaunchLine, passLaunchGate } from "./launchGate";
 import { clearRunCache, isClearingWorkflowCache } from "../runs/workflowCache";
 import { buildReportsConfig } from "../runs/runReports";
 import { readFeatures } from "../settings/features";
+import { describeMonitorSummary, type RunningMonitor, startIoMonitor } from "../monitor/ioMonitor";
+import { backendContainer, CONTAINER_RESULTS } from "./nextflowLauncher";
 
 export interface WorkflowRunRequest {
   /** The Nextflow script ("" for a pipeline). */
@@ -348,6 +350,29 @@ export const runNextflowWorkflow = async (
       }
       openGate = await passed;
     }
+    // The I/O monitor (Global Settings → I/O monitor): attached before
+    // Nextflow starts, so it sees the run's first file accesses.
+    let monitor: RunningMonitor | null = null;
+    if (readFeatures().features.ioMonitor) {
+      const inContainer = Boolean(launch.containerName);
+      monitor = await startIoMonitor({
+        runId: id,
+        runDir: dirs.main,
+        resultsRoot: inContainer ? CONTAINER_RESULTS : path.dirname(dirs.main),
+        results: inContainer ? { volumesFrom: backendContainer() } : { bind: path.dirname(dirs.main) },
+        say: send,
+      });
+      if (cancelledInSetup) {
+        await monitor?.stop();
+        openGate();
+        unregisterRun(id);
+        send("\nExecution cancelled\n");
+        recordEnd(id, "cancelled");
+        log.end();
+        res.end();
+        return;
+      }
+    }
     const run = startRun({
       command: launch.command,
       cwd: dirs.main,
@@ -378,14 +403,28 @@ export const runNextflowWorkflow = async (
         send(ending.output);
         if (ending.status === "succeeded") moveNextflowMetadata(dirs);
         recordEnd(id, ending.status, ending.summary);
-        if (ending.status === "failed" && settings.cleanupOnFailure) {
-          send("N-WAVE: cleanup on failure is on, so the run's work directory is deleted; Resume can't reuse its steps.\n");
-          clearRunCache(dirs.main).catch((error: unknown) =>
-            console.warn(`Could not delete the work directory of run ${id}:`, error)
-          );
+        const finish = () => {
+          if (ending.status === "failed" && settings.cleanupOnFailure) {
+            send("N-WAVE: cleanup on failure is on, so the run's work directory is deleted; Resume can't reuse its steps.\n");
+            clearRunCache(dirs.main).catch((error: unknown) =>
+              console.warn(`Could not delete the work directory of run ${id}:`, error)
+            );
+          }
+          log.end();
+          res.end();
+        };
+        if (!monitor) {
+          finish();
+          return;
         }
-        log.end();
-        res.end();
+        // The monitor stops after the run, keeping its logs in the run's folder.
+        monitor
+          .stop()
+          .then(
+            (summary) => send(describeMonitorSummary(summary)),
+            (error: unknown) => send(`N-WAVE: the I/O monitor didn't stop cleanly: ${getErrorMessage(error)}\n`)
+          )
+          .finally(finish);
       },
     });
     registerRun(id, run);

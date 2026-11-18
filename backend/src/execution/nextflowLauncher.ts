@@ -105,7 +105,7 @@ const usedLocally = async (options: LaunchOptions): Promise<NextflowLaunch> => {
 };
 
 /** The results folder inside the backend container (a volume in docker-compose). */
-const CONTAINER_RESULTS = "/app/results";
+export const CONTAINER_RESULTS = "/app/results";
 
 /**
  * In the Docker setup the Nextflow runner only sees the results volume, so a
@@ -120,6 +120,9 @@ export const assertRunDirInContainerResults = (runDir: string): void => {
     );
   }
 };
+
+/** The backend's own container in the Docker setup. */
+export const backendContainer = (): string => process.env.BACKEND_CONTAINER_NAME || "nwave-backend";
 
 const usedInContainer = async (
   options: LaunchOptions,
@@ -138,7 +141,7 @@ const usedInContainer = async (
   console.log(`Using Nextflow container: nextflow/nextflow:${options.nextflowVersion}`);
 
   // The runner shares the backend container's results volume.
-  const backendContainerName = process.env.BACKEND_CONTAINER_NAME || "nwave-backend";
+  const backendContainerName = backendContainer();
   const resultsMount = await resolveContainerMount(backendContainerName, CONTAINER_RESULTS);
   // When tasks run in Docker, run Nextflow from a path the host's Docker
   // daemon also sees. Otherwise sibling task containers get empty

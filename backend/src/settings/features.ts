@@ -44,6 +44,11 @@ export const featuresSchema = z.object({
   conditions: z.boolean().default(true),
   /** Verbose mode: record what happens in N-WAVE (the activity log). Off by default. */
   verbose: z.boolean().default(false),
+  /**
+   * The I/O monitor next to each run (monitor/ioMonitor.ts). Off by default:
+   * it runs in a privileged container.
+   */
+  ioMonitor: z.boolean().default(false),
 });
 
 export type Features = z.infer<typeof featuresSchema>;

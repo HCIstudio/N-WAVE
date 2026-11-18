@@ -20,9 +20,16 @@ export const BetaBadge: React.FC<{ className?: string }> = ({ className = "" }) 
   </span>
 );
 
-/** What being in beta means for this feature, and where to report how it went. */
-export const BetaNote: React.FC<{ feature: string; children?: React.ReactNode }> = ({ feature, children }) => (
-  <span role="note" className="block text-xs text-text-light">
+/**
+ * What being in beta means for this feature, and where to report how it went.
+ * `className` sets its text colour where the panel is light.
+ */
+export const BetaNote: React.FC<{ feature: string; children?: React.ReactNode; className?: string }> = ({
+  feature,
+  children,
+  className = "text-text-light",
+}) => (
+  <span role="note" className={`block text-xs ${className}`}>
     <BetaBadge className="mr-1 align-middle" />
     Under test: {children ?? "it works, but is still being checked on different machines."}{" "}
     <a href={betaReportUrl(feature)} target="_blank" rel="noreferrer" className="text-nextflow-green underline">

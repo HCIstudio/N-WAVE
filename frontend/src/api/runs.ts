@@ -210,3 +210,41 @@ export const getRunTrace = async (runId: string): Promise<TraceTask[]> => {
   );
   return response.data.tasks;
 };
+
+/** Whether the I/O monitor can run on this installation (Global Settings → I/O monitor). */
+export interface IoMonitorStatus {
+  available: boolean;
+  reason?: string;
+  image: string;
+  imagePresent: boolean;
+  /** The kernel and system Docker runs on. */
+  kernel?: string;
+  system?: string;
+}
+
+export const getIoMonitorStatus = async (): Promise<IoMonitorStatus> => {
+  const response = await api.get<IoMonitorStatus>("/execute/io-monitor");
+  return response.data;
+};
+
+/** What the I/O monitor did in a run. */
+export interface RunMonitorSummary {
+  status: "off" | "running" | "recorded" | "unavailable" | "failed";
+  reason?: string;
+  kernel?: string;
+  startedAt?: string;
+  stoppedAt?: string;
+  accesses?: number;
+  /** Files the run wrote, checked against their size; those short of it lost write events. */
+  checkedFiles?: number;
+  incompleteFiles?: number;
+  missingBytes?: number;
+  processes?: number;
+}
+
+export const getRunMonitor = async (runId: string): Promise<RunMonitorSummary> => {
+  const response = await api.get<RunMonitorSummary>(
+    `/execute/runs/${encodeURIComponent(runId)}/monitor`,
+  );
+  return response.data;
+};

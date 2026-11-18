@@ -5,9 +5,11 @@ import type { TraceTask } from "../../../api/runs";
 const listRunReports = vi.fn();
 const getRunTrace = vi.fn();
 const listRunTasks = vi.fn();
+const getRunMonitor = vi.fn();
 vi.mock("../../../api/runs", () => ({
   listRunReports: (id: string) => listRunReports(id),
   getRunTrace: (id: string) => getRunTrace(id),
+  getRunMonitor: (id: string) => getRunMonitor(id),
   listRunTasks: (id: string) => listRunTasks(id),
   runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
 }));
@@ -36,6 +38,7 @@ const task = (process: string, extra: Partial<TraceTask> = {}): TraceTask => ({
 
 describe("RunPerformance", () => {
   beforeEach(() => {
+    getRunMonitor.mockResolvedValue({ status: "off" });
     listRunReports.mockResolvedValue({ report: true, timeline: true, trace: true });
     listRunTasks.mockResolvedValue([{ hash: "85/280734", status: "ignored" }]);
     getRunTrace.mockResolvedValue([
@@ -102,6 +105,37 @@ describe("RunPerformance", () => {
     const table = await screen.findByRole("table", { name: "Steps by time" });
     expect(within(table).queryByText("Read")).toBeNull();
     expect(screen.getByTestId("run-performance-summary").textContent).not.toContain("read");
+  });
+
+  it("says what the I/O monitor recorded, and warns when it lost events", async () => {
+    getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 5120, processes: 87, checkedFiles: 12, incompleteFiles: 0, kernel: "6.18.58" });
+    const { unmount } = render(<RunPerformance runId="m1" />);
+    const note = await screen.findByTestId("run-monitor-note");
+    expect(note.textContent).toContain("The I/O monitor recorded 5120 file accesses and 87 process starts (kernel 6.18.58).");
+    // A beta feature: what is under test, and where to report.
+    expect(within(note).getByRole("note").textContent).toContain(
+      "Under test: on Docker Desktop and WSL 2 the monitor sees the whole machine and can miss file accesses.",
+    );
+    expect(within(note).getByRole("link", { name: "Report how it works on yours" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    unmount();
+
+    getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 10, processes: 2, checkedFiles: 12, incompleteFiles: 3, missingBytes: 2048 });
+    render(<RunPerformance runId="m2" />);
+    expect((await screen.findByRole("alert")).textContent).toContain("For 3 of the 12 files the run wrote, the monitor recorded fewer bytes than the files have (2.0 KB missing)");
+  });
+
+  it("says why the I/O monitor couldn't record a run, and nothing when it was off", async () => {
+    getRunMonitor.mockResolvedValue({ status: "unavailable", reason: "no kernel headers for 6.1.0." });
+    const { unmount } = render(<RunPerformance runId="m3" />);
+    const note = await screen.findByTestId("run-monitor-note");
+    expect(note.textContent).toContain("couldn't record this run: no kernel headers");
+    expect(within(note).getByRole("note").textContent).toContain("Under test:");
+    unmount();
+    getRunMonitor.mockResolvedValue({ status: "off" });
+    render(<RunPerformance runId="m4" />);
+    await screen.findByTestId("run-performance-summary");
+    expect(screen.queryByTestId("run-monitor-note")).toBeNull();
   });
 
   it("says when a run has no reports", async () => {

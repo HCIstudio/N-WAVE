@@ -10,7 +10,9 @@ import {
   deleteAllCaches,
   deleteWorkflowCache,
   getAllCaches,
+  getIoMonitor,
   getRunLog,
+  getRunMonitor,
   getWorkflowCache,
   getRunReport,
   getRunResultFile,
@@ -43,6 +45,8 @@ router.get("/runs/:id/tasks", listRunTasks);
 router.get("/runs/:id/reports", listRunReports);
 router.get("/runs/:id/reports/:kind", getRunReport);
 router.get("/runs/:id/trace", getRunTrace);
+router.get("/runs/:id/monitor", getRunMonitor);
+router.get("/io-monitor", getIoMonitor);
 router.get("/runs/:id/tasks/:prefix/:rest/files", listRunTaskFiles);
 router.get("/runs/:id/tasks/:prefix/:rest/file", getRunTaskFile);
 router.get("/runs/:id/tasks/:prefix/:rest/output/*", getRunTaskFile);
