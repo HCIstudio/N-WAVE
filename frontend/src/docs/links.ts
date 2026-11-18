@@ -8,6 +8,7 @@ export const WIKI_URL = `${REPOSITORY_URL}/wiki`;
 
 /** The wiki's guide pages, with their titles. */
 export const WIKI_PAGES = {
+  "Bottleneck-Analysis": "Bottleneck analysis",
   Installation: "Installation",
   "IO-Monitor": "I/O monitor",
   "First-Workflow": "Your first workflow",

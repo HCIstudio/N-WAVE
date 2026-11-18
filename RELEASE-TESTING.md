@@ -188,6 +188,9 @@ or has an issue that is explicitly moved to a later release.
       "[Beta] I/O monitor". Send a report from each platform tested.
 - [ ] **Clear** in the run cache keeps a run's monitor logs (they aren't cache); deleting the
       run's folder under `results/` removes them with it.
+- [ ] BottleMod (v1.7): `pnpm exec vitest run src/insight` passes: the port matches the
+      recorded results of BottleMod's Python on the paper's examples, and the models of the
+      recorded Demo 1 and Demo 3 runs predict their runtimes within 15 % and 25 %.
 - [ ] **Show on canvas** (History): an earlier run's nodes show **Results ready**, their
       **Results** tab its line, and the **Performance** tab opens for it. Not offered while a run
       goes.

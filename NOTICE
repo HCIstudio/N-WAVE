@@ -17,3 +17,9 @@ their repository, with the authors' permission, and BCC
 (https://github.com/iovisor/bcc, Apache License 2.0). It is built on the
 user's computer; N-WAVE patches their code only as backend/monitor/patches
 shows.
+
+frontend/src/insight/bottlemod is a TypeScript port of BottleMod by Lößer et
+al., "BottleMod: Modeling Data Flows and Tasks for Fast Bottleneck Analysis"
+(https://github.com/bottlemod/bottlemod), from a pinned commit of their
+repository, with the authors' permission; its README names the commit and
+the files ported.
