@@ -10,7 +10,7 @@ import type { WorkFolderCheck } from "./workFolders";
 
 const LINKED_FILE = "linked.json";
 /** Bumped when what linked.json holds changes, so older ones are worked out again. */
-const LINKED_VERSION = 6;
+const LINKED_VERSION = 7;
 
 export type RunAccesses =
   | { status: "off" | "running" | "unavailable" | "failed"; reason?: string }

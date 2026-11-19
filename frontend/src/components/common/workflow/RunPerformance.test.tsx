@@ -91,6 +91,27 @@ describe("RunPerformance", () => {
     expect(rows[2]?.cells[4]?.textContent).toBe("– of 4.0 GB");
   });
 
+  it("names each process of a subworkflow node after the node and the process", async () => {
+    getRunTrace.mockResolvedValue([
+      task("NFCORE:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_SORT", { realtime: 3000 }),
+      task("NFCORE:BAM_SORT_STATS_SAMTOOLS:SAMTOOLS_INDEX", { realtime: 2000 }),
+      task("NFCORE:FASTQC", { realtime: 1000 }),
+    ]);
+    render(
+      <RunPerformance
+        runId="sub_1"
+        labelFor={(process) => (process.includes("SAMTOOLS") ? "Sort and index" : process.endsWith("FASTQC") ? "QC" : undefined)}
+      />,
+    );
+    const table = await screen.findByRole("table", { name: "Steps by time" });
+    const rows = within(table).getAllByRole("row") as HTMLTableRowElement[];
+    expect(rows.slice(1).map((row) => row.cells[0]?.textContent)).toEqual([
+      "Sort and index › SAMTOOLS_SORT",
+      "Sort and index › SAMTOOLS_INDEX",
+      "QC",
+    ]);
+  });
+
   it("shows what each step read and wrote, and what of it reached the disk", async () => {
     const MB = 1024 ** 2;
     getRunTrace.mockResolvedValue([

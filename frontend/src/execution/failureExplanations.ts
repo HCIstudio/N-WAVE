@@ -339,3 +339,46 @@ export const explainFailure = (raw: string): FailureExplanation | null => {
   }
   return null;
 };
+
+/** What Nextflow said about a failure N-WAVE has no explanation for. */
+export interface FailureReport {
+  /** The Nextflow process that failed, e.g. "NFCORE_FASTQC_QC". */
+  process?: string;
+  /** The task's exit status, e.g. "1". */
+  exitStatus?: string;
+  /** Why, in Nextflow's words: its "Caused by:" line, or its first ERROR line. */
+  cause?: Evidence;
+  /** The end of the task's own error output ("Command error:"), at most MAX_ERROR_LINES. */
+  errorLines: Evidence[];
+}
+
+const MAX_ERROR_LINES = 6;
+
+/** The lines of a section Nextflow prints as "Title:" followed by indented lines, up to a blank line. */
+const sectionAfter = (lines: string[], title: RegExp): Evidence[] => {
+  const start = lines.findIndex((text) => title.test(text.trim()));
+  if (start === -1) return [];
+  const section: Evidence[] = [];
+  for (let line = start + 1; line < lines.length; line++) {
+    const text = lines[line];
+    if (!text.trim() || !/^\s/.test(text)) break;
+    if (text.trim() !== "(empty)") section.push({ text: text.trim(), line });
+  }
+  return section;
+};
+
+/** What the log says about a failure, or null when it says nothing N-WAVE can point to. */
+export const reportFailure = (raw: string): FailureReport | null => {
+  const lines = stripTerminalCodes(raw).split("\n");
+  const process = failedProcessOf(lines.join("\n"));
+  const cause =
+    sectionAfter(lines, /^Caused by:$/)[0] ??
+    (() => {
+      const line = lines.findIndex((text) => /^ERROR ~ /.test(text.trim()) && !/Error executing process|Pipeline failed/.test(text));
+      return line === -1 ? undefined : { text: lines[line].trim().replace(/^ERROR ~ /, ""), line };
+    })();
+  const exitStatus = sectionAfter(lines, /^Command exit status:$/)[0]?.text;
+  const errorLines = sectionAfter(lines, /^Command error:$/).slice(-MAX_ERROR_LINES);
+  if (!process && !cause && errorLines.length === 0) return null;
+  return { process, exitStatus, cause, errorLines };
+};

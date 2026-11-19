@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { RunTask } from "../../api/runs";
@@ -38,6 +38,11 @@ const task = (process: string, status: RunTask["status"] = "succeeded"): RunTask
   status,
 });
 
+// Reading and laying out a pipeline's Nextflow files takes about 250 ms here, and
+// several times that while the whole suite runs in parallel on a busy machine:
+// more than Testing Library's default 1 s wait.
+const READ = { timeout: 5000 };
+
 const pipelineEntry = { source: { type: "pipeline", name: "rnaseq", version: "3.27.0", path: "main.nf" } } as const;
 
 describe("NestedView", () => {
@@ -71,21 +76,21 @@ describe("NestedView", () => {
       />,
     );
     expect(screen.getByText("Reading the steps inside…")).toBeTruthy();
-    const references = await screen.findByRole("button", { name: /PREPARE_GENOME_REFERENCES/ });
+    const references = await screen.findByRole("button", { name: /PREPARE_GENOME_REFERENCES/ }, READ);
     expect(references.textContent).toContain("Done");
     expect(screen.getByRole("button", { name: /PREPARE_GENOME_INDICES/ }).textContent).toContain("Waiting");
     expect(get).toHaveBeenCalledWith("/pipelines/workflow-file?name=rnaseq&version=3.27.0&path=main.nf");
 
     // A click only: d3-zoom can't handle jsdom's pointer events on the graph.
     fireEvent.click(screen.getByRole("button", { name: /^RNASEQ/ }));
-    const align = await screen.findByRole("button", { name: /^ALIGN_STAR/ });
+    const align = await screen.findByRole("button", { name: /^ALIGN_STAR/ }, READ);
     expect(align.textContent).toContain("Running");
     const crumbs = within(screen.getByRole("navigation", { name: "Breadcrumb" }));
     expect(crumbs.getByText("RNASEQ").getAttribute("aria-current")).toBe("page");
 
     // Back to the pipeline's top, then out.
     await user.click(crumbs.getByRole("button", { name: "nf-core/rnaseq" }));
-    expect(await screen.findByRole("button", { name: /PREPARE_GENOME_INDICES/ })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /PREPARE_GENOME_INDICES/ }, READ)).toBeTruthy();
     await user.keyboard("{Escape}");
     expect(onClose).toHaveBeenCalled();
   });
@@ -102,7 +107,7 @@ describe("NestedView", () => {
         onClose={vi.fn()}
       />,
     );
-    await waitFor(() => expect(screen.getByText("SALMON_QUANT")).toBeTruthy());
+    await screen.findByText("SALMON_QUANT", undefined, READ);
     expect(moduleSource).toHaveBeenCalledWith("nf-core/subworkflows/quantify_pseudo_alignment");
     const salmon = screen.getByText("SALMON_QUANT").closest("[data-status]");
     expect(salmon?.getAttribute("data-status")).toBe("failed");
@@ -115,9 +120,9 @@ describe("NestedView", () => {
     get.mockRejectedValueOnce({ response: { status: 502, data: { message: "GitHub is down" } } });
     const user = userEvent.setup();
     render(<NestedView title="x" entry={pipelineEntry} workflowName="W" tasks={[]} isRunning={false} onClose={vi.fn()} />);
-    expect((await screen.findByRole("alert")).textContent).toContain("GitHub is down");
+    expect((await screen.findByRole("alert", undefined, READ)).textContent).toContain("GitHub is down");
     await user.click(screen.getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("button", { name: /^RNASEQ/ })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: /^RNASEQ/ }, READ)).toBeTruthy();
   });
 
   it("copies the nf-core subworkflow it shows into a new workflow, where that's offered", async () => {
@@ -130,6 +135,7 @@ describe("NestedView", () => {
         <NestedView title="Quantify" entry={entry} workflowName="Mine" tasks={[]} isRunning={false} onClose={vi.fn()} />
       </CopySubworkflowContext.Provider>,
     );
+    await screen.findByText("SALMON_QUANT", undefined, READ);
     await user.click(screen.getByRole("button", { name: "Copy into new workflow" }));
     expect(copy).toHaveBeenCalledWith("nf-core/subworkflows/quantify_pseudo_alignment");
     unmount();
@@ -140,6 +146,7 @@ describe("NestedView", () => {
         <NestedView title="x" entry={pipelineEntry} workflowName="W" tasks={[]} isRunning={false} onClose={vi.fn()} />
       </CopySubworkflowContext.Provider>,
     );
+    await screen.findByRole("button", { name: /^RNASEQ/ }, READ);
     expect(screen.queryByRole("button", { name: "Copy into new workflow" })).toBeNull();
   });
 });

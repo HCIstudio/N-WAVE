@@ -11,9 +11,9 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import type { FailureExplanation } from "../../../execution/failureExplanations";
+import { type FailureExplanation, reportFailure } from "../../../execution/failureExplanations";
 import FailureExplanationCard from "./FailureExplanationCard";
-import { EXPLAINED, howExplainedUrl } from "../../../docs/links";
+import { EXPLAINED, howExplainedUrl, wikiUrl } from "../../../docs/links";
 
 interface ExecutionError {
   message: string;
@@ -128,13 +128,6 @@ const WorkflowExecutionErrorNotification: React.FC<
       suggestions.push("Review firewall and proxy settings");
     }
 
-    if (suggestions.length === 0) {
-      suggestions.push("Review workflow configuration and node settings");
-      suggestions.push("Check the execution logs for more details");
-      suggestions.push("Verify all required parameters are set");
-      suggestions.push("Try executing with different settings or smaller data");
-    }
-
     return suggestions;
   };
 
@@ -154,7 +147,13 @@ const WorkflowExecutionErrorNotification: React.FC<
     return <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />;
   };
 
-  const suggestions = getSuggestedFixes(error.message);
+  // For a failure N-WAVE doesn't recognise: what Nextflow said, and guesses
+  // from its words (none when no word matches).
+  const report = !explanation && !error.known && error.output ? reportFailure(error.output) : null;
+  const suggestions = getSuggestedFixes(
+    [error.message, report?.cause?.text, ...(report?.errorLines.map((line) => line.text) ?? [])].join("\n"),
+  );
+  const failedStep = stepLabel ?? report?.process;
 
   if (!isVisible) return null;
 
@@ -241,8 +240,73 @@ const WorkflowExecutionErrorNotification: React.FC<
                 />
               )}
 
-              {/* Guesses, when the log shows no known reason. */}
+              {/* What Nextflow said, when the log shows no known reason. */}
               {!explanation && !error.known && (
+                <section aria-label="What Nextflow reported" className="space-y-2">
+                  <h4 className="font-medium text-text text-sm">What Nextflow reported</h4>
+                  {report && (
+                    <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
+                      {failedStep && (
+                        <>
+                          <dt className="text-text-light">Step</dt>
+                          <dd className="text-text">
+                            {onShowStep && stepLabel ? (
+                              <button type="button" onClick={onShowStep} className="text-nextflow-green hover:underline">
+                                {stepLabel}
+                              </button>
+                            ) : (
+                              <span className="font-mono">{failedStep}</span>
+                            )}
+                            {report.exitStatus && <span className="text-text-light"> (exit status {report.exitStatus})</span>}
+                          </dd>
+                        </>
+                      )}
+                      {report.cause && (
+                        <>
+                          <dt className="text-text-light">Why</dt>
+                          <dd className="text-text">{report.cause.text}</dd>
+                        </>
+                      )}
+                      {report.errorLines.length > 0 && (
+                        <>
+                          <dt className="text-text-light">Its errors</dt>
+                          <dd>
+                            <pre className="whitespace-pre-wrap rounded border border-panel-border bg-background p-2 font-mono text-text">
+                              {report.errorLines.map((line) => line.text).join("\n")}
+                            </pre>
+                            {onShowEvidence && (
+                              <button
+                                type="button"
+                                onClick={() => onShowEvidence(report.errorLines[0].line)}
+                                className="mt-1 text-nextflow-green hover:underline"
+                              >
+                                Show in the log
+                              </button>
+                            )}
+                          </dd>
+                        </>
+                      )}
+                    </dl>
+                  )}
+                  <p className="text-xs text-text-light">
+                    N-WAVE doesn&apos;t recognise this failure
+                    {report?.errorLines.length
+                      ? ". The step's own errors above are where to start; the full log has the rest."
+                      : ". The full log shows everything Nextflow printed."}{" "}
+                    <a
+                      href={wikiUrl({ page: "Troubleshooting", anchor: "still-stuck" })}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-nextflow-green hover:underline"
+                    >
+                      Still stuck?
+                    </a>
+                  </p>
+                </section>
+              )}
+
+              {/* Guesses from the error's words, when the log shows no known reason. */}
+              {!explanation && !error.known && suggestions.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="font-medium text-text text-sm flex items-center space-x-2">
                     <Lightbulb className="w-3 h-3 text-nextflow-green" />

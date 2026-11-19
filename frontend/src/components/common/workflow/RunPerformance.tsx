@@ -257,6 +257,21 @@ const RunPerformance: React.FC<{
     );
   }
   const { reports, summary } = state;
+  // A step's name on the canvas, or the process's own. A subworkflow node runs
+  // several processes: each of its rows names the node and the process.
+  const canvasNames = new Map((summary?.processes ?? []).map((entry) => [entry.process, labelFor?.(entry.process)]));
+  const nameOf = (entry: { process: string; label: string }): React.ReactNode => {
+    const canvasName = canvasNames.get(entry.process);
+    if (!canvasName) return <span className="font-mono">{entry.label}</span>;
+    const shared = [...canvasNames].some(([process, name]) => process !== entry.process && name === canvasName);
+    return shared ? (
+      <>
+        {canvasName} <span className="font-mono text-gray-600">› {entry.label}</span>
+      </>
+    ) : (
+      canvasName
+    );
+  };
   const span = summary && summary.start !== null && summary.end !== null ? summary.end - summary.start : 0;
   const nearLimit = summary?.processes.filter(
     (entry) => entry.memoryShare !== null && entry.memoryShare >= MEMORY_WARNING_SHARE,
@@ -285,7 +300,7 @@ const RunPerformance: React.FC<{
                   key={entry.process}
                   className="rounded border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900"
                 >
-                  <strong>{labelFor?.(entry.process) ?? entry.label}</strong> used {Math.round((entry.memoryShare ?? 0) * 100)}% of
+                  <strong>{nameOf(entry)}</strong> used {Math.round((entry.memoryShare ?? 0) * 100)}% of
                   the {formatBytes(entry.memory ?? 0)} of memory it had. If it fails with exit
                   status 137, give it more memory (or raise the run's Maximum Memory).
                 </li>
@@ -330,7 +345,7 @@ const RunPerformance: React.FC<{
                 return (
                   <tr key={entry.process} className="border-t border-gray-200 align-top">
                     <td className="py-1 pr-2" title={entry.process}>
-                      {labelFor?.(entry.process) ?? <span className="font-mono">{entry.label}</span>}
+                      {nameOf(entry)}
                     </td>
                     <td className="py-1 pr-2">
                       {entry.tasks}

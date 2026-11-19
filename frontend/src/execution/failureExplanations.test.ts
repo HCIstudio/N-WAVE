@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { explainFailure, FAILURE_RULES, failedProcessOf } from "./failureExplanations";
+import { explainFailure, FAILURE_RULES, failedProcessOf, reportFailure } from "./failureExplanations";
 
 // Real Nextflow 25.10 output of runs that failed each way (paths shortened).
 const log = (name: string) =>
@@ -152,5 +152,37 @@ describe("failedProcessOf", () => {
       "NFCORE_FASTQC_QC",
     );
     expect(failedProcessOf("ERROR ~ Error executing process > 'RUN:STAR_ALIGN (a)'")).toBe("RUN:STAR_ALIGN");
+  });
+});
+
+describe("reportFailure", () => {
+  it("reads the failed step, its exit status, Nextflow's reason and the step's own errors", () => {
+    const report = reportFailure(log("cnf"));
+    expect(report).toMatchObject({
+      process: "FASTQC_QC",
+      exitStatus: "127",
+      cause: { text: "Process `FASTQC_QC (1)` terminated with an error exit status (127)" },
+      errorLines: [{ text: ".command.sh: line 2: fastqc: command not found" }],
+    });
+    const lines = log("cnf").split("\n");
+    expect(lines[report?.errorLines[0]?.line ?? -1]?.trim()).toBe(".command.sh: line 2: fastqc: command not found");
+  });
+
+  it("takes Nextflow's ERROR line when there is no failed step, past nf-core's own", () => {
+    expect(
+      reportFailure("ERROR ~ Pipeline failed. Please refer to troubleshooting docs\nERROR ~ Unknown method `foo` on Channel\n"),
+    ).toEqual({ process: undefined, exitStatus: undefined, cause: { text: "Unknown method `foo` on Channel", line: 1 }, errorLines: [] });
+  });
+
+  it("keeps the last lines of a long error output, and none that are empty", () => {
+    const errors = Array.from({ length: 10 }, (_, i) => `  error ${i}`);
+    const report = reportFailure(["Command error:", ...errors, "", "Command output:", "  (empty)"].join("\n"));
+    expect(report?.errorLines.map((line) => line.text)).toEqual(["error 4", "error 5", "error 6", "error 7", "error 8", "error 9"]);
+    expect(reportFailure("Command error:\n  (empty)\n")).toBeNull();
+  });
+
+  it("is null for a log that names no step and no error", () => {
+    expect(reportFailure("")).toBeNull();
+    expect(reportFailure("N E X T F L O W\nexecutor > local (3)\n")).toBeNull();
   });
 });
