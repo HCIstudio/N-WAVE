@@ -43,7 +43,7 @@ export interface TodayFeature {
 }
 
 /** The minor version this file was last brought up to date for. */
-export const ROADMAP_UPDATED_FOR = "1.6";
+export const ROADMAP_UPDATED_FOR = "1.7";
 
 /** The issue that plans the releases below, with their order and dependencies. */
 export const ROADMAP_ISSUE = 189;
@@ -89,6 +89,11 @@ export const TODAY: TodayFeature[] = [
     title: "See a workflow's structure",
     text: "Check its code with nextflow lint and BioFlow-Insight, read its specification and process dependency graphs, and group steps into subworkflows.",
     wiki: "Workflow-Analysis",
+  },
+  {
+    title: "See what a run did",
+    text: "The bytes each step read and wrote, which files it used and how (I/O monitor, beta), what limited the run, and what more CPUs or another profile would change.",
+    wiki: "Bottleneck-Analysis",
   },
   {
     title: "Take it anywhere",
@@ -185,9 +190,10 @@ export const RELEASES: RoadmapRelease[] = [
   {
     version: "1.7",
     name: "Run Insight",
-    status: "in-progress",
+    status: "released",
     milestone: 9,
     goal: "See how each step reads and writes data, what limited a run, and what would make it faster.",
+    summary: "I/O per step, the I/O monitor (beta), bottlenecks and what if.",
     why: "Long runs become explainable, and you can try settings before you spend hours.",
     features: [
       { title: "Bytes read and written by each step", issue: 271, status: "released" },
@@ -195,13 +201,13 @@ export const RELEASES: RoadmapRelease[] = [
       { title: "What limited a run: bottlenecks over time, with BottleMod", issue: 276, status: "released" },
       { title: "What if: the predicted runtime with other resources", issue: 277, status: "released" },
       { title: "A course for its features", issue: 251, status: "released" },
-      { title: "Tested on a local installation before the release", issue: 256 },
+      { title: "Tested on a local installation before the release", issue: 256, status: "released" },
     ],
   },
   {
     version: "1.8",
     name: "AI Companion",
-    status: "planned",
+    status: "in-progress",
     milestone: 4,
     goal: "An assistant that explains workflows and failed runs and suggests checked changes, on a local model.",
     why: "Help in plain language, without sending your data away, and without changes you didn't approve.",
