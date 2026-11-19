@@ -86,6 +86,28 @@ describe("linking file accesses to steps", () => {
     for (const task of result.tasks) for (const file of task.files) expect(file.path.startsWith("/")).toBe(false);
   });
 
+  it("lists a file the task replaced once, as it is at the end", () => {
+    const { accesses, forks, tasks } = load(DEMO_1);
+    const path = `${DEMO_1_FOLDER}/nextflow/work/86/91258e441d196075a64b3b2a6d150b/merged.txt`;
+    // MERGE's open of merged.txt, then its last access (the next task reads merged.txt later).
+    const open = accesses.find((access) => access.type === "O" && access.path === path);
+    const last = accesses
+      .filter((access) => access.pid === open?.pid)
+      .reduce((latest, access) => (access.time > latest.time ? access : latest));
+    // MERGE deletes merged.txt and writes it again: a new file to the monitor.
+    const at = (offset: number) => ({ ...last, time: last.time + offset, timeEnd: last.time + offset });
+    const replaced = [
+      { ...at(0.001), type: "U" as const, inode: last.inode, path },
+      { ...at(0.002), type: "O" as const, inode: 999_001, handle: 77_001, path },
+      { ...at(0.003), type: "W" as const, inode: 999_001, handle: 77_001, result: 10, size: 10, offset: 0, path: "" },
+    ];
+    const result = linkAccesses([...accesses, ...replaced], forks, tasks, DEMO_1_FOLDER);
+    const merge = result.tasks.find((task) => task.process === "MERGE");
+    const merged = merge?.files.filter((file) => file.path.endsWith("/merged.txt"));
+    expect(merged).toHaveLength(1);
+    expect(merged?.[0]).toMatchObject({ bytesWritten: 3081 + 10, deleted: false });
+  });
+
   it("links all 42 tasks of Demo 3 to their own cgroups", () => {
     const { accesses, forks, tasks, trace } = load(DEMO_3);
     const result = linkAccesses(accesses, forks, tasks);

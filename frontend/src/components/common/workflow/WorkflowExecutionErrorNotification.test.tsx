@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import WorkflowExecutionErrorNotification from "./WorkflowExecutionErrorNotification";
 
@@ -65,15 +65,61 @@ describe("WorkflowExecutionErrorNotification", () => {
     expect(container.innerHTML).toBe("");
   });
 
-  it("shows the error, its output and generic fixes", () => {
+  it("shows the error and its output, and no made-up fixes when nothing matches", () => {
     show({ error: { message: "Something broke", output: "line 1\nline 2" } });
     expect(screen.getByText("Workflow Execution Failed")).toBeTruthy();
     expect(screen.getByText("Something broke")).toBeTruthy();
     expect(screen.getByText("Execution Output")).toBeTruthy();
     expect(screen.getByText(/line 1/).textContent).toBe("line 1\nline 2");
-    expect(
-      screen.getByText("Review workflow configuration and node settings"),
-    ).toBeTruthy();
+    expect(screen.queryByText("Suggested Fixes")).toBeNull();
+    const reported = screen.getByRole("region", { name: "What Nextflow reported" });
+    expect(reported.textContent).toContain("N-WAVE doesn't recognise this failure. The full log shows everything");
+    expect(within(reported).getByRole("link", { name: "Still stuck?" }).getAttribute("href")).toMatch(
+      /Troubleshooting#still-stuck$/,
+    );
+  });
+
+  it("shows what Nextflow said about a failure it doesn't recognise: the step, why, and its errors", () => {
+    const onShowStep = vi.fn();
+    const onShowEvidence = vi.fn();
+    const output = [
+      "ERROR ~ Error executing process > 'NFCORE:TRIM (sample1)'",
+      "",
+      "Caused by:",
+      "  Process `NFCORE:TRIM (sample1)` terminated with an error exit status (2)",
+      "",
+      "Command exit status:",
+      "  2",
+      "",
+      "Command output:",
+      "  (empty)",
+      "",
+      "Command error:",
+      "  Traceback (most recent call last):",
+      "  ValueError: quality offset 64 is not supported",
+      "",
+      "Work dir:",
+      "  /runs/x/work/ab/cdef",
+    ].join("\n");
+    show({ error: { message: "Workflow execution failed", output }, stepLabel: "Trim reads", onShowStep, onShowEvidence });
+    const reported = screen.getByRole("region", { name: "What Nextflow reported" });
+    expect(reported.textContent).toContain("Trim reads (exit status 2)");
+    expect(reported.textContent).toContain("terminated with an error exit status (2)");
+    expect(within(reported).getByText(/ValueError/).textContent).toBe(
+      "Traceback (most recent call last):\nValueError: quality offset 64 is not supported",
+    );
+    expect(reported.textContent).toContain("The step's own errors above are where to start");
+    fireEvent.click(within(reported).getByRole("button", { name: "Trim reads" }));
+    expect(onShowStep).toHaveBeenCalled();
+    fireEvent.click(within(reported).getByRole("button", { name: "Show in the log" }));
+    expect(onShowEvidence).toHaveBeenCalledWith(12);
+    // No word in it matches a guess.
+    expect(screen.queryByText("Suggested Fixes")).toBeNull();
+  });
+
+  it("says nothing more for a failure whose reason is known", () => {
+    show({ error: { message: "N-WAVE shut down during the run", output: "ERROR ~ x", known: true } });
+    expect(screen.queryByRole("region", { name: "What Nextflow reported" })).toBeNull();
   });
 
   it("suggests fixes that match the error", () => {
@@ -169,7 +215,7 @@ describe("WorkflowExecutionErrorNotification", () => {
 
     expect(onRetry).toHaveBeenCalledOnce();
     expect(screen.getByText("Workflow Execution Failed")).toBeTruthy();
-    expect(screen.getByText("Suggested Fixes")).toBeTruthy();
+    expect(screen.getByText("What Nextflow reported")).toBeTruthy();
     expect(
       (screen.getByRole("button", { name: "Retry" }) as HTMLButtonElement)
         .disabled,

@@ -17,6 +17,7 @@ The scripts in this folder:
 | `lint-generated-nextflow.sh` | `nextflow lint` on the scripts the examples and node combinations generate (CI). |
 | `docsLinks.test.mjs` | Checks the links in the READMEs and the `wiki/` pages. |
 | `publish-wiki.sh` | Copies `wiki/` into a checkout of the GitHub wiki (the Wiki workflow runs it). |
+| `release-push.sh` | The release's last git step: tags what was built and pushes the tag and the version commit to `main` together, on top of `main` when it moved on (the Release workflow runs it; `releasePush.test.mjs` tests it). |
 
 All `*.test.mjs` run with `node --test scripts/*.test.mjs` from the repository root.
 

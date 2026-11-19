@@ -8,7 +8,7 @@ Each explanation in the app links to its section here.
 | [Workflow check problems](#workflow-check-problems) | The check in the canvas's bottom bar, the marked nodes | Fixed rules on the canvas, and what the server reports (Nextflow, Docker, limits) | Errors: the run would fail or do nothing. Warnings: it may not be what you want |
 | [Connection hints](#connection-hints) | Yellow dashed connections, inputs marked while dragging, the workflow check | nf-core modules' metadata (`meta.yml` file patterns) and file names | A hint, never a block: the metadata isn't always complete |
 | [Failure explanations](#failure-explanations) | The run panel (Steps and Log tabs), the failure notice, earlier runs | Fixed rules matched against the run's log | Each says **Cause** (certain) or **Likely cause**, and shows the log lines it went by |
-| [Suggested fixes](#suggested-fixes) | The failure notice, when no failure explanation fits | Words in the error message | Guesses |
+| [Suggested fixes](#suggested-fixes) | The failure notice, when no failure explanation fits | What Nextflow reported, and words in it | Copied from the log; the fixes are guesses |
 | [Glossary and Help](#glossary-and-help) | ⓘ buttons next to terms, the Help page | Written by hand | Checked by people, but general: not about your workflow |
 | [AI companion](#ai-companion) | Not in N-WAVE yet | — | — |
 
@@ -170,10 +170,14 @@ the tool writes its file under a different name or into a subfolder (check its v
 **Where:** the notice that appears when a run fails, when no [failure
 explanation](#failure-explanations) fits.
 
-**Based on:** words in the error message (`memory`, `docker`, `permission denied`, …), each with
-general advice; without such words, general advice for any failure.
+**Based on:** the notice first shows what Nextflow reported, taken from the log as it is: the
+step that failed and its exit status, Nextflow's reason, and the last lines of the step's own
+error output. Below that, words in the error and those lines (`memory`, `docker`,
+`permission denied`, …) each give general advice. Without such words there are no suggested
+fixes.
 
-**How sure:** guesses. They don't look at the log's lines and can't say which step failed.
+**How sure:** what Nextflow reported is copied, not interpreted. The suggested fixes are guesses
+from single words, not from what the lines mean.
 
 ## Glossary and Help
 

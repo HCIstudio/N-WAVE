@@ -24,7 +24,7 @@ import Header from "../components/layout/Header";
 import type { NodeData } from "../components/nodes/BaseNode";
 import { useWorkflowContext, WorkflowProvider } from "../context/WorkflowContext";
 import type { NextflowProcess } from "../data/types";
-import { explainFailure } from "../execution/failureExplanations";
+import { explainFailure, failedProcessOf } from "../execution/failureExplanations";
 import { nodeIdForProcess } from "../execution/nodeRuns";
 import { ConnectionHintsContext } from "../execution/ConnectionHintsContext";
 import { NodeProblemsContext } from "../execution/NodeProblemsContext";
@@ -349,9 +349,11 @@ const WorkflowPageContent: React.FC = () => {
     () => (explanationsOn && !isRunning && run.output ? explainFailure(run.output) : null),
     [explanationsOn, isRunning, run.output]
   );
-  const failedNodeId = failure?.process
+  // The step Nextflow names, also for a failure N-WAVE doesn't recognise.
+  const failedProcess = failure?.process ?? (!isRunning && run.output ? failedProcessOf(run.output) : undefined);
+  const failedNodeId = failedProcess
     ? nodeIdForProcess(
-        failure.process,
+        failedProcess,
         nodes,
         nodes.find((node) => node.type === "pipeline")?.id
       )

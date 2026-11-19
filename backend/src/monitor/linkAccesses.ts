@@ -340,7 +340,7 @@ export const linkAccesses = (
   }
 
   // 2. Every access by a process in a task's cgroup belongs to that task.
-  const linked = new Map<string, { task: LinkTask; cgroup: string; pids: Set<number>; files: Map<number, TaskFile>; start: number; end: number }>();
+  const linked = new Map<string, { task: LinkTask; cgroup: string; pids: Set<number>; files: Map<string, TaskFile>; start: number; end: number }>();
   const pathOfInode = new Map<number, string>();
   // The latest open of each handle (their handle ids get reused): a read or
   // write belongs to the file its handle was last opened for.
@@ -375,10 +375,13 @@ export const linkAccesses = (
     }
     entry.pids.add(access.pid);
     entry.end = Math.max(entry.end, access.timeEnd);
-    let file = entry.files.get(fileKey);
+    // One entry per path: a file deleted and written again, or replaced by a
+    // rename, is a new file to the monitor but the same file to the task.
+    const filePath = relative(path);
+    let file = entry.files.get(filePath);
     if (!file) {
       file = {
-        path: relative(path),
+        path: filePath,
         inode: fileKey,
         bytesRead: 0,
         bytesWritten: 0,
@@ -394,9 +397,8 @@ export const linkAccesses = (
         deleted: false,
         samples: [],
       };
-      entry.files.set(fileKey, file);
+      entry.files.set(filePath, file);
     }
-    if (!file.path && path) file.path = relative(path);
     file.lastAccess = Math.max(file.lastAccess, access.time);
     // A read or write that returned bytes (their check: 0 < result <= size).
     const transferred = access.result > 0 && access.result <= access.size ? access.result : 0;
@@ -418,6 +420,9 @@ export const linkAccesses = (
     } else if (access.type === "U") {
       file.deleted = true;
     }
+    // Opened again after a delete: the task made it anew. (Writes don't count:
+    // a program can keep writing to a file it opened and then deleted.)
+    if (access.type === "O") file.deleted = false;
   }
   unlinked.tasksWithoutStart = tasks
     .filter((task) => !cgroupOfTask.has(task.hash))
