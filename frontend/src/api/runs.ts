@@ -217,6 +217,8 @@ export interface IoMonitorStatus {
   reason?: string;
   image: string;
   imagePresent: boolean;
+  /** Its image is being downloaded (once: when the monitor is switched on, or at its first run). */
+  downloading?: boolean;
   /** The kernel and system Docker runs on. */
   kernel?: string;
   system?: string;

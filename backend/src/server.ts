@@ -2,7 +2,8 @@ import dotenv from "dotenv";
 import { createApp } from "./app";
 import connectDB from "./config/db";
 import { stopOrphanedRuns } from "./execution/orphanedRuns";
-import { finishInterruptedMonitors, removeOrphanedMonitors, waitForStoppingMonitors } from "./monitor/ioMonitor";
+import { ensureIoMonitorImage, finishInterruptedMonitors, removeOrphanedMonitors, waitForStoppingMonitors } from "./monitor/ioMonitor";
+import { readFeatures } from "./settings/features";
 import { listRunFolders } from "./runs/runIndex";
 import { stopAllRuns } from "./execution/runRegistry";
 import { STOP_GRACE_MS } from "./execution/runner";
@@ -40,6 +41,10 @@ removeOrphanedMonitors()
     if (finished > 0) console.log(`Finished the I/O monitor's summary of ${finished} interrupted run(s).`);
   })
   .catch((error: unknown) => console.warn("Could not check for I/O monitors left running:", error));
+
+// With the I/O monitor on (by the switch, or fixed by NWAVE_FEATURES), its image
+// is downloaded now if it isn't here, so the first monitored run doesn't wait.
+if (readFeatures().features.ioMonitor) void ensureIoMonitorImage();
 
 // On `docker stop` or Ctrl-C, stop the runs (they record why) before going.
 // Without this, Nextflow would go on alone: in its own container or process

@@ -7,7 +7,9 @@
 // Its logs stay in the run's folder (nwave_monitor/<run>/) and go with it.
 //
 //   NWAVE_IO_MONITOR=off            the installation never runs it
-//   NWAVE_IO_MONITOR_IMAGE=…        the image (default nwave-iomonitor:dev)
+//   NWAVE_IO_MONITOR_IMAGE=…        the image (default hcistudio/nwave-iomonitor:<N-WAVE's version>,
+//                                   downloaded when the monitor is switched on; a build of
+//                                   backend/monitor is nwave-iomonitor:dev)
 //   NWAVE_IO_MONITOR_START_TIMEOUT  seconds to wait for its probes (default 180)
 
 import { type ChildProcess, exec, spawn } from "node:child_process";
@@ -16,6 +18,7 @@ import path from "node:path";
 import { checkWorkFolders, openedPaths, type WorkFoldersCheck } from "./workFolders";
 import { shellQuote } from "../execution/command";
 import { readCommandOutput } from "../execution/shell";
+import { nwaveVersion } from "../version";
 
 /** Runs a command; whether it worked, with its error output. */
 const runShell = (command: string, timeout: number): Promise<{ ok: boolean; stderr: string }> =>
@@ -25,7 +28,11 @@ const runShell = (command: string, timeout: number): Promise<{ ok: boolean; stde
     ),
   );
 
-export const IO_MONITOR_IMAGE = "nwave-iomonitor:dev";
+/** Each release publishes the monitor's image with N-WAVE's version. */
+export const IO_MONITOR_IMAGE_REPOSITORY = "hcistudio/nwave-iomonitor";
+
+/** Downloading it can take a while: it is about 100 MB. */
+const PULL_TIMEOUT_MS = 20 * 60_000;
 
 /** The run's monitor folder, relative to the run's directory. */
 export const monitorDir = (runId: string): string => `nwave_monitor/${runId}`;
@@ -48,7 +55,7 @@ export const readIoMonitorConfig = (env: NodeJS.ProcessEnv = process.env): IoMon
   const seconds = Number(env.NWAVE_IO_MONITOR_START_TIMEOUT);
   return {
     allowed: !["off", "false", "0", "no"].includes((env.NWAVE_IO_MONITOR ?? "").trim().toLowerCase()),
-    image: env.NWAVE_IO_MONITOR_IMAGE?.trim() || IO_MONITOR_IMAGE,
+    image: env.NWAVE_IO_MONITOR_IMAGE?.trim() || `${IO_MONITOR_IMAGE_REPOSITORY}:${nwaveVersion() ?? "latest"}`,
     startTimeoutMs: (Number.isFinite(seconds) && seconds > 0 ? seconds : 180) * 1000,
   };
 };
@@ -196,10 +203,42 @@ export interface IoMonitorStatus {
   reason?: string;
   image: string;
   imagePresent: boolean;
+  /** The image is being downloaded (it is, once, when the monitor is switched on or first runs). */
+  downloading?: boolean;
   /** Docker's kernel and system (the monitor's platform). */
   kernel?: string;
   system?: string;
 }
+
+/** The download of the image going on, and the last one's error. */
+const download: { image: string | null; running: Promise<boolean> | null; error: string | null } = {
+  image: null,
+  running: null,
+  error: null,
+};
+
+/**
+ * Downloads the monitor's image unless it is on this computer, once even
+ * when several ask: switching the monitor on starts it, and a run waits for
+ * it. Resolves to whether the image is there.
+ */
+export const ensureIoMonitorImage = (config = readIoMonitorConfig()): Promise<boolean> => {
+  if (!config.allowed) return Promise.resolve(false);
+  if (download.running && download.image === config.image) return download.running;
+  download.image = config.image;
+  download.running = (async () => {
+    if ((await runShell(`docker image inspect ${shellQuote(config.image)}`, 30_000)).ok) {
+      download.error = null;
+      return true;
+    }
+    const pulled = await runShell(`docker pull ${shellQuote(config.image)}`, PULL_TIMEOUT_MS);
+    download.error = pulled.ok ? null : pulled.stderr.trim().split("\n").pop() || "docker pull failed";
+    return pulled.ok;
+  })().finally(() => {
+    download.running = null;
+  });
+  return download.running;
+};
 
 /** Whether the monitor can run on this installation, with why not. */
 export const getIoMonitorStatus = async (config = readIoMonitorConfig()): Promise<IoMonitorStatus> => {
@@ -211,16 +250,19 @@ export const getIoMonitorStatus = async (config = readIoMonitorConfig()): Promis
   if (!info) return { ...base, available: false, reason: "Docker isn't available." };
   const [kernel, system] = info.trim().split("|");
   const present = await runShell(`docker image inspect ${shellQuote(config.image)}`, 30_000);
-  if (!present.ok) {
-    return {
-      ...base,
-      kernel,
-      system,
-      available: false,
-      reason: `The monitor's image ${config.image} isn't on this computer. Build it with \`docker compose --profile monitor build iomonitor\`.`,
-    };
+  if (present.ok) return { ...base, imagePresent: true, kernel, system, available: true };
+  const downloading = Boolean(download.running) && download.image === config.image;
+  // Not downloaded yet: it is, when the monitor is switched on (or when it first runs).
+  if (downloading || !download.error || download.image !== config.image) {
+    return { ...base, kernel, system, available: true, downloading };
   }
-  return { ...base, imagePresent: true, kernel, system, available: true };
+  return {
+    ...base,
+    kernel,
+    system,
+    available: false,
+    reason: `The monitor's image ${config.image} could not be downloaded (${download.error}). Switch the monitor off and on again to try again.`,
+  };
 };
 
 /** A monitor that runs next to a run. */
@@ -409,6 +451,12 @@ export const startIoMonitor = async (options: {
     return null;
   };
   if (!status.available) return giveUp(status.reason ?? "it isn't available.");
+  if (!status.imagePresent) {
+    options.say(`N-WAVE: downloading the I/O monitor's image ${config.image} (once, about 100 MB) …\n`);
+    if (!(await ensureIoMonitorImage(config))) {
+      return giveUp(`its image ${config.image} could not be downloaded (${download.error ?? "docker pull failed"}).`);
+    }
+  }
 
   const containerName = monitorContainerName(options.runId);
   await runShell(`docker rm -f ${shellQuote(containerName)}`, 30_000);

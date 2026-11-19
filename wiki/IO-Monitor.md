@@ -137,13 +137,19 @@ step's own files the monitor missed. Without the monitor, the section says how t
 
 ## Switching it on
 
-1. Build the monitor's image once, in the N-WAVE folder:
-   `docker compose --profile monitor build iomonitor` (this compiles BCC and takes a while).
-2. In **Global Settings → I/O monitor**, tick **Monitor file accesses during runs**. The section
-   says whether the monitor can run on this computer, and why not.
+In **Global Settings → I/O monitor**, tick **Monitor file accesses during runs**. The section
+says whether the monitor can run on this computer, and why not.
 
-An installation can fix the switch with `NWAVE_FEATURES="ioMonitor=on"` (or `off`), or never run
-the monitor with `NWAVE_IO_MONITOR=off`. `NWAVE_IO_MONITOR_IMAGE` names another image.
+The monitor runs in an image of its own, `hcistudio/nwave-iomonitor`, published with each
+release of N-WAVE. Switching the monitor on downloads the image of your N-WAVE's version once
+(about 100 MB); the section says so while it downloads. A run started before the download
+ended waits for it. Nothing needs to be built: this works the same for an installation from
+`latest.yml` and for one built from the repository.
+
+An installation can fix the switch with `NWAVE_FEATURES="ioMonitor=on"` (then the image is
+downloaded when N-WAVE starts), or never run the monitor with `NWAVE_IO_MONITOR=off`.
+`NWAVE_IO_MONITOR_IMAGE` names another image, for example one built from a clone of the
+repository with `docker compose --profile monitor build iomonitor` (`nwave-iomonitor:dev`).
 
 ## Privileges
 
@@ -168,5 +174,5 @@ Kernels from 6.13 on changed a structure the monitor reads (`struct file`); N-WA
 applies a small patch for that (`backend/monitor/patches/`), which is offered back to the
 authors.
 
-When the monitor can't run (no kprobes, no headers, no privileges, no image), the run goes on
-without it, and the run's log and **Performance** tab say why.
+When the monitor can't run (no kprobes, no headers, no privileges, its image couldn't be
+downloaded), the run goes on without it, and the run's log and **Performance** tab say why.
