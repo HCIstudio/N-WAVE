@@ -1,6 +1,6 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RunAccesses, TaskFile } from "../../../api/runs";
 
 const getRunAccesses = vi.fn();
@@ -49,6 +49,25 @@ const recorded: RunAccesses = {
 };
 
 describe("NodeIoView", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("shows the files once the monitor has stopped after the run, without reopening", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    getRunAccesses.mockReset();
+    getRunAccesses.mockResolvedValueOnce({ status: "running" }).mockResolvedValue(recorded);
+    render(<NodeIoView runId="r3" hashes={["aa/111111"]} />);
+    expect((await screen.findByRole("region", { name: "File accesses of this step" })).textContent).toContain(
+      "its files show here when the run has ended",
+    );
+    await vi.advanceTimersByTimeAsync(3_000);
+    await waitFor(() => expect(screen.getByRole("table", { name: "Files of TRIM (s1)" })).toBeTruthy());
+    const calls = getRunAccesses.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(getRunAccesses.mock.calls.length).toBe(calls);
+  });
+
   it("lists the step's files with sizes, when and how, credits the method, and follows a file", async () => {
     getRunAccesses.mockResolvedValue(recorded);
     render(<NodeIoView runId="r1" hashes={["aa/111111"]} />);

@@ -183,6 +183,9 @@ const TaskFiles: React.FC<{ task: LinkedTask; onFollow: (path: string) => void; 
   );
 };
 
+/** How often accesses of a monitor that is still recording (or stopping) are asked again. */
+const MONITOR_POLL_MS = 3_000;
+
 /** How a step read and wrote its files, from the I/O monitor (if it was on for the run). */
 const NodeIoView: React.FC<{ runId: string; hashes: string[] }> = ({ runId, hashes }) => {
   const performanceOn = useFeature("performance");
@@ -191,12 +194,21 @@ const NodeIoView: React.FC<{ runId: string; hashes: string[] }> = ({ runId, hash
   const [following, setFollowing] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    getRunAccesses(runId).then(
-      (next) => !cancelled && setAccesses(next),
-      () => !cancelled && setAccesses({ status: "failed" }),
-    );
+    let again: ReturnType<typeof setTimeout> | undefined;
+    const load = () =>
+      getRunAccesses(runId).then(
+        (next) => {
+          if (cancelled) return;
+          setAccesses(next);
+          // The files show once the monitor has stopped, a few seconds after the run.
+          if (next.status === "running") again = setTimeout(load, MONITOR_POLL_MS);
+        },
+        () => !cancelled && setAccesses({ status: "failed" }),
+      );
+    load();
     return () => {
       cancelled = true;
+      clearTimeout(again);
     };
   }, [runId]);
   const own = useMemo(

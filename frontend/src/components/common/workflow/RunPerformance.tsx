@@ -109,28 +109,37 @@ const IoCell: React.FC<{ all: number | null; disk: number | null; diskLabel: str
   </td>
 );
 
+/** How often a monitor that is still recording (or stopping) is asked again. */
+const MONITOR_POLL_MS = 3_000;
+
 /** What the I/O monitor did in the run, when it was on. */
 export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
   const [summary, setSummary] = useState<RunMonitorSummary | null>(null);
   const [linked, setLinked] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
-    getRunMonitor(runId).then(
-      (next) => {
-        if (cancelled) return;
-        setSummary(next);
-        // How many of the accesses are linked to steps, and why the rest isn't.
-        if (next.status === "recorded") {
-          getRunAccesses(runId).then(
-            (accesses) => !cancelled && setLinked(describeUnlinked(accesses)),
-            () => {},
-          );
-        }
-      },
-      () => !cancelled && setSummary(null),
-    );
+    let again: ReturnType<typeof setTimeout> | undefined;
+    const load = () =>
+      getRunMonitor(runId).then(
+        (next) => {
+          if (cancelled) return;
+          setSummary(next);
+          // How many of the accesses are linked to steps, and why the rest isn't.
+          if (next.status === "recorded") {
+            getRunAccesses(runId).then(
+              (accesses) => !cancelled && setLinked(describeUnlinked(accesses)),
+              () => {},
+            );
+          }
+          // Its summary comes a few seconds after the run ends, once it has stopped.
+          if (next.status === "running") again = setTimeout(load, MONITOR_POLL_MS);
+        },
+        () => !cancelled && setSummary(null),
+      );
+    load();
     return () => {
       cancelled = true;
+      clearTimeout(again);
     };
   }, [runId]);
   if (!summary || summary.status === "off") return null;
