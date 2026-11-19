@@ -14,6 +14,8 @@ import {
   realFileInRun,
 } from "../runs/runIndex";
 import { findRunReports, isReportKind, parseTrace } from "../runs/runReports";
+import { getIoMonitorStatus, readMonitorSummary } from "../monitor/ioMonitor";
+import { readRunAccesses } from "../monitor/runAccesses";
 import { findTaskWorkDir, listTaskOutputs, readRunTasks } from "../runs/taskEvents";
 import {
   clearAllCaches,
@@ -155,6 +157,46 @@ export const getRunReport = (req: Request, res: Response): void => {
     return;
   }
   sendSandboxed(res, real);
+};
+
+/** Whether the I/O monitor can run on this installation, with why not. */
+export const getIoMonitor = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    res.json(await getIoMonitorStatus());
+  } catch (error: unknown) {
+    res.status(500).json({ message: getErrorMessage(error) });
+  }
+};
+
+/** What the I/O monitor did in a run: `{ status: "off" }` when it didn't run. */
+export const getRunMonitor = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  if (!dir) {
+    res.status(404).json({ message: `Unknown run ${id}` });
+    return;
+  }
+  res.json(readMonitorSummary(dir, id) ?? { status: "off" });
+};
+
+/**
+ * The I/O monitor's records of a run, linked to its tasks: each task's
+ * files with bytes and times, and what couldn't be linked.
+ */
+export const getRunAccesses = (req: Request, res: Response): void => {
+  const id = parseRunId(req, res);
+  if (!id) return;
+  const dir = findRunDir(id);
+  if (!dir) {
+    res.status(404).json({ message: `Unknown run ${id}` });
+    return;
+  }
+  try {
+    res.json(readRunAccesses(dir, id, findRunNextflowLog(id)));
+  } catch (error: unknown) {
+    res.status(500).json({ message: `The monitor's records couldn't be read: ${getErrorMessage(error)}` });
+  }
 };
 
 /** `{ tasks }`: each task's times and resource use, from the run's trace. */

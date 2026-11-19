@@ -283,6 +283,14 @@ const demoApi = {
       } as T);
     }
 
+    if (path === "/execute/io-monitor") {
+      return ok({
+        available: false,
+        reason: "The browser demo can't run workflows, so it can't monitor them.",
+        image: "",
+        imagePresent: false,
+      } as T);
+    }
     if (path === "/execute/caches") {
       return ok({ bytes: 0, folders: 0 } as T);
     }

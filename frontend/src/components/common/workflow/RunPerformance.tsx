@@ -1,10 +1,16 @@
 import type React from "react";
+import { BetaNote } from "../ui/BetaBadge";
+import { IO_MONITOR_SWITCH } from "../../../settings/ioMonitorSwitch";
 import { useEffect, useState } from "react";
 import { ChartColumn, ChartGantt, ExternalLink } from "lucide-react";
+import { describeUnlinked } from "../../../execution/ioAccesses";
 import {
+  getRunAccesses,
+  getRunMonitor,
   getRunTrace,
   listRunReports,
   listRunTasks,
+  type RunMonitorSummary,
   type RunReportKind,
   runReportUrl,
 } from "../../../api/runs";
@@ -18,6 +24,8 @@ import {
 import { formatDuration } from "../../../notifications/runNotifications";
 import { formatBytes } from "../../../utils/fileContent";
 import { useFeature } from "../../../settings/useFeatures";
+import type { Edge, Node } from "@xyflow/react";
+import RunBottlenecks from "./RunBottlenecks";
 
 const REPORT_LINKS: { kind: RunReportKind; label: string; icon: React.ReactNode }[] = [
   { kind: "report", label: "Execution report", icon: <ChartColumn className="h-4 w-4" aria-hidden /> },
@@ -101,6 +109,94 @@ const IoCell: React.FC<{ all: number | null; disk: number | null; diskLabel: str
   </td>
 );
 
+/** How often a monitor that is still recording (or stopping) is asked again. */
+const MONITOR_POLL_MS = 3_000;
+
+/** What the I/O monitor did in the run, when it was on. */
+export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
+  const [summary, setSummary] = useState<RunMonitorSummary | null>(null);
+  const [linked, setLinked] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    let again: ReturnType<typeof setTimeout> | undefined;
+    const load = () =>
+      getRunMonitor(runId).then(
+        (next) => {
+          if (cancelled) return;
+          setSummary(next);
+          // How many of the accesses are linked to steps, and why the rest isn't.
+          if (next.status === "recorded") {
+            getRunAccesses(runId).then(
+              (accesses) => !cancelled && setLinked(describeUnlinked(accesses)),
+              () => {},
+            );
+          }
+          // Its summary comes a few seconds after the run ends, once it has stopped.
+          if (next.status === "running") again = setTimeout(load, MONITOR_POLL_MS);
+        },
+        () => !cancelled && setSummary(null),
+      );
+    load();
+    return () => {
+      cancelled = true;
+      clearTimeout(again);
+    };
+  }, [runId]);
+  if (!summary || summary.status === "off") return null;
+  // The run panel is light: its own grey, readable there.
+  const beta = (
+    <BetaNote feature={IO_MONITOR_SWITCH.label} className="text-gray-700">
+      {IO_MONITOR_SWITCH.beta}
+    </BetaNote>
+  );
+  if (summary.status === "running") {
+    return (
+      <div data-testid="run-monitor-note" className="space-y-1 text-xs text-gray-700">
+        <p>The I/O monitor is on for this run.</p>
+        {beta}
+      </div>
+    );
+  }
+  if (summary.status !== "recorded") {
+    return (
+      <div data-testid="run-monitor-note" className="space-y-1 text-xs">
+        <p className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
+          The I/O monitor was switched on, but couldn't record this run: {summary.reason}
+        </p>
+        {beta}
+      </div>
+    );
+  }
+  return (
+    <div data-testid="run-monitor-note" className="space-y-1 text-xs text-gray-700">
+      <p>
+        The I/O monitor recorded {summary.accesses ?? 0} file accesses and {summary.processes ?? 0} process starts
+        {summary.kernel ? ` (kernel ${summary.kernel})` : ""}.
+      </p>
+      {linked && <p data-testid="run-monitor-linked">{linked}</p>}
+      {summary.workFolders && summary.workFolders.files > 0 && (
+        <p
+          data-testid="run-monitor-work-folders"
+          role={summary.workFolders.missed > 0 ? "alert" : undefined}
+          className={summary.workFolders.missed > 0 ? "rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900" : undefined}
+        >
+          {summary.workFolders.missed > 0
+            ? `Of the ${summary.workFolders.files} files in the steps' work folders, the monitor saw no open of ${summary.workFolders.missed}: their accesses were lost, and the views of this run lack them. Each step's Results say how many of its files.`
+            : `The monitor saw all ${summary.workFolders.files} files in the steps' work folders.`}
+        </p>
+      )}
+      {(summary.incompleteFiles ?? 0) > 0 && (
+        <p role="alert" className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
+          For {summary.incompleteFiles} of the {summary.checkedFiles} files the run wrote, the monitor recorded fewer
+          bytes than the files have ({formatBytes(summary.missingBytes ?? 0)} missing): events were lost, or recorded for
+          another file. The views of this run miss some accesses.
+        </p>
+      )}
+      {beta}
+    </div>
+  );
+};
+
 /** The trace has the bytes read and written (runs from v1.7 on). */
 const hasIo = (io: TraceIo) => io.read !== null || io.written !== null;
 
@@ -119,7 +215,12 @@ const RunPerformance: React.FC<{
   showLinks?: boolean;
   /** The canvas name of the node that runs a Nextflow process, if any. */
   labelFor?: (process: string) => string | undefined;
-}> = ({ runId, showLinks = true, labelFor }) => {
+  /** The canvas the run ran on: for its model (what limited it). */
+  canvas?: { nodes: Node[]; edges: Edge[] };
+  /** Highlights the chain of steps that set the runtime on the canvas. */
+  onShowChain?: (nodeIds: string[] | null) => void;
+  shownChain?: boolean;
+}> = ({ runId, showLinks = true, labelFor, canvas, onShowChain, shownChain }) => {
   const [state, setState] = useState<State>({ status: "loading" });
 
   useEffect(() => {
@@ -174,6 +275,8 @@ const RunPerformance: React.FC<{
             {taskCounts(summary)}
             {hasIo(summary.io) ? ` · ${describeIo(summary.io, formatBytes)}` : ""}
           </p>
+
+          <RunMonitorNote runId={runId} />
 
           {nearLimit && nearLimit.length > 0 && (
             <ul aria-label="Memory hints" className="space-y-1">
@@ -263,6 +366,15 @@ const RunPerformance: React.FC<{
               })}
             </tbody>
           </table>
+          {canvas && summary.wallTime > 0 && (
+            <RunBottlenecks
+              runId={runId}
+              nodes={canvas.nodes}
+              edges={canvas.edges}
+              onShowChain={onShowChain}
+              shownChain={shownChain}
+            />
+          )}
         </>
       )}
     </section>

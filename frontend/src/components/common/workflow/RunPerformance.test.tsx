@@ -1,13 +1,17 @@
-import { render, screen, within } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { TraceTask } from "../../../api/runs";
 
 const listRunReports = vi.fn();
 const getRunTrace = vi.fn();
 const listRunTasks = vi.fn();
+const getRunMonitor = vi.fn();
+const getRunAccesses = vi.fn();
 vi.mock("../../../api/runs", () => ({
   listRunReports: (id: string) => listRunReports(id),
   getRunTrace: (id: string) => getRunTrace(id),
+  getRunMonitor: (id: string) => getRunMonitor(id),
+  getRunAccesses: (id: string) => getRunAccesses(id),
   listRunTasks: (id: string) => listRunTasks(id),
   runReportUrl: (id: string, kind: string) => `/api/execute/runs/${id}/reports/${kind}`,
 }));
@@ -35,7 +39,13 @@ const task = (process: string, extra: Partial<TraceTask> = {}): TraceTask => ({
 });
 
 describe("RunPerformance", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
   beforeEach(() => {
+    getRunMonitor.mockReset();
+    getRunAccesses.mockReset();
+    getRunMonitor.mockResolvedValue({ status: "off" });
     listRunReports.mockResolvedValue({ report: true, timeline: true, trace: true });
     listRunTasks.mockResolvedValue([{ hash: "85/280734", status: "ignored" }]);
     getRunTrace.mockResolvedValue([
@@ -102,6 +112,84 @@ describe("RunPerformance", () => {
     const table = await screen.findByRole("table", { name: "Steps by time" });
     expect(within(table).queryByText("Read")).toBeNull();
     expect(screen.getByTestId("run-performance-summary").textContent).not.toContain("read");
+  });
+
+  it("says what the I/O monitor recorded, and warns when it lost events", async () => {
+    getRunMonitor.mockResolvedValue({ status: "recorded", accesses: 5120, processes: 87, checkedFiles: 12, incompleteFiles: 0, kernel: "6.18.58" });
+    getRunAccesses.mockResolvedValue({
+      status: "recorded",
+      tasks: [],
+      unlinked: { outsideTasks: 300, unknownProcess: 20, unknownFile: 0, tasksWithoutStart: [] },
+      total: 5120,
+    });
+    const { unmount } = render(<RunPerformance runId="m1" />);
+    const note = await screen.findByTestId("run-monitor-note");
+    expect(note.textContent).toContain("The I/O monitor recorded 5120 file accesses and 87 process starts (kernel 6.18.58).");
+    // A beta feature: what is under test, and where to report.
+    expect(within(note).getByRole("note").textContent).toContain(
+      "Under test: on Docker Desktop and WSL 2 the monitor sees the whole machine and can miss file accesses.",
+    );
+    expect(within(note).getByRole("link", { name: "Report how it works on yours" })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect((await screen.findByTestId("run-monitor-linked")).textContent).toBe(
+      "4800 of 5120 recorded accesses are linked to steps; not linked: 300 by processes outside the steps' containers (Nextflow, Docker), 20 by processes started before the monitor.",
+    );
+    unmount();
+
+    getRunMonitor.mockResolvedValue({
+      status: "recorded",
+      accesses: 10,
+      processes: 2,
+      checkedFiles: 12,
+      incompleteFiles: 3,
+      missingBytes: 2048,
+      workFolders: { files: 46, missed: 17, folders: [] },
+    });
+    render(<RunPerformance runId="m2" />);
+    expect((await screen.findByTestId("run-monitor-work-folders")).textContent).toBe(
+      "Of the 46 files in the steps' work folders, the monitor saw no open of 17: their accesses were lost, and the views of this run lack them. Each step's Results say how many of its files.",
+    );
+    const alerts = (await screen.findAllByRole("alert")).map((alert) => alert.textContent);
+    expect(alerts).toHaveLength(2);
+    expect(alerts[1]).toContain("For 3 of the 12 files the run wrote, the monitor recorded fewer bytes than the files have (2.0 KB missing)");
+  });
+
+  it("asks again while the monitor records or stops, so its summary shows once the run has ended", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    getRunMonitor
+      .mockResolvedValueOnce({ status: "running", kernel: "6.18.58" })
+      .mockResolvedValueOnce({ status: "running", kernel: "6.18.58" })
+      .mockResolvedValue({ status: "recorded", accesses: 7, processes: 2, checkedFiles: 0, incompleteFiles: 0, kernel: "6.18.58" });
+    getRunAccesses.mockResolvedValue({
+      status: "recorded",
+      tasks: [],
+      unlinked: { outsideTasks: 0, unknownProcess: 0, unknownFile: 0, tasksWithoutStart: [] },
+      total: 7,
+    });
+    render(<RunPerformance runId="m5" />);
+    expect((await screen.findByTestId("run-monitor-note")).textContent).toContain("The I/O monitor is on for this run.");
+    await vi.advanceTimersByTimeAsync(3_000);
+    await vi.advanceTimersByTimeAsync(3_000);
+    await waitFor(() =>
+      expect(screen.getByTestId("run-monitor-note").textContent).toContain("The I/O monitor recorded 7 file accesses and 2 process starts"),
+    );
+    // Recorded: nothing more to ask.
+    const calls = getRunMonitor.mock.calls.length;
+    await vi.advanceTimersByTimeAsync(9_000);
+    expect(getRunMonitor.mock.calls.length).toBe(calls);
+  });
+
+  it("says why the I/O monitor couldn't record a run, and nothing when it was off", async () => {
+    getRunMonitor.mockResolvedValue({ status: "unavailable", reason: "no kernel headers for 6.1.0." });
+    const { unmount } = render(<RunPerformance runId="m3" />);
+    const note = await screen.findByTestId("run-monitor-note");
+    expect(note.textContent).toContain("couldn't record this run: no kernel headers");
+    expect(within(note).getByRole("note").textContent).toContain("Under test:");
+    unmount();
+    getRunMonitor.mockResolvedValue({ status: "off" });
+    render(<RunPerformance runId="m4" />);
+    await screen.findByTestId("run-performance-summary");
+    expect(screen.queryByTestId("run-monitor-note")).toBeNull();
   });
 
   it("says when a run has no reports", async () => {

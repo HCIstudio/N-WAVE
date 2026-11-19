@@ -90,7 +90,10 @@ or has an issue that is explicitly moved to a later release.
       **Run limits and clusters** (a SLURM profile saved and in the exported project) and
       **Read a workflow's structure** (the Branch node and its parameter, Analyse, an error
       and its fix, both graph views, the
-      **if** badges, a group).
+      **if** badges, a group) and
+      **Run Insight** (v1.7: a run of its workflow, the Performance tab's bytes, what limited
+      the run with COUNT_BASES in the chain, the chain on the canvas, with the I/O monitor on
+      COUNT_BASES's files, What if?, and the prediction in Execution Settings).
 
 ## Building a workflow
 
@@ -160,6 +163,48 @@ or has an issue that is explicitly moved to a later release.
       peak 4.0 MB, read 1.2 MB, wrote 300 KB". The numbers match `execution_trace.txt` in
       `nwave_reports/<run>/` (`rchar`, `wchar`, `read_bytes`, `write_bytes`). A run from the
       previous release still opens, without the two columns.
+- [ ] I/O monitor (v1.7, off by default): **Global Settings → I/O monitor** says whether it can
+      run here. On an installation from `latest.yml`, switch it on: the section says it downloads
+      `hcistudio/nwave-iomonitor:<version>` (once) and then that it can run; nothing is built.
+      Run Demo 1 and Demo 3: the log says the monitor started and what it recorded, the
+      **Performance** tab says it too, and `nwave_monitor/<run>/` holds `file-bpf.csv`,
+      `cgroups.csv`, `monitor.log` and `monitor.json`. `docker ps` shows no monitor after the run,
+      also after **Cancel** and after restarting the backend during a run.
+- [ ] With the I/O monitor on, the **Performance** tab says how many recorded accesses are
+      linked to steps, and why the rest isn't. Every task of Demo 1 and Demo 3 is linked.
+- [ ] A monitored run's node **Results**: **Files read and written** lists the task's files
+      with bytes, **When** and **How** (bulk, streaming, in parts); **Follow** on a file the
+      next step reads (Demo 3: Trim Galore's `*_val_2.fq.gz`, read by STAR alignment) shows both
+      steps' reads and writes over time, with a hover note. A run without the monitor says how
+      to switch it on. The views credit Witzke et al. and link the paper.
+- [ ] The check of the work folders (I/O monitor): after a monitored Demo 1 and Demo 3, the log
+      and **Performance** say how many of the files in the steps' work folders the monitor saw
+      no open of; each step's **Files read and written** says how many of its own files it saw
+      and names a few it missed, under the **Beta** note. The numbers match
+      `nwave_monitor/<run>/monitor.json` (`workFolders`). In the browser demo, Demo 1's MAP says
+      "7 of the 9 files".
+- [ ] The I/O monitor on each platform: Linux (a distribution kernel), Docker Desktop on Windows
+      (WSL 2) and on macOS. Where it can't run, the run goes on and says why.
+- [ ] The I/O monitor is a beta feature: **Global Settings → I/O monitor** has the **Beta** label
+      and says what is under test (Docker Desktop and WSL 2: the whole machine, missed accesses);
+      a monitored run's note in the run panel (**Steps** and **Performance**) has it too, and
+      **Report how it works on yours** opens the Beta feature test report form titled
+      "[Beta] I/O monitor". Send a report from each platform tested.
+- [ ] **Clear** in the run cache keeps a run's monitor logs (they aren't cache); deleting the
+      run's folder under `results/` removes them with it.
+- [ ] BottleMod (v1.7): `pnpm exec vitest run src/insight` passes: the port matches the
+      recorded results of BottleMod's Python on the paper's examples, and the models of the
+      recorded Demo 1 and Demo 3 runs predict their runtimes within 15 % and 25 %.
+- [ ] **What limited this run** (Performance, after Demo 1 and Demo 3): predicted next to
+      measured runtime, a bar per step coloured by what limited it with a sentence under it,
+      the chain that set the runtime, and **Show the chain on the canvas** outlining its nodes.
+      Credits BottleMod and links the paper.
+- [ ] **What if?** (Performance, below What limited this run): **Maximum CPU Cores**, memory, a
+      step first and a run profile change the predicted runtime at once; settings far from the
+      run's say **Less certain**. **Execution Settings → Resources** shows the prediction for the
+      workflow's limits after **Show on canvas**. Compare it with a real run with those limits:
+      with Maximum CPU Cores at 2, the run's tasks share 2 CPUs, and its own model (What limited
+      this run) predicts it within about 10 %.
 - [ ] **Show on canvas** (History): an earlier run's nodes show **Results ready**, their
       **Results** tab its line, and the **Performance** tab opens for it. Not offered while a run
       goes.

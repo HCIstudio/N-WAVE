@@ -9,8 +9,6 @@
 //   NWAVE_BIOFLOW_TIMEOUT=120    time limit in seconds
 
 import { randomUUID } from "node:crypto";
-import fs from "node:fs";
-import path from "node:path";
 import type { AnalysisProject } from "./bioflowProject";
 import {
   ensureImage,
@@ -23,24 +21,9 @@ import {
   toolStatus,
 } from "./dockerRun";
 import { type BioflowResult, parseBioflowResult } from "./bioflowResult";
+import { nwaveVersion } from "../version";
 
 export const BIOFLOW_IMAGE_REPOSITORY = "hcistudio/nwave-bioflow";
-
-/** N-WAVE's version, from the backend's package.json. */
-const nwaveVersion = (): string | null => {
-  for (const candidate of [
-    path.join(__dirname, "..", "..", "package.json"),
-    path.join(process.cwd(), "package.json"),
-  ]) {
-    try {
-      const { version } = JSON.parse(fs.readFileSync(candidate, "utf8")) as { version?: string };
-      if (version) return version;
-    } catch {
-      // Not there; try the next.
-    }
-  }
-  return null;
-};
 
 export type BioflowConfig = ToolConfig;
 

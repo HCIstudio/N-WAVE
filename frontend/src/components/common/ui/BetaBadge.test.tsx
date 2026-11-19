@@ -15,6 +15,15 @@ describe("a beta feature", () => {
     );
   });
 
+  it("takes a text colour for light panels, and keeps the panel's grey by default", () => {
+    const { unmount } = render(<BetaNote feature="I/O monitor" />);
+    expect(screen.getByRole("note").className).toContain("text-text-light");
+    unmount();
+    render(<BetaNote feature="I/O monitor" className="text-gray-700" />);
+    expect(screen.getByRole("note").className).toContain("text-gray-700");
+    expect(screen.getByRole("note").className).not.toContain("text-text-light");
+  });
+
   it("explains the badge on hover", () => {
     render(<BetaBadge />);
     expect(screen.getByTitle(/still being tested on different machines/)).toBeTruthy();

@@ -59,8 +59,8 @@ describe("the demo's recorded runs", () => {
         for (const time of [task.submit, task.start, task.complete]) expect(Math.abs(time ?? 0)).toBeLessThan(day);
       }
       const text = JSON.stringify(recording);
-      // No ISO date, no date as Nextflow writes it, no epoch milliseconds.
-      expect(text).not.toMatch(/\d{4}-\d\d-\d\dT|\d\d-[A-Z][a-z]{2}-\d{4}|(?<![\d.])1[6-9]\d{11}(?!\d)/);
+      // No ISO date, no date as Nextflow writes it, no epoch milliseconds or seconds.
+      expect(text).not.toMatch(/\d{4}-\d\d-\d\dT|\d\d-[A-Z][a-z]{2}-\d{4}|(?<![\d.])1[6-9]\d{11}(?!\d)|(?<![\d.])1[6-9]\d{8}\.\d/);
     }
   });
 

@@ -4,7 +4,7 @@
 // `scripts/demo/recordDemoRun.ts` from what N-WAVE's API answered for the run.
 //
 // A recording keeps no dates: its times count from when N-WAVE created the
-// run (milliseconds), and the run's id ends in 0 instead of that moment. The
+// run (milliseconds; the I/O monitor's accesses in seconds), and the run's id ends in 0 instead of that moment. The
 // demo places a recording when it loads it, as a run that has just finished.
 
 import type { RunReportKind, RunSummary, RunTask, TraceTask } from "../api/runs";
@@ -41,6 +41,23 @@ export const nextflowLogTime = (ms: number): string => {
   return `${two(date.getDate())}-${MONTHS[date.getMonth()]}-${date.getFullYear()} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
 };
 
+/**
+ * The I/O monitor's part of a recording, placed: its start and stop are
+ * stored in ms, each task's first and last access in seconds.
+ */
+const placeIoMonitor = (stored: StoredRun, origin: number): Partial<RecordedRun> => {
+  const placed: Partial<RecordedRun> = {};
+  const at = (offset: unknown) => (typeof offset === "number" ? new Date(origin + offset).toISOString() : undefined);
+  const monitor = stored.monitor as { startedAt?: number; stoppedAt?: number } | undefined;
+  if (monitor) placed.monitor = { ...monitor, startedAt: at(monitor.startedAt), stoppedAt: at(monitor.stoppedAt) };
+  const accesses = stored.accesses as { tasks?: Array<{ start: number; end: number }> } | undefined;
+  if (accesses?.tasks) {
+    const seconds = (offset: number) => Math.round(origin + offset * 1000) / 1000;
+    placed.accesses = { ...accesses, tasks: accesses.tasks.map((task) => ({ ...task, start: seconds(task.start), end: seconds(task.end) })) };
+  }
+  return placed;
+};
+
 /** A stored recording placed in time: the run finished at `now`. */
 export const placeRecordedRun = (stored: StoredRun, now: number): RecordedRun => {
   const origin = now - (stored.run.finishedAt ?? stored.run.startedAt);
@@ -56,6 +73,7 @@ export const placeRecordedRun = (stored: StoredRun, now: number): RecordedRun =>
     },
     log: stored.log.split(COMPLETED_AT).join(nextflowLogTime(finished ?? now)),
     trace: stored.trace.map((task) => ({ ...task, submit: at(task.submit), start: at(task.start), complete: at(task.complete) })),
+    ...placeIoMonitor(stored, origin),
   };
 };
 
@@ -107,5 +125,7 @@ export const answerRecordedRun = async (
   if (rest === "reports") return { status: 200, data: recorded.reports };
   if (rest === "trace") return { status: 200, data: { id: recorded.run.id, tasks: recorded.trace } };
   if (rest === "tasks") return { status: 200, data: { id: recorded.run.id, tasks: recorded.tasks } };
+  if (rest === "monitor") return { status: 200, data: recorded.monitor ?? { status: "off" } };
+  if (rest === "accesses") return { status: 200, data: recorded.accesses ?? { status: "off" } };
   return { status: 404, data: { message: RECORDED_RUN_NOTE } };
 };

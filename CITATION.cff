@@ -120,3 +120,35 @@ references:
     end: 215
     year: 2022
     doi: 10.1007/978-3-031-19756-7_12
+  - type: article
+    title: "Low-level I/O Monitoring for Scientific Workflows"
+    authors:
+      - family-names: Witzke
+        given-names: Joel
+      - family-names: Lößer
+        given-names: Ansgar
+      - family-names: Bountris
+        given-names: Vasilis
+      - family-names: Schintke
+        given-names: Florian
+      - family-names: Scheuermann
+        given-names: Björn
+    journal: "arXiv"
+    year: 2024
+    doi: 10.48550/arXiv.2408.00411
+    url: "https://arxiv.org/abs/2408.00411"
+  - type: conference-paper
+    title: "BottleMod: Modeling Data Flows and Tasks for Fast Bottleneck Analysis"
+    authors:
+      - family-names: Lößer
+        given-names: Ansgar
+      - family-names: Witzke
+        given-names: Joel
+      - family-names: Schintke
+        given-names: Florian
+      - family-names: Scheuermann
+        given-names: Björn
+    collection-title: "Proceedings of the 16th ACM/SPEC International Conference on Performance Engineering (ICPE '25)"
+    collection-type: proceedings
+    year: 2025
+    doi: 10.1145/3676151.3719382
