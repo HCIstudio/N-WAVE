@@ -9,6 +9,7 @@ import { buildInfo } from "../utils/buildInfo";
 import AllCachesSettings from "./settings/AllCachesSettings";
 import FeatureSettings from "./settings/FeatureSettings";
 import VerboseSettings from "./settings/VerboseSettings";
+import IoMonitorSettings from "./settings/IoMonitorSettings";
 import NotificationSettings from "./settings/NotificationSettings";
 import RunDefaultsSettings from "./settings/RunDefaultsSettings";
 
@@ -41,6 +42,9 @@ const SettingsPage: React.FC = () => {
         </NeedsInstall>
         <FeatureSettings />
         <VerboseSettings />
+        <NeedsInstall>
+          <IoMonitorSettings />
+        </NeedsInstall>
 
         <section aria-label="About" className="rounded-lg border border-panel-border p-5 text-sm text-text-light">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-text">

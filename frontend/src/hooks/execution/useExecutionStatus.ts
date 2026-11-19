@@ -23,6 +23,18 @@ interface UseExecutionStatusOptions {
   executionId?: string | null;
 }
 
+/** A line the backend or Nextflow prints when a run has ended, however it ended. */
+const endsRun = (line: string): boolean => {
+  const text = line.trim().toLowerCase();
+  return (
+    text === "nextflow execution completed successfully" ||
+    text.startsWith("process completed with exit code:") ||
+    text.includes("execution cancelled") ||
+    text.includes("execution failed") ||
+    text.includes("failed to setup workflow execution")
+  );
+};
+
 export const useExecutionStatus = ({
   nodes,
   onStatusChange,
@@ -45,6 +57,9 @@ export const useExecutionStatus = ({
   // Nextflow prints a snapshot of its processes after each "executor >"
   // line: what the current one has listed so far.
   const snapshot = useRef(newSnapshot());
+  // Set by Cancel until the next run: while the run stops, Nextflow still
+  // prints progress, which mustn't make the panel look running or complete.
+  const cancelRequested = useRef(false);
 
   // Update ref when status changes
   useEffect(() => {
@@ -67,6 +82,7 @@ export const useExecutionStatus = ({
     }
 
     snapshot.current = newSnapshot();
+    cancelRequested.current = false;
     // DO NOT initialize canvas nodes - only track actual Nextflow processes
     setStatus({
       isRunning: true,
@@ -107,6 +123,8 @@ export const useExecutionStatus = ({
 
     for (const raw of lines) {
       const line = stripTerminalCodes(raw);
+      // After Cancel, only the line that ends the run counts.
+      if (cancelRequested.current && !endsRun(line)) continue;
       // Parse workflow launch
       if (line.includes("Launching") && line.includes("DSL2")) {
         const launchMatch = line.match(/Launching `([^`]+)`.*\[([^\]]+)\]/);
@@ -455,6 +473,7 @@ export const useExecutionStatus = ({
       console.warn("No execution ID available for cancellation");
       return;
     }
+    cancelRequested.current = true;
 
     try {
       // Import api from the correct location

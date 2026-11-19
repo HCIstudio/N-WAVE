@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { nodeIdForProcess } from "../../../execution/nodeRuns";
-import RunPerformance, { RunReportButtons } from "./RunPerformance";
+import RunPerformance, { RunMonitorNote, RunReportButtons } from "./RunPerformance";
 import StageProgress from "./StageProgress";
 import type { RunStage } from "../../../execution/runStages";
 import { useFeature } from "../../../settings/useFeatures";
@@ -24,7 +24,7 @@ import RunResultsList from "./RunResultsList";
 import RunHistory, { type LogHighlight, RunLog } from "./RunHistory";
 import FailureExplanationCard from "./FailureExplanationCard";
 import type { FailureExplanation } from "../../../execution/failureExplanations";
-import type { Node } from "@xyflow/react";
+import type { Edge, Node } from "@xyflow/react";
 import type { NodeData } from "../../nodes/BaseNode";
 
 export interface NodeExecutionStatus {
@@ -94,6 +94,11 @@ interface ExecutionStatusPanelProps {
   stages?: RunStage[];
   /** Shows an earlier run on the canvas (History's **Show on canvas**). */
   onShowRun?: (runId: string) => void;
+  /** The canvas's connections: with the nodes, for the run's model. */
+  edges?: Edge[];
+  /** Highlights the chain of steps that set the runtime (null: none). */
+  onShowChain?: (nodeIds: string[] | null) => void;
+  shownChain?: boolean;
 }
 
 export interface RunStep {
@@ -172,6 +177,9 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
   onShowLogLine,
   stages = [],
   onShowRun,
+  edges,
+  onShowChain,
+  shownChain,
 }) => {
   const [maximized, setMaximized] = useState(false);
   // Global Settings → Features can switch the Performance tab off.
@@ -452,7 +460,13 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
         {tab === "performance" && (
           <div role="tabpanel" aria-label="Performance" className="min-h-0 flex-1 overflow-y-auto">
             {runId && !status.isRunning ? (
-              <RunPerformance runId={runId} labelFor={canvasLabelFor} />
+              <RunPerformance
+                runId={runId}
+                labelFor={canvasLabelFor}
+                canvas={edges ? { nodes, edges } : undefined}
+                onShowChain={onShowChain}
+                shownChain={shownChain}
+              />
             ) : (
               <p className="p-4 text-sm text-gray-700">
                 {status.isRunning
@@ -479,6 +493,12 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             className="min-h-0 flex-1 overflow-y-auto"
           >
             {failureCard && <div className="p-2 pb-0">{failureCard}</div>}
+            {/* Whether the I/O monitor records this run (read again as tasks finish). */}
+            {runId && (
+              <div className="px-4 pt-3">
+                <RunMonitorNote key={`${runId}:${tasksDone}:${status.isRunning}`} runId={runId} />
+              </div>
+            )}
             {/* Progress Overview */}
             <div className="p-4 border-b border-gray-300">
               <div className="grid grid-cols-2 gap-4 mb-3">

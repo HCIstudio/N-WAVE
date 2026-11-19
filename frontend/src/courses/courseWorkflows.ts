@@ -180,3 +180,69 @@ workflow {
     REPORT(ALIGN_STAR.out.mix(ALIGN_HISAT.out))
 }
 `;
+
+/**
+ * Four samples, each made, then counted, then summed up in one report:
+ * counting works hard on every line it reads, so it sets the runtime (the
+ * course Run Insight).
+ */
+export const INSIGHT_SCRIPT = `// Four samples: each is made, then counted, then all are summed up in one
+// report. Counting reads each sample line by line and works hard on it, so
+// it is the step that sets the runtime: the course Run Insight points at it.
+// Each step runs in a container of its own, as nf-core's do: the I/O
+// monitor tells steps apart by their containers.
+
+params.samples = 4
+
+process MAKE_SAMPLE {
+    container 'ubuntu:24.04'
+
+    input:
+    val id
+
+    output:
+    path "sample_\${id}.txt"
+
+    script:
+    """
+    for i in \\$(seq 1 200000); do echo "read_\\\${i} ACGTACGTTGCAACGTACGTTGCAACGT"; done > sample_\${id}.txt
+    """
+}
+
+process COUNT_BASES {
+    container 'ubuntu:24.04'
+
+    input:
+    path sample
+
+    output:
+    path "\${sample.baseName}.counts"
+
+    script:
+    """
+    awk '{ for (r = 0; r < 40; r++) for (i = 1; i <= length(\\$2); i++) n[substr(\\$2, i, 1)]++ } END { for (b in n) print b, n[b] / 40 }' \${sample} > \${sample.baseName}.counts
+    """
+}
+
+process REPORT {
+    container 'ubuntu:24.04'
+
+    input:
+    path counts
+
+    output:
+    path 'report.txt'
+
+    script:
+    """
+    cat \${counts} | awk '{ n[\\$1] += \\$2 } END { for (b in n) print b, n[b] }' | sort > report.txt
+    """
+}
+
+workflow {
+    samples = Channel.of(1..params.samples)
+    MAKE_SAMPLE(samples)
+    COUNT_BASES(MAKE_SAMPLE.out)
+    REPORT(COUNT_BASES.out.collect())
+}
+`;

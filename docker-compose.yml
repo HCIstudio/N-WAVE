@@ -56,6 +56,11 @@
       # released image of this version, downloaded on first use; to use the
       # local one: docker compose --profile analysis build bioflow
       # NWAVE_BIOFLOW_IMAGE: nwave-bioflow:dev
+      # The I/O monitor's image (backend/monitor), and NWAVE_IO_MONITOR=off to
+      # never run it on this installation. By default the released image of
+      # this version, downloaded when the monitor is switched on; to use the
+      # local one: docker compose --profile monitor build iomonitor
+      # NWAVE_IO_MONITOR_IMAGE: nwave-iomonitor:dev
     # Ports are bound to 127.0.0.1: N-WAVE has no login and the backend can
     # start containers on the host's Docker. NWAVE_BIND_ADDRESS=0.0.0.0 opens
     # them to your network (trusted networks only).
@@ -87,6 +92,15 @@
     build: ./backend/bioflow
     image: nwave-bioflow:dev
     profiles: ["analysis"]
+
+  # The I/O monitor (backend/monitor): the eBPF monitor of Witzke et al.,
+  # which the backend starts next to a run when Global Settings → I/O monitor
+  # is on. Privileged. Each release publishes it (hcistudio/nwave-iomonitor);
+  # to build it from this checkout: docker compose --profile monitor build iomonitor
+  iomonitor:
+    build: ./backend/monitor
+    image: nwave-iomonitor:dev
+    profiles: ["monitor"]
 
 volumes:
   mongodb_data:

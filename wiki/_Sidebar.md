@@ -12,6 +12,8 @@
 - [Node packs](https://github.com/HCIstudio/N-WAVE/wiki/Node-Packs)
 - [Running workflows](https://github.com/HCIstudio/N-WAVE/wiki/Running-Workflows)
 - [Run profiles](https://github.com/HCIstudio/N-WAVE/wiki/Run-Profiles)
+- [I/O monitor](https://github.com/HCIstudio/N-WAVE/wiki/IO-Monitor)
+- [Bottleneck analysis](https://github.com/HCIstudio/N-WAVE/wiki/Bottleneck-Analysis)
 - [Global Settings, notifications and verbose mode](https://github.com/HCIstudio/N-WAVE/wiki/Settings)
 - [Exporting projects](https://github.com/HCIstudio/N-WAVE/wiki/Exporting-Projects)
 - [Importing workflows](https://github.com/HCIstudio/N-WAVE/wiki/Importing-Workflows)

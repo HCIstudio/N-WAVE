@@ -9,3 +9,17 @@ The workflow analysis image (backend/bioflow) installs BioFlow-Insight
 (https://gitlab.liris.cnrs.fr/sharefair/bioflow-insight, MIT License) and its
 dependencies from PyPI, and the Nextflow language server it bundles
 (Apache License 2.0). N-WAVE does not copy their code.
+
+The I/O monitor's image (backend/monitor) builds the eBPF programs of
+Witzke et al., "Low-level I/O Monitoring for Scientific Workflows"
+(https://github.com/CRC-FONDA/workflow-monitoring), from a pinned commit of
+their repository, with the authors' permission, and BCC
+(https://github.com/iovisor/bcc, Apache License 2.0). It is built on the
+user's computer; N-WAVE patches their code only as backend/monitor/patches
+shows.
+
+frontend/src/insight/bottlemod is a TypeScript port of BottleMod by Lößer et
+al., "BottleMod: Modeling Data Flows and Tasks for Fast Bottleneck Analysis"
+(https://github.com/bottlemod/bottlemod), from a pinned commit of their
+repository, with the authors' permission; its README names the commit and
+the files ported.

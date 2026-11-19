@@ -124,6 +124,13 @@
   border-radius: 6px;
 }
 
+/* The chain of steps that set a run's runtime (Performance → What limited this run). */
+.react-flow__node.critical-chain {
+  outline: 3px dashed #eda100;
+  outline-offset: 5px;
+  border-radius: 6px;
+}
+
 /* The stage an analysis is at (AnalysisProgress): a light sweeping across it. */
 .analysis-progress-current {
   background-image: linear-gradient(90deg, transparent 0%, rgba(13, 192, 157, 0.9) 50%, transparent 100%);

@@ -66,6 +66,8 @@ export interface Features {
   conditions: boolean;
   /** Verbose mode: record what happens (the activity log); off by default. */
   verbose: boolean;
+  /** The I/O monitor next to each run (a privileged container); off by default. */
+  ioMonitor: boolean;
 }
 
 export type FeatureId = keyof Features;
@@ -86,6 +88,7 @@ export const DEFAULT_FEATURES: Features = {
   analysis: true,
   conditions: true,
   verbose: false,
+  ioMonitor: false,
 };
 
 export interface FeatureSettings {

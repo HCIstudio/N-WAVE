@@ -208,6 +208,10 @@ export const findRunLog = (id: string): string | null => {
 export const findRunNextflowLog = (id: string): string | undefined =>
   readIndex()[id]?.nextflowLog;
 
+/** Every recorded run's id and folder. */
+export const listRunFolders = (): Array<{ id: string; dir: string }> =>
+  Object.entries(readIndex()).map(([id, run]) => ({ id, dir: run.dir }));
+
 /** A recorded run's directory, or null. */
 export const findRunDir = (id: string): string | null => {
   const run = readIndex()[id];
