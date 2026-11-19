@@ -164,8 +164,9 @@ or has an issue that is explicitly moved to a later release.
       `nwave_reports/<run>/` (`rchar`, `wchar`, `read_bytes`, `write_bytes`). A run from the
       previous release still opens, without the two columns.
 - [ ] I/O monitor (v1.7, off by default): **Global Settings → I/O monitor** says whether it can
-      run here. Build its image (`docker compose --profile monitor build iomonitor`), switch it
-      on, run Demo 1 and Demo 3: the log says the monitor started and what it recorded, the
+      run here. On an installation from `latest.yml`, switch it on: the section says it downloads
+      `hcistudio/nwave-iomonitor:<version>` (once) and then that it can run; nothing is built.
+      Run Demo 1 and Demo 3: the log says the monitor started and what it recorded, the
       **Performance** tab says it too, and `nwave_monitor/<run>/` holds `file-bpf.csv`,
       `cgroups.csv`, `monitor.log` and `monitor.json`. `docker ps` shows no monitor after the run,
       also after **Cancel** and after restarting the backend during a run.

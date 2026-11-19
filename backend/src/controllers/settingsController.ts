@@ -8,6 +8,7 @@ import {
 } from "../settings/features";
 import { recordsValues } from "../activity/activityLog";
 import { readRunDefaults, runDefaultsSchema, writeRunDefaults } from "../settings/runDefaults";
+import { ensureIoMonitorImage } from "../monitor/ioMonitor";
 import { getErrorMessage } from "../utils/errors";
 import { parseBody } from "../validation/validate";
 
@@ -43,6 +44,8 @@ export const updateFeatures = (req: Request, res: Response): void => {
   if (!body) return;
   try {
     const { features, locked } = writeFeatures(body.features);
+    // The I/O monitor's image is downloaded when it is switched on, not at the first run.
+    if (features.ioMonitor) void ensureIoMonitorImage();
     res.json({ features, lockedFeatures: locked });
   } catch (error: unknown) {
     if (error instanceof LockedFeatureError) {

@@ -13,7 +13,10 @@ This image runs the eBPF I/O monitor of Witzke, Lößer, Bountris, Schintke and 
 | Files used | `bpf/fileaccess.py`, `bpf/cgroup_informer.py`, `bpf/testdir/` |
 
 The `Dockerfile` clones their repository at that commit (`WORKFLOW_MONITORING_COMMIT`) and
-builds BCC 0.35.0 as their `bpf/Dockerfile.24.04` does. The image keeps the commit it was
+builds BCC 0.35.0 as their `bpf/Dockerfile.24.04` does, in a first stage; the image keeps only
+what runs (Python, BCC's libraries, their programs). Each release publishes it as
+`hcistudio/nwave-iomonitor:<version>` (`release.yml`, built on an amd64 and an arm64 runner),
+and N-WAVE downloads it when the monitor is switched on. The image keeps the commit it was
 built from in `/bpf/UPSTREAM_COMMIT`. To move to a newer commit of theirs, change
 `WORKFLOW_MONITORING_COMMIT`, rebuild (`docker compose --profile monitor build iomonitor`),
 and check that the patches still apply.

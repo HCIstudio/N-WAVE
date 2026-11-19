@@ -257,6 +257,46 @@ jobs:
           path: frontend/playwright-report
           retention-days: 7
 
+  iomonitor:
+    name: I/O monitor image (${{ matrix.arch }})
+    # The image release.yml publishes (backend/monitor), built on each
+    # architecture's own runner as there, without pushing: a release's backend
+    # downloads it, so it has to build before the release does.
+    if: >-
+      ${{ github.event_name != 'push' ||
+      !startsWith(github.event.head_commit.message, 'chore(release):') }}
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Build the I/O monitor
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./backend/monitor
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: nwave-iomonitor:ci
+          cache-from: type=gha,scope=iomonitor-${{ matrix.arch }}
+          cache-to: type=gha,scope=iomonitor-${{ matrix.arch }},mode=max
+
+      - name: The monitor's programs load BCC
+        run: >-
+          docker run --rm --entrypoint python3 nwave-iomonitor:ci -c
+          "import bcc, pathlib; assert pathlib.Path('/bpf/fileaccess.py').is_file(); print('BCC', bcc.__version__)"
+
   zizmor:
     name: Workflow security (zizmor)
     # Static checks of the GitHub Actions workflows and Dependabot config

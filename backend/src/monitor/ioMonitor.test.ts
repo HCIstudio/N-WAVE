@@ -25,7 +25,9 @@ describe("the I/O monitor", () => {
   });
 
   it("reads its settings from the environment", () => {
-    expect(readIoMonitorConfig({})).toEqual({ allowed: true, image: "nwave-iomonitor:dev", startTimeoutMs: 180_000 });
+    // By default the image each release publishes, of N-WAVE's own version.
+    const { version } = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "package.json"), "utf8")) as { version: string };
+    expect(readIoMonitorConfig({})).toEqual({ allowed: true, image: `hcistudio/nwave-iomonitor:${version}`, startTimeoutMs: 180_000 });
     expect(readIoMonitorConfig({ NWAVE_IO_MONITOR: "off", NWAVE_IO_MONITOR_IMAGE: "lab/monitor:1", NWAVE_IO_MONITOR_START_TIMEOUT: "60" })).toEqual({
       allowed: false,
       image: "lab/monitor:1",

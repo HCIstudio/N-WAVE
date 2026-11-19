@@ -17,6 +17,7 @@ const { resetFeatures } = await import("../../settings/useFeatures");
 
 describe("IoMonitorSettings", () => {
   beforeEach(() => {
+    getIoMonitorStatus.mockReset();
     resetFeatures({}, []);
     saveFeatures.mockImplementation(async (features: unknown) => ({ features, locked: [] }));
   });
@@ -51,6 +52,34 @@ describe("IoMonitorSettings", () => {
     );
     expect(screen.getAllByText("Beta").length).toBeGreaterThan(0);
     await waitFor(() => expect(screen.getByTestId("io-monitor-status").textContent).toContain("It can run here"));
+  });
+
+  it("downloads its image when switched on, and says so until it is here", async () => {
+    const image = "hcistudio/nwave-iomonitor:1.7.0";
+    const base = { available: true, image, kernel: "6.18.58", system: "Docker Desktop" };
+    getIoMonitorStatus
+      .mockResolvedValueOnce({ ...base, imagePresent: false, downloading: false })
+      .mockResolvedValueOnce({ ...base, imagePresent: false, downloading: true })
+      .mockResolvedValue({ ...base, imagePresent: true });
+    render(<IoMonitorSettings />);
+    const line = () => screen.getByTestId("io-monitor-status").textContent ?? "";
+    await waitFor(() =>
+      expect(line()).toContain(`Its image (${image}, about 100 MB) is downloaded once, when you switch it on.`),
+    );
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await userEvent.click(screen.getByRole("checkbox", { name: /Monitor file accesses during runs/ }));
+      await waitFor(() => expect(line()).toContain(`Downloading its image (${image}, about 100 MB). This happens once.`));
+      await vi.advanceTimersByTimeAsync(3_000);
+      await waitFor(() => expect(line()).not.toContain("image"));
+      expect(line()).toContain("It can run here: Docker on Docker Desktop");
+      // Here: nothing more to ask.
+      const calls = getIoMonitorStatus.mock.calls.length;
+      await vi.advanceTimersByTimeAsync(9_000);
+      expect(getIoMonitorStatus.mock.calls.length).toBe(calls);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("says why it can't run here", async () => {

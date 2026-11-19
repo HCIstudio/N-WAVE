@@ -10,6 +10,12 @@ import { IO_MONITOR_SWITCH } from "../../settings/ioMonitorSwitch";
 
 export const IO_MONITOR_PAPER = "https://arxiv.org/abs/2408.00411";
 
+/** The size of the monitor's image, downloaded once. */
+export const IO_MONITOR_IMAGE_SIZE = "about 100 MB";
+
+/** How often the section asks again while the image downloads. */
+const DOWNLOAD_POLL_MS = 3_000;
+
 /**
  * Global Settings → I/O monitor: records every file a run's steps open, read
  * and write, with the eBPF monitor of Witzke et al. Off by default: it runs
@@ -21,23 +27,35 @@ const IoMonitorSettings: React.FC = () => {
   const isLocked = locked.includes("ioMonitor");
   const [status, setStatus] = useState<IoMonitorStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Asked again after the switch (switching it on starts the image's download).
+  const [asked, setAsked] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    getIoMonitorStatus().then(
-      (next) => !cancelled && setStatus(next),
-      (caught: unknown) => !cancelled && setError(getApiErrorMessage(caught, "Could not ask whether the monitor can run here.")),
-    );
+    let again: ReturnType<typeof setTimeout> | undefined;
+    void asked;
+    const load = () =>
+      getIoMonitorStatus().then(
+        (next) => {
+          if (cancelled) return;
+          setStatus(next);
+          if (next.downloading) again = setTimeout(load, DOWNLOAD_POLL_MS);
+        },
+        (caught: unknown) => !cancelled && setError(getApiErrorMessage(caught, "Could not ask whether the monitor can run here.")),
+      );
+    load();
     return () => {
       cancelled = true;
+      clearTimeout(again);
     };
-  }, []);
+  }, [asked]);
 
   const toggle = async (on: boolean) => {
     setError(null);
     try {
       const saved = await save({ ...features, ioMonitor: on });
       logActivity("features.changed", { features: saved.features });
+      setAsked((count) => count + 1);
     } catch (caught: unknown) {
       setError(getApiErrorMessage(caught, "The I/O monitor could not be switched."));
     }
@@ -90,6 +108,15 @@ const IoMonitorSettings: React.FC = () => {
           <span className="text-text">
             It can run here: Docker on {status.system ?? "this computer"}, kernel {status.kernel ?? "unknown"}. Whether
             the kernel lets it load its probes shows with the first run.
+            {status.downloading ? (
+              <span className="block text-text-light">
+                Downloading its image ({status.image}, {IO_MONITOR_IMAGE_SIZE}). This happens once.
+              </span>
+            ) : !status.imagePresent ? (
+              <span className="block text-text-light">
+                Its image ({status.image}, {IO_MONITOR_IMAGE_SIZE}) is downloaded once, when you switch it on.
+              </span>
+            ) : null}
           </span>
         ) : status ? (
           <span className="text-text">It can't run here: {status.reason}</span>

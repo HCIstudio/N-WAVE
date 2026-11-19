@@ -7,7 +7,7 @@ name: Release
 # the version is applied everywhere in the same run:
 #   - injected into the Pages demo build (the site footer shows it),
 #   - injected into the Docker images (:<version> + :latest, linux/amd64 and
-#     linux/arm64) pushed to Docker Hub,
+#     linux/arm64) pushed to Docker Hub, the I/O monitor's image with them,
 #   - written back into frontend/ and backend/package.json and committed to main,
 #   - tagged v<version> with a GitHub Release.
 #
@@ -35,6 +35,7 @@ env:
   BACKEND_IMAGE: hcistudio/nwave-backend
   FRONTEND_IMAGE: hcistudio/nwave-frontend
   BIOFLOW_IMAGE: hcistudio/nwave-bioflow
+  IOMONITOR_IMAGE: hcistudio/nwave-iomonitor
 
 jobs:
   # Decide the next version once, so every downstream job uses the same number.
@@ -135,9 +136,72 @@ jobs:
         id: deploy
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
 
-  # Build/push the images, write the version into package.json + commit, release.
-  release:
+  # The I/O monitor's image (backend/monitor), which N-WAVE downloads when the
+  # monitor is switched on. It compiles BCC: emulated, the arm64 half would take
+  # hours, so each architecture builds on its own kind of runner and pushes a
+  # tag of its own; iomonitor-manifest joins them.
+  iomonitor:
     needs: version
+    strategy:
+      matrix:
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Login to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build & push the I/O monitor (${{ matrix.arch }})
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ./backend/monitor
+          platforms: linux/${{ matrix.arch }}
+          push: true
+          tags: ${{ env.IOMONITOR_IMAGE }}:${{ needs.version.outputs.version }}-${{ matrix.arch }}
+          cache-from: type=registry,ref=${{ env.IOMONITOR_IMAGE }}:buildcache-${{ matrix.arch }}
+          cache-to: type=registry,ref=${{ env.IOMONITOR_IMAGE }}:buildcache-${{ matrix.arch }},mode=max
+
+  iomonitor-manifest:
+    needs: [version, iomonitor]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Login to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Tag the I/O monitor for both architectures
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          docker buildx imagetools create \
+            --tag "${IOMONITOR_IMAGE}:${VERSION}" \
+            --tag "${IOMONITOR_IMAGE}:latest" \
+            "${IOMONITOR_IMAGE}:${VERSION}-amd64" \
+            "${IOMONITOR_IMAGE}:${VERSION}-arm64"
+          docker buildx imagetools inspect "${IOMONITOR_IMAGE}:${VERSION}"
+
+  # Build/push the images, write the version into package.json + commit, release.
+  # It waits for the I/O monitor's image: a release's backend downloads the one
+  # of its own version.
+  release:
+    needs: [version, iomonitor-manifest]
     runs-on: ubuntu-latest
     # A normal release takes a few minutes (the arm64 image half is emulated).
     # Without a limit a hung build holds the `release` concurrency group for
@@ -260,6 +324,7 @@ jobs:
           - \`${BACKEND_IMAGE}:${VERSION}\` (also \`:latest\`)
           - \`${FRONTEND_IMAGE}:${VERSION}\` (also \`:latest\`)
           - \`${BIOFLOW_IMAGE}:${VERSION}\` (also \`:latest\`): the workflow analysis, downloaded on first use
+          - \`${IOMONITOR_IMAGE}:${VERSION}\` (also \`:latest\`): the I/O monitor (beta), downloaded when it is switched on
 
           **Run it**
           \`\`\`bash
