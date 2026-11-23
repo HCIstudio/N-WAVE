@@ -28,7 +28,7 @@ const SearchInput: React.FC<SearchInputProps> = ({
   }, []);
   // Default input classes, allowing overrides and additions via inputClassName
   const defaultInputClasses =
-    "w-full pl-10 pr-4 py-2 text-sm border rounded-md focus:outline-none focus:ring-2 transition-colors border-accent bg-background text-text shadow-sm focus:border-nextflow-green focus:ring-nextflow-green";
+    "w-full pl-10 pr-4 py-2 text-sm border rounded-md focus:outline-hidden focus:ring-2 transition-colors border-accent bg-background text-text shadow-xs focus:border-nextflow-green focus:ring-nextflow-green";
 
   const searchIcon = (
     <svg

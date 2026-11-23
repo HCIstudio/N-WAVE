@@ -61,7 +61,7 @@ const NfCoreValueInputs: React.FC<NfCoreValueInputsProps> = ({
                   aria-describedby={
                     description ? `${id}-description` : undefined
                   }
-                  className="rounded border-accent"
+                  className="rounded-sm border-accent"
                 />
                 <span className="font-mono">{input.name}</span>
               </label>

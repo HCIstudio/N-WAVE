@@ -53,7 +53,7 @@ interface ExecutionSettingsProps {
 }
 
 const INPUT =
-  "w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green";
+  "w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-hidden focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green";
 const LABEL = "block text-sm font-medium text-text mb-2";
 const HINT = "text-xs text-text-light mt-2";
 
@@ -203,7 +203,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 type="button"
                 onClick={checkStatus}
                 disabled={loading}
-                className="rounded p-1 transition-colors hover:bg-accent disabled:opacity-50"
+                className="rounded-sm p-1 transition-colors hover:bg-accent disabled:opacity-50"
                 title="Refresh status"
               >
                 <RefreshCw className={`h-3 w-3 text-text-light ${loading ? "animate-spin" : ""}`} />
@@ -254,7 +254,7 @@ const ExecutionSettingsComponent: React.FC<ExecutionSettingsProps> = ({
                 label="Docker"
               />
               {!dockerStatus?.dockerAvailable && dockerStatus?.error && (
-                <div className="ml-5 rounded border border-red-400/50 bg-accent/30 p-2 text-text">
+                <div className="ml-5 rounded-sm border border-red-400/50 bg-accent/30 p-2 text-text">
                   <p className="font-medium text-red-600">{dockerStatus.error}</p>
                   {dockerStatus.details && <p className="mt-1 text-text-light">{dockerStatus.details}</p>}
                   {dockerStatus.error === "Docker Desktop not running" && (

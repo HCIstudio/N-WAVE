@@ -160,7 +160,7 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
   if (summary.status !== "recorded") {
     return (
       <div data-testid="run-monitor-note" className="space-y-1 text-xs">
-        <p className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
+        <p className="rounded-sm border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
           The I/O monitor was switched on, but couldn't record this run: {summary.reason}
         </p>
         {beta}
@@ -178,7 +178,7 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
         <p
           data-testid="run-monitor-work-folders"
           role={summary.workFolders.missed > 0 ? "alert" : undefined}
-          className={summary.workFolders.missed > 0 ? "rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900" : undefined}
+          className={summary.workFolders.missed > 0 ? "rounded-sm border border-yellow-300 bg-yellow-50 p-2 text-yellow-900" : undefined}
         >
           {summary.workFolders.missed > 0
             ? `Of the ${summary.workFolders.files} files in the steps' work folders, the monitor saw no open of ${summary.workFolders.missed}: their accesses were lost, and the views of this run lack them. Each step's Results say how many of its files.`
@@ -186,7 +186,7 @@ export const RunMonitorNote: React.FC<{ runId: string }> = ({ runId }) => {
         </p>
       )}
       {(summary.incompleteFiles ?? 0) > 0 && (
-        <p role="alert" className="rounded border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
+        <p role="alert" className="rounded-sm border border-yellow-300 bg-yellow-50 p-2 text-yellow-900">
           For {summary.incompleteFiles} of the {summary.checkedFiles} files the run wrote, the monitor recorded fewer
           bytes than the files have ({formatBytes(summary.missingBytes ?? 0)} missing): events were lost, or recorded for
           another file. The views of this run miss some accesses.
@@ -298,7 +298,7 @@ const RunPerformance: React.FC<{
               {nearLimit.map((entry) => (
                 <li
                   key={entry.process}
-                  className="rounded border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900"
+                  className="rounded-sm border border-yellow-300 bg-yellow-50 p-2 text-xs text-yellow-900"
                 >
                   <strong>{nameOf(entry)}</strong> used {Math.round((entry.memoryShare ?? 0) * 100)}% of
                   the {formatBytes(entry.memory ?? 0)} of memory it had. If it fails with exit
@@ -366,9 +366,9 @@ const RunPerformance: React.FC<{
                     )}
                     <td className="py-1">
                       {width > 0 ? (
-                        <div className="relative h-3 rounded bg-gray-100" aria-hidden>
+                        <div className="relative h-3 rounded-sm bg-gray-100" aria-hidden>
                           <div
-                            className={`absolute h-3 rounded ${entry.failed ? "bg-red-400" : "bg-nextflow-green"}`}
+                            className={`absolute h-3 rounded-sm ${entry.failed ? "bg-red-400" : "bg-nextflow-green"}`}
                             style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }}
                           />
                         </div>

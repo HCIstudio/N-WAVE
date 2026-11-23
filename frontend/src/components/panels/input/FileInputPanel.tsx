@@ -238,7 +238,7 @@ const FileInputPanel: React.FC<{
                     type="button"
                     onClick={handleBulkRemove}
                     disabled={isRemoving}
-                    className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-red-500 text-white rounded-sm hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     <Trash2 size={12} />
                     {isRemoving ? "Removing..." : "Remove Selected"}
@@ -258,7 +258,7 @@ const FileInputPanel: React.FC<{
                     <button
                       type="button"
                       onClick={selectFilesWithoutContent}
-                      className="text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-300 rounded px-2 py-1"
+                      className="text-xs text-yellow-600 hover:text-yellow-700 border border-yellow-300 rounded-sm px-2 py-1"
                     >
                       Select Missing ({filesWithoutContent.length})
                     </button>
@@ -336,11 +336,11 @@ const FileInputPanel: React.FC<{
                       type="checkbox"
                       checked={selectedForRemoval.has(file.name)}
                       onChange={() => toggleFileSelection(file.name)}
-                      className="rounded border-accent flex-shrink-0"
+                      className="rounded-sm border-accent shrink-0"
                     />
                     <File
                       size={16}
-                      className="text-nextflow-green flex-shrink-0"
+                      className="text-nextflow-green shrink-0"
                     />
                     <div className="flex-1 min-w-0">
                       <div
@@ -357,7 +357,7 @@ const FileInputPanel: React.FC<{
                         {file.fileType && (
                           <>
                             <span>•</span>
-                            <span className="px-1.5 py-0.5 bg-nextflow-green/10 text-nextflow-green rounded text-xs font-medium uppercase">
+                            <span className="px-1.5 py-0.5 bg-nextflow-green/10 text-nextflow-green rounded-sm text-xs font-medium uppercase">
                               {file.fileType}
                             </span>
                           </>
@@ -365,7 +365,7 @@ const FileInputPanel: React.FC<{
                         {!file.content && (
                           <>
                             <span>•</span>
-                            <span className="px-1.5 py-0.5 bg-yellow-200/60 text-yellow-700 rounded text-xs font-medium">
+                            <span className="px-1.5 py-0.5 bg-yellow-200/60 text-yellow-700 rounded-sm text-xs font-medium">
                               NEEDS UPLOAD
                             </span>
                           </>
@@ -379,7 +379,7 @@ const FileInputPanel: React.FC<{
                       e.stopPropagation();
                       await handleRemoveFile(file.name);
                     }}
-                    className="p-1 text-red-500 hover:text-red-400 transition-colors flex-shrink-0 ml-2"
+                    className="p-1 text-red-500 hover:text-red-400 transition-colors shrink-0 ml-2"
                     aria-label={`Remove ${file.name}`}
                   >
                     <X size={16} />

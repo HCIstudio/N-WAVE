@@ -9,7 +9,7 @@ const JsonViewer: React.FC<JsonViewerProps> = ({ content }) => {
     const jsonObject = JSON.parse(content);
     const formattedJson = JSON.stringify(jsonObject, null, 2);
     return (
-      <pre className="text-sm text-gray-200 whitespace-pre-wrap break-all bg-background-darker p-4 rounded-md flex-grow">
+      <pre className="text-sm text-gray-200 whitespace-pre-wrap break-all bg-background-darker p-4 rounded-md grow">
         {formattedJson}
       </pre>
     );

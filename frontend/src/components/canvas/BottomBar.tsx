@@ -258,7 +258,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
                     setShowExecutionSettings(false);
                   }}
                   aria-label="Close Execution Settings"
-                  className="text-text-light hover:text-text transition-colors p-1 hover:bg-accent rounded"
+                  className="text-text-light hover:text-text transition-colors p-1 hover:bg-accent rounded-sm"
                 >
                   ✕
                 </button>
@@ -378,7 +378,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
           <Home className="w-4 h-4" />
         </Link>
 
-        <div className="min-w-0 max-w-[12rem] flex-grow text-center">
+        <div className="min-w-0 max-w-[12rem] grow text-center">
           {isEditingName ? (
             <input
               type="text"
@@ -388,7 +388,7 @@ const BottomBar: React.FC<BottomBarProps> = ({
               onChange={handleNameChange}
               onKeyDown={handleNameKeyDown}
               onBlur={handleNameBlur}
-              className="bg-accent text-sm text-text text-center rounded-md p-0.5 outline-none w-32 focus:ring-1 focus:ring-nextflow-green"
+              className="bg-accent text-sm text-text text-center rounded-md p-0.5 outline-hidden w-32 focus:ring-1 focus:ring-nextflow-green"
               ref={nameInputRef}
             />
           ) : (

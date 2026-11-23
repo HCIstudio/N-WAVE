@@ -2,6 +2,7 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 const packageJson = JSON.parse(
@@ -63,7 +64,7 @@ const vendorChunks: Record<string, RegExp> = {
 // https://vite.dev/config/
 export default defineConfig({
   base: basePath,
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   build: {
     rollupOptions: {
       output: {

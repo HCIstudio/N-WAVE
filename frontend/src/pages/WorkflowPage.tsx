@@ -581,9 +581,9 @@ const WorkflowPageContent: React.FC = () => {
             onCustomNodeDeleteRequested={customNodes.requestDelete}
           />
         )}
-        <div className="flex-grow relative">
+        <div className="grow relative">
           {workflow.isLoading && (
-            <div className="absolute inset-0 bg-background bg-opacity-80 flex items-center justify-center z-50">
+            <div className="absolute inset-0 bg-background/80 flex items-center justify-center z-50">
               <div className="text-text-light text-xl flex items-center gap-2">
                 <Loader className="animate-spin text-nextflow-green" />
                 <span className="text-nextflow-green">Loading Workflow...</span>
@@ -632,13 +632,13 @@ const WorkflowPageContent: React.FC = () => {
             <div
               role="toolbar"
               aria-label="Selected steps"
-              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow"
+              className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-panel-border bg-panel-background px-3 py-1.5 text-sm text-text shadow-sm"
             >
               {grouping.selection.length} {grouping.selection.length === 1 ? "step" : "steps"} selected
               <button
                 type="button"
                 onClick={() => grouping.startGrouping(grouping.selection.map((node) => node.id), "selection")}
-                className="rounded border border-panel-border px-2 py-0.5 hover:bg-accent"
+                className="rounded-sm border border-panel-border px-2 py-0.5 hover:bg-accent"
               >
                 Group into subworkflow…
               </button>

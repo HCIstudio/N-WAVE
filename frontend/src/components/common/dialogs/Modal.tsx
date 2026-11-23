@@ -76,7 +76,7 @@ const Modal: FC<PropsWithChildren<ModalProps>> = ({
             <X size={20} aria-hidden />
           </button>
         </header>
-        <main className="p-4 overflow-auto flex-grow">{children}</main>
+        <main className="p-4 overflow-auto grow">{children}</main>
         {footer && (
           <footer className="flex justify-end p-4 border-t border-panel-border">
             {footer}

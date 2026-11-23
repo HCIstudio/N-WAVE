@@ -45,7 +45,7 @@ const Header: React.FC<HeaderProps> = ({
             setDropdownOpen((prev) => !prev);
           }}
           data-tutorial-add-node
-          className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
+          className="p-2 bg-background border border-accent rounded-md shadow-xs text-text hover:bg-accent"
           aria-label="Add node"
         >
           <svg

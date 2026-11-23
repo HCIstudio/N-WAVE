@@ -149,7 +149,7 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
                     removeArm(index);
                     setSwitch(switchOn, switchValues.filter((_, at) => at !== index));
                   }}
-                  className="rounded p-1 text-text-light hover:bg-accent"
+                  className="rounded-sm p-1 text-text-light hover:bg-accent"
                 >
                   <Trash2 className="h-4 w-4" aria-hidden />
                 </button>
@@ -194,7 +194,7 @@ const BranchPanel: React.FC<BranchPanelProps> = ({ node, onSave }) => {
                           setConditions(conditions.filter((_, at) => at !== index));
                           setLayout((count) => count + 1);
                         }}
-                        className="rounded p-1 text-text-light hover:bg-accent"
+                        className="rounded-sm p-1 text-text-light hover:bg-accent"
                       >
                         <Trash2 className="h-4 w-4" aria-hidden />
                       </button>

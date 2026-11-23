@@ -52,19 +52,19 @@ const GroupDialog: React.FC<GroupDialogProps> = ({
             <button
               type="button"
               onClick={onUngroup}
-              className="mr-auto rounded border border-red-500/60 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400"
+              className="mr-auto rounded-sm border border-red-500/60 px-3 py-1.5 text-sm text-red-600 hover:bg-red-500/10 dark:text-red-400"
             >
               Ungroup
             </button>
           )}
-          <button type="button" onClick={onClose} className="rounded border border-panel-border px-3 py-1.5 text-sm hover:bg-accent">
+          <button type="button" onClick={onClose} className="rounded-sm border border-panel-border px-3 py-1.5 text-sm hover:bg-accent">
             Cancel
           </button>
           <button
             type="button"
             onClick={confirm}
             disabled={Boolean(problem)}
-            className="rounded bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
+            className="rounded-sm bg-nextflow-green px-3 py-1.5 text-sm font-medium text-white disabled:opacity-50"
           >
             {mode === "group" ? "Group" : "Save"}
           </button>

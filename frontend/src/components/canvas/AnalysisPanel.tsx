@@ -113,7 +113,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
               type="button"
               onClick={onClose}
               aria-label="Close the analysis"
-              className="rounded p-1 text-text-light hover:bg-accent hover:text-text"
+              className="rounded-sm p-1 text-text-light hover:bg-accent hover:text-text"
             >
               <X className="h-5 w-5" aria-hidden />
             </button>
@@ -267,7 +267,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({
                             <button
                               type="button"
                               onClick={() => onGroup(suggestion.ids)}
-                              className="mt-1 rounded border border-panel-border px-2 py-0.5 text-xs hover:bg-accent"
+                              className="mt-1 rounded-sm border border-panel-border px-2 py-0.5 text-xs hover:bg-accent"
                             >
                               Group into subworkflow…
                             </button>

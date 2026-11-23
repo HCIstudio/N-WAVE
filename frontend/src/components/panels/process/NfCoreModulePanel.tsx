@@ -189,7 +189,7 @@ const NfCoreModulePanel: React.FC<NfCoreModulePanelProps> = ({
                 type="checkbox"
                 checked={overrideResources}
                 onChange={(event) => setOverrideResources(event.target.checked)}
-                className="rounded border-accent"
+                className="rounded-sm border-accent"
               />
               Override defaults
             </label>

@@ -111,7 +111,7 @@ const ConditionField: React.FC<ConditionFieldProps> = ({
               ? "This condition is more than one comparison: it stays code"
               : undefined
           }
-          className="inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-text-light hover:bg-accent disabled:opacity-40"
+          className="inline-flex shrink-0 items-center gap-1 rounded-sm px-1.5 py-0.5 text-[11px] text-text-light hover:bg-accent disabled:opacity-40"
         >
           {asCode ? <ListChecks className="h-3.5 w-3.5" aria-hidden /> : <Code className="h-3.5 w-3.5" aria-hidden />}
           {asCode ? "Use the form" : "Write it as code"}
@@ -129,7 +129,7 @@ const ConditionField: React.FC<ConditionFieldProps> = ({
             value={condition}
             placeholder="params.depth > 10 && params.trim"
             onChange={(event) => onChange(event.target.value)}
-            className={`${inputClass} font-mono`}
+            className={`${inputClass} mt-1 font-mono`}
           />
           <p className="text-[11px] text-text-light">
             Groovy on the parameters: <code>params.aligner == &apos;star&apos;</code>, <code>!params.skip_qc</code>,{" "}
@@ -166,7 +166,7 @@ const ConditionField: React.FC<ConditionFieldProps> = ({
           {adding ? (
             <fieldset className="col-span-2 space-y-1.5 rounded-md bg-accent/40 p-2">
               <legend className="sr-only">New parameter</legend>
-              <label className="block text-[11px] text-text-light" htmlFor={`${fieldId}-new-name`}>
+              <label className="mt-1.5 block text-[11px] text-text-light" htmlFor={`${fieldId}-new-name`}>
                 Name (in the code: <code>params.{draft.name.trim() || "name"}</code>)
               </label>
               <input

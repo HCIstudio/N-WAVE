@@ -143,7 +143,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
       return (
         <div className="p-4 text-sm text-text-light">
           <div className="flex items-start gap-2 rounded-md border border-yellow-300 bg-yellow-50 p-3 text-yellow-800">
-            <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
+            <Info className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
               <p className="font-medium">Preview unavailable</p>
               <p className="mt-1">{previewUnavailableReason}</p>
@@ -188,7 +188,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
 
   return (
     <div className="h-full flex flex-col space-y-4">
-      <div className="flex-shrink-0 grid grid-cols-2 gap-4">
+      <div className="shrink-0 grid grid-cols-2 gap-4">
         <div>
           <label htmlFor="file-selector" className="text-sm mb-1 block">
             View File:
@@ -217,7 +217,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
               id="download-format"
               value={downloadFormat}
               onChange={(e) => setDownloadFormat(e.target.value)}
-              className="flex-grow rounded-l-md border-gray-600 bg-accent text-text p-2 focus:border-nextflow-green focus:ring-nextflow-green"
+              className="grow rounded-l-md border-gray-600 bg-accent text-text p-2 focus:border-nextflow-green focus:ring-nextflow-green"
               disabled={previewUnavailable}
             >
               <option value="txt">Text</option>
@@ -240,7 +240,7 @@ const OutputDisplayPanelContent: React.FC<OutputDisplayPanelContentProps> = ({
           </div>
         </div>
       </div>
-      <div className="flex-grow overflow-auto bg-background-darker rounded-md">
+      <div className="grow overflow-auto bg-background-darker rounded-md">
         {renderContent()}
       </div>
     </div>

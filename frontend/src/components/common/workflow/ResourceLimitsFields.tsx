@@ -21,7 +21,7 @@ interface ResourceLimitsFieldsProps {
 }
 
 const inputClass =
-  "w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-none focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green";
+  "w-full px-3 py-2 bg-background border border-panel-border rounded-md text-text placeholder-text-light focus:outline-hidden focus:ring-1 focus:ring-nextflow-green focus:border-nextflow-green";
 
 const timeLimitText = (minutes: number, serverLimits: ServerLimits | null): string =>
   minutes > 0

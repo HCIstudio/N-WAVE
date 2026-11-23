@@ -36,8 +36,8 @@ const WhenBar: React.FC<{ file: TaskFile; duration: number }> = ({ file, duratio
   const left = duration > 0 ? (file.firstAccess / duration) * 100 : 0;
   const width = duration > 0 ? Math.max(((file.lastAccess - file.firstAccess) / duration) * 100, 1.5) : 100;
   return (
-    <div className="relative h-2 w-24 rounded bg-accent" aria-hidden>
-      <div className="absolute h-2 rounded bg-sky-400" style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }} />
+    <div className="relative h-2 w-24 rounded-sm bg-accent" aria-hidden>
+      <div className="absolute h-2 rounded-sm bg-sky-400" style={{ left: `${left}%`, width: `${Math.min(width, 100 - left)}%` }} />
     </div>
   );
 };
@@ -108,10 +108,10 @@ export const OffsetsChart: React.FC<{ accesses: Extract<RunAccesses, { status: "
       </svg>
       <figcaption className="flex flex-wrap items-center gap-3 text-xs text-text-light">
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2 w-3 rounded" style={{ background: READ }} /> read
+          <span className="inline-block h-2 w-3 rounded-sm" style={{ background: READ }} /> read
         </span>
         <span className="inline-flex items-center gap-1">
-          <span className="inline-block h-2 w-3 rounded" style={{ background: WRITE }} /> written
+          <span className="inline-block h-2 w-3 rounded-sm" style={{ background: WRITE }} /> written
         </span>
         <span>
           by {tasks.join(", ")}; the offset in the file over the run's time.
@@ -171,7 +171,7 @@ const TaskFiles: React.FC<{ task: LinkedTask; onFollow: (path: string) => void; 
                 type="button"
                 onClick={() => onFollow(file.path)}
                 aria-pressed={following === file.path}
-                className="rounded px-1.5 text-text-light hover:bg-accent hover:text-text"
+                className="rounded-sm px-1.5 text-text-light hover:bg-accent hover:text-text"
               >
                 Follow
               </button>
@@ -257,7 +257,7 @@ const NodeIoView: React.FC<{ runId: string; hashes: string[] }> = ({ runId, hash
               <select
                 value={task?.hash}
                 onChange={(event) => setTaskHash(event.target.value)}
-                className="rounded border border-panel-border bg-accent px-1 py-0.5"
+                className="rounded-sm border border-panel-border bg-accent px-1 py-0.5"
               >
                 {own.map((candidate) => (
                   <option key={candidate.hash} value={candidate.hash}>

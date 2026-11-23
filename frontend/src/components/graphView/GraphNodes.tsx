@@ -85,7 +85,7 @@ export const GraphNode = memo(({ data }: NodeProps) => {
                 }}
                 aria-label={`Expand ${label}`}
                 title="Show the processes inside"
-                className="nodrag ml-auto rounded p-0.5 text-indigo-600 hover:bg-indigo-100"
+                className="nodrag ml-auto rounded-sm p-0.5 text-indigo-600 hover:bg-indigo-100"
               >
                 <ChevronRight className="h-4 w-4" aria-hidden />
               </button>
@@ -100,7 +100,7 @@ export const GraphNode = memo(({ data }: NodeProps) => {
     <div
       title={label}
       className={clsx(
-        "flex h-full w-full flex-col justify-center rounded-md border border-slate-300 bg-white px-3 text-left shadow-sm transition-opacity",
+        "flex h-full w-full flex-col justify-center rounded-md border border-slate-300 bg-white px-3 text-left shadow-xs transition-opacity",
         EMPHASIS[emphasis],
       )}
     >
@@ -108,7 +108,7 @@ export const GraphNode = memo(({ data }: NodeProps) => {
       <span className="flex items-center gap-1 text-sm font-semibold text-slate-900">
         <span className="truncate">{label}</span>
         {conditional && (
-          <span title="Runs under a condition" className="ml-auto flex shrink-0 items-center gap-0.5 rounded bg-violet-100 px-1 text-[10px] font-medium text-violet-700">
+          <span title="Runs under a condition" className="ml-auto flex shrink-0 items-center gap-0.5 rounded-sm bg-violet-100 px-1 text-[10px] font-medium text-violet-700">
             <GitBranch className="h-3 w-3" aria-hidden />
             if
           </span>
@@ -137,7 +137,7 @@ export const GraphFrame: React.FC<NodeProps> = ({ data }) => {
           onClick={onCollapse}
           aria-label={`Collapse ${name}`}
           title="Collapse to one box"
-          className="nodrag rounded p-0.5 hover:bg-white/10"
+          className="nodrag rounded-sm p-0.5 hover:bg-white/10"
         >
           <ChevronDown className="h-3.5 w-3.5" aria-hidden />
         </button>

@@ -201,7 +201,7 @@ const Panel: FC<PropsWithChildren<PanelProps>> = ({
           </button>
         </div>
       </div>
-      {bare ? children : <main className="p-4 overflow-auto flex-grow">{children}</main>}
+      {bare ? children : <main className="p-4 overflow-auto grow">{children}</main>}
       {/* biome-ignore lint/a11y/noStaticElementInteractions: resizing by the corner is a pointer-only extra; the panel content scrolls at any size. */}
       <div
         className="absolute bottom-1 right-1 w-4 h-4 cursor-nwse-resize text-gray-500 hover:text-text"

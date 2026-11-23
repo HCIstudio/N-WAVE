@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/2.6.6/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.6.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -34,14 +34,7 @@
             ]
           }
         },
-        "noUnknownAtRules": {
-          "level": "error",
-          "options": {
-            "ignore": [
-              "tailwind"
-            ]
-          }
-        },
+        "noUnknownAtRules": "error",
         "noTemplateCurlyInString": "off"
       }
     }
@@ -50,5 +43,10 @@
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
+    }
   }
 }

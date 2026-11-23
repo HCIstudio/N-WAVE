@@ -83,7 +83,7 @@ const TaskResults: React.FC<{
     <li className="space-y-2 rounded-md border border-panel-border p-3">
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <span
-          className={`rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_STYLE[task.status]}`}
+          className={`rounded-sm px-1.5 py-0.5 text-xs font-medium ${STATUS_STYLE[task.status]}`}
         >
           {task.status === "ignored" ? "error ignored" : task.status}
         </span>
@@ -122,7 +122,7 @@ const TaskResults: React.FC<{
                 <button
                   type="button"
                   onClick={() => void showPreview(file)}
-                  className="shrink-0 rounded px-1.5 text-text-light hover:bg-accent hover:text-text"
+                  className="shrink-0 rounded-sm px-1.5 text-text-light hover:bg-accent hover:text-text"
                 >
                   Preview
                 </button>
@@ -139,7 +139,7 @@ const TaskResults: React.FC<{
           <pre
             role="document"
             aria-label={`Preview of ${preview.path}`}
-            className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded bg-gray-900 p-2 font-mono text-xs text-gray-100"
+            className="max-h-72 overflow-auto whitespace-pre-wrap break-words rounded-sm bg-gray-900 p-2 font-mono text-xs text-gray-100"
           >
             {preview.text}
           </pre>

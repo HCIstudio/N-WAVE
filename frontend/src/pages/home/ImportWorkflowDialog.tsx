@@ -25,7 +25,7 @@ interface ImportForm {
 const EMPTY: ImportForm = { name: "", description: "", source: "", fileName: "", project: null };
 
 const FIELD =
-  "w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-none";
+  "w-full rounded-md border border-gray-600 bg-accent p-2 text-text focus:border-nextflow-green focus:outline-hidden";
 const BUTTON = "rounded-md border border-accent px-3 py-2 text-sm text-text hover:bg-accent";
 
 /** A zip by its content (`PK\x03\x04`), whatever its name. */

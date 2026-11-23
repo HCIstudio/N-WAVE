@@ -2,7 +2,7 @@ import type React from "react";
 
 // Common form styling classes
 const baseInputClasses =
-  "w-full p-2 rounded-md border-accent bg-background text-text shadow-sm focus:border-nextflow-green focus:ring-nextflow-green";
+  "w-full p-2 rounded-md border-accent bg-background text-text shadow-xs focus:border-nextflow-green focus:ring-nextflow-green";
 const baseLabelClasses = "block text-sm font-medium text-text-light mb-1";
 
 interface FormFieldProps {
@@ -108,7 +108,7 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
       name={name}
       checked={checked}
       onChange={onChange}
-      className="h-4 w-4 rounded border-gray-300 text-nextflow-green focus:ring-nextflow-green"
+      className="h-4 w-4 rounded-sm border-gray-300 text-nextflow-green focus:ring-nextflow-green"
     />
     <label htmlFor={id} className="ml-2 block text-sm text-text">
       {label}

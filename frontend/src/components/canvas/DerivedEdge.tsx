@@ -64,7 +64,7 @@ const DerivedEdge: React.FC<EdgeProps> = ({
               transform: `translate(-50%, -100%) translate(${labelX}px,${labelY - 6}px)`,
               zIndex: 1001,
             }}
-            className="nodrag nopan rounded border border-panel-border bg-panel-background px-2 py-0.5 text-xs text-text shadow"
+            className="nodrag nopan rounded-sm border border-panel-border bg-panel-background px-2 py-0.5 text-xs text-text shadow-sm"
           >
             {label}
           </div>

@@ -78,7 +78,7 @@ const NewWorkflowDialog: React.FC<NewWorkflowDialogProps> = ({
                 aria-labelledby={`${idPrefix}${key}-name`}
                 aria-describedby={`${detail ? `${idPrefix}${key}-detail ` : ""}${idPrefix}${key}-description`}
                 className={clsx(
-                  "flex h-full w-full flex-col rounded-lg border border-panel-border bg-accent p-3 text-left transition-shadow hover:shadow-md focus:outline-none focus:ring-2 focus:ring-nextflow-green disabled:cursor-wait disabled:opacity-70",
+                  "flex h-full w-full flex-col rounded-lg border border-panel-border bg-accent p-3 text-left transition-shadow hover:shadow-md focus:outline-hidden focus:ring-2 focus:ring-nextflow-green disabled:cursor-wait disabled:opacity-70",
                   key === highlightKey && "tutorial-target",
                 )}
               >

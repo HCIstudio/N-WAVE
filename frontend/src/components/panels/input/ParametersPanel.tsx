@@ -212,7 +212,7 @@ const ParametersPanel: React.FC<ParametersPanelProps> = ({ node, onSave }) => {
                       onChange={(event) =>
                         update(index, { value: String(event.target.checked) })
                       }
-                      className="rounded border-accent"
+                      className="rounded-sm border-accent"
                     />
                     <span>Value of {parameter.name}</span>
                   </label>
