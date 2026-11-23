@@ -49,7 +49,7 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # Node major upgrades are deliberate (CI pins Node 20 too).
+      # Node major upgrades are deliberate (CI pins Node 22 too).
       - dependency-name: node
         update-types: ["version-update:semver-major"]
     cooldown:
@@ -60,7 +60,7 @@ updates:
     schedule:
       interval: weekly
     ignore:
-      # Node major upgrades are deliberate (CI pins Node 20 too).
+      # Node major upgrades are deliberate (CI pins Node 22 too).
       - dependency-name: node
         update-types: ["version-update:semver-major"]
     cooldown:
