@@ -20,7 +20,7 @@ authors' permission.
 
 The port follows their code step by step, so that it gives the same results, including two
 places where it does something one might not expect (`fixContinuity`, and `realRoots` across
-a discontinuity); both are offered back to the authors.
+a discontinuity).
 
 `runModel.ts` and `runInsight.ts` are N-WAVE's own: they fit a model of a run to its trace
 and say what limited it. The wiki's

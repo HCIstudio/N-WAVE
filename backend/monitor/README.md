@@ -28,7 +28,7 @@ and check that the patches still apply.
   both programs on the run's folder, and stops them when the run ends.
 - `patches/0001-file-refcount-since-linux-6.13.patch`: Linux 6.13 renamed the file reference
   count that `fileaccess.py` reads (`f_count` became `f_ref`). The patch reads whichever the
-  kernel has. It is offered back to the authors.
+  kernel has.
 
 Everything else in their code is used unchanged. The wiki's
 [I/O monitor](https://github.com/HCIstudio/N-WAVE/wiki/IO-Monitor) page says how N-WAVE runs

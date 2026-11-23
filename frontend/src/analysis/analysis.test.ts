@@ -49,7 +49,7 @@ describe("analysisProblems", () => {
   });
 
   it("adds BioFlow-Insight's error, but not Nextflow's parser error when lint found errors", () => {
-    const parserError = { code: "ewlsif", message: "Nextflow's parser found an error in the code.", file: "main.nf" };
+    const parserError = { code: "ewlsif", message: "Nextflow's parser found an error in the code. It is stricter than the Nextflow that runs workflows, so the workflow may still run.", file: "main.nf" };
     expect(analysisProblems(analysis({ bioflow: bioflow(parserError) }), nodes).map((problem) => problem.id)).toEqual([
       "bioflow:ewlsif",
     ]);

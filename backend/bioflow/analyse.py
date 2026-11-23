@@ -78,7 +78,10 @@ def read_error(error: BaseException, project: Path) -> dict:
         file = file_match.group(1).lstrip("/")
         message = message[file_match.end() :]
     if code == "ewlsif":
-        message = "Nextflow's parser found an error in the code."
+        message = (
+            "Nextflow's parser found an error in the code. "
+            "It is stricter than the Nextflow that runs workflows, so the workflow may still run."
+        )
     # Never a path of the machine the analysis ran on.
     message = message.replace(str(project), "").strip()
     return {"code": code, "message": message, "file": file}
