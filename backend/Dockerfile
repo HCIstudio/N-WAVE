@@ -6,7 +6,7 @@
 # arm64 emulation can crash with "Illegal instruction" and hang the build.
 # If a dependency with native code is ever added, install it in the runtime
 # stage instead.
-FROM --platform=$BUILDPLATFORM node:20-alpine AS build
+FROM --platform=$BUILDPLATFORM node:22-alpine AS build
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ COPY tsconfig.json ./
 COPY src ./src
 RUN pnpm build
 
-FROM --platform=$BUILDPLATFORM node:20-alpine AS deps
+FROM --platform=$BUILDPLATFORM node:22-alpine AS deps
 
 WORKDIR /app
 
@@ -28,7 +28,7 @@ RUN corepack enable
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --prod --frozen-lockfile
 
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 WORKDIR /app
 

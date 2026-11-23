@@ -5,10 +5,10 @@ to pass, and how changes reach `main`.
 
 ## Development setup
 
-You need **Node 20.19 or newer** (mongoose 9 requires it), **pnpm 10** (`corepack enable` picks the pinned version), **MongoDB 7**,
+You need **Node 22.12 or newer** (Vitest 5 requires it), **pnpm 10** (`corepack enable` picks the pinned version), **MongoDB 7**,
 and **Docker** if you want to execute workflows.
 
-With nvm, `nvm use` in the repository picks Node 20 (from `.nvmrc`). `pnpm install` warns
+With nvm, `nvm use` in the repository picks Node 22 (from `.nvmrc`). `pnpm install` warns
 ("Unsupported engine") on an older Node; with one, tools fail with confusing errors such as
 `Cannot find module '@biomejs/cli-linux-x64/biome'`.
 

@@ -52,8 +52,8 @@ export const useExecutionStatus = ({
 
   const [isVisible, setIsVisible] = useState(false);
   const statusRef = useRef(status);
-  const progressUpdateInterval = useRef<NodeJS.Timeout | undefined>(undefined);
-  const runtimeTimer = useRef<NodeJS.Timeout | undefined>(undefined);
+  const progressUpdateInterval = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
+  const runtimeTimer = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   // Nextflow prints a snapshot of its processes after each "executor >"
   // line: what the current one has listed so far.
   const snapshot = useRef(newSnapshot());

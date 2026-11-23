@@ -1,3 +1,5 @@
+/// <reference types="node" />
+// (Reads its fixtures from disk: TypeScript 7 includes no @types package unless asked.)
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { render, screen, within } from "@testing-library/react";

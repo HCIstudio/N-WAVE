@@ -22,7 +22,7 @@
   "author": "HCIstudio",
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=20.19"
+    "node": ">=22.12"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748",
   "repository": {
@@ -43,10 +43,11 @@
     "@types/express": "4",
     "@types/node": "^22.20.5",
     "@types/supertest": "^7.2.1",
-    "@vitest/coverage-v8": "2.1.9",
+    "@vitest/coverage-v8": "5.1.1",
     "supertest": "^7.3.2",
     "tsx": "^4.23.15",
     "typescript": "^7.0.2",
-    "vitest": "^2.1.9"
+    "vite": "^6.4.6",
+    "vitest": "^5.1.1"
   }
 }

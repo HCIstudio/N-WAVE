@@ -7,7 +7,7 @@ Input files live on the workflow's nodes in the browser and travel with each run
 
 ## Development
 
-Needs Node 20.19+, pnpm and MongoDB 7 ([CONTRIBUTING.md](../CONTRIBUTING.md) has the setup).
+Needs Node 22.12+, pnpm and MongoDB 7 ([CONTRIBUTING.md](../CONTRIBUTING.md) has the setup).
 
 ```bash
 pnpm install
