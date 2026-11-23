@@ -122,7 +122,7 @@ const Canvas: FC<CanvasProps> = ({
 
   return (
     <div
-      className="flex-grow h-full"
+      className="grow h-full"
       ref={reactFlowWrapper}
     >
       <ReactFlow

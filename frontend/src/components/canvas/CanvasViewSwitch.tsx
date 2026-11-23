@@ -31,7 +31,7 @@ const CanvasViewSwitch: React.FC<{
 }> = ({ view, onChange, graphsUnavailable = null }) => (
   <fieldset
     aria-label="Canvas view"
-    className="m-0 flex shrink-0 overflow-hidden rounded-md border border-panel-border p-0 text-xs"
+    className="flex shrink-0 overflow-hidden rounded-md border border-panel-border p-0 text-xs"
   >
     {VIEWS.map((entry) => {
       const greyed = entry.id !== "editor" && graphsUnavailable !== null;

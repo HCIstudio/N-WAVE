@@ -78,7 +78,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ node, onSave }) => {
                 id={selectAllId}
                 checked={areAllFilesSelected}
                 onChange={(e) => handleSelectAll(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-nextflow-green focus:ring-nextflow-green"
+                className="h-4 w-4 rounded-sm border-gray-300 text-nextflow-green focus:ring-nextflow-green"
               />
               <label
                 htmlFor={selectAllId}
@@ -100,7 +100,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ node, onSave }) => {
                       id={fileCheckboxId}
                       checked={isFileSelected(file)}
                       onChange={() => handleFileSelectionChange(file)}
-                      className="h-4 w-4 rounded border-gray-300 text-nextflow-green focus:ring-nextflow-green"
+                      className="h-4 w-4 rounded-sm border-gray-300 text-nextflow-green focus:ring-nextflow-green"
                     />
                     <label
                       htmlFor={fileCheckboxId}

@@ -57,7 +57,7 @@ const RecordingIndicator: React.FC = () => {
             maxLength={80}
             // biome-ignore lint/a11y/noAutofocus: the field was just asked for.
             autoFocus
-            className="w-32 rounded border border-panel-border bg-background px-1.5 py-0.5 text-xs text-text"
+            className="w-32 rounded-sm border border-panel-border bg-background px-1.5 py-0.5 text-xs text-text"
           />
           <button type="submit" className="rounded-full border border-panel-border px-2 py-0.5 hover:bg-accent">
             Start

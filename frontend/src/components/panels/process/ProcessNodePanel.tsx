@@ -68,7 +68,7 @@ const ProcessNodePanel: React.FC<ProcessNodePanelProps> = ({
                 onChange={(e) =>
                   handleInputChange(input.id, "name", e.target.value)
                 }
-                className="flex-grow p-1 rounded-md bg-background-light border border-accent"
+                className="grow p-1 rounded-md bg-background-light border border-accent"
               />
               <select
                 value={input.type}
@@ -106,7 +106,7 @@ const ProcessNodePanel: React.FC<ProcessNodePanelProps> = ({
 
       <div className="p-2 bg-background-light rounded-md">
         <div className="flex items-center text-xs text-text-light">
-          <Info size={14} className="mr-2 flex-shrink-0" />
+          <Info size={14} className="mr-2 shrink-0" />
           <p>
             Script editing is temporarily disabled. This will be re-enabled
             shortly.

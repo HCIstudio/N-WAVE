@@ -96,7 +96,7 @@ const TitleBlock: React.FC<{ kind: GraphKind; onBack: () => void; status?: React
     <button
       type="button"
       onClick={onBack}
-      className="mt-2 self-start rounded border border-current px-2 py-0.5 text-xs normal-case tracking-normal hover:bg-white/10"
+      className="mt-2 self-start rounded-sm border border-current px-2 py-0.5 text-xs normal-case tracking-normal hover:bg-white/10"
     >
       Back to the editor
     </button>
@@ -170,7 +170,7 @@ const GraphView: React.FC<GraphViewProps> = ({ kind, analysis, unavailable, onBa
           <button
             type="button"
             onClick={() => void analyse()}
-            className="mt-3 flex items-center gap-1 rounded border border-sky-200/60 px-2 py-0.5 text-xs hover:bg-white/10"
+            className="mt-3 flex items-center gap-1 rounded-sm border border-sky-200/60 px-2 py-0.5 text-xs hover:bg-white/10"
           >
             <RefreshCw className="h-3.5 w-3.5" aria-hidden /> Try again
           </button>
@@ -503,7 +503,7 @@ const DrawnGraph: React.FC<{
                     setCollapsed(new Set(model.clusters.filter((c) => c.parent === null).map((c) => c.id)));
                     setSelected(null);
                   }}
-                  className="flex items-center gap-1 rounded border border-sky-200/50 bg-[#10345e]/90 px-2 py-1 text-xs text-sky-50 hover:bg-[#10345e]"
+                  className="flex items-center gap-1 rounded-sm border border-sky-200/50 bg-[#10345e]/90 px-2 py-1 text-xs text-sky-50 hover:bg-[#10345e]"
                 >
                   <Minimize2 className="h-3.5 w-3.5" aria-hidden /> Collapse subworkflows
                 </button>
@@ -513,7 +513,7 @@ const DrawnGraph: React.FC<{
                     setCollapsed(new Set());
                     setSelected(null);
                   }}
-                  className="flex items-center gap-1 rounded border border-sky-200/50 bg-[#10345e]/90 px-2 py-1 text-xs text-sky-50 hover:bg-[#10345e]"
+                  className="flex items-center gap-1 rounded-sm border border-sky-200/50 bg-[#10345e]/90 px-2 py-1 text-xs text-sky-50 hover:bg-[#10345e]"
                 >
                   <Maximize2 className="h-3.5 w-3.5" aria-hidden /> Expand all
                 </button>
@@ -523,7 +523,7 @@ const DrawnGraph: React.FC<{
               type="button"
               onClick={() => setInsightOpen((open) => !open)}
               aria-expanded={insightOpen}
-              className="flex items-center gap-1 rounded border border-sky-200/50 bg-[#10345e]/90 px-2 py-1 text-xs text-sky-50 hover:bg-[#10345e]"
+              className="flex items-center gap-1 rounded-sm border border-sky-200/50 bg-[#10345e]/90 px-2 py-1 text-xs text-sky-50 hover:bg-[#10345e]"
             >
               {insightOpen ? (
                 <PanelRightClose className="h-3.5 w-3.5" aria-hidden />

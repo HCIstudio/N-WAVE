@@ -52,7 +52,7 @@ const ShortcutsDialog: React.FC<{ isOpen: boolean; onClose: () => void }> = ({
           {items.map(([keys, action]) => (
             <div key={keys} className="contents">
               <dt>
-                <kbd className="px-1.5 py-0.5 rounded border border-panel-border bg-background font-mono text-xs">
+                <kbd className="px-1.5 py-0.5 rounded-sm border border-panel-border bg-background font-mono text-xs">
                   {keys}
                 </kbd>
               </dt>

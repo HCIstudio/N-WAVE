@@ -225,7 +225,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           id="node-panel-results"
           role="tabpanel"
           aria-labelledby="node-panel-tab-results"
-          className="p-4 overflow-auto flex-grow"
+          className="p-4 overflow-auto grow"
         >
           <NodeRunResults nodeId={node.id} />
         </div>
@@ -234,7 +234,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           id="node-panel-code"
           role="tabpanel"
           aria-labelledby="node-panel-tab-code"
-          className="p-4 overflow-auto flex-grow"
+          className="p-4 overflow-auto grow"
         >
           <NodeCodeView
             node={node}
@@ -247,7 +247,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           id="node-panel-settings"
           role="tabpanel"
           aria-labelledby="node-panel-tab-settings"
-          className="p-4 overflow-auto flex-grow"
+          className="p-4 overflow-auto grow"
         >
           {locked && (
             <p className="mb-3 rounded-md border border-amber-500/60 bg-amber-100 px-3 py-2 text-sm text-amber-900">
@@ -267,7 +267,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 type="text"
                 value={label}
                 onChange={handleLabelChange}
-                className="w-full rounded-md border-accent bg-background text-text shadow-sm p-2 focus:border-nextflow-green focus:ring-nextflow-green"
+                className="w-full rounded-md border-accent bg-background text-text shadow-xs p-2 focus:border-nextflow-green focus:ring-nextflow-green"
                 placeholder="Enter node label..."
               />
             </div>

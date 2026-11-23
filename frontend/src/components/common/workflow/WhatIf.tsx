@@ -126,7 +126,7 @@ const WhatIf: React.FC<{
           <select
             value={settings.priority ?? ""}
             onChange={(event) => setSettings({ ...settings, priority: event.target.value || null })}
-            className="mt-1 block w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs"
+            className="mt-1 block w-full rounded-sm border border-gray-300 bg-white px-2 py-1 text-xs"
           >
             <option value="">No step (in the workflow's order)</option>
             {model.map((step) => (
@@ -145,7 +145,7 @@ const WhatIf: React.FC<{
                 const profile = profiles.find((candidate) => candidate.name === event.target.value);
                 if (profile) setSettings({ ...settings, cpus: profile.cpus, cpusPerTask: undefined, memoryGb: profile.memoryGb });
               }}
-              className="mt-1 block w-full rounded border border-gray-300 bg-white px-2 py-1 text-xs"
+              className="mt-1 block w-full rounded-sm border border-gray-300 bg-white px-2 py-1 text-xs"
             >
               <option value="">Choose…</option>
               {profiles.map((profile) => (

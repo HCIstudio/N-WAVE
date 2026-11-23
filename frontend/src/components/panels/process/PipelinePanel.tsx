@@ -190,7 +190,7 @@ const PipelinePanel: React.FC<PipelinePanelProps> = ({ node, onSave }) => {
           onChange={(event) =>
             onSave(node.id, { pipelineTestProfile: event.target.checked })
           }
-          className="rounded border-accent"
+          className="rounded-sm border-accent"
         />
         Use the pipeline&apos;s test profile (small test data, no inputs needed)
       </label>
@@ -232,7 +232,7 @@ const PipelinePanel: React.FC<PipelinePanelProps> = ({ node, onSave }) => {
                 type="checkbox"
                 checked={showHidden}
                 onChange={(event) => setShowHidden(event.target.checked)}
-                className="rounded border-accent"
+                className="rounded-sm border-accent"
               />
               Show hidden parameters
             </label>
@@ -343,7 +343,7 @@ const ParamField: React.FC<{
             checked={checked}
             onChange={(event) => onChange(event.target.checked)}
             aria-describedby={`${id}-description`}
-            className="rounded border-accent"
+            className="rounded-sm border-accent"
           />
           {label}
         </label>
@@ -406,7 +406,7 @@ const ParamField: React.FC<{
             type="checkbox"
             checked={port}
             onChange={(event) => onTogglePort(event.target.checked)}
-            className="rounded border-accent"
+            className="rounded-sm border-accent"
           />
           Input port (connect a Parameters or File Input node)
         </label>

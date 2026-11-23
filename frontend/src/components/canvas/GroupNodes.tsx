@@ -34,7 +34,7 @@ const GroupName: React.FC<{ group: string; title: string; className?: string }> 
       aria-label={`Edit group “${title}”`}
       title="Rename or ungroup"
       className={clsx(
-        "nodrag rounded px-1 font-semibold text-sky-300 underline decoration-dotted underline-offset-2 hover:bg-sky-500/15",
+        "nodrag rounded-sm px-1 font-semibold text-sky-300 underline decoration-dotted underline-offset-2 hover:bg-sky-500/15",
         className,
       )}
     >

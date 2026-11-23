@@ -100,7 +100,7 @@ const Term: React.FC<{ id: GlossaryId; children?: React.ReactNode }> = ({ id, ch
             hide();
           }
         }}
-        className="inline-flex shrink-0 items-center rounded-full text-text-light hover:text-nextflow-green focus:outline-none focus-visible:ring-2 focus-visible:ring-nextflow-green"
+        className="inline-flex shrink-0 items-center rounded-full text-text-light hover:text-nextflow-green focus:outline-hidden focus-visible:ring-2 focus-visible:ring-nextflow-green"
       >
         <Info className="h-3.5 w-3.5" aria-hidden />
       </button>

@@ -109,7 +109,7 @@ const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
             {explanation.evidence.map((evidence) => (
               <li key={`${evidence.line}:${evidence.text}`} className="flex items-start gap-2">
                 <code
-                  className={`min-w-0 flex-1 break-words rounded px-1.5 py-0.5 font-mono ${
+                  className={`min-w-0 flex-1 break-words rounded-sm px-1.5 py-0.5 font-mono ${
                     dark ? "bg-black/30" : "bg-white/70"
                   }`}
                 >
@@ -183,7 +183,7 @@ const FailureExplanationCard: React.FC<FailureExplanationCardProps> = ({
                   key={String(helpful)}
                   type="button"
                   onClick={() => answer(helpful)}
-                  className={`rounded border px-2 py-0.5 font-medium ${
+                  className={`rounded-sm border px-2 py-0.5 font-medium ${
                     dark ? "border-panel-border hover:bg-accent" : "border-gray-300 bg-white hover:bg-gray-100"
                   }`}
                 >

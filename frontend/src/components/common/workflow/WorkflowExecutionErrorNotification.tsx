@@ -135,16 +135,16 @@ const WorkflowExecutionErrorNotification: React.FC<
     const lowerError = errorMessage.toLowerCase();
 
     if (lowerError.includes("file") || lowerError.includes("directory")) {
-      return <FileX className="w-5 h-5 text-red-400 flex-shrink-0" />;
+      return <FileX className="w-5 h-5 text-red-400 shrink-0" />;
     }
     if (lowerError.includes("docker") || lowerError.includes("container")) {
-      return <Settings className="w-5 h-5 text-red-400 flex-shrink-0" />;
+      return <Settings className="w-5 h-5 text-red-400 shrink-0" />;
     }
     if (lowerError.includes("script") || lowerError.includes("command")) {
-      return <Terminal className="w-5 h-5 text-red-400 flex-shrink-0" />;
+      return <Terminal className="w-5 h-5 text-red-400 shrink-0" />;
     }
 
-    return <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0" />;
+    return <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />;
   };
 
   // For a failure N-WAVE doesn't recognise: what Nextflow said, and guesses
@@ -163,7 +163,7 @@ const WorkflowExecutionErrorNotification: React.FC<
         isSlideIn ? "translate-y-0" : "-translate-y-full"
       }`}
     >
-      <div className="bg-panel-background/95 backdrop-blur-sm border-2 border-red-500/70 rounded-lg shadow-lg shadow-red-500/20 mx-4">
+      <div className="bg-panel-background/95 backdrop-blur-xs border-2 border-red-500/70 rounded-lg shadow-lg shadow-red-500/20 mx-4">
         <div className="px-4 py-3">
           {/* Header - Always visible */}
           <div className="flex items-center justify-between">
@@ -208,7 +208,7 @@ const WorkflowExecutionErrorNotification: React.FC<
             }`}
           >
             <div className="space-y-3">
-              <div className="bg-background border border-red-500/50 rounded p-3">
+              <div className="bg-background border border-red-500/50 rounded-sm p-3">
                 <p className="text-text text-sm leading-relaxed">
                   {error.message}
                 </p>
@@ -221,7 +221,7 @@ const WorkflowExecutionErrorNotification: React.FC<
                     <Terminal className="w-3 h-3" />
                     <span>Execution Output</span>
                   </h4>
-                  <div className="bg-background border border-panel-border rounded p-2 max-h-24 overflow-y-auto">
+                  <div className="bg-background border border-panel-border rounded-sm p-2 max-h-24 overflow-y-auto">
                     <pre className="text-xs text-text-light whitespace-pre-wrap font-mono">
                       {error.output}
                     </pre>
@@ -271,7 +271,7 @@ const WorkflowExecutionErrorNotification: React.FC<
                         <>
                           <dt className="text-text-light">Its errors</dt>
                           <dd>
-                            <pre className="whitespace-pre-wrap rounded border border-panel-border bg-background p-2 font-mono text-text">
+                            <pre className="whitespace-pre-wrap rounded-sm border border-panel-border bg-background p-2 font-mono text-text">
                               {report.errorLines.map((line) => line.text).join("\n")}
                             </pre>
                             {onShowEvidence && (
@@ -327,9 +327,9 @@ const WorkflowExecutionErrorNotification: React.FC<
                     {suggestions.slice(0, 4).map((suggestion) => (
                       <div
                         key={suggestion}
-                        className="flex items-start space-x-2 p-2 bg-nextflow-green/10 border border-nextflow-green/20 rounded text-xs"
+                        className="flex items-start space-x-2 p-2 bg-nextflow-green/10 border border-nextflow-green/20 rounded-sm text-xs"
                       >
-                        <div className="w-1 h-1 bg-nextflow-green rounded-full mt-1.5 flex-shrink-0" />
+                        <div className="w-1 h-1 bg-nextflow-green rounded-full mt-1.5 shrink-0" />
                         <p className="text-text leading-relaxed">
                           {suggestion}
                         </p>
@@ -348,7 +348,7 @@ const WorkflowExecutionErrorNotification: React.FC<
                 type="button"
                 onClick={onResume}
                 title="Run again, reusing the steps that finished"
-                className="px-4 py-2 text-sm rounded bg-nextflow-green hover:bg-nextflow-green-dark text-white transition-colors flex items-center space-x-2"
+                className="px-4 py-2 text-sm rounded-sm bg-nextflow-green hover:bg-nextflow-green-dark text-white transition-colors flex items-center space-x-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Resume</span>
@@ -358,7 +358,7 @@ const WorkflowExecutionErrorNotification: React.FC<
               type="button"
               onClick={onRetry}
               title="Run again from the start"
-              className={`px-4 py-2 text-sm rounded transition-colors flex items-center space-x-2 ${
+              className={`px-4 py-2 text-sm rounded-sm transition-colors flex items-center space-x-2 ${
                 onResume
                   ? "border border-panel-border text-text hover:bg-accent"
                   : "bg-nextflow-green hover:bg-nextflow-green-dark text-white"
@@ -371,7 +371,7 @@ const WorkflowExecutionErrorNotification: React.FC<
               <button
                 type="button"
                 onClick={onShowLog}
-                className="px-4 py-2 text-sm rounded border border-panel-border text-text hover:bg-accent transition-colors flex items-center space-x-2"
+                className="px-4 py-2 text-sm rounded-sm border border-panel-border text-text hover:bg-accent transition-colors flex items-center space-x-2"
               >
                 <Terminal className="w-4 h-4" />
                 <span>Show full log</span>

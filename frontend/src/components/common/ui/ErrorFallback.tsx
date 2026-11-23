@@ -56,7 +56,7 @@ const ErrorFallback: React.FC<ErrorFallbackProps> = ({
           <summary className="cursor-pointer text-text-light">
             Technical details
           </summary>
-          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded bg-background p-3 text-xs text-danger">
+          <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap rounded-sm bg-background p-3 text-xs text-danger">
             {errorMessage(error)}
           </pre>
         </details>

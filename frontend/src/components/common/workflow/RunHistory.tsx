@@ -70,7 +70,7 @@ export const RunLog: React.FC<{ text: string; label?: string; highlight?: LogHig
         type="button"
         onClick={() => void copy()}
         aria-label={`Copy ${label.toLowerCase()}`}
-        className="absolute right-4 top-2 z-10 inline-flex items-center gap-1 rounded bg-gray-700 px-2 py-1 text-xs text-gray-100 hover:bg-gray-600"
+        className="absolute right-4 top-2 z-10 inline-flex items-center gap-1 rounded-sm bg-gray-700 px-2 py-1 text-xs text-gray-100 hover:bg-gray-600"
       >
         {copied ? (
           <Check className="h-3.5 w-3.5" />
@@ -99,7 +99,7 @@ export const RunLog: React.FC<{ text: string; label?: string; highlight?: LogHig
             aria-current={highlight?.line === index ? "true" : undefined}
             className={
               highlight?.line === index
-                ? "-mx-1 rounded bg-yellow-300/30 px-1 text-yellow-100 ring-1 ring-yellow-300/70"
+                ? "-mx-1 rounded-sm bg-yellow-300/30 px-1 text-yellow-100 ring-1 ring-yellow-300/70"
                 : ERROR_LINE.test(line)
                   ? "text-red-300"
                   : undefined
@@ -200,20 +200,20 @@ const RunDetails: React.FC<{
         </Link>
       )}
       {run.status === "running" && (
-        <div className="flex items-center justify-between gap-2 rounded bg-blue-50 p-2 text-xs text-blue-900">
+        <div className="flex items-center justify-between gap-2 rounded-sm bg-blue-50 p-2 text-xs text-blue-900">
           <span>This run is still going on the server.</span>
           <button
             type="button"
             onClick={() => void stop()}
             disabled={stopping}
-            className="rounded border border-blue-300 bg-white px-2 py-1 font-medium hover:bg-blue-100 disabled:opacity-60"
+            className="rounded-sm border border-blue-300 bg-white px-2 py-1 font-medium hover:bg-blue-100 disabled:opacity-60"
           >
             {stopping ? "Stopping…" : "Stop run"}
           </button>
         </div>
       )}
       {run.message && (
-        <p className="rounded bg-red-50 p-2 text-xs text-red-800">
+        <p className="rounded-sm bg-red-50 p-2 text-xs text-red-800">
           {run.message}
         </p>
       )}
@@ -229,7 +229,7 @@ const RunDetails: React.FC<{
           type="button"
           onClick={() => onShowRun?.(run.id)}
           disabled={onShowRun === null}
-          className="self-start rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-60"
+          className="self-start rounded-sm border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 disabled:opacity-60"
         >
           {onShowRun === null ? "Shown on the canvas" : "Show on canvas"}
         </button>
@@ -240,7 +240,7 @@ const RunDetails: React.FC<{
         </section>
       )}
       {run.status !== "running" && performanceOn && (
-        <details className="rounded border border-gray-200 text-gray-800">
+        <details className="rounded-sm border border-gray-200 text-gray-800">
           <summary className="cursor-pointer px-2 py-1 text-sm font-medium">
             Time, memory and bytes per step
           </summary>
@@ -347,7 +347,7 @@ const RunHistory: React.FC<{
               type="button"
               onClick={() => setSelected(run.id)}
               aria-pressed={run.id === selected}
-              className={`w-full rounded border px-2 py-1.5 text-left text-xs ${
+              className={`w-full rounded-sm border px-2 py-1.5 text-left text-xs ${
                 run.id === selected
                   ? "border-nextflow-green bg-green-50"
                   : "border-gray-300 hover:bg-gray-100"
@@ -359,7 +359,7 @@ const RunHistory: React.FC<{
                 </span>
               )}
               <span
-                className={`mr-1 rounded px-1.5 py-0.5 font-medium ${STATUS_STYLES[run.status]}`}
+                className={`mr-1 rounded-sm px-1.5 py-0.5 font-medium ${STATUS_STYLES[run.status]}`}
               >
                 {run.status}
               </span>

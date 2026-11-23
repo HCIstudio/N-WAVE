@@ -48,7 +48,7 @@ const BranchNode: React.FC<NodeProps<Node<NodeData>>> = ({ id, type, data, selec
       data-branch-now={running ?? "unknown"}
       aria-label={`Branch: ${conditions.map((condition, index) => `${index === 0 ? "if" : "else if"} ${condition}`).join(", ")}${conditions.length > 0 ? ", else" : ""}`}
       className={clsx(
-        "relative w-64 select-none rounded-lg border-2 bg-fuchsia-50 text-gray-900 shadow-sm",
+        "relative w-64 select-none rounded-lg border-2 bg-fuchsia-50 text-gray-900 shadow-xs",
         selected ? "border-fuchsia-600 ring-2 ring-fuchsia-300" : "border-fuchsia-400",
       )}
     >

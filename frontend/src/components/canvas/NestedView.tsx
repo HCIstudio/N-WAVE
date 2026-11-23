@@ -61,7 +61,7 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
       <span className="flex items-center justify-between gap-1.5 text-xs font-semibold text-gray-800">
         <span className="truncate">{label}</span>
         {onOpen && (
-          <span className="flex shrink-0 items-center gap-0.5 rounded bg-gray-100 px-1 text-[10px] font-medium text-gray-700">
+          <span className="flex shrink-0 items-center gap-0.5 rounded-sm bg-gray-100 px-1 text-[10px] font-medium text-gray-700">
             <ArrowDownToDot className="h-3 w-3" aria-hidden />
             Step in
           </span>
@@ -88,7 +88,7 @@ const StepNode = memo(({ data }: NodeProps<Node<StepData>>) => {
               : "default";
   const className = clsx(
     "h-full w-full rounded-md border-2 bg-white px-2 py-1.5 text-left",
-    !onOpen && "shadow-sm",
+    !onOpen && "shadow-xs",
     isEnd && "rounded-full border-dashed bg-gray-100 text-center",
     // A stack's border is the same on all its cards; a single step's by its state.
     onOpen
@@ -296,7 +296,7 @@ const NestedView: React.FC<NestedViewProps> = ({ title, entry, workflowName, tas
             type="button"
             onClick={onClose}
             aria-label="Close the steps inside"
-            className="rounded p-1 text-text-light hover:bg-accent hover:text-text"
+            className="rounded-sm p-1 text-text-light hover:bg-accent hover:text-text"
           >
             <X className="h-5 w-5" aria-hidden />
           </button>

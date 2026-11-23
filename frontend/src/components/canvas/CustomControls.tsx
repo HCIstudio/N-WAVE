@@ -12,7 +12,7 @@ export interface HistoryControls {
 }
 
 const buttonClass =
-  "p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent disabled:opacity-40 disabled:hover:bg-background disabled:cursor-not-allowed";
+  "p-2 bg-background border border-accent rounded-md shadow-xs text-text hover:bg-accent disabled:opacity-40 disabled:hover:bg-background disabled:cursor-not-allowed";
 
 const CustomControls: React.FC<{
   history?: HistoryControls;
@@ -33,7 +33,7 @@ const CustomControls: React.FC<{
         onClick={() => fitView()}
         aria-label="Fit view"
         title="Zoom to fit the whole workflow"
-        className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
+        className="p-2 bg-background border border-accent rounded-md shadow-xs text-text hover:bg-accent"
       >
         <Maximize size={16} />
       </button>
@@ -42,7 +42,7 @@ const CustomControls: React.FC<{
         onClick={() => zoomOut()}
         aria-label="Zoom out"
         title="Zoom out"
-        className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
+        className="p-2 bg-background border border-accent rounded-md shadow-xs text-text hover:bg-accent"
       >
         <ZoomOut size={16} />
       </button>
@@ -51,7 +51,7 @@ const CustomControls: React.FC<{
         onClick={() => zoomIn()}
         aria-label="Zoom in"
         title="Zoom in"
-        className="p-2 bg-background border border-accent rounded-md shadow-sm text-text hover:bg-accent"
+        className="p-2 bg-background border border-accent rounded-md shadow-xs text-text hover:bg-accent"
       >
         <ZoomIn size={16} />
       </button>

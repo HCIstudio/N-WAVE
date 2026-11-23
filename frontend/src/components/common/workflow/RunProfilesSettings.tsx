@@ -88,7 +88,7 @@ const ProfileEditor: React.FC<{
           type="button"
           onClick={onRemove}
           aria-label={`Remove profile ${profile.name}`}
-          className="rounded p-1 text-text-light hover:bg-accent hover:text-text"
+          className="rounded-sm p-1 text-text-light hover:bg-accent hover:text-text"
         >
           <Trash2 className="h-4 w-4" />
         </button>

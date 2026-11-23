@@ -71,7 +71,7 @@ const NotificationSettings: React.FC = () => {
       )}
 
       <fieldset
-        className={`mt-3 space-y-1.5 pl-6 ${eventsOn ? "" : "opacity-50"}`}
+        className={`mt-4.5 space-y-1.5 pl-6 ${eventsOn ? "" : "opacity-50"}`}
         disabled={!eventsOn}
       >
         <legend className="sr-only">Notify when</legend>

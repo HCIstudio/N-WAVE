@@ -91,7 +91,7 @@ const CustomEdge: React.FC<EdgeProps> = ({
               aria-label={`Connection warning: ${hint.message}`}
               aria-expanded={showHint}
               title={`${hint.message} ${hint.fix}`}
-              className="flex h-5 w-5 items-center justify-center rounded-full border border-yellow-500 bg-yellow-100 text-yellow-800 shadow-sm"
+              className="flex h-5 w-5 items-center justify-center rounded-full border border-yellow-500 bg-yellow-100 text-yellow-800 shadow-xs"
             >
               <AlertTriangle className="h-3 w-3" aria-hidden />
             </button>

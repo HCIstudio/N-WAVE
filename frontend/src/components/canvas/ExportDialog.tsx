@@ -85,7 +85,7 @@ const ExportDialog: React.FC<ExportActions & { isOpen: boolean; onClose: () => v
           .map(({ icon: Icon, title, what, action, run, extra }) => (
             <li key={title} className="flex items-start gap-3 rounded-md border border-panel-border p-3">
               <Icon aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-nextflow-green" />
-              <div className="min-w-0 flex-grow">
+              <div className="min-w-0 grow">
                 <h3 className="text-sm font-medium text-text">{title}</h3>
                 <p className="mt-0.5 text-xs text-text-light">{what}</p>
               </div>
@@ -113,7 +113,7 @@ const ExportDialog: React.FC<ExportActions & { isOpen: boolean; onClose: () => v
         {onDiagram && diagramSources.length > 0 && (
           <li className="flex items-start gap-3 rounded-md border border-panel-border p-3">
             <Network aria-hidden className="mt-0.5 h-5 w-5 shrink-0 text-nextflow-green" />
-            <div className="min-w-0 flex-grow">
+            <div className="min-w-0 grow">
               <h3 className="text-sm font-medium text-text">Diagram</h3>
               <p className="mt-0.5 text-xs text-text-light">
                 A picture of the workflow for papers and slides (SVG, PNG), or as text that Mermaid

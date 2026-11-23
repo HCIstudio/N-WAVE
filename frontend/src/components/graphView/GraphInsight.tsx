@@ -104,14 +104,14 @@ const GraphInsight: React.FC<{
           {selection.code.trim() && (
             <details className="mt-1 text-sm">
               <summary className="cursor-pointer text-text-light">Code</summary>
-              <pre className="mt-1 max-h-48 overflow-auto rounded bg-black/30 p-2 font-mono text-[11px] leading-snug">{selection.code}</pre>
+              <pre className="mt-1 max-h-48 overflow-auto rounded-sm bg-black/30 p-2 font-mono text-[11px] leading-snug">{selection.code}</pre>
             </details>
           )}
           {selection.onShowInEditor && (
             <button
               type="button"
               onClick={selection.onShowInEditor}
-              className="mt-2 flex items-center gap-1 rounded border border-panel-border px-2 py-0.5 text-xs hover:bg-accent"
+              className="mt-2 flex items-center gap-1 rounded-sm border border-panel-border px-2 py-0.5 text-xs hover:bg-accent"
             >
               <Crosshair className="h-3.5 w-3.5" aria-hidden /> Show in the editor
             </button>

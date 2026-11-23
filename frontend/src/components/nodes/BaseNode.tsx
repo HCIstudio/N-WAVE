@@ -29,7 +29,7 @@ import type { FileEncoding } from "../../utils/fileContent";
 
 /** A port's label: one line on node hover, above the others when its port is hovered. */
 const PORT_LABEL_CLASS =
-  "absolute top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 group-hover/port:z-20 transition-opacity bg-white px-1 py-px rounded shadow-sm border z-10";
+  "absolute top-1/2 -translate-y-1/2 whitespace-nowrap pointer-events-none opacity-0 group-hover:opacity-100 group-hover/port:z-20 transition-opacity bg-white px-1 py-px rounded-sm shadow-xs border z-10";
 /** What a port takes or gives, shown only while its port is hovered. */
 const PORT_DETAIL_CLASS = "hidden text-[10px] leading-tight text-gray-400 group-hover/port:block";
 
@@ -408,7 +408,7 @@ const BaseNode = ({
             )}
           />
           {armTarget && (
-            <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded border border-fuchsia-400 bg-white px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-800 shadow-sm">
+            <div className="pointer-events-none absolute -top-7 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-sm border border-fuchsia-400 bg-white px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-800 shadow-xs">
               Into the {armLabel(armDrag?.arm ?? "")} arm
             </div>
           )}
@@ -437,7 +437,7 @@ const BaseNode = ({
           aria-label={`${problemLevel === "error" ? "Problem" : "Warning"}: ${problems.map((problem) => problem.message).join(" ")}`}
           title={problems.map((problem) => problem.message).join("\n")}
           className={clsx(
-            "absolute -top-3 -left-3 flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-full border px-1 text-[10px] font-semibold shadow-sm",
+            "absolute -top-3 -left-3 flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-full border px-1 text-[10px] font-semibold shadow-xs",
             problemLevel === "error"
               ? "border-red-500 bg-red-100 text-red-700"
               : "border-yellow-500 bg-yellow-100 text-yellow-800",
@@ -462,7 +462,7 @@ const BaseNode = ({
             .join("\nand ")}`}
           data-runs={conditions.runs === null ? "unknown" : String(conditions.runs)}
           className={clsx(
-            "absolute -top-3 -right-3 flex h-6 items-center gap-0.5 rounded-full border px-1.5 text-[10px] font-semibold shadow-sm",
+            "absolute -top-3 -right-3 flex h-6 items-center gap-0.5 rounded-full border px-1.5 text-[10px] font-semibold shadow-xs",
             conditions.runs === false ? "border-gray-400 bg-gray-100 text-gray-600" : "border-sky-500 bg-sky-50 text-sky-800",
           )}
         >
@@ -485,7 +485,7 @@ const BaseNode = ({
                 : "Double-click to see what this step produced"
           }
           className={clsx(
-            "absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-sm",
+            "absolute left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium shadow-xs",
             // Below the stack of a node with steps inside.
             hasStepsInside ? "-bottom-7" : "-bottom-3",
             "inline-flex items-center gap-1",

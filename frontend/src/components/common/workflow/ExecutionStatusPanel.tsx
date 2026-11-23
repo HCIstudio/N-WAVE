@@ -226,7 +226,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
     <button
       type="button"
       onClick={onClose}
-      className="text-white hover:text-gray-200 transition-colors p-0.5 rounded hover:bg-white/20"
+      className="text-white hover:text-gray-200 transition-colors p-0.5 rounded-sm hover:bg-white/20"
       title="Close panel"
       aria-label="Close run panel"
     >
@@ -381,7 +381,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
                 type="button"
                 onClick={onCancel}
                 disabled={!canCancel}
-                className="rounded px-2 py-0.5 text-sm text-white ring-1 ring-white/60 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-sm px-2 py-0.5 text-sm text-white ring-1 ring-white/60 transition-colors hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-50"
                 title="Stop the run, its tasks and containers"
               >
                 Cancel run
@@ -391,7 +391,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               <button
                 type="button"
                 onClick={() => onMinimizedChange(true)}
-                className="rounded p-0.5 text-white transition-colors hover:bg-white/20 hover:text-gray-200"
+                className="rounded-sm p-0.5 text-white transition-colors hover:bg-white/20 hover:text-gray-200"
                 aria-label="Minimize run panel"
                 title="Minimize run panel"
               >
@@ -401,7 +401,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
             <button
               type="button"
               onClick={() => setMaximized((value) => !value)}
-              className="rounded p-0.5 text-white transition-colors hover:bg-white/20 hover:text-gray-200"
+              className="rounded-sm p-0.5 text-white transition-colors hover:bg-white/20 hover:text-gray-200"
               aria-label={maximized ? "Restore panel size" : "Maximize panel"}
               title={maximized ? "Restore panel size" : "Maximize panel"}
             >
@@ -427,7 +427,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
               role="tab"
               aria-selected={tab === item.id}
               onClick={() => onTabChange?.(item.id)}
-              className={`rounded-t px-3 py-1.5 text-sm ${
+              className={`rounded-t-sm px-3 py-1.5 text-sm ${
                 tab === item.id
                   ? "border border-b-0 border-gray-300 bg-white font-semibold text-gray-900"
                   : "text-gray-700 hover:bg-gray-100"
@@ -696,7 +696,7 @@ const ExecutionStatusPanel: React.FC<ExecutionStatusPanelProps> = ({
 
                   {/* Error message */}
                   {nodeStatus.status === "error" && nodeStatus.error && (
-                    <div className="text-xs text-red-600 mt-1 bg-red-50 p-1 rounded">
+                    <div className="text-xs text-red-600 mt-1 bg-red-50 p-1 rounded-sm">
                       {nodeStatus.error}
                     </div>
                   )}

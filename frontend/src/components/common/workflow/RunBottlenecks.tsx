@@ -174,7 +174,7 @@ const LimitTimeline: React.FC<{ insight: RunInsight }> = ({ insight }) => {
               {step.segments.map((segment) => (
                 <div
                   key={`${segment.from}-${limitKey(segment.limit)}`}
-                  className="absolute top-0 h-3 rounded-sm"
+                  className="absolute top-0 h-3 rounded-xs"
                   title={`${(segment.to - segment.from).toFixed(1)} s`}
                   style={{
                     left: `${(segment.from / span) * 100}%`,
@@ -185,7 +185,7 @@ const LimitTimeline: React.FC<{ insight: RunInsight }> = ({ insight }) => {
               ))}
               {/* Measured: thin and grey, below. */}
               <div
-                className="absolute top-4 h-1 rounded-sm bg-gray-400"
+                className="absolute top-4 h-1 rounded-xs bg-gray-400"
                 style={{
                   left: `${(step.measured.start / span) * 100}%`,
                   width: `max(2px, ${((step.measured.end - step.measured.start) / span) * 100}%)`,
@@ -237,12 +237,12 @@ const RunBottlenecks: React.FC<{
       <ul aria-label="Limits" className="flex flex-wrap gap-3 text-xs text-gray-700">
         {Object.entries(LIMIT_COLOURS).map(([key, { colour, label }]) => (
           <li key={key} className="inline-flex items-center gap-1">
-            <span className="inline-block h-2 w-3 rounded-sm" style={{ background: colour }} />
+            <span className="inline-block h-2 w-3 rounded-xs" style={{ background: colour }} />
             {label}
           </li>
         ))}
         <li className="inline-flex items-center gap-1">
-          <span className="inline-block h-1 w-3 rounded-sm bg-gray-400" />
+          <span className="inline-block h-1 w-3 rounded-xs bg-gray-400" />
           measured
         </li>
       </ul>
@@ -256,7 +256,7 @@ const RunBottlenecks: React.FC<{
             type="button"
             onClick={() => onShowChain(shownChain ? null : insight.chain)}
             aria-pressed={shownChain}
-            className="rounded border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100"
+            className="rounded-sm border border-gray-300 bg-white px-2 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100"
           >
             {shownChain ? "Hide the chain on the canvas" : "Show the chain on the canvas"}
           </button>

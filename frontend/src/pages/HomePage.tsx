@@ -57,7 +57,7 @@ const DEMO_WORKFLOW_ID = "builtin:demo-basic";
 
 const HEADER_BUTTON = "inline-flex items-center gap-2 rounded-lg border border-accent px-4 py-2 text-sm font-medium text-nextflow-green hover:bg-accent transition-colors";
 const FOOTER_LINK = "underline-offset-2 hover:text-text hover:underline";
-const LOGO_LINK = "shrink-0 rounded-md bg-white px-3 py-2 shadow-sm ring-1 ring-black/5 transition-shadow hover:shadow-md";
+const LOGO_LINK = "shrink-0 rounded-md bg-white px-3 py-2 shadow-xs ring-1 ring-black/5 transition-shadow hover:shadow-md";
 
 
 const PILL_CLASS =
@@ -492,7 +492,7 @@ const HomePage: React.FC = () => {
               <button
                 type="button"
                 onClick={(e) => handleEditClick(e, wf)}
-                className="rounded p-1 text-text-light hover:bg-background hover:text-white"
+                className="rounded-sm p-1 text-text-light hover:bg-background hover:text-white"
                 aria-label="Edit"
                 title="Rename, or change the description"
               >
@@ -505,7 +505,7 @@ const HomePage: React.FC = () => {
               type="button"
               onClick={(e) => handleDuplicate(e, wf._id)}
               disabled={pendingAction !== null}
-              className="rounded p-1 text-text-light hover:bg-background hover:text-white disabled:cursor-wait"
+              className="rounded-sm p-1 text-text-light hover:bg-background hover:text-white disabled:cursor-wait"
               aria-label="Duplicate"
               title="Make a copy of your own"
             >
@@ -516,7 +516,7 @@ const HomePage: React.FC = () => {
             <button
               type="button"
               onClick={(e) => handleDeleteClick(e, wf._id)}
-              className="rounded p-1 text-text-light hover:bg-background hover:text-red-500"
+              className="rounded-sm p-1 text-text-light hover:bg-background hover:text-red-500"
               aria-label="Delete"
               title="Delete"
             >
@@ -544,7 +544,7 @@ const HomePage: React.FC = () => {
                   e.preventDefault();
                   e.stopPropagation();
                 }}
-                className="text-lg font-semibold bg-transparent border border-gray-600 rounded-md text-nextflow-green focus:outline-none focus:border-nextflow-green focus:ring-1 focus:ring-nextflow-green w-full resize-none overflow-hidden p-2"
+                className="text-lg font-semibold bg-transparent border border-gray-600 rounded-md text-nextflow-green focus:outline-hidden focus:border-nextflow-green focus:ring-1 focus:ring-nextflow-green w-full resize-none overflow-hidden p-2"
                 rows={1}
               />
             </div>
@@ -557,7 +557,7 @@ const HomePage: React.FC = () => {
                 e.preventDefault();
                 e.stopPropagation();
               }}
-              className="text-sm bg-transparent border border-gray-600 rounded-md text-text focus:outline-none focus:border-nextflow-green focus:ring-1 focus:ring-nextflow-green w-full mt-2 resize-none overflow-hidden p-2"
+              className="text-sm bg-transparent border border-gray-600 rounded-md text-text focus:outline-hidden focus:border-nextflow-green focus:ring-1 focus:ring-nextflow-green w-full mt-2 resize-none overflow-hidden p-2"
               rows={1}
               placeholder="Add a description..."
             />
@@ -605,7 +605,7 @@ const HomePage: React.FC = () => {
         <div
           ref={editingCardRef}
           key={wf._id}
-          className="group relative block bg-accent rounded-lg shadow-sm p-4"
+          className="group relative block bg-accent rounded-lg shadow-xs p-4"
         >
           {cardContent}
         </div>
@@ -616,7 +616,7 @@ const HomePage: React.FC = () => {
       <Link
         key={wf._id}
         to={`/workflow/${wf._id}`}
-        className="group relative flex flex-col bg-accent rounded-lg shadow-sm hover:shadow-md transition-shadow p-4"
+        className="group relative flex flex-col bg-accent rounded-lg shadow-xs hover:shadow-md transition-shadow p-4"
       >
         {cardContent}
       </Link>
