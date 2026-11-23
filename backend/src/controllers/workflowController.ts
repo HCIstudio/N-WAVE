@@ -13,6 +13,10 @@ import {
 import { atRevision, revisionOf, withNextRevision } from "../workflows/revisions";
 
 /** 500, with what went wrong while `doing` it. */
+/** The workflow id in the URL (`/:id`). */
+const idParam = (req: Request): string | undefined =>
+  typeof req.params.id === "string" ? req.params.id : undefined;
+
 const serverError = (res: Response, doing: string, error: unknown, logged: string): void => {
   console.error(logged, error);
   res.status(500).json({ message: `Server error while ${doing}`, error: getErrorMessage(error) });
@@ -47,12 +51,13 @@ export const saveWorkflow = async (req: Request, res: Response): Promise<void> =
 
 export const getWorkflowById = async (req: Request, res: Response): Promise<void> => {
   try {
-    const builtinWorkflow = req.params.id ? getBuiltinWorkflowById(req.params.id) : null;
+    const id = idParam(req);
+    const builtinWorkflow = id ? getBuiltinWorkflowById(id) : null;
     if (builtinWorkflow) {
       res.status(200).json(builtinWorkflow);
       return;
     }
-    const workflowId = storedWorkflowId(req.params.id, res);
+    const workflowId = storedWorkflowId(idParam(req), res);
     if (!workflowId) return;
     const workflow: IWorkflow | null = await WorkflowModel.findById(workflowId);
     if (!workflow) {
@@ -61,7 +66,7 @@ export const getWorkflowById = async (req: Request, res: Response): Promise<void
     }
     res.status(200).json(toWorkflowDescriptor(workflow));
   } catch (error: unknown) {
-    serverError(res, "fetching workflow", error, `Error fetching workflow by ID ${req.params.id}:`);
+    serverError(res, "fetching workflow", error, `Error fetching workflow by ID ${idParam(req)}:`);
   }
 };
 
@@ -78,8 +83,8 @@ export const updateWorkflow = async (req: Request, res: Response): Promise<void>
   const body = parseBody(updateWorkflowSchema, req, res);
   if (!body) return;
   try {
-    if (refuseBuiltin(req.params.id, res, "are read-only")) return;
-    const workflowId = storedWorkflowId(req.params.id, res);
+    if (refuseBuiltin(idParam(req), res, "are read-only")) return;
+    const workflowId = storedWorkflowId(idParam(req), res);
     if (!workflowId) return;
     const { name, description, nodes, edges, executionSettings, baseRevision } = body;
 
@@ -115,14 +120,14 @@ export const updateWorkflow = async (req: Request, res: Response): Promise<void>
     }
     res.status(200).json(toWorkflowDescriptor(updatedWorkflow));
   } catch (error: unknown) {
-    serverError(res, "updating workflow", error, `Error updating workflow ${req.params.id}:`);
+    serverError(res, "updating workflow", error, `Error updating workflow ${idParam(req)}:`);
   }
 };
 
 export const deleteWorkflow = async (req: Request, res: Response): Promise<void> => {
   try {
-    if (refuseBuiltin(req.params.id, res, "cannot be deleted")) return;
-    const workflowId = storedWorkflowId(req.params.id, res);
+    if (refuseBuiltin(idParam(req), res, "cannot be deleted")) return;
+    const workflowId = storedWorkflowId(idParam(req), res);
     if (!workflowId) return;
     const deletedWorkflow: IWorkflow | null = await WorkflowModel.findByIdAndDelete(workflowId);
     if (!deletedWorkflow) {
@@ -131,7 +136,7 @@ export const deleteWorkflow = async (req: Request, res: Response): Promise<void>
     }
     res.status(200).json({ message: "Workflow deleted successfully" });
   } catch (error: unknown) {
-    serverError(res, "deleting workflow", error, `Error deleting workflow ${req.params.id}:`);
+    serverError(res, "deleting workflow", error, `Error deleting workflow ${idParam(req)}:`);
   }
 };
 
@@ -155,7 +160,8 @@ const copyOf = (
 
 export const duplicateWorkflow = async (req: Request, res: Response): Promise<void> => {
   try {
-    const builtinWorkflow = req.params.id ? getBuiltinWorkflowById(req.params.id) : null;
+    const id = idParam(req);
+    const builtinWorkflow = id ? getBuiltinWorkflowById(id) : null;
     let copy: InstanceType<typeof WorkflowModel>;
     if (builtinWorkflow) {
       copy = copyOf(builtinWorkflow as unknown as IWorkflow, {
@@ -164,7 +170,7 @@ export const duplicateWorkflow = async (req: Request, res: Response): Promise<vo
         sourceKey: builtinWorkflow.origin.sourceKey ?? builtinWorkflow._id,
       });
     } else {
-      const workflowId = storedWorkflowId(req.params.id, res);
+      const workflowId = storedWorkflowId(idParam(req), res);
       if (!workflowId) return;
       const workflow: IWorkflow | null = await WorkflowModel.findById(workflowId);
       if (!workflow) {
@@ -179,6 +185,6 @@ export const duplicateWorkflow = async (req: Request, res: Response): Promise<vo
     }
     res.status(201).json(toWorkflowDescriptor(await copy.save()));
   } catch (error: unknown) {
-    serverError(res, "duplicating workflow", error, `Error duplicating workflow ${req.params.id}:`);
+    serverError(res, "duplicating workflow", error, `Error duplicating workflow ${idParam(req)}:`);
   }
 };

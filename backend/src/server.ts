@@ -21,7 +21,12 @@ const PORT = Number(process.env.PORT) || 5001;
 // frontend container can reach it; its published ports stay on 127.0.0.1.
 const HOST = process.env.HOST || "127.0.0.1";
 
-const server = app.listen(PORT, HOST, () => {
+const server = app.listen(PORT, HOST, (error?: Error) => {
+  // Express 5 hands a failure to listen (the port is taken) to this callback.
+  if (error) {
+    console.error(`Could not listen on http://${HOST}:${PORT}: ${error.message}`);
+    process.exit(1);
+  }
   console.log(`Server running on http://${HOST}:${PORT}`);
 });
 
