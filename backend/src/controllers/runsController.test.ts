@@ -75,6 +75,37 @@ describe("run files behind symlinks", () => {
   });
 });
 
+describe("a run in a folder whose path has a dot folder (~/.nwave/runs)", () => {
+  let root: string;
+  beforeEach(() => {
+    root = fs.mkdtempSync(path.join(os.tmpdir(), "nwave-dotted-"));
+    vi.stubEnv("NWAVE_DATA_DIR", path.join(root, "data"));
+    const runDir = path.join(root, ".nwave/runs/run1");
+    const workDir = path.join(runDir, "nextflow/work/1f/9a15a4aa");
+    fs.mkdirSync(workDir, { recursive: true });
+    fs.mkdirSync(path.join(runDir, "results"), { recursive: true });
+    fs.writeFileSync(path.join(workDir, "out.txt"), "output");
+    fs.writeFileSync(path.join(runDir, "results/out.txt"), "result");
+    fs.writeFileSync(path.join(runDir, "results/.hidden"), "hidden");
+    fs.writeFileSync(path.join(runDir, "nextflow/.nextflow.log"), "[1f/9a15a4] Submitted process > HELLO (1)\n");
+    recordRun("dotted_1", runDir);
+  });
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  it("serves its results and its tasks' files", async () => {
+    // Express 5's sendFile refuses any path with a dot folder in it, unless told otherwise.
+    const result = await request(app).get("/api/execute/runs/dotted_1/results/out.txt").expect(200);
+    expect(result.text).toBe("result");
+    const task = await request(app).get("/api/execute/runs/dotted_1/tasks/1f/9a15a4/output/out.txt").expect(200);
+    expect(task.text).toBe("output");
+    // As before, not a file whose own name starts with a dot.
+    await request(app).get("/api/execute/runs/dotted_1/results/.hidden").expect(404);
+  });
+});
+
 describe("following a run's log", () => {
   let root: string;
   beforeEach(() => {
