@@ -1,6 +1,6 @@
 {
   "name": "n-wave-backend",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "description": "N-WAVE: Nextflow Workflow Authoring and Visualization Environment. A web interface for your scientific workflows.",
   "main": "dist/server.js",
   "scripts": {
@@ -38,7 +38,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.6.6",
+    "@biomejs/biome": "2.6.8",
     "@types/cors": "^2.8.18",
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.5",
