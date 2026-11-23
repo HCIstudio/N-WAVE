@@ -8,7 +8,7 @@
  "dsl": "DSL2",
  "error": {
   "code": "ewlsif",
-  "message": "Nextflow's parser found an error in the code.",
+  "message": "Nextflow's parser found an error in the code. It is stricter than the Nextflow that runs workflows, so the workflow may still run.",
   "file": "main.nf"
  },
  "notes": [

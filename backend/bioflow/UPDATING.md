@@ -50,7 +50,8 @@ diff -ru old new | less
    the package itself. The package's numpy pin decides the Python version.
 6. **Every difference in the output.** Build the image and run the contract
    tests (README.md, "Tests"). Each changed line is explained: a fix (good),
-   a regression (report upstream, don't merge), or a change in format that
+   a regression (don't merge: stay on the old version, or work around it in
+   `analyse.py`), or a change in format that
    `analyse.py` has to translate back. Only then record the new outputs with
    `--update`, in the same pull request.
 7. **The cross-check.** `scripts/bioflow-cross-check.sh` with the new image.
@@ -64,8 +65,9 @@ diff -ru old new | less
 
 Write what you found in the pull request, one line per point.
 
-## Upstream
+## Their code
 
-What the checks find in the package goes to its authors as an issue or a
-contribution: patterns it doesn't read, differences the cross-check finds,
-and the gaps `analyse.py` works around (README.md, "Known gaps").
+N-WAVE uses the package as published, without changes. What the checks
+find stays here: gaps `analyse.py` works around go into README.md ("Known
+gaps"), differences the cross-check finds into `knownDifferences.json`. If a gap ever can't be worked around, the
+package's license (MIT) allows a fork of our own.

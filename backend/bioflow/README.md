@@ -64,7 +64,7 @@ addresses, no paths outside the project.
   "tool": { "name": "BioFlow-Insight", "version": "2.1.1", "engine": "nls" },
   "dsl": "DSL2",
   // The error BioFlow-Insight (or Nextflow's parser) found in the code, or null.
-  "error": { "code": "ewlsif", "message": "Nextflow's parser found an error in the code.", "file": "main.nf" },
+  "error": { "code": "ewlsif", "message": "Nextflow's parser found an error in the code. It is stricter than …", "file": "main.nf" },
   "notes": [],
   // Processes as called: one step per call, in the subworkflow it's called in.
   "steps": [
@@ -111,7 +111,7 @@ and its code; a subworkflow by its name and file.
 
 ## Known gaps in 2.1.1
 
-What `analyse.py` works around, to report upstream:
+What `analyse.py` works around (N-WAVE keeps this list; it doesn't change their code):
 
 - With Nextflow's parser, processes have no name (`get_name()` is empty) and
   subworkflow calls lose their alias. `analyse.py` reads the name from the

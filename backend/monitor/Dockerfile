@@ -3,7 +3,7 @@
 # https://github.com/CRC-FONDA/workflow-monitoring at a pinned commit: their
 # eBPF programs (bpf/fileaccess.py, bpf/cgroup_informer.py) with BCC built as
 # their bpf/Dockerfile.24.04 does. N-WAVE adds only its entrypoint, and one
-# patch for kernels from 6.13 on (patches/, offered back to the authors).
+# patch for kernels from 6.13 on (patches/).
 #
 # Each release publishes it as hcistudio/nwave-iomonitor:<version>; N-WAVE
 # downloads it when the monitor is switched on. To build it from this checkout:

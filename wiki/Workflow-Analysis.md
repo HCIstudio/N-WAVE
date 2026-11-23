@@ -111,8 +111,10 @@ and the other files of an imported project. BioFlow-Insight finds:
 
 Nextflow's own parser (the language server, part of BioFlow-Insight) reads the code first.
 When it finds an error, the analysis says so, and BioFlow-Insight's own parser reads the
-structure as far as it can. Code that includes Nextflow plugins can't be checked this way
-(the analysis has no network to look the plugins up); the analysis says that instead.
+structure as far as it can. Like lint, this parser is stricter than the Nextflow that runs
+workflows: code it rejects may still run. Code that includes Nextflow plugins can't be
+checked this way (the analysis has no network to look the plugins up); the analysis says that
+instead.
 
 ## Nothing leaves your installation
 
@@ -149,7 +151,7 @@ N-WAVE works as before.
   pinned and checked by hash.
 - Tests compare the analysis of fixed projects with recorded results, and compare the
   connections it finds with those of N-WAVE's own importer for every example; differences
-  are listed and reported to the tool they concern.
+  are listed, with what N-WAVE does about them.
 - New versions are checked by hand before N-WAVE takes them
   ([UPDATING.md](https://github.com/HCIstudio/N-WAVE/blob/main/backend/bioflow/UPDATING.md)).
 
