@@ -27,11 +27,21 @@ import {
 import { getErrorMessage } from "../utils/errors";
 import { workflowCacheQuerySchema } from "../validation/schemas";
 
+/**
+ * Sends a file of a run, which the caller has checked is inside it. Express 5
+ * refuses a path with a dot folder anywhere in it (a runs folder under
+ * ~/.nwave); like Express 4, only a file whose own name starts with a dot is
+ * refused.
+ */
+const sendRunFile = (res: Response, file: string): void => {
+  res.sendFile(file, { dotfiles: path.basename(file).startsWith(".") ? "ignore" : "allow" });
+};
+
 /** HTML reports (MultiQC) run their scripts, but without access to this origin. */
 const sendSandboxed = (res: Response, file: string): void => {
   res.setHeader("Content-Security-Policy", "sandbox allow-scripts allow-popups");
   res.setHeader("X-Content-Type-Options", "nosniff");
-  res.sendFile(file);
+  sendRunFile(res, file);
 };
 
 /**
@@ -39,8 +49,9 @@ const sendSandboxed = (res: Response, file: string): void => {
  * so a report's relative links reach its sibling files) or `?path=`.
  */
 const requestedPath = (req: Request): string => {
-  const fromUrl = (req.params as Record<string, string | undefined>)[0];
-  if (typeof fromUrl === "string" && fromUrl) return fromUrl;
+  // Express 5 gives a wildcard's path as its segments, each decoded.
+  const fromUrl = req.params.path;
+  if (Array.isArray(fromUrl) && fromUrl.length > 0) return fromUrl.join("/");
   return typeof req.query.path === "string" ? req.query.path : "";
 };
 
@@ -153,7 +164,8 @@ export const getRunReport = (req: Request, res: Response): void => {
     return;
   }
   if (kind === "trace") {
-    res.type("text/plain").sendFile(real);
+    res.type("text/plain");
+    sendRunFile(res, real);
     return;
   }
   sendSandboxed(res, real);

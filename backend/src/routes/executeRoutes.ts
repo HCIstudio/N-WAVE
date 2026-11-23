@@ -41,7 +41,7 @@ router.delete("/caches", deleteAllCaches);
 router.get("/runs/:id/log", getRunLog);
 router.get("/runs/:id/files", listRunResultFiles);
 // Path-style, so a served report's relative links (report_files/x.png) work.
-router.get("/runs/:id/results/*", getRunResultFile);
+router.get("/runs/:id/results/*path", getRunResultFile);
 router.get("/runs/:id/tasks", listRunTasks);
 router.get("/runs/:id/reports", listRunReports);
 router.get("/runs/:id/reports/:kind", getRunReport);
@@ -51,6 +51,6 @@ router.get("/runs/:id/accesses", getRunAccesses);
 router.get("/io-monitor", getIoMonitor);
 router.get("/runs/:id/tasks/:prefix/:rest/files", listRunTaskFiles);
 router.get("/runs/:id/tasks/:prefix/:rest/file", getRunTaskFile);
-router.get("/runs/:id/tasks/:prefix/:rest/output/*", getRunTaskFile);
+router.get("/runs/:id/tasks/:prefix/:rest/output/*path", getRunTaskFile);
 
 export default router;
