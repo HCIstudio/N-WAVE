@@ -27,9 +27,9 @@ const nodeCode = async (page: Page) => {
   await expect(process).toContainText(/process \w+ \{/);
   const mask = (text: string) => text.replace(/_node_\d+/g, "_node_<id>");
   const code = {
-    process: mask(await process.innerText()),
+    process: mask((await process.textContent()) ?? ""),
     workflow: mask(
-      await page.getByLabel("Workflow code", { exact: true }).innerText()
+      (await page.getByLabel("Workflow code", { exact: true }).textContent()) ?? ""
     ),
   };
   await page.getByRole("button", { name: "Close Panel" }).first().click();

@@ -6,7 +6,7 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 
 const packageJson = JSON.parse(
-  readFileSync(resolve(__dirname, "package.json"), "utf-8")
+  readFileSync(resolve(import.meta.dirname, "package.json"), "utf-8")
 ) as { version?: string };
 
 const resolveGitSha = () => {
@@ -52,7 +52,7 @@ const gitSha = resolveGitSha();
 const basePath = process.env.VITE_BASE_PATH?.trim() || "/";
 
 // Long-lived vendor chunks, split from app code so they stay cached across
-// releases. Everything else is chunked by Rollup along the lazy route imports
+// releases. Everything else is chunked by Rolldown along the lazy route imports
 // in src/main.tsx.
 const vendorChunks: Record<string, RegExp> = {
   "vendor-react":
@@ -66,7 +66,7 @@ export default defineConfig({
   base: basePath,
   plugins: [react(), tailwindcss()],
   build: {
-    rollupOptions: {
+    rolldownOptions: {
       output: {
         manualChunks(id) {
           for (const [chunk, pattern] of Object.entries(vendorChunks)) {
