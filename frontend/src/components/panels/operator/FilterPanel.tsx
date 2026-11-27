@@ -65,7 +65,7 @@ const FilterPanel: React.FC<FilterPanelProps> = ({ node, onSave }) => {
 
   return (
     <div className="space-y-3">
-      <OperatorHeader title="Filter" />
+      <OperatorHeader title="Filter lines" channelAlternative="filter" />
       <div className="space-y-2 mb-4">
         <h3 className="text-md font-semibold text-text border-b border-accent pb-2">
           File Selection

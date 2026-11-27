@@ -253,7 +253,7 @@ const checkWorkflowWide = (
     problems.push({
       id: `extra:${node.id}:${handle}`,
       level: "error",
-      message: `“${label}” takes one connection on “${inputLabel(node, handle)}” but has ${count}. Connect them to a Merge node (or mix them in a channel operator) and connect that instead.`,
+      message: `“${label}” takes one connection on “${inputLabel(node, handle)}” but has ${count}. Mix them in a Channel Operator (or join text files into one with Join files) and connect that instead.`,
       nodeId: node.id,
     });
   }

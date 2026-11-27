@@ -34,9 +34,9 @@ const MergePanel: React.FC<{
 
   return (
     <div className="space-y-3">
-      <OperatorHeader title="Merge" />
+      <OperatorHeader title="Join files" channelAlternative="collect, mix" />
       <SelectField
-        label="Merge"
+        label="How"
         id="mergeOperation"
         name="mergeOperation"
         value={mergeOperation}

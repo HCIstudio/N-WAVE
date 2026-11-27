@@ -2,8 +2,9 @@ Every node from the **+** (*Add node*) menu, by kind. Double-click a node to ope
 **Settings**, **Code** (the Nextflow it adds) and **Results** (what its tasks produced in the
 last run). Every node also has a **Label**.
 
-**Kinds:** [Inputs](#inputs) · [Operators](#operators) · [nf-core steps](#nf-core-steps) ·
-[Custom steps](#custom-steps) · [Output](#output) · [Note](#note)
+**Kinds:** [Inputs](#inputs) · [Operators](#operators) · [Text files](#text-files) ·
+[nf-core steps](#nf-core-steps) · [Custom steps](#custom-steps) ·
+[Branches](#branches-if--else-if--else) · [Output](#output) · [Note](#note)
 
 ## Inputs
 
@@ -31,28 +32,54 @@ file is an output to connect; its value is an uploaded file name, a path or a UR
 
 ## Operators
 
-### Filter
-
-Keeps the lines of text files that match **Filter Text**: **Contains**, **Starts With**,
-**Ends With** or **Matches (Regex)**; upper and lower case count as different. **Negate**
-keeps the other lines. **File Selection** limits it to some of the incoming files (none ticked: all).
-
-### Map
-
-Changes text: **Change Case** (upper or lower case) or **Replace Text** (**Find** →
-**Replace With**).
-
-### Merge
-
-Joins the files it receives into one, with a **Separator** between them. Its input takes any
-number of connections.
-
 ### Channel Operator
 
 Nextflow channel code between nodes, for what plain connections can't do: join a BAM with its
-index by sample, mix reports for MultiQC, branch, combine, group or collect. Start from a
-**Template** and edit the **Channel code**; it reads `input.<port>` and assigns
-`output.<port>`. The ports are set in **Inputs** and **Outputs**.
+index by sample, mix reports for MultiQC, filter samples, branch, combine, group or collect. It
+runs no tool: the code is part of the workflow, and costs no task. Start from a **Template** and
+edit the **Channel code**; it reads `input.<port>` and assigns `output.<port>`. The ports are
+set in **Inputs** and **Outputs**.
+
+There is a template for each of Nextflow's
+[channel operators](https://www.nextflow.io/docs/latest/reference/operator.html), most written
+for samplesheet rows (`[ meta, files ]`):
+
+| Group | Operators |
+| --- | --- |
+| Filtering | `filter`, `unique`, `distinct`, `first`, `last`, `take`, `randomSample`, `until` |
+| Transforming | `map`, `flatMap`, `flatten`, `transpose`, `groupTuple`, `buffer`, `collate`, `collect`, `toList`, `toSortedList`, `reduce`, `toInteger` |
+| Combining | `join`, `mix`, `concat`, `combine`, `cross`, `merge` (Nextflow advises against it: join by a key instead) |
+| Forking | `branch`, `multiMap`, `tap`, `set` |
+| Splitting files | `splitCsv`, `splitText`, `splitFasta`, `splitFastq`, `splitJson` |
+| Counting and maths | `count`, `countLines`, `countFasta`, `countFastq`, `countJson`, `min`, `max`, `sum` |
+| Other | `collectFile`, `ifEmpty`, `view`, `dump`, `subscribe` |
+
+## Text files
+
+Steps N-WAVE writes for you that work on the **contents of text files**, for small text
+workflows and the tutorial. Each runs as a process of its own, one task per file (with
+`grep`, `sed`/`tr` or `cat`), and its strip on the canvas says **Text step**. To filter,
+change or gather a channel's items without running anything, use a
+[Channel Operator](#channel-operator) instead: it is plain Nextflow and costs no task.
+
+### Filter lines
+
+Keeps the lines of text files that match **Filter Text**: **Contains**, **Starts With**,
+**Ends With** or **Matches (Regex)**; upper and lower case count as different. **Negate**
+keeps the other lines. **File Selection** limits it to some of the incoming files (none
+ticked: all); that part is a channel `filter` by file name, before the step. For a channel's
+items, use the Channel Operator's `filter`.
+
+### Change text
+
+Changes the text in files: **Change Case** (upper or lower case) or **Replace Text**
+(**Find** → **Replace With**). For a channel's items, use the Channel Operator's `map`.
+
+### Join files
+
+Joins the text files it receives into one, with a **Separator** between them. Its input
+takes any number of connections. To gather a channel's items without joining files, use the
+Channel Operator's `collect` or `mix`.
 
 ## nf-core steps
 

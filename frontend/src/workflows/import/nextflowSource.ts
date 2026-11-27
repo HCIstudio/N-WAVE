@@ -441,7 +441,7 @@ export const readIncludeItem = (text: string): Array<{ name: string; alias: stri
 
 const IDENTIFIER = /[A-Za-z_][A-Za-z0-9_]*/g;
 
-/** Variables a statement defines: `x = …`, `(a, b) = …`, `.set { x }`. */
+/** Variables a statement defines: `x = …`, `(a, b) = …`, `.set { x }`, `.tap { x }`. */
 export const definedNames = (statement: string): string[] => {
   const masked = maskSource(statement);
   const names: string[] = [];
@@ -449,7 +449,7 @@ export const definedNames = (statement: string): string[] => {
   if (single) names.push(single[1]);
   const tuple = masked.match(/^\s*(?:def\s+)?\(([^)]*)\)\s*=(?!=)/);
   if (tuple) names.push(...tuple[1].split(",").map((name) => name.trim()).filter((name) => /^\w+$/.test(name)));
-  for (const set of masked.matchAll(/\.set\s*\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}/g)) names.push(set[1]);
+  for (const set of masked.matchAll(/\.(?:set|tap)\s*\{\s*([A-Za-z_][A-Za-z0-9_]*)\s*\}/g)) names.push(set[1]);
   // `if (…) { ch = … } else { ch = … }`: what the branches assign (not `def`, which stays inside).
   if (/^\s*(if|try)\b/.test(masked)) {
     for (const assigned of masked.matchAll(/(?:^|\n|\{)\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)/g)) names.push(assigned[1]);

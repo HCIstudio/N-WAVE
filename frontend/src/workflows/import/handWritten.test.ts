@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import { generateNextflowScript } from "../../generators/core/generateNextflowScript";
 import { buildProjectFiles } from "../../export/exportProject";
+import { getNodeCode } from "../../registry/nodeCode";
 import { importNextflowScript } from "./importScript";
 import { blockBody, maskSource, topLevelItems } from "./nextflowSource";
 
@@ -70,3 +71,32 @@ describe("a channel set in both branches of an if", () => {
   });
 });
 
+
+describe("tuple inputs that a call gives whole channels", () => {
+  const { imported } = roundTrip(scripts["./fixtures/tuples-from-channels.nf"]);
+  const node = (label: string) => imported.nodes.find((candidate) => candidate.data.label === label);
+  const ports = (label: string) => (node(label)?.data.inputs ?? []).map((port) => `${port.name}: ${port.label}`);
+
+  it("are one port each, whatever their fields: values only, values and files, a file and a value", () => {
+    expect(ports("SCORE")).toEqual(["tuple_1: site, band"]);
+    expect(ports("COMPARE")).toEqual(["a: A"]);
+    expect(ports("REPORT")).toEqual(["diff: Diff"]);
+    // None of their fields is a setting: they come with the channel's items.
+    for (const label of ["SCORE", "COMPARE", "REPORT"]) expect(node(label)?.data.customNodeValues).toEqual({});
+  });
+
+  it("are connected to existing ports, and their steps show their code", () => {
+    for (const edge of imported.edges) {
+      const source = imported.nodes.find((candidate) => candidate.id === edge.source);
+      const target = imported.nodes.find((candidate) => candidate.id === edge.target);
+      expect(source?.data.outputs?.map((port) => port.name), `${edge.source}.${edge.sourceHandle}`).toContain(edge.sourceHandle);
+      expect(target?.data.inputs?.map((port) => port.name), `${edge.target}.${edge.targetHandle}`).toContain(edge.targetHandle);
+    }
+    for (const step of imported.nodes) expect(getNodeCode(step), String(step.data.label)).not.toBeNull();
+  });
+
+  it("are written back with the filtered channel", () => {
+    const { script } = roundTrip(scripts["./fixtures/tuples-from-channels.nf"]);
+    expect(script).toMatch(/(\w+) = MEASURE\.out\.pairs\.filter \{ site, band -> band != "swir" \}\n\s*SCORE\(\1\)/);
+  });
+});

@@ -383,6 +383,24 @@ const channelInputs = (
       .filter((argument, index) => positions.has(index) && (argument.kind === "val" || (argument.kind === "tuple" && wholeTuples.has(index))))
       .map((argument) => argument.name),
   );
+  // A whole tuple is one port, named as its argument: its fields (values and
+  // files alike) come with each item of the channel, so none is a setting or a
+  // port of its own. A tuple of values only has no file to name it after
+  // (`tuple_1`): its port is labelled with its fields.
+  const tuples = parsed.arguments.filter((argument) => argument.kind === "tuple" && names.has(argument.name));
+  const portOf = new Map<string, (typeof tuples)[number]>();
+  for (const tuple of tuples) for (const field of tuple.fields) portOf.set(field.name, tuple);
+  const added = new Set<string>();
+  const inputs = parsed.inputs.flatMap((input) => {
+    const tuple = portOf.get(input.name);
+    if (!tuple) return [names.has(input.name) ? { name: input.name, kind: "path" as const, label: input.label } : input];
+    if (added.has(tuple.name)) return [];
+    added.add(tuple.name);
+    const label =
+      parsed.inputs.find((named) => named.name === tuple.name)?.label ??
+      tuple.fields.map((field) => field.name).join(", ");
+    return [{ name: tuple.name, kind: "path" as const, label }];
+  });
   return {
     ...parsed,
     arguments: parsed.arguments.map((argument) =>
@@ -390,11 +408,7 @@ const channelInputs = (
         ? { ...argument, kind: "path" as const, fields: argument.fields.map((field) => ({ ...field, kind: "path" as const })) }
         : argument,
     ),
-    inputs: parsed.inputs.map((input) =>
-      names.has(input.name)
-        ? { name: input.name, kind: "path" as const, label: input.label }
-        : input,
-    ),
+    inputs,
   };
 };
 

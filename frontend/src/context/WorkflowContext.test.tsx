@@ -98,7 +98,7 @@ describe("WorkflowContext", () => {
 
     act(() => result.current.updateNodeData("a", { mapChangeCase: "toLowerCase" }));
     expect(result.current.nodes[0].data).toEqual(
-      expect.objectContaining({ mapChangeCase: "toLowerCase", label: "Map" }),
+      expect.objectContaining({ mapChangeCase: "toLowerCase", label: "Change text" }),
     );
     expect(result.current.nodes[1]).toBe(before[1]);
     expect(result.current.isDirty).toBe(true);

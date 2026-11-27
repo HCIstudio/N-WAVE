@@ -54,7 +54,7 @@ The script reads like Nextflow written by hand:
   are named workflows (subworkflows) the workflow calls.
 - In a project, processes and named workflows are in `modules/local/` and
   `subworkflows/local/` and included from `main.nf`. Steps that use N-WAVE's helper functions
-  (Filter, Map) stay in `main.nf`, where those functions are.
+  (Filter lines, Change text) stay in `main.nf`, where those functions are.
 
 ## A workflow with an nf-core Pipeline node
 

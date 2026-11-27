@@ -68,7 +68,7 @@ describe("how many connections an input takes", () => {
     const filter = withId("f", makeNode("filter"));
     const existing = [edge("a", "f")];
     expect(connectionLimitMessage(connection("b", "f"), filter, existing)).toBe(
-      "“Filter” takes one connection. To combine several, connect them to a Merge node first, or mix them in a channel operator.",
+      "“Filter lines” takes one connection. To combine several, mix them in a Channel Operator first (or join text files into one with Join files).",
     );
     // The first connection, and reconnecting the same edge, are fine.
     expect(connectionLimitMessage(connection("a", "f"), filter, [])).toBeNull();
@@ -77,12 +77,12 @@ describe("how many connections an input takes", () => {
     expect(connectionLimitMessage(connection("b", "f"), filter, [{ ...edge("a", "f"), targetHandle: null }])).not.toBeNull();
   });
 
-  it("allows any number into Merge and names the input on nodes with several", () => {
+  it("allows any number into Join files and names the input on nodes with several", () => {
     const merge = withId("m", makeNode("merge"));
     expect(connectionLimitMessage(connection("b", "m"), merge, [edge("a", "m")])).toBeNull();
     expect(connectionLimitMessage(connection("x", "multiqc", "multiqc_files"), byId("multiqc"), starEdges)).toBeNull();
     expect(connectionLimitMessage(connection("x", "star_align", "index"), byId("star_align"), starEdges)).toBe(
-      "“STAR alignment” takes one connection on “Index”. To combine several, connect them to a Merge node first, or mix them in a channel operator.",
+      "“STAR alignment” takes one connection on “Index”. To combine several, mix them in a Channel Operator first (or join text files into one with Join files).",
     );
   });
 
@@ -112,8 +112,8 @@ describe("generated scripts", () => {
     const filter = withId("f", makeNode("filter"));
     const fileEdge = (source: string): Edge => ({ ...edge(source, "f"), sourceHandle: "ch_files_out" });
     const script = generateNextflowScript([input("a"), input("b"), filter], [fileEdge("a"), fileEdge("b")], "wf", "results", "{workflow_name}");
-    // A saved workflow with two connections into Filter: neither is dropped
-    // (the workflow check asks to merge them before a run).
-    expect(script).toContain("FILTER(ch_files.concat(ch_files_2))");
+    // A saved workflow with two connections into Filter lines: neither is dropped
+    // (the workflow check asks to mix them before a run).
+    expect(script).toContain("FILTER_LINES(ch_files.concat(ch_files_2))");
   });
 });

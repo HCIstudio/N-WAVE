@@ -23,7 +23,8 @@ export const NodeKindSwatch: React.FC<{ kind: NodeKind }> = ({ kind }) => {
         fill={filled ? color : "none"}
         stroke={color}
         strokeWidth={filled ? 0 : 1.5}
-        strokeDasharray={shape === "dashed" ? "2.5 1.5" : undefined}
+        strokeDasharray={shape === "dashed" ? "2.5 1.5" : shape === "dotted" ? "0 2.4" : undefined}
+        strokeLinecap={shape === "dotted" ? "round" : undefined}
       />
     </svg>
   );

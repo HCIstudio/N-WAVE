@@ -16,7 +16,7 @@ const MapPanel: React.FC<{
 
   return (
     <div className="space-y-3">
-      <OperatorHeader title="Map" />
+      <OperatorHeader title="Change text" channelAlternative="map" />
       <SelectField
         label="Transformation"
         id="mapOperation"

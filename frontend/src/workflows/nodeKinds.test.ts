@@ -11,11 +11,18 @@ describe("nodeKindOf", () => {
     ["pipeline", undefined, "nfcore"],
     ["process", "custom_tool", "custom"],
     ["operator", undefined, "operator"],
-    ["filter", undefined, "operator"],
+    ["filter", undefined, "text"],
     ["channelOperator", undefined, "operator"],
     ["outputDisplay", undefined, "output"],
   ])("puts a %s node (%s) among %s", (type, processType, kind) => {
     expect(nodeKindOf({ type, data: { processType } })).toBe(kind);
+  });
+
+  it("tells the text steps (Filter lines, Change text, Join files) from channel operators", () => {
+    for (const operatorType of ["filter", "map", "merge"]) {
+      expect(nodeKindOf({ type: "operator", data: { operatorType } })).toBe("text");
+    }
+    expect(nodeKindOf({ type: "channelOperator", data: { channelOperatorTemplate: "filter" } })).toBe("operator");
   });
 
   it("gives notes no kind", () => {

@@ -2,6 +2,7 @@ import type { Edge, Node } from "@xyflow/react";
 import { describe, expect, it } from "vitest";
 import { generateNextflowScript } from "../generators";
 import {
+  CHANNEL_OPERATOR_GROUPS,
   CHANNEL_OPERATOR_TEMPLATES,
   generateChannelOperatorNode,
   validateChannelOperator,
@@ -116,11 +117,39 @@ describe("channel operator templates", () => {
     },
   };
 
-  it("covers every template", () => {
-    expect(
-      CHANNEL_OPERATOR_TEMPLATES.map((template) => template.id).sort(),
-    ).toEqual(Object.keys(expected).sort());
+  it("has a template for each of Nextflow's channel operators (its operator reference, 25.10)", () => {
+    const operators = [
+      "branch", "buffer", "collate", "collect", "collectFile", "combine", "concat", "count",
+      "countFasta", "countFastq", "countJson", "countLines", "cross", "distinct", "dump", "filter",
+      "first", "flatMap", "flatten", "groupTuple", "ifEmpty", "join", "last", "map", "max", "merge",
+      "min", "mix", "multiMap", "randomSample", "reduce", "set", "splitCsv", "splitFasta",
+      "splitFastq", "splitJson", "splitText", "subscribe", "sum", "take", "tap", "toInteger",
+      "toList", "toSortedList", "transpose", "unique", "until", "view",
+    ];
+    expect(CHANNEL_OPERATOR_TEMPLATES.map((template) => template.id).sort()).toEqual([...operators].sort());
+    for (const template of CHANNEL_OPERATOR_TEMPLATES) {
+      expect(CHANNEL_OPERATOR_GROUPS, template.id).toContain(template.group);
+    }
+    // Only merge is advised against in the reference.
+    expect(CHANNEL_OPERATOR_TEMPLATES.filter((template) => template.discouraged).map((template) => template.id)).toEqual(["merge"]);
   });
+
+  for (const template of CHANNEL_OPERATOR_TEMPLATES) {
+    it(`generates the ${template.id} template with its operator, every port wired`, () => {
+      const issues = validateChannelOperator(template);
+      expect(issues.filter((issue) => issue.level === "error"), template.id).toEqual([]);
+      // Only subscribe passes nothing on.
+      expect(issues.map((issue) => issue.message)).toEqual(
+        template.outputs.length === 0 ? ["It has no output, so other steps can't read its channels."] : [],
+      );
+      const result = generate(operatorNode(template.id));
+      const generated = result?.processInvocations?.join("") ?? "";
+      expect(generated).toMatch(new RegExp(`\\.${template.id}\\s*[({]`));
+      expect(generated).not.toMatch(/(?<![.\w$])(input|output|local)\./);
+      for (const input of template.inputs) expect(generated).toContain(`${input}_up`);
+      for (const output of template.outputs) expect(generated).toContain(`op_${output}`);
+    });
+  }
 
   for (const [templateId, { code, defines, uses }] of Object.entries(
     expected,

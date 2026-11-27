@@ -41,7 +41,7 @@ test.describe("courses", () => {
 
     await expect(card).toContainText("Open the + menu");
     await page.getByRole("button", { name: "Add node" }).click();
-    await expect(card).toContainText("Pick Filter");
+    await expect(card).toContainText("Pick Filter lines");
     await page.getByRole("button", { name: /^Filter/ }).first().click();
 
     // The canvas moved to show the new node.
@@ -49,7 +49,7 @@ test.describe("courses", () => {
     const added = page.locator('.react-flow__node:not([data-id^="demo-"])');
     await expect(added).toBeInViewport();
     await connect(page, node("demo-file-input"), added);
-    await expect(card).toContainText("connect the new Filter to Merge");
+    await expect(card).toContainText("connect the new step to Merge");
     await connect(page, added, node("demo-merge"));
 
     await expect(card).toContainText("bottom bar");

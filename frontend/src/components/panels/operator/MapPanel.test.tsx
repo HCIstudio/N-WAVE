@@ -51,7 +51,7 @@ const setup = (data: Partial<NodeData> = {}) => {
 describe("MapPanel", () => {
   it("changes the case of lines by default", async () => {
     const { onSave, user } = setup();
-    expect(screen.getByText("Operation: Map")).toBeTruthy();
+    expect(screen.getByText("Text step: Change text")).toBeTruthy();
     expect(screen.getByLabelText("Transformation")).toHaveProperty("value", "changeCase");
     expect(screen.queryByLabelText("Find")).toBeNull();
 

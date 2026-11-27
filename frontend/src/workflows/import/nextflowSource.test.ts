@@ -152,6 +152,8 @@ describe("workflow statements", () => {
     expect(definedNames("ch_a = x.map { it }")).toEqual(["ch_a"]);
     expect(definedNames("(a, b) = STEP(x)")).toEqual(["a", "b"]);
     expect(definedNames("x.branch { a: true }.set { split }")).toEqual(["split"]);
+    // `tap` names its channel and passes the items on.
+    expect(definedNames("ch_out = ch_in.tap { ch_copy }")).toEqual(["ch_out", "ch_copy"]);
     const used = usedNames("ch_b = ch_a.mix(STEP.out.reads, OTHER.out).map { meta, ch_a -> 'ch_a' }", new Set(["ch_a"]));
     expect(used.variables).toEqual(["ch_a"]);
     expect(used.outputs.map((output) => [output.step, output.emit])).toEqual([

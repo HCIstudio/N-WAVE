@@ -10,8 +10,10 @@
 //     first line (`ALIGN(…)`, `x = ALIGN(…)`); else, for glue a step reads
 //     (`ch_x = A.out.y.map { … }`), the step that reads it; else the node
 //     whose channel it defines (a channel operator's block, an input's
-//     channel); else the node of the statement right before it (a channel
-//     operator's block goes on without a blank line).
+//     channel); else the channel operator whose label is the comment right
+//     above it (code that defines no channel, such as `ch.subscribe { … }`);
+//     else the node of the statement right before it (a channel operator's
+//     block goes on without a blank line).
 //   - a branch's `if (…) { … } else { … }` (N-WAVE writes it from a Branch
 //     node): each call in it, its step; the rest (the if and else lines,
 //     the channels its arms set, and their `channel.empty()` before it), the
@@ -50,6 +52,17 @@ export const lineOwners = (
   const byName = new Map<string, string>();
   for (const [nodeId, name] of names)
     if (!byName.has(name)) byName.set(name, nodeId);
+  // A channel operator's block comes under its label (`// Log each sample`).
+  const labels = new Map<string, string>();
+  for (const node of nodes) {
+    const label = String((node.data as { label?: unknown }).label ?? "").trim();
+    if (node.type === "channelOperator" && label && !labels.has(label)) labels.set(label, node.id);
+  }
+  const labelledAbove = (at: number): string | undefined => {
+    const above = script.slice(0, at).replace(/\s+$/, "").split("\n").pop() ?? "";
+    const comment = above.match(/^\s*\/\/\s*(.+?)\s*$/);
+    return comment ? labels.get(comment[1]) : undefined;
+  };
   const owners: LineOwners = new Map();
   const own = (start: number, end: number, nodeId: string | undefined) => {
     if (!nodeId) return;
@@ -83,12 +96,12 @@ export const lineOwners = (
       own(item.start, item.end, byName.get(item.name));
     } else if (item.kind === "workflow" && item.name) {
       // A group (#221): its statements are its steps', as in the entry workflow.
-      ownEntryWorkflow(script, item.start, item.text, byName, own);
+      ownEntryWorkflow(script, item.start, item.text, byName, own, labelledAbove);
     } else if (item.kind === "include") {
       const first = readIncludeItem(item.text)[0];
       own(item.start, item.end, first && byName.get(first.alias));
     } else if (item.kind === "workflow" && !item.name) {
-      ownEntryWorkflow(script, item.start, item.text, byName, own);
+      ownEntryWorkflow(script, item.start, item.text, byName, own, labelledAbove);
     }
   }
   return owners;
@@ -100,6 +113,7 @@ const ownEntryWorkflow = (
   text: string,
   byName: Map<string, string>,
   own: (start: number, end: number, nodeId: string | undefined) => void,
+  labelledAbove: (at: number) => string | undefined,
 ) => {
   const body = blockBody(text);
   // Branches are named `branch_1`, … in the order their blocks come (nested ones inside theirs).
@@ -107,7 +121,7 @@ const ownEntryWorkflow = (
   ownStatements(script, body, start + text.indexOf(body), byName, own, () => {
     branchCount += 1;
     return byName.get(`branch_${branchCount}`);
-  });
+  }, labelledAbove);
 };
 
 const EMPTY_START = /^\s*[A-Za-z_]\w*\s*=\s*channel\.empty\(\)\s*$/;
@@ -128,6 +142,7 @@ const ownStatements = (
   byName: Map<string, string>,
   own: (start: number, end: number, nodeId: string | undefined) => void,
   nextBranch: () => string | undefined,
+  labelledAbove: (at: number) => string | undefined,
 ) => {
   let cursor = from;
   const statements = splitWorkflowStatements(body).flatMap((statement) => {
@@ -151,7 +166,7 @@ const ownStatements = (
         if (!arm.trim()) continue;
         const at = script.indexOf(arm, inner);
         if (at === -1) continue;
-        ownStatements(script, arm, at, byName, own, nextBranch);
+        ownStatements(script, arm, at, byName, own, nextBranch, labelledAbove);
         inner = at + arm.length;
       }
       own(statement.at, statement.at + statement.text.length, branch);
@@ -182,6 +197,7 @@ const ownStatements = (
       definesOwnChannel ??
       consumer ??
       ownerOf(statement.text, byName) ??
+      labelledAbove(statement.at) ??
       // A channel operator's code is one block: its later statements follow
       // without a blank line and belong to it too.
       (statement.blankBefore ? undefined : previous);
