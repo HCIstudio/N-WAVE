@@ -11,7 +11,7 @@ test.describe("node code view", () => {
 
     const input = await addNode(page, "File Input");
     await moveNode(page, input, -350, 0);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     await input.locator('input[type="file"]').setInputFiles({
       name: "greetings.txt",
       mimeType: "text/plain",

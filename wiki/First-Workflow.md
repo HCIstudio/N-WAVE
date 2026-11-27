@@ -23,16 +23,17 @@ the bottom bar below it. Double-click the name *Untitled Workflow* to rename it.
 
 The node now shows the file's name and size.
 
-![The Add node menu opened with the search "Filter": buttons for the nf-core Library, Custom process and Node packs, and the Filter node under Operators. A File Input node with one file is on the canvas.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/add-node-menu.png)
+![The Add node menu opened with the search "Filter": buttons for the nf-core Library, Custom process and Node packs, and Filter lines under Text files. A File Input node with one file is on the canvas.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/add-node-menu.png)
 
 ## 3. Add a step (2 minutes)
 
-1. Click **+** again and choose **Filter**.
-2. Double-click the Filter node to open its panel. In **Filter Text**, type a word that
+1. Click **+** again and choose **Filter lines** (under **Text files**): a step that keeps the
+   lines of a text file that match.
+2. Double-click the Filter lines node to open its panel. In **Filter Text**, type a word that
    appears in your file. Leave **Filter Mode** at *Contains*.
 3. Close the panel (✕).
 
-![The Filter node's panel with the tabs Settings, Code and Results. Filter Text is "bee" and Filter Mode is Contains.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/filter-panel.png)
+![The Filter lines node's panel with the tabs Settings, Code and Results. Filter Text is "bee" and Filter Mode is Contains.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/filter-panel.png)
 
 **File Selection** can limit the filter to some of the incoming files; with none ticked, it
 filters all of them.
@@ -43,13 +44,13 @@ Click **+** and choose **Display Output**.
 
 ## 5. Connect the nodes (1 minute)
 
-Drag from the dot on the right of **File Input** to the dot on the left of **Filter**, then
-from **Filter** to **Display Output**. While you drag, the inputs that fit are ringed green.
+Drag from the dot on the right of **File Input** to the dot on the left of **Filter lines**,
+then from **Filter lines** to **Display Output**. While you drag, the inputs that fit are ringed green.
 
 The check next to the Run button now says *No problems found*. If it lists a problem, click it:
 **Show** moves the canvas to the node it's about.
 
-![File Input, Filter and Display Output connected in a row. The workflow check above the bottom bar says: Nothing to fix, the workflow is ready to run.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/first-workflow.png)
+![File Input, Filter lines and Display Output connected in a row. The workflow check above the bottom bar says: Nothing to fix, the workflow is ready to run.](https://raw.githubusercontent.com/HCIstudio/N-WAVE/main/.github/assets/wiki/first-workflow.png)
 
 ## 6. Run it (2 minutes, installation only)
 
@@ -62,7 +63,8 @@ Project** instead to download the workflow as a project you can run anywhere wit
 
 ## 7. Look behind the scenes (1 minute)
 
-Double-click **Filter** and open its **Code** tab: this is the Nextflow the node adds. The
+Double-click **Filter lines** and open its **Code** tab: this is the Nextflow the node adds: a
+process, since it works on the file's lines. The
 whole script is what **Export** → **Download script** saves. Your workflow is saved automatically.
 
 ## Next

@@ -9,7 +9,7 @@ test("adding a file to a connected File Input keeps its connection", async ({ pa
 
   const input = await addNode(page, "File Input");
   await moveNode(page, input, -450, 0);
-  const map = await addNode(page, "Map");
+  const map = await addNode(page, "Change text");
   await fitView(page);
   await connect(page, input, map);
   const edges = page.locator(".react-flow__edge");

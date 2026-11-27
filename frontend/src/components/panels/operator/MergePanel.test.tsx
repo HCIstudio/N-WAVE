@@ -68,7 +68,7 @@ const optionsOf = (label: string) =>
 describe("MergePanel", () => {
   it("joins into a txt file without upstream files", () => {
     const { onSave } = setup();
-    expect(screen.getByText("Operation: Merge")).toBeTruthy();
+    expect(screen.getByText("Text step: Join files")).toBeTruthy();
     expect(screen.getByLabelText("Separator")).toHaveProperty("value", "\\n");
     expect(optionsOf("Output Type")).toEqual(["txt"]);
     expect(onSave).toHaveBeenCalledWith("node-merge", { joinType: "txt" });

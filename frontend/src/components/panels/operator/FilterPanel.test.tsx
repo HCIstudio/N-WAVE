@@ -62,7 +62,8 @@ const setup = (files: FileObject[], data: Partial<NodeData> = {}) => {
 describe("FilterPanel", () => {
   it("says when no files come in", () => {
     setup([]);
-    expect(screen.getByText("Operation: Filter")).toBeTruthy();
+    expect(screen.getByText("Text step: Filter lines")).toBeTruthy();
+    expect(screen.getByText(/one task per file/).textContent).toContain("Channel Operator (filter)");
     expect(screen.getByText("No files received from parent node.")).toBeTruthy();
     expect(screen.queryByRole("checkbox", { name: "Select All" })).toBeNull();
   });

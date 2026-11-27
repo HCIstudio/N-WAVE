@@ -171,7 +171,7 @@ describe("the canvas course's tasks", () => {
     expect(lowercase.done?.(ctx([map({ mapChangeCase: "toLowerCase" })]))).toBe(true);
     expect(remove.done?.(ctx([{ id: "demo-filter-bee" }]))).toBe(false);
     expect(remove.done?.(ctx([{ id: "demo-file-input" }]))).toBe(true);
-    const added = { id: "node-1", data: { label: "Filter" } as NodeData };
+    const added = { id: "node-1", data: { label: "Filter lines" } as NodeData };
     expect(pick.done?.(ctx([{ id: "demo-filter-barry", data: { label: "Filter" } as NodeData }]))).toBe(false);
     expect(pick.done?.(ctx([added]))).toBe(true);
     expect(connectIn.done?.(ctx([added], [["demo-file-input", "demo-filter-barry"]]))).toBe(false);

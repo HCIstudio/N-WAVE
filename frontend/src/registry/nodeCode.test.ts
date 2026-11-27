@@ -3,13 +3,13 @@ import { installNfCoreModule, makeNode } from "../test/nodes";
 import { getNodeCode } from "./nodeCode";
 
 describe("getNodeCode", () => {
-  it("returns the inline process of a Filter node", () => {
+  it("returns the inline process of a Filter lines node", () => {
     const code = getNodeCode(makeNode("filter", { filterText: "hello" }));
-    expect(code?.processName).toBe("FILTER");
-    expect(code?.processSource).toMatch(/^process FILTER \{/);
+    expect(code?.processName).toBe("FILTER_LINES");
+    expect(code?.processSource).toMatch(/^process FILTER_LINES \{/);
     expect(code?.processSource).toContain("grep  'hello'");
     expect(code?.nfCoreModule).toBeUndefined();
-    expect(code?.workflowSnippet).toContain("FILTER(in_ch.flatten()");
+    expect(code?.workflowSnippet).toContain("FILTER_LINES(in_ch.flatten()");
   });
 
   it.each(["map", "merge", "outputDisplay"])(

@@ -41,7 +41,7 @@ const CANVAS: CourseStep[] = [
   {
     text: (
       <>
-        Every node has settings. <strong>Double-click the Map node</strong> to open them.
+        Every node has settings. <strong>Double-click the Map node</strong> (a Change text step) to open them.
       </>
     ),
     target: node("demo-map-uppercase"),
@@ -81,15 +81,16 @@ const CANVAS: CourseStep[] = [
   {
     text: (
       <>
-        <strong>Pick Filter</strong> under Operators (or type its name in the search).
+        <strong>Pick Filter lines</strong> under Text files (or type its name in the search): a step that keeps the
+        lines that match, like the Filter you removed.
       </>
     ),
-    done: (context) => added(context).some((entry) => (entry.data as NodeData).label === "Filter"),
+    done: (context) => added(context).some((entry) => (entry.data as NodeData).label === "Filter lines"),
   },
   {
     text: (
       <>
-        <strong>Connect it</strong>: drag from the File Input&apos;s output dot (on its right) to the new Filter&apos;s
+        <strong>Connect it</strong>: drag from the File Input&apos;s output dot (on its right) to the new step&apos;s
         input dot (on its left). New nodes go where there is room; the canvas zooms out to show it.
       </>
     ),
@@ -104,7 +105,7 @@ const CANVAS: CourseStep[] = [
   {
     text: (
       <>
-        And <strong>connect the new Filter to Merge</strong>, so its lines are merged with the other branch.
+        And <strong>connect the new step to Merge</strong>, so its lines are joined with the other branch.
       </>
     ),
     target: NEW_NODE,

@@ -52,7 +52,7 @@ describe("checkWorkflow", () => {
         level: "error",
         nodeId: "filter",
         message:
-          "“filter” takes one connection on “in” but has 2. Connect them to a Merge node (or mix them in a channel operator) and connect that instead.",
+          "“filter” takes one connection on “in” but has 2. Mix them in a Channel Operator (or join text files into one with Join files) and connect that instead.",
       },
     ]);
   });

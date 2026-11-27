@@ -22,7 +22,7 @@ test.describe("canvas flow", () => {
     });
     await expect(input).toContainText("1 file");
     await moveNode(page, input, -450, 0);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const output = await addNode(page, "Display Output");
     await fitView(page);
 
@@ -48,7 +48,7 @@ test.describe("canvas flow", () => {
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
 
-    await addNode(page, "Filter");
+    await addNode(page, "Filter lines");
     await page.getByRole("button", { name: "Save Workflow" }).click();
 
     await page.reload();
@@ -87,7 +87,7 @@ test.describe("canvas flow", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
 
     const box = await filter.boundingBox();
     if (!box) throw new Error("node is not visible");
@@ -197,7 +197,7 @@ test.describe("canvas flow", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const output = await addNode(page, "Display Output");
     await fitView(page);
     await connect(page, filter, output);
@@ -234,7 +234,8 @@ test.describe("canvas flow", () => {
     await expect(page.locator(".react-flow__node").first()).toBeVisible();
     await expect(page.locator('[data-id="demo-file-input"] [data-kind="input"]')).toHaveCount(1);
     await expect(page.locator('[data-id="demo-output"] [data-kind="output"]')).toHaveText("Output");
-    await expect(page.locator('[data-id="demo-merge"] [data-kind="operator"]')).toHaveText("Operator");
+    // Demo 1's Merge joins files: a text step, not a channel operator.
+    await expect(page.locator('[data-id="demo-merge"] [data-kind="text"]')).toHaveText("Text step");
     // The strip says it in words too.
     await expect(page.locator('[data-id="demo-file-input"] [data-kind="input"]')).toHaveText("Input");
     // The canvas explains them on the Help page, opened from its ? button.
@@ -251,7 +252,7 @@ test.describe("canvas flow", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
 
     await connect(page, filter, filter);
     await expect(page.getByText("A node can't be connected to itself.")).toBeVisible();

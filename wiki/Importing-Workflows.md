@@ -23,7 +23,7 @@ For a project, N-WAVE reads `main.nf` (or, without one, the top-most script with
 | `for` and `while` loops | Code nodes, with a warning (see [Branches and loops](#branches-and-loops)) |
 | Other channel code (`channel.fromPath(…)`, `.map { … }`, `.branch { … }`, `.view()`) | Channel operator nodes, one per block of code, with the script's variable names |
 | `params.x = 5`, `'text'`, `true` | A Parameters node |
-| File Input, Samplesheet, Filter, Map, Merge and Display Output code N-WAVE wrote | Those nodes again, with their settings and, from a project, their files |
+| File Input, Samplesheet, Filter lines, Change text, Join files and Display Output code N-WAVE wrote | Those nodes again, with their settings and, from a project, their files |
 | Comments above a step, `/* Note: … */` | Kept with the step; notes |
 | Everything else: functions, plugin includes, params set from code, a `params { }` block, the `output { }` block, `publish:`, `onComplete:` and `onError:` | **Code nodes** that keep the code as written and say where in the script it goes |
 

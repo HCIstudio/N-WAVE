@@ -32,7 +32,7 @@ N-WAVE follows the metamodel's own mapping of Nextflow where it has one.
 | The workflow | DAW |
 | A [group of steps](https://github.com/HCIstudio/N-WAVE/wiki/Building-Workflows#groups-of-steps) | sub-DAW with its Tasks |
 | An nf-core subworkflow, a pipeline, a custom workflow node | sub-DAW by `reference` (its parts aren't listed) |
-| A process: nf-core module, custom node, Filter, Map, Merge | Task: `Executable`, with its code or the nf-core module it refers to |
+| A process: nf-core module, custom node, Filter lines, Change text, Join files | Task: `Executable`, with its code or the nf-core module it refers to |
 | A step without an implementation yet | Task: `Task` (the solution idea only) |
 | Channel code | Task: `InlineDescription` |
 | Channel code that decides which steps get data (`if`, `branch`, `filter`) | Task: `SkipTask` |

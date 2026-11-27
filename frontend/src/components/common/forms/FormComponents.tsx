@@ -118,10 +118,17 @@ export const CheckboxField: React.FC<CheckboxFieldProps> = ({
 
 interface OperatorHeaderProps {
   title: string;
+  /** The Channel Operator code that does the same for a channel's items. */
+  channelAlternative: string;
 }
 
-export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ title }) => (
-  <h3 className="text-md font-semibold text-text border-b border-accent pb-2">
-    Operation: {title}
-  </h3>
+/** The heading of a text step's panel (Filter lines, Change text, Join files), and what it is. */
+export const OperatorHeader: React.FC<OperatorHeaderProps> = ({ title, channelAlternative }) => (
+  <div className="space-y-1 border-b border-accent pb-2">
+    <h3 className="text-md font-semibold text-text">Text step: {title}</h3>
+    <p className="text-xs text-text-light">
+      Runs as a step of its own on the contents of text files, one task per file. To work on a
+      channel&apos;s items instead, use a <strong>Channel Operator</strong> ({channelAlternative}).
+    </p>
+  </div>
 );

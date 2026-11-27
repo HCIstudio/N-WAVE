@@ -9,7 +9,7 @@ test.describe("copy, paste and duplicate", () => {
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
     const firstUrl = page.url();
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const output = await addNode(page, "Display Output");
     await fitView(page);
     await connect(page, filter, output);
@@ -46,7 +46,7 @@ test.describe("copy, paste and duplicate", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const nodes = page.locator(".react-flow__node");
 
     await filter.click();
@@ -64,7 +64,7 @@ test.describe("copy, paste and duplicate", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const nodes = page.locator(".react-flow__node");
 
     await filter.click();

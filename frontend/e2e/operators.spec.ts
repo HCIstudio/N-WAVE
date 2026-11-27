@@ -25,7 +25,7 @@ test.describe("operator nodes", () => {
     });
     await expect(input).toContainText("1 file");
     await moveNode(page, input, -450, 0);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const output = await addNode(page, "Display Output");
     await fitView(page);
 

@@ -62,7 +62,7 @@ export const connectionLimitMessage = (
   const incoming = armsOf({ source: connection.source, data: undefined }, nodes);
   if (others.every((edge) => exclusiveArms(armsOf(edge, nodes), incoming))) return null;
   const label = String(targetNode.data.label || targetNode.type);
-  return `“${label}” takes one connection${inputName(targetNode, handle)}. To combine several, connect them to a Merge node first, or mix them in a channel operator.`;
+  return `“${label}” takes one connection${inputName(targetNode, handle)}. To combine several, mix them in a Channel Operator first (or join text files into one with Join files).`;
 };
 
 export interface ExtraConnections {

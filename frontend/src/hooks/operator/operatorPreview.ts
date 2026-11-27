@@ -1,4 +1,4 @@
-// What the Filter, Map and Merge operators make of their incoming files, in
+// What the Filter lines, Change text and Join files steps make of their incoming files, in
 // the browser, so the node and the Output Display show it before a run.
 
 import { useEffect, useMemo } from "react";

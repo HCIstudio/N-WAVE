@@ -1,15 +1,18 @@
 // What a node is, at a glance: where data enters the workflow (inputs), a
-// step from nf-core, a step written by hand (custom), an operator that
-// reshapes channels between steps, or where results come out (outputs). The
+// step from nf-core, a step written by hand (custom), a step N-WAVE writes on
+// the contents of text files (text), an operator that reshapes channels
+// between steps, or where results come out (outputs). The
 // workflow previews and the canvas show these kinds with the same colors and
 // shapes, explained by the same legend; the shapes tell them apart without
 // color too.
 
-export type NodeKind = "input" | "nfcore" | "custom" | "operator" | "logic" | "output";
+export type NodeKind = "input" | "nfcore" | "custom" | "text" | "operator" | "logic" | "output";
 
 const INPUT_TYPES = new Set(["fileInput", "samplesheet", "parameters"]);
-/** Filter, Map, Merge and the like, and channel code kept from an import. */
-const OPERATOR_TYPES = new Set(["operator", "filter", "channelOperator"]);
+/** Channel code: Channel Operator nodes and channel code kept from an import. */
+const OPERATOR_TYPES = new Set(["operator", "channelOperator"]);
+/** Filter lines, Change text and Join files: steps on the contents of text files (operator nodes by type; old filters had their own type). */
+const TEXT_OPERATORS = new Set(["filter", "map", "merge"]);
 
 /** The kind of a node; notes have none. */
 export const nodeKindOf = (node: {
@@ -22,6 +25,7 @@ export const nodeKindOf = (node: {
   if (node.type === "pipeline" || String(node.data?.processType ?? "").startsWith("nfcore")) {
     return "nfcore";
   }
+  if (node.type === "filter" || (node.type === "operator" && TEXT_OPERATORS.has(String(node.data?.operatorType ?? "")))) return "text";
   if (OPERATOR_TYPES.has(node.type ?? "")) return "operator";
   // A branch decides which steps run; it reshapes no data.
   if (node.type === "branch") return "logic";
@@ -37,8 +41,8 @@ export interface NodeKindStyle {
   color: string;
   /** Text on the strip, readable on its color. */
   text: string;
-  /** Inputs and outputs are pill-shaped, steps boxes; filled, outlined or dashed. */
-  shape: "pill" | "pill-outline" | "solid" | "outline" | "dashed" | "diamond";
+  /** Inputs and outputs are pill-shaped, steps boxes; filled, outlined, dotted or dashed. */
+  shape: "pill" | "pill-outline" | "solid" | "outline" | "dotted" | "dashed" | "diamond";
 }
 
 export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
@@ -66,10 +70,19 @@ export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
     text: "#3b0764",
     shape: "outline",
   },
+  text: {
+    label: "Text steps",
+    short: "Text step",
+    description:
+      "Steps N-WAVE writes for you on the contents of text files: Filter lines, Change text, Join files. Each runs as a process, one task per file.",
+    color: "#5eead4",
+    text: "#134e4a",
+    shape: "dotted",
+  },
   operator: {
     label: "Operators",
     short: "Operator",
-    description: "Reshape the data between steps: Filter, Map, Merge and channel code. They run no tool.",
+    description: "Reshape channels between steps (filter, map, join, collect, …) with Nextflow's channel operators. They run no tool.",
     color: "#a3a3a3",
     text: "#1f2937",
     shape: "dashed",
@@ -92,4 +105,4 @@ export const NODE_KINDS: Record<NodeKind, NodeKindStyle> = {
   },
 };
 
-export const NODE_KIND_ORDER: NodeKind[] = ["input", "nfcore", "custom", "operator", "logic", "output"];
+export const NODE_KIND_ORDER: NodeKind[] = ["input", "nfcore", "custom", "text", "operator", "logic", "output"];

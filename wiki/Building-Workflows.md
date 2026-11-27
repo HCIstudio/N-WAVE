@@ -33,8 +33,9 @@ bottom bar saves at once).
 
 The strip on top of each node says its kind, in its color: **Input** (light blue, where data
 enters), **nf-core** (green, tested nf-core tools), **Custom step** (violet, processes written
-by hand), **Operator** (grey, Filter, Map, Merge and channel code: they reshape the data
-between steps and run no tool), **Logic** (fuchsia, Branch nodes that choose which steps run,
+by hand), **Text step** (teal, Filter lines, Change text and Join files: steps N-WAVE writes on
+the contents of text files, each a process of its own), **Operator** (grey, channel code: it
+reshapes the data between steps and runs no tool), **Logic** (fuchsia, Branch nodes that choose which steps run,
 see [Branches](https://github.com/HCIstudio/N-WAVE/wiki/Nodes#branches-if--else-if--else))
 and **Output** (yellow, where results come out). The legend
 is on the home page and on the Help page, which the canvas's **?** button opens.
@@ -150,9 +151,9 @@ Drag from an output (the dots on a node's right) to an input (on the left).
 - **While you drag**, inputs that fit are ringed green and inputs that don't are amber.
 - **A connection that doesn't fit** is still made, but drawn dashed amber with a warning mark.
   Click the mark to see what the input expects and how to fix it.
-- **Most inputs take one connection.** To bring several together, connect them to a **Merge** node
-  or a **Channel Operator** first. Inputs that gather files (a taller handle, such as Merge's
-  input or MultiQC's) take any number.
+- **Most inputs take one connection.** To bring several together, mix them in a **Channel
+  Operator** first (or join text files into one with **Join files**). Inputs that gather files
+  (a taller handle, such as Join files' input or MultiQC's) take any number.
 - **Loops are refused**, as is connecting a node to itself.
 
 ## The workflow check

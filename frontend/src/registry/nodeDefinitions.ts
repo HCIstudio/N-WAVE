@@ -149,75 +149,6 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     executionLabel: "Parameters",
   },
   {
-    id: "filter",
-    kind: "operator",
-    category: "Operators",
-    label: "Filter",
-    description: "Filter items based on a condition.",
-    type: "operator",
-    icon: "Funnel",
-    operatorType: "filter",
-    inputs: [{ name: "in" }],
-    outputs: [{ name: "out", isConnectable: true }],
-    defaults: withPorts({ operatorType: "filter" }, [{ name: "in" }], [
-      { name: "out", isConnectable: true },
-    ]),
-    panel: FilterPanel,
-    generateNextflow: generateFilterNode,
-    executionLabel: "Filter",
-  },
-  {
-    id: "map",
-    kind: "operator",
-    category: "Operators",
-    label: "Map",
-    description: "Transform each item in a channel.",
-    type: "operator",
-    icon: "Wand",
-    operatorType: "map",
-    inputs: [{ name: "in" }],
-    outputs: [{ name: "out", isConnectable: true }],
-    defaults: withPorts(
-      {
-        operatorType: "map",
-        mapOperation: "changeCase",
-        mapChangeCase: "toUpperCase",
-        mapReplaceFind: "",
-        mapReplaceWith: "",
-      },
-      [{ name: "in" }],
-      [{ name: "out", isConnectable: true }]
-    ),
-    panel: MapPanel,
-    generateNextflow: generateMapNode,
-    executionLabel: "Map",
-  },
-  {
-    id: "merge",
-    kind: "operator",
-    category: "Operators",
-    label: "Merge",
-    description: "Merge multiple files of the same type.",
-    type: "operator",
-    icon: "Minimize",
-    operatorType: "merge",
-    // Merges every file connected to it.
-    inputs: [{ name: "in", multiple: true }],
-    outputs: [{ name: "out", isConnectable: true }],
-    defaults: withPorts(
-      {
-        operatorType: "merge",
-        mergeOperation: "join",
-        mergeJoinSeparator: "\\n",
-      },
-      [{ name: "in", multiple: true }],
-      [{ name: "out", isConnectable: true }]
-    ),
-    panel: MergePanel,
-    generateNextflow: generateMergeNode,
-    executionLabel: "Merge",
-  },
-  {
     id: "channelOperator",
     kind: "operator",
     category: "Operators",
@@ -241,6 +172,80 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     panel: ChannelOperatorPanel,
     generateNextflow: generateChannelOperatorNode,
     executionLabel: "Channel Operator",
+  },
+  // Steps N-WAVE writes for you that work on the contents of text files: each
+  // runs as a process of its own (grep, sed, cat), unlike the channel operators.
+  {
+    id: "filter",
+    kind: "operator",
+    category: "Text files",
+    label: "Filter lines",
+    description:
+      "A step that keeps the lines of text files that match (grep), one task per file. To drop items from a channel, use a Channel Operator (filter).",
+    type: "operator",
+    icon: "Funnel",
+    operatorType: "filter",
+    inputs: [{ name: "in" }],
+    outputs: [{ name: "out", isConnectable: true }],
+    defaults: withPorts({ operatorType: "filter" }, [{ name: "in" }], [
+      { name: "out", isConnectable: true },
+    ]),
+    panel: FilterPanel,
+    generateNextflow: generateFilterNode,
+    executionLabel: "Filter lines",
+  },
+  {
+    id: "map",
+    kind: "operator",
+    category: "Text files",
+    label: "Change text",
+    description:
+      "A step that changes the text in files (upper or lower case, find and replace), one task per file. To change a channel's items, use a Channel Operator (map).",
+    type: "operator",
+    icon: "Wand",
+    operatorType: "map",
+    inputs: [{ name: "in" }],
+    outputs: [{ name: "out", isConnectable: true }],
+    defaults: withPorts(
+      {
+        operatorType: "map",
+        mapOperation: "changeCase",
+        mapChangeCase: "toUpperCase",
+        mapReplaceFind: "",
+        mapReplaceWith: "",
+      },
+      [{ name: "in" }],
+      [{ name: "out", isConnectable: true }]
+    ),
+    panel: MapPanel,
+    generateNextflow: generateMapNode,
+    executionLabel: "Change text",
+  },
+  {
+    id: "merge",
+    kind: "operator",
+    category: "Text files",
+    label: "Join files",
+    description:
+      "A step that joins the text files it receives into one file. To gather a channel's items, use a Channel Operator (collect, mix).",
+    type: "operator",
+    icon: "Minimize",
+    operatorType: "merge",
+    // Merges every file connected to it.
+    inputs: [{ name: "in", multiple: true }],
+    outputs: [{ name: "out", isConnectable: true }],
+    defaults: withPorts(
+      {
+        operatorType: "merge",
+        mergeOperation: "join",
+        mergeJoinSeparator: "\\n",
+      },
+      [{ name: "in", multiple: true }],
+      [{ name: "out", isConnectable: true }]
+    ),
+    panel: MergePanel,
+    generateNextflow: generateMergeNode,
+    executionLabel: "Join files",
   },
   // Branches (if / else if / else): which steps run, by the parameters. One node type, two starts.
   {

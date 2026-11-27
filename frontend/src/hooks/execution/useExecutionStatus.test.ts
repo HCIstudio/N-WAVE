@@ -141,7 +141,7 @@ describe("useExecutionStatus", () => {
         node.progress,
       ]),
     ).toEqual([
-      ["filter_node_1", "Filter", "success", 100],
+      ["filter_node_1", "Filter lines", "success", 100],
       ["SAMTOOLS_SORT", "SAMTOOLS_SORT", "running", 0],
     ]);
     expect(status.currentStage).toBe("SAMTOOLS_SORT: 0/2");

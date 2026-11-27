@@ -10,8 +10,8 @@ test.describe("a new workflow", () => {
     await expect(page).toHaveURL(/\/workflow\//);
 
     const input = await addNode(page, "File Input");
-    const filter = await addNode(page, "Filter");
-    const merge = await addNode(page, "Merge");
+    const filter = await addNode(page, "Filter lines");
+    const merge = await addNode(page, "Join files");
 
     // No node is placed on top of another.
     const boxes = await Promise.all([input, filter, merge].map((node) => node.boundingBox()));

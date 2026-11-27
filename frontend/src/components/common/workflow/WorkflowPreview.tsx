@@ -122,7 +122,10 @@ const WorkflowPreview: React.FC<{
             fill={filled ? color : "none"}
             stroke={color}
             strokeWidth={filled ? 0 : stroke}
-            strokeDasharray={shape === "dashed" ? `${stroke * 2} ${stroke * 1.2}` : undefined}
+            strokeDasharray={
+              shape === "dashed" ? `${stroke * 2} ${stroke * 1.2}` : shape === "dotted" ? `0 ${stroke * 1.6}` : undefined
+            }
+            strokeLinecap={shape === "dotted" ? "round" : undefined}
           />
         );
       })}

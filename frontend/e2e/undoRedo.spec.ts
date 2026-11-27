@@ -44,7 +44,7 @@ test.describe("undo and redo", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    const filter = await addNode(page, "Filter");
+    const filter = await addNode(page, "Filter lines");
     const output = await addNode(page, "Display Output");
     await fitView(page);
     const undo = page.getByRole("button", { name: "Undo", exact: true });

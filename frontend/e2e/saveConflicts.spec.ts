@@ -19,7 +19,7 @@ test.describe("saving from two tabs", () => {
     await page.getByRole("button", { name: "New Workflow" }).click();
     await page.getByRole("button", { name: "Empty workflow" }).click();
     await expect(page).toHaveURL(/\/workflow\//);
-    await addNode(page, "Filter");
+    await addNode(page, "Filter lines");
     await save(page);
 
     // Tab B opens it and saves an edit.
@@ -31,7 +31,7 @@ test.describe("saving from two tabs", () => {
 
     // Tab A, still on the first version, edits too: its autosave is refused.
     await page.bringToFront();
-    await addNode(page, "Map");
+    await addNode(page, "Change text");
     const dialog = page.getByRole("dialog", {
       name: "This workflow was changed elsewhere",
     });
@@ -46,18 +46,18 @@ test.describe("saving from two tabs", () => {
 
     // Another conflict: keep tab A's version as a copy instead.
     await other.bringToFront();
-    await addNode(other, "Map");
+    await addNode(other, "Change text");
     await save(other);
     const original = page.url();
     await page.bringToFront();
-    await addNode(page, "Merge");
+    await addNode(page, "Join files");
     await dialog.getByRole("button", { name: "Keep mine as a copy" }).click();
     await expect(page).not.toHaveURL(original);
-    await expect(page.locator(".react-flow__node", { hasText: "Merge" })).toBeVisible();
+    await expect(page.locator(".react-flow__node", { hasText: "Join files" })).toBeVisible();
 
     // The original keeps tab B's version.
     await other.reload();
     await expect(other.locator(".react-flow__node")).toHaveCount(3);
-    await expect(other.locator(".react-flow__node", { hasText: "Merge" })).toHaveCount(0);
+    await expect(other.locator(".react-flow__node", { hasText: "Join files" })).toHaveCount(0);
   });
 });

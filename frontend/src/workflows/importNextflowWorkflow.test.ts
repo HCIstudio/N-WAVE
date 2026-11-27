@@ -379,7 +379,7 @@ describe("importing a script N-WAVE wrote", () => {
       "{workflow_name}",
     ).replace("grep  'x'", "grep -i 'x'");
     const imported = await importNextflowWorkflow({ rawSource: script });
-    const step = byLabel(imported.nodes, "Filter");
+    const step = byLabel(imported.nodes, "Filter lines");
     expect(step?.type).toBe("process");
     expect(String((step?.data.customNodeDefinition as { source?: string } | undefined)?.source)).toContain("grep -i 'x'");
   });

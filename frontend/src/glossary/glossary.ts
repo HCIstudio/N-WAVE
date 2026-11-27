@@ -59,6 +59,13 @@ const entries = [
     related: ["channel"],
   },
   {
+    id: "text-step",
+    term: "Text step",
+    definition:
+      "Filter lines, Change text and Join files: steps N-WAVE writes for you that work on the contents of text files. Each runs as a process of its own, one task per file; to filter or change a channel's items, use a channel operator.",
+    related: ["channel-operator", "process"],
+  },
+  {
     id: "branch",
     term: "Branch (if / else)",
     definition:
@@ -224,6 +231,7 @@ const docs: Record<GlossaryId, WikiLink> = {
   task: { page: "Running-Workflows", anchor: "the-run-panel" },
   channel: { page: "Building-Workflows", anchor: "connecting" },
   "channel-operator": { page: "Nodes", anchor: "channel-operator" },
+  "text-step": { page: "Nodes", anchor: "text-files" },
   branch: { page: "Nodes", anchor: "branches-if--else-if--else" },
   tuple: { page: "nf-core-Library", anchor: "using-a-module" },
   meta: { page: "nf-core-Library", anchor: "using-a-module" },

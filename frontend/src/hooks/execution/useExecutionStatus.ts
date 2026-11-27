@@ -212,9 +212,9 @@ export const useExecutionStatus = ({
           const registryLabel = getExecutionLabelForProcessName(nfProcessName);
           if (registryLabel) return registryLabel;
 
-          if (nfProcessName.includes("filter_node")) return "Filter";
-          if (nfProcessName.includes("map_node")) return "Map";
-          if (nfProcessName.includes("merge_node")) return "Merge";
+          if (nfProcessName.includes("filter_node")) return "Filter lines";
+          if (nfProcessName.includes("map_node")) return "Change text";
+          if (nfProcessName.includes("merge_node")) return "Join files";
           if (
             nfProcessName.includes("save_") &&
             nfProcessName.includes("Output_node")
