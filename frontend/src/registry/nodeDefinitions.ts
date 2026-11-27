@@ -154,7 +154,7 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     category: "Operators",
     label: "Channel Operator",
     description:
-      "Nextflow channel code between nodes: join, mix, map, branch, combine, groupTuple, collect or your own.",
+      "Nextflow channel code between nodes, from a template for each of Nextflow's channel operators (filter, map, flatMap, join, collect, …) or your own. Runs no tool.",
     type: "channelOperator",
     icon: "GitMerge",
     inputs: [{ name: "left" }, { name: "right" }],

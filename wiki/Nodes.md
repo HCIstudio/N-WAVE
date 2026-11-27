@@ -35,9 +35,24 @@ file is an output to connect; its value is an uploaded file name, a path or a UR
 ### Channel Operator
 
 Nextflow channel code between nodes, for what plain connections can't do: join a BAM with its
-index by sample, mix reports for MultiQC, branch, combine, group or collect. Start from a
-**Template** and edit the **Channel code**; it reads `input.<port>` and assigns
-`output.<port>`. The ports are set in **Inputs** and **Outputs**.
+index by sample, mix reports for MultiQC, filter samples, branch, combine, group or collect. It
+runs no tool: the code is part of the workflow, and costs no task. Start from a **Template** and
+edit the **Channel code**; it reads `input.<port>` and assigns `output.<port>`. The ports are
+set in **Inputs** and **Outputs**.
+
+There is a template for each of Nextflow's
+[channel operators](https://www.nextflow.io/docs/latest/reference/operator.html), most written
+for samplesheet rows (`[ meta, files ]`):
+
+| Group | Operators |
+| --- | --- |
+| Filtering | `filter`, `unique`, `distinct`, `first`, `last`, `take`, `randomSample`, `until` |
+| Transforming | `map`, `flatMap`, `flatten`, `transpose`, `groupTuple`, `buffer`, `collate`, `collect`, `toList`, `toSortedList`, `reduce`, `toInteger` |
+| Combining | `join`, `mix`, `concat`, `combine`, `cross`, `merge` (Nextflow advises against it: join by a key instead) |
+| Forking | `branch`, `multiMap`, `tap`, `set` |
+| Splitting files | `splitCsv`, `splitText`, `splitFasta`, `splitFastq`, `splitJson` |
+| Counting and maths | `count`, `countLines`, `countFasta`, `countFastq`, `countJson`, `min`, `max`, `sum` |
+| Other | `collectFile`, `ifEmpty`, `view`, `dump`, `subscribe` |
 
 ## Text files
 

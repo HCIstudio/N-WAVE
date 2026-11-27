@@ -315,10 +315,13 @@ export const parseWorkflowGraph = (source: string, workflowName?: string): Workf
         }
       }
     }
-    // `….set { name }` names a channel too.
+    // `….set { name }` names a channel too, and `….tap { name }` (anywhere in a chain).
     const named = statement.match(/\.set\s*\{\s*(\w+)\s*\}\s*$/);
     if (named && !isVersions(named[1])) {
       sources.set(named[1], referencesIn(statement.slice(0, named.index)));
+    }
+    for (const tapped of statement.matchAll(/\.tap\s*\{\s*(\w+)\s*\}/g)) {
+      if (!isVersions(tapped[1])) sources.set(tapped[1], referencesIn(statement.slice(0, tapped.index)));
     }
     // Assignments: `name = …` (also `name = name.mix(…)`, which adds to it).
     const assignment = statement.match(/^(\w+)\s*=(?!=)([\s\S]*)$/);

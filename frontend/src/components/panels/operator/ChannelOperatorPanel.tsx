@@ -3,6 +3,7 @@ import { useEffect, useId, useState } from "react";
 import type { Node } from "@xyflow/react";
 import { useWorkflowContext } from "../../../context/WorkflowContext";
 import {
+  CHANNEL_OPERATOR_GROUPS,
   CHANNEL_OPERATOR_TEMPLATES,
   validateChannelOperator,
 } from "../../../registry/channelOperator";
@@ -44,6 +45,9 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
   const [inputText, setInputText] = useState(inputs.join(", "));
   const [outputText, setOutputText] = useState(outputs.join(", "));
   const issues = validateChannelOperator({ inputs, outputs, code });
+  const discouraged = CHANNEL_OPERATOR_TEMPLATES.find(
+    (template) => template.id === node.data.channelOperatorTemplate,
+  )?.discouraged;
 
   const inputKey = inputs.join(", ");
   const outputKey = outputs.join(", ");
@@ -148,12 +152,20 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
           <option value="" disabled>
             Choose a template to start from…
           </option>
-          {CHANNEL_OPERATOR_TEMPLATES.map((template) => (
-            <option key={template.id} value={template.id}>
-              {template.label}: {template.description}
-            </option>
+          {CHANNEL_OPERATOR_GROUPS.map((group) => (
+            <optgroup key={group} label={group}>
+              {CHANNEL_OPERATOR_TEMPLATES.filter((template) => template.group === group).map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.label} ({template.id}): {template.description}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
+        <p className="mt-1 text-xs text-text-light">
+          One for each of Nextflow&apos;s channel operators. The code can be changed.
+        </p>
+        {discouraged && <p className="mt-1 text-xs text-amber-500">{discouraged}</p>}
       </div>
 
       <div className="flex flex-wrap gap-2">
