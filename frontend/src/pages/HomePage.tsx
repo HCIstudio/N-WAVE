@@ -627,61 +627,64 @@ const HomePage: React.FC = () => {
     <PageLayout>
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 p-8">
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-            <div>
+          {/* The title and the buttons share the top row; the legend has a
+              row of its own below, so however long it gets it never pushes
+              the buttons down. */}
+          <div className="mb-6">
+            <div className="flex flex-wrap items-center justify-between gap-4">
               <h1 className="text-3xl font-bold text-text">Workflows</h1>
-              <NodeKindLegend className="mt-2" />
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Link to="/courses" className={HEADER_BUTTON}>
-                <GraduationCap size={16} aria-hidden />
-                <span>Courses</span>
-              </Link>
-              <a
-                href="https://github.com/HCIstudio/N-WAVE/wiki"
-                target="_blank"
-                rel="noreferrer"
-                data-tutorial="help"
-                className={HEADER_BUTTON}
-              >
-                <BookOpen size={16} />
-                <span>Wiki</span>
-              </a>
-              {glossaryOn && (
-                <Link
-                  to="/help"
+              <div className="flex flex-wrap items-center gap-3">
+                <Link to="/courses" className={HEADER_BUTTON}>
+                  <GraduationCap size={16} aria-hidden />
+                  <span>Courses</span>
+                </Link>
+                <a
+                  href="https://github.com/HCIstudio/N-WAVE/wiki"
+                  target="_blank"
+                  rel="noreferrer"
+                  data-tutorial="help"
                   className={HEADER_BUTTON}
                 >
-                  <CircleHelp size={16} aria-hidden />
-                  <span>Help</span>
+                  <BookOpen size={16} />
+                  <span>Wiki</span>
+                </a>
+                {glossaryOn && (
+                  <Link
+                    to="/help"
+                    className={HEADER_BUTTON}
+                  >
+                    <CircleHelp size={16} aria-hidden />
+                    <span>Help</span>
+                  </Link>
+                )}
+                <Link
+                  to="/roadmap"
+                  title="Where N-WAVE is going"
+                  className={HEADER_BUTTON}
+                >
+                  <Signpost size={16} aria-hidden />
+                  <span>Roadmap</span>
                 </Link>
-              )}
-              <Link
-                to="/roadmap"
-                title="Where N-WAVE is going"
-                className={HEADER_BUTTON}
-              >
-                <Signpost size={16} aria-hidden />
-                <span>Roadmap</span>
-              </Link>
-              <button
-                type="button"
-                onClick={() => setIsImportModalOpen(true)}
-                data-tutorial="import"
-                className={HEADER_BUTTON}
-              >
-                <Upload size={16} />
-                <span>Import Workflow</span>
-              </button>
-              <Link
-                to="/settings"
-                data-tutorial="settings"
-                className={HEADER_BUTTON}
-              >
-                <Settings size={16} aria-hidden />
-                <span>Global Settings</span>
-              </Link>
+                <button
+                  type="button"
+                  onClick={() => setIsImportModalOpen(true)}
+                  data-tutorial="import"
+                  className={HEADER_BUTTON}
+                >
+                  <Upload size={16} />
+                  <span>Import Workflow</span>
+                </button>
+                <Link
+                  to="/settings"
+                  data-tutorial="settings"
+                  className={HEADER_BUTTON}
+                >
+                  <Settings size={16} aria-hidden />
+                  <span>Global Settings</span>
+                </Link>
+              </div>
             </div>
+            <NodeKindLegend className="mt-2" />
           </div>
           {isHomeTutorialActive && homeTutorialStep !== null && (
             <HomeTutorial
