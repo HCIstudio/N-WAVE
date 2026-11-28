@@ -1,5 +1,5 @@
 // Steps called through pipes (with an operator in between) and outputs taken
-// apart by a tuple assignment.
+// apart by a tuple assignment, or taken by name from a call.
 
 process DOUBLE {
     input:
@@ -46,6 +46,6 @@ process REPORT {
 workflow {
     channel.of(1, 2, 3) | DOUBLE | map { n -> n + 1 } | SPLIT
     (small, large) = SPLIT.out
-    REPORT(small, large)
-    REPORT.out.text.view()
+    ch_text = REPORT(small, large).text
+    ch_text.view()
 }

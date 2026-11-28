@@ -123,6 +123,9 @@ describe("pipes through steps and outputs taken apart", () => {
     expect(script).toContain("DOUBLE(");
     expect(script).toMatch(/DOUBLE\.out\.doubled\.map \{ n -> n \+ 1 \}/);
     expect(script).toContain("REPORT(SPLIT.out.small, SPLIT.out.large)");
+    // `ch_text = REPORT(…).text`: the step, and its output read by name.
+    expect(script).toMatch(/REPORT\.out\.text\.view\(\)/);
+    expect(imported.nodes.filter((node) => node.type === "channelOperator").map((node) => node.data.label)).not.toContain("ch_text");
   });
 });
 

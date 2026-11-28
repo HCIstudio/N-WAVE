@@ -140,7 +140,7 @@ export const splitArguments = (args: string): string[] => {
 /** `STEP(args)`, `x = STEP(args)` or `(a, b) = STEP(args)` (one call, nothing after it). */
 const callOf = (
   text: string,
-): { name: string; args: string; assigned: string | null; assignedEach: string[] } | null => {
+): { name: string; args: string; assigned: string | null; assignedEach: string[]; picked?: string | number } | null => {
   const masked = maskSource(text);
   const match = masked.match(/^(?:(?:([A-Za-z_]\w*)|\(\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+)\s*\))\s*=\s*)?([A-Za-z_]\w*)\s*\(/);
   if (!match) return null;
@@ -152,8 +152,13 @@ const callOf = (
     if ("([{".includes(masked[index])) depth += 1;
     if (")]}".includes(masked[index])) depth -= 1;
     if (depth === 0) {
-      if (masked.slice(index + 1).trim() !== "") return null;
-      return { name: match[3], args: text.slice(open + 1, index), assigned: match[1] ?? null, assignedEach };
+      const call = { name: match[3], args: text.slice(open + 1, index), assigned: match[1] ?? null, assignedEach };
+      const rest = masked.slice(index + 1).trim();
+      if (rest === "") return call;
+      // `x = STEP(…).reads`, `x = STEP(…)[1]`: one of its outputs, by name or place.
+      const picked = /^(?:\.\s*([A-Za-z_]\w*)|\[\s*(\d+)\s*\])$/.exec(rest);
+      if (!picked || !call.assigned) return null;
+      return { ...call, picked: picked[1] ?? Number(picked[2]) };
     }
   }
   return null;
@@ -1355,7 +1360,15 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       sources.set(name, { nodeId: node.id, port });
       branchSources.delete(name);
     });
-    if (call.assigned) {
+    if (call.assigned && call.picked !== undefined) {
+      // The output taken: read as `STEP.out.reads` when written back.
+      const outputs = node.data.outputs ?? [];
+      const port = typeof call.picked === "number" ? outputs[call.picked]?.name : outputs.find((output) => output.name === call.picked)?.name;
+      if (port) {
+        sources.set(call.assigned, { nodeId: node.id, port });
+        branchSources.delete(call.assigned);
+      }
+    } else if (call.assigned) {
       sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
       branchSources.delete(call.assigned);
       // `samples_ch = RNASEQ(…)`: written back so, for code that reads the name.
