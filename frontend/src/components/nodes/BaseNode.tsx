@@ -45,6 +45,8 @@ export interface PortData {
   multiple?: boolean;
   /** Outputs: each item is `[meta, files]` (nf-core `tuple val(meta), path(...)`). */
   metaTuple?: boolean;
+  /** Outputs: the names of each item's parts, when it is a tuple (`id, tif`). */
+  fields?: string[];
 }
 
 /** Files, a folder (e.g. an index), a value, or a tool's versions. */

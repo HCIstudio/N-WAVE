@@ -8,7 +8,7 @@ import BranchPanel from "../components/panels/logic/BranchPanel";
 import ParametersPanel from "../components/panels/input/ParametersPanel";
 import PipelinePanel from "../components/panels/process/PipelinePanel";
 import ChannelOperatorPanel from "../components/panels/operator/ChannelOperatorPanel";
-import { generateChannelOperatorNode } from "./channelOperator";
+import { CHANNEL_OPERATOR_TEMPLATES, generateChannelOperatorNode } from "./channelOperator";
 import { embeddedDefinitionFor } from "./embeddedDefinition";
 import SamplesheetPanel from "../components/panels/input/SamplesheetPanel";
 import {
@@ -93,6 +93,15 @@ const withPorts = (
   ...(outputs ? { outputs } : {}),
 });
 
+/** Channel operators the menu offers on their own, by template. */
+const MENU_OPERATORS = [
+  { id: "filter", label: "Filter", icon: "ListFilter" },
+  { id: "map", label: "Map", icon: "ArrowRightLeft" },
+  { id: "flatMap", label: "Flat map", icon: "ListTree" },
+  { id: "join", label: "Join", icon: "Combine" },
+  { id: "collect", label: "Collect", icon: "Layers" },
+];
+
 const builtinNodeDefinitions: NodeDefinition[] = [
   {
     id: "fileInput",
@@ -173,6 +182,34 @@ const builtinNodeDefinitions: NodeDefinition[] = [
     generateNextflow: generateChannelOperatorNode,
     executionLabel: "Channel Operator",
   },
+  // The channel operators used most, each its own entry: a Channel Operator
+  // that starts from its template (nodes on the canvas are Channel Operators).
+  ...MENU_OPERATORS.map(({ id, label, icon }): NodeDefinition => {
+    const template = CHANNEL_OPERATOR_TEMPLATES.find((entry) => entry.id === id) as (typeof CHANNEL_OPERATOR_TEMPLATES)[number];
+    const ports = (names: string[]) => names.map((name) => ({ name, label: name, isConnectable: true }));
+    return {
+      id: `channelOperator:${id}`,
+      kind: "operator",
+      category: "Operators",
+      label,
+      description: `${template.description} A Channel Operator (${id}): runs no tool.`,
+      type: "channelOperator",
+      icon,
+      inputs: ports(template.inputs),
+      outputs: ports(template.outputs),
+      defaults: {
+        label,
+        subtitle: template.label,
+        channelOperatorTemplate: template.id,
+        channelOperatorCode: template.code,
+        inputs: ports(template.inputs),
+        outputs: ports(template.outputs),
+      },
+      panel: ChannelOperatorPanel,
+      generateNextflow: generateChannelOperatorNode,
+      executionLabel: "Channel Operator",
+    };
+  }),
   // Steps N-WAVE writes for you that work on the contents of text files: each
   // runs as a process of its own (grep, sed, cat), unlike the channel operators.
   {

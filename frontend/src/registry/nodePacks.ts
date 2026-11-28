@@ -85,6 +85,7 @@ export const nodeStorageKey = (id: string): string =>
 /**
  * Built-in node ids and process types (nodeDefinitions.ts): a custom node
  * with one would shadow the built-in. "nfcore_" ids belong to nf-core nodes;
+ * "channelOperator:" ones to the channel operators the node menu offers;
  * "fastqc" and "trimmomatic" to the once built-in nodes that saved workflows
  * still name (they load as nf-core nodes, see registry/nfcore/legacyNodes.ts).
  * Keep in step with RESERVED_NODE_IDS in backend/src/validation/schemas.ts.
@@ -112,6 +113,8 @@ const RESERVED_NODE_ID_KEYS = new Set(
 );
 export const isReservedNodeId = (id: string): boolean =>
   id.toLowerCase().startsWith("nfcore_") ||
+  // The menu's channel operators ("channelOperator:filter").
+  id.toLowerCase().startsWith("channeloperator:") ||
   RESERVED_NODE_ID_KEYS.has(id.toLowerCase());
 
 const PORT_NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;

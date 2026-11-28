@@ -10,6 +10,8 @@ import {
 import type { NodeData, PortData } from "../../nodes/BaseNode";
 import Term from "../../common/ui/Term";
 import { CODE_PLACEMENTS, placementOf } from "../../../generators/core/placement";
+import { FITTING_TEMPLATES, fittedTemplateCode, itemFieldsInto, readFilter } from "../../../registry/channelOperatorFit";
+import FilterConditionForm from "./FilterConditionForm";
 
 interface ChannelOperatorPanelProps {
   node: Node<NodeData>;
@@ -34,7 +36,7 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
   onSave,
 }) => {
   const fieldId = useId();
-  const { setEdges } = useWorkflowContext();
+  const { nodes, edges, setEdges } = useWorkflowContext();
   const inputs = (node.data.inputs ?? []).map((port) => port.name);
   const outputs = (node.data.outputs ?? []).map((port) => port.name);
   const code =
@@ -48,6 +50,13 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
   const discouraged = CHANNEL_OPERATOR_TEMPLATES.find(
     (template) => template.id === node.data.channelOperatorTemplate,
   )?.discouraged;
+
+  // What the connected items are made of (`id, tif`), for templates that take them apart.
+  const fields = inputs.length === 1 && inputs[0] === "in" ? itemFieldsInto(node.id, "in", nodes, edges) : null;
+  const templateId = String(node.data.channelOperatorTemplate ?? "");
+  const fitted = fields ? fittedTemplateCode(templateId, fields) : null;
+  // A filter of one comparison, from the template or a script, as a form.
+  const filterForm = readFilter(code);
 
   const inputKey = inputs.join(", ");
   const outputKey = outputs.join(", ");
@@ -86,8 +95,11 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
       (entry) => entry.id === templateId,
     );
     if (!template) return;
+    // Fitted to what is connected, when the ports stay the same.
+    const sameInput = template.inputs.length === 1 && template.inputs[0] === "in";
+    const code = (sameInput && fields && fittedTemplateCode(template.id, fields)) || template.code;
     savePorts(template.inputs, template.outputs, {
-      channelOperatorCode: template.code,
+      channelOperatorCode: code,
       channelOperatorTemplate: template.id,
       subtitle: template.label,
     });
@@ -200,6 +212,26 @@ const ChannelOperatorPanel: React.FC<ChannelOperatorPanelProps> = ({
           />
         </div>
       </div>
+
+      {filterForm && (
+        <FilterConditionForm form={filterForm} onChange={(next) => onSave(node.id, { channelOperatorCode: next })} />
+      )}
+
+      {fields && fitted && fitted !== code && FITTING_TEMPLATES.has(templateId) && (
+        <div className="rounded-md border border-accent p-2 text-xs text-text-light">
+          <p>
+            The connected items are made of <code>{fields.join(", ")}</code>.
+          </p>
+          <button
+            type="button"
+            onClick={() => onSave(node.id, { channelOperatorCode: fitted })}
+            className="mt-1 rounded-sm border border-nextflow-green px-2 py-0.5 text-nextflow-green hover:bg-nextflow-green/10"
+          >
+            Fit the code to them
+          </button>
+          <span className="ml-1">(replaces the code)</span>
+        </div>
+      )}
 
       <div>
         <label

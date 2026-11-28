@@ -50,6 +50,8 @@ export interface CustomNodeOutput {
   label: string;
   fileType?: string;
   filePattern?: string;
+  /** A tuple's parts, by name: `tuple val(id), path('*.tif')` → id, tif. */
+  fields?: string[];
 }
 
 export interface CustomNodeArgumentField {
@@ -319,6 +321,7 @@ export const createNodeDefinitionFromCustomNode = (
     label: output.label,
     fileType: output.fileType,
     filePattern: output.filePattern,
+    ...(output.fields ? { fields: output.fields } : {}),
     isConnectable: true,
   }));
 
@@ -759,14 +762,48 @@ const parseOutputDeclaration = (
   // Unnamed outputs are read by position: `.out` (the only one) or `.out[1]`.
   const name = emit || (index === 0 ? "out" : `out_${index}`);
 
+  const fields = tupleFields(declaration);
   return {
     name,
     emit,
     label: toTitle(name),
     fileType: inferFileType(declaration),
     filePattern: inferFilePattern(declaration),
+    ...(fields ? { fields } : {}),
   };
 };
+
+/**
+ * The names of a tuple output's parts, for code that takes its items apart
+ * (`{ id, tif -> … }`): a value's or file's name, else what its pattern
+ * says. Null for anything that isn't a tuple.
+ */
+const tupleFields = (declaration: string): string[] | null => {
+  const parts = declaration.match(/^tuple\b\s*(.*)$/s)?.[1];
+  if (parts === undefined) return null;
+  const fields: string[] = [];
+  const taken = new Set<string>();
+  for (const part of splitTopLevel(parts)) {
+    if (/^\w+\s*:/.test(part)) continue; // emit:, optional:, topic:
+    const qualifier = part.match(/^(\w+)\s*\(?\s*(.*?)\s*\)?$/s);
+    if (!qualifier) continue;
+    const [, kind, inside] = qualifier;
+    const fallback = `part_${fields.length + 1}`;
+    const named = /^[A-Za-z_]\w*$/.test(inside) ? inside : null;
+    const name =
+      kind === "env"
+        ? (unquoteName(inside) ?? named ?? fallback).toLowerCase()
+        : kind === "stdout" || kind === "eval"
+          ? kind === "stdout" ? "stdout" : "output"
+          : (named ?? nameFromPattern(inside, fallback, taken));
+    const unique = taken.has(name) ? fallback : name;
+    taken.add(unique);
+    fields.push(unique);
+  }
+  return fields.length > 0 ? fields : null;
+};
+
+const unquoteName = (text: string): string | null => text.match(/^['"]([A-Za-z_]\w*)['"]$/)?.[1] ?? null;
 
 const splitTopLevel = (value: string): string[] => {
   const parts: string[] = [];
