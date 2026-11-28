@@ -36,6 +36,7 @@ import {
   parseCustomNodeSource,
   type StoredCustomNode,
 } from "../../registry/customNodes";
+import { summarizeChannelCode } from "../../registry/channelOperatorSummary";
 import { createNodeDefinitionFromNfCoreManifest } from "../../registry/nfcoreModuleAdapters";
 import { extractRootIncludes } from "../../registry/nfcore/subworkflowSource";
 import { stripComments } from "../nested/workflowGraph";
@@ -844,6 +845,8 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     return parts.every((entry): entry is Source[] => entry !== null) ? parts.flat() : null;
   };
 
+  /** Channel names the import made up, for code given inline as a step's argument. */
+  const madeUpNames = new Set<string>();
   // Channel operator nodes, one per group of statements.
   const outputlessKeys = new Set<string>();
   let unlabeled = 0;
@@ -894,18 +897,23 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     // Named like the export names it in the layout line: its first output, else its label.
     if (outputs.length === 0 && label === null) unlabeled += 1;
     const key = outputs[0] ?? uniqueName(lowerSnake(label ?? `ch_channels_${unlabeled}`) || "channels", outputlessKeys);
+    // Without a name of its own (a comment, a channel the script named), the
+    // code names it: its operators; and what the first is given is its subtitle.
+    const summary = summarizeChannelCode(code);
+    const named = label !== null || outputs.some((name) => !madeUpNames.has(name));
+    const subtitle = !summary ? "Channel code" : named ? [summary.label, summary.subtitle].filter(Boolean).join(" · ") : summary.subtitle || "Channel code";
     const node = addNode(
       key,
       "channelOperator",
       {
-        subtitle: "Channel code",
+        subtitle,
         channelOperatorTemplate: "custom",
         channelOperatorCode: code,
         inputs: [...inputs.keys()].map((name) => ({ name, label: name, isConnectable: true })),
         outputs: outputs.map((name) => ({ name, label: name, isConnectable: true })),
         channelNames: Object.fromEntries(outputs.map((name) => [name, name])),
       },
-      label ?? key,
+      label ?? (named ? undefined : summary?.label) ?? key,
     );
     for (const [name, references] of inputs) for (const reference of references) connect(reference, node, name, 0);
     for (const name of outputs) {
@@ -922,6 +930,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     const literal = settingValue(argument);
     if (typeof literal !== "string" || unquote(argument) !== null || /^\[[\s[\]:,]*\]$/.test(argument.trim())) return null;
     const variable = `ch_${stepName.toLowerCase()}_${port}`.replace(/\W+/g, "_");
+    madeUpNames.add(variable);
     const before = nodes.length;
     operatorFor([{ text: `${variable} = ${argument.trim()}`, comments: [], column: 0 }], null, [{ variables: [variable] }]);
     if (nodes.length === before) return null;

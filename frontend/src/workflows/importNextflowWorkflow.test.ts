@@ -80,6 +80,9 @@ describe("importing a script written by hand", () => {
     expect(reads?.data.channelOperatorCode).toBe("output.ch_reads = channel.fromPath(params.reads)");
     const view = draft.nodes.find((node) => node.type === "channelOperator" && node !== reads);
     expect(view?.data.channelOperatorCode).toBe("input.head.view()");
+    // Code that names no channel is named by its operators; a named channel says what it does below its name.
+    expect(view?.data.label).toBe("view");
+    expect(reads?.data.subtitle).toBe("channel.fromPath · params.reads");
   });
 
   it("keeps the params the steps read in a Parameters node", async () => {
@@ -149,8 +152,9 @@ describe("importing a script written by hand", () => {
         "}",
       ].join("\n"),
     });
-    // The argument's channel code is a channel operator feeding it.
-    expect(draft.nodes.map((node) => node.data.label).sort()).toEqual(["COUNT_ALL", "ch_count_all_files"]);
+    // The argument's channel code is a channel operator feeding it, named by what it does.
+    expect(draft.nodes.map((node) => node.data.label).sort()).toEqual(["COUNT_ALL", "channel.fromPath"]);
+    expect(byLabel(draft.nodes, "channel.fromPath")?.data.subtitle).toBe("'*.txt'");
     const step = byLabel(draft.nodes, "COUNT_ALL");
     const source = String((step?.data.customNodeDefinition as { source?: string } | undefined)?.source);
     expect(source).toContain("process COUNT {");
