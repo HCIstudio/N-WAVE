@@ -42,7 +42,7 @@ test.describe("courses", () => {
     await expect(card).toContainText("Open the + menu");
     await page.getByRole("button", { name: "Add node" }).click();
     await expect(card).toContainText("Pick Filter lines");
-    await page.getByRole("button", { name: /^Filter/ }).first().click();
+    await page.getByRole("button", { name: /^Filter lines/ }).click();
 
     // The canvas moved to show the new node.
     await expect(card).toContainText("Connect it");
