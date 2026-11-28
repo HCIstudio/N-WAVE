@@ -128,13 +128,18 @@ jobs:
         run: pnpm run build
       - name: Add SPA fallback
         run: cp frontend/dist/index.html frontend/dist/404.html
+      # Named per attempt: a re-run of this job finds only its own artifact
+      # (deploy-pages refuses when two have the same name).
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
         with:
           path: frontend/dist
+          name: github-pages-${{ github.run_attempt }}
       - name: Deploy to GitHub Pages
         id: deploy
         uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+        with:
+          artifact_name: github-pages-${{ github.run_attempt }}
 
   # The I/O monitor's image (backend/monitor), which N-WAVE downloads when the
   # monitor is switched on. It compiles BCC: emulated, the arm64 half would take
