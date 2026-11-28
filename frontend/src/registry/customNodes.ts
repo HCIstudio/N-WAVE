@@ -612,13 +612,19 @@ const buildTupleDefinition = ({
   ].join("\n");
 };
 
-const SECTION_LABELS = "input|output|when|script|shell|exec|stub|topic";
+const SECTION_LABELS = "input|output|stage|when|script|shell|exec|stub|topic";
+/** A declaration in the classic syntax (`path x`, `tuple val(meta), path(reads)`), not a typed one (`x: Path`). */
+const LEGACY_QUALIFIER = /^(tuple|path|val|env|stdin|stdout|each|file|eval)\b/;
+/** A typed input (`x: Path`, `(meta, reads): Tuple<Map,Path>`) or output (`x: Path = file('x')`, `x = file('x')`). */
+const TYPED_DECLARATION = /^(\([\w\s,]*\)|[A-Za-z_]\w*)\s*(:|=(?!=))/;
 
 const getSectionLines = (source: string, section: string): string[] => {
   // `input: path x` on one line reads like `input:` and `path x` on two.
+  // (Not a typed input named like a section: `input: Path`.)
   const lines = source.replace(
     new RegExp(`^([ \\t]*)(${SECTION_LABELS}):[ \\t]*(\\S[^\\n]*)$`, "gm"),
-    (_line, indent: string, label: string, rest: string) => `${indent}${label}:\n${indent}${rest}`,
+    (line, indent: string, label: string, rest: string) =>
+      LEGACY_QUALIFIER.test(rest) ? `${indent}${label}:\n${indent}${rest}` : line,
   );
   const block =
     lines.match(
@@ -633,13 +639,67 @@ const getSectionLines = (source: string, section: string): string[] => {
     .map(stripLineComment)
     .map((line) => line.trim())
     .filter(Boolean)
-    .filter((line) => /^(tuple|path|val|env|stdin|stdout|each|file|eval)\b/.test(line));
+    .filter((line) => LEGACY_QUALIFIER.test(line) || TYPED_DECLARATION.test(line) || /^\w+\(/.test(line));
+};
+
+/** A name for a file given by a pattern (`'*.bam'` → bam, `'reference.fa'` → reference), or the fallback. */
+const nameFromPattern = (declaration: string, fallback: string, taken: Set<string>): string => {
+  const pattern = declaration.match(/['"]([^'"]+)['"]/)?.[1] ?? "";
+  const file = pattern.split("/").pop() ?? "";
+  const stem = file.startsWith("*.") ? file.slice(2) : file.replace(/\.[^.]*$/, "");
+  const name = stem.replace(/[^A-Za-z0-9_]+/g, "_").replace(/^_+|_+$/g, "").toLowerCase();
+  return /^[a-z_]\w*$/.test(name) && !taken.has(name) ? name : fallback;
+};
+
+/** A type's arguments: `Tuple<Map,Path>` → Map, Path (nested generics kept whole). */
+const typeArguments = (type: string): string[] => {
+  const inner = type.match(/^\s*\w+\s*<([\s\S]*)>\s*\??\s*$/)?.[1] ?? "";
+  const parts: string[] = [];
+  let depth = 0;
+  let current = "";
+  for (const char of inner) {
+    if (char === "<") depth += 1;
+    if (char === ">") depth -= 1;
+    if (char === "," && depth === 0) {
+      parts.push(current.trim());
+      current = "";
+    } else current += char;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
+};
+
+/** Whether a type holds files: Path, Path?, Set<Path>, List<Path>. */
+const isFileType = (type: string): boolean => /\bPath\b/.test(type);
+
+/**
+ * A typed process input (Nextflow's preview of static types):
+ * `fastq: Path`, `id: String`, `(meta, fastq): Tuple<Map,Path>`.
+ */
+const parseTypedInput = (declaration: string, index: number): CustomNodeArgument | null => {
+  const tuple = declaration.match(/^\(([^)]*)\)\s*:\s*(.+)$/);
+  if (tuple) {
+    const names = tuple[1].split(",").map((name) => name.trim());
+    if (!names.every((name) => /^[A-Za-z_]\w*$/.test(name))) return null;
+    const types = typeArguments(tuple[2]);
+    const fields: CustomNodeArgumentField[] = names.map((name, at) =>
+      isFileType(types[at] ?? "")
+        ? { kind: "path", name }
+        : { kind: "val", name, meta: /^meta\d*$/.test(name) },
+    );
+    return { kind: "tuple", name: fields.find((field) => field.kind === "path")?.name ?? `tuple_${index + 1}`, fields };
+  }
+  const single = declaration.match(/^([A-Za-z_]\w*)\s*:\s*(\S.*)$/);
+  if (!single) return null;
+  const kind = isFileType(single[2]) ? "path" : "val";
+  return { kind, name: single[1], fields: [{ kind, name: single[1] }] };
 };
 
 const parseInputDeclaration = (
   declaration: string,
   index: number
 ): CustomNodeArgument | null => {
+  if (!LEGACY_QUALIFIER.test(declaration)) return parseTypedInput(declaration, index);
   // `path x`, `path(x)`, `path x, stageAs: 'y'`; `path '*'` (no name): input_<n>.
   const simple = declaration.match(/^(path|val|each|env|stdin|file)\b\s*\(?\s*([A-Za-z_][A-Za-z0-9_]*)?/);
   if (simple && !declaration.startsWith("tuple")) {
@@ -663,10 +723,20 @@ const parseInputDeclaration = (
         continue;
       }
 
-      const pathName = token.match(/^(?:path|file|env|stdin)\(\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
+      // `env('SAMPLE')`, `stdin`: values the channel's items bring (named after the variable).
+      const env = token.match(/^env\(\s*['"]?([A-Za-z_][A-Za-z0-9_]*)['"]?\s*\)/)?.[1];
+      if (env || /^stdin\b/.test(token)) {
+        fields.push({ kind: "val", name: env ? env.toLowerCase() : "stdin", meta: false });
+        continue;
+      }
+
+      const pathName = token.match(/^(?:path|file)\(\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1];
       if (pathName) fields.push({ kind: "path", name: pathName });
-      // `path('*.fq')`: a file without a name in the script.
-      else if (/^(?:path|file|env|stdin)\b/.test(token)) fields.push({ kind: "path", name: `file_${index + 1}_${fields.length + 1}` });
+      // `path('*.bam')`: a file without a name in the script, named after its pattern (bam).
+      else if (/^(?:path|file)\b/.test(token)) {
+        const taken = new Set(fields.map((field) => field.name));
+        fields.push({ kind: "path", name: nameFromPattern(token, `file_${index + 1}_${fields.length + 1}`, taken) });
+      }
     }
 
   if (fields.length === 0) return null;
@@ -683,7 +753,9 @@ const parseOutputDeclaration = (
   declaration: string,
   index: number
 ): CustomNodeOutput | null => {
-  const emit = declaration.match(/\bemit:\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1] ?? "";
+  // A typed output's name is read as its emit: `bam: Path = file('*.bam')` → `.out.bam`.
+  const typed = LEGACY_QUALIFIER.test(declaration) ? null : declaration.match(/^([A-Za-z_]\w*)\s*(?::[^=]*)?=(?!=)/)?.[1];
+  const emit = typed ?? declaration.match(/\bemit:\s*([A-Za-z_][A-Za-z0-9_]*)/)?.[1] ?? "";
   // Unnamed outputs are read by position: `.out` (the only one) or `.out[1]`.
   const name = emit || (index === 0 ? "out" : `out_${index}`);
 
