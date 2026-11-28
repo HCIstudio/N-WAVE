@@ -70,11 +70,12 @@ const conditions = [
 
 describe("codeConnections", () => {
   it("finds the steps code calls and the outputs it reads that the canvas doesn't connect", () => {
-    // `ch_trimmed = ch_reads | TRIM`: the code calls TRIM, which the canvas doesn't connect.
+    // `ch_trimmed = params.trim ? TRIM(ch_reads).reads : ch_reads`: the code calls TRIM, which the canvas doesn't connect.
     const { nodes, edges } = importNextflowScript(codeCallsStep);
     const id = (label: string) => nodes.find((node) => node.data.label === label)?.id;
     expect(connectionsOf(nodes, edges).map(({ from, to, kind }) => ({ from, to, kind }))).toEqual([
-      { from: id("TRIM"), to: id("ALIGN"), kind: "reads" },
+      // The line before ALIGN (its input) calls TRIM.
+      { from: id("ALIGN"), to: id("TRIM"), kind: "calls" },
     ]);
   });
 

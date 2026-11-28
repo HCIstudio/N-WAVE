@@ -55,6 +55,7 @@ import {
   readIncludeItem,
   type ConditionalChain,
   splitWorkflowStatements,
+  expandPipe,
   topLevelItems,
   usedNames,
   workflowSections,
@@ -135,11 +136,15 @@ export const splitArguments = (args: string): string[] => {
   return parts;
 };
 
-/** `STEP(args)` or `x = STEP(args)` (one call, nothing after it). */
-const callOf = (text: string): { name: string; args: string; assigned: string | null } | null => {
+/** `STEP(args)`, `x = STEP(args)` or `(a, b) = STEP(args)` (one call, nothing after it). */
+const callOf = (
+  text: string,
+): { name: string; args: string; assigned: string | null; assignedEach: string[] } | null => {
   const masked = maskSource(text);
-  const match = masked.match(/^(?:([A-Za-z_]\w*)\s*=\s*)?([A-Za-z_]\w*)\s*\(/);
+  const match = masked.match(/^(?:(?:([A-Za-z_]\w*)|\(\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+)\s*\))\s*=\s*)?([A-Za-z_]\w*)\s*\(/);
   if (!match) return null;
+  // `(a, b) = STEP(…)`: each name is one of its outputs, in order.
+  const assignedEach = match[2] ? match[2].split(",").map((name) => name.trim()) : [];
   const open = match[0].length - 1;
   let depth = 0;
   for (let index = open; index < masked.length; index += 1) {
@@ -147,7 +152,7 @@ const callOf = (text: string): { name: string; args: string; assigned: string | 
     if (")]}".includes(masked[index])) depth -= 1;
     if (depth === 0) {
       if (masked.slice(index + 1).trim() !== "") return null;
-      return { name: match[2], args: text.slice(open + 1, index), assigned: match[1] ?? null };
+      return { name: match[3], args: text.slice(open + 1, index), assigned: match[1] ?? null, assignedEach };
     }
   }
   return null;
@@ -708,7 +713,14 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   };
 
   const sections = entry ? workflowSections(blockBody(entry.text)) : null;
-  const statements: Statement[] = sections ? splitWorkflowStatements(sections.main) : [];
+  // Pipes through the workflow's steps, as the calls they make (`a | A | B` → `A(a)`, `B(A.out)`).
+  const isStepName = (name: string) => processes.has(name) || includes.has(name) || namedWorkflows.has(name);
+  const statements: Statement[] = (sections ? splitWorkflowStatements(sections.main) : []).flatMap((statement) => {
+    const calls = expandPipe(statement.text, isStepName);
+    return calls
+      ? calls.map((text, index) => ({ ...statement, text, comments: index === 0 ? statement.comments : [], blankBefore: index === 0 ? statement.blankBefore : false }))
+      : [statement];
+  });
   for (const placement of ["publish", "onComplete", "onError"] as const) {
     const code = dedent(sections?.[placement] ?? "").trim();
     if (code) kept.push({ placement, start: entry?.start ?? 0, text: code });
@@ -1328,6 +1340,12 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
         node.data = { ...node.data, selectedFilterFiles: names.map((name) => ({ name, size: 0, content: "" })) };
       }
     }
+    call.assignedEach.forEach((name, index) => {
+      const port = node.data.outputs?.[index]?.name;
+      if (!port) return;
+      sources.set(name, { nodeId: node.id, port });
+      branchSources.delete(name);
+    });
     if (call.assigned) {
       sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
       branchSources.delete(call.assigned);
@@ -1376,6 +1394,19 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       }
       const emptied = text.match(/^([A-Za-z_]\w*)\s*=\s*[Cc]hannel\.empty\(\)$/);
       if (emptied && emptiedForBranch(list, index, emptied[1])) return;
+      // `(small, large) = SPLIT.out`: each name is one of the step's outputs, in order.
+      const outputsTaken = maskSource(text).match(/^\(\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+)\s*\)\s*=\s*([A-Za-z_]\w*)\.out\s*$/);
+      const taken = outputsTaken ? steps.get(outputsTaken[2]) : undefined;
+      if (outputsTaken && taken) {
+        flushBlock();
+        outputsTaken[1].split(",").forEach((name, index) => {
+          const port = taken.data.outputs?.[index]?.name;
+          if (!port) return;
+          sources.set(name.trim(), { nodeId: taken.id, port });
+          branchSources.delete(name.trim());
+        });
+        return;
+      }
       const defined = definedNames(text);
       if (!membership && defined.length === 1 && (glue.has(defined[0]) || selectedFiles.has(defined[0]))) return;
       if (membership) {
