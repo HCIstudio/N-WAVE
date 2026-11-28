@@ -593,3 +593,52 @@ export const readIfElse = (text: string): { condition: string; ifBody: string; e
   const chain = readIfChain(text);
   return chain && chain.conditions.length === 1 ? { condition: chain.conditions[0], ifBody: chain.bodies[0], elseBody: chain.elseBody } : null;
 };
+
+/** The parts of a pipe, `a | B | view` → a, B, view (not `||`, and only at the top level). */
+const pipeParts = (text: string): string[] | null => {
+  const masked = maskSource(text);
+  const parts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < masked.length; index += 1) {
+    const char = masked[index];
+    if ("([{".includes(char)) depth += 1;
+    else if (")]}".includes(char)) depth -= 1;
+    else if (char === "|" && depth === 0) {
+      if (masked[index + 1] === "|" || masked[index - 1] === "|") return null;
+      parts.push(text.slice(start, index).trim());
+      start = index + 1;
+    } else if (char === "&" && depth === 0) return null;
+  }
+  if (parts.length === 0) return null;
+  parts.push(text.slice(start).trim());
+  return parts.every(Boolean) ? parts : null;
+};
+
+/**
+ * A statement that pipes channels through the workflow's steps, written as
+ * the calls it makes: `channel.of(1) | A | B | view` → `A(channel.of(1))`,
+ * `B(A.out)`, `B.out.view()`. Other parts are channel operators applied in
+ * between (`| map { … }` → `.map { … }`). Null when it pipes through no step
+ * (a pipe of operators stays as written), or when it isn't a plain pipe.
+ */
+export const expandPipe = (statement: string, isStep: (name: string) => boolean): string[] | null => {
+  const assignment = maskSource(statement).match(/^\s*(?:def\s+)?([A-Za-z_]\w*)\s*=(?!=)\s*/);
+  const body = assignment ? statement.slice(assignment[0].length) : statement;
+  const parts = pipeParts(body);
+  if (!parts?.slice(1).some((part) => isStep(part))) return null;
+  const calls: string[] = [];
+  let current = parts[0];
+  for (const part of parts.slice(1)) {
+    if (isStep(part)) {
+      calls.push(`${part}(${current})`);
+      current = `${part}.out`;
+    } else if (/^[A-Za-z_]\w*(\s*\(|\s*\{|$)/.test(part)) {
+      // An operator: `view`, `view()`, `map { … }`, `collect()`.
+      current = `${current}.${/^[A-Za-z_]\w*$/.test(part) ? `${part}()` : part}`;
+    } else return null;
+  }
+  if (assignment) calls.push(`${assignment[1]} = ${current}`);
+  else if (!/^[A-Za-z_]\w*\.out$/.test(current)) calls.push(current);
+  return calls;
+};

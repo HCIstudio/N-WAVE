@@ -115,3 +115,25 @@ describe("reading a process's inputs and outputs", () => {
     expect(parseCustomNodeSource("process NONE {\n  script:\n  'echo hi'\n}").outputs).toEqual([]);
   });
 });
+
+describe("tuple output fields", () => {
+  it("names each part of a tuple output, for code that takes its items apart", () => {
+    const parsed = parseCustomNodeSource(`process P {
+  input:
+  path x
+  output:
+  tuple val(id), path("*.tif"), emit: tifs
+  tuple val(meta), path(bam), env('SAMPLE'), stdout, emit: bams
+  tuple val(id), path('a/*.tif'), path("*.tif"), optional: true, emit: twice
+  path 'y.txt', emit: y
+  script:
+  'x'
+}`);
+    expect(parsed.outputs.map((output) => [output.name, output.fields])).toEqual([
+      ["tifs", ["id", "tif"]],
+      ["bams", ["meta", "bam", "sample", "stdout"]],
+      ["twice", ["id", "tif", "part_3"]],
+      ["y", undefined],
+    ]);
+  });
+});

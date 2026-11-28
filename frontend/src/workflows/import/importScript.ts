@@ -36,6 +36,7 @@ import {
   parseCustomNodeSource,
   type StoredCustomNode,
 } from "../../registry/customNodes";
+import { summarizeChannelCode } from "../../registry/channelOperatorSummary";
 import { createNodeDefinitionFromNfCoreManifest } from "../../registry/nfcoreModuleAdapters";
 import { extractRootIncludes } from "../../registry/nfcore/subworkflowSource";
 import { stripComments } from "../nested/workflowGraph";
@@ -55,6 +56,7 @@ import {
   readIncludeItem,
   type ConditionalChain,
   splitWorkflowStatements,
+  expandPipe,
   topLevelItems,
   usedNames,
   workflowSections,
@@ -135,19 +137,28 @@ export const splitArguments = (args: string): string[] => {
   return parts;
 };
 
-/** `STEP(args)` or `x = STEP(args)` (one call, nothing after it). */
-const callOf = (text: string): { name: string; args: string; assigned: string | null } | null => {
+/** `STEP(args)`, `x = STEP(args)` or `(a, b) = STEP(args)` (one call, nothing after it). */
+const callOf = (
+  text: string,
+): { name: string; args: string; assigned: string | null; assignedEach: string[]; picked?: string | number } | null => {
   const masked = maskSource(text);
-  const match = masked.match(/^(?:([A-Za-z_]\w*)\s*=\s*)?([A-Za-z_]\w*)\s*\(/);
+  const match = masked.match(/^(?:(?:([A-Za-z_]\w*)|\(\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+)\s*\))\s*=\s*)?([A-Za-z_]\w*)\s*\(/);
   if (!match) return null;
+  // `(a, b) = STEP(…)`: each name is one of its outputs, in order.
+  const assignedEach = match[2] ? match[2].split(",").map((name) => name.trim()) : [];
   const open = match[0].length - 1;
   let depth = 0;
   for (let index = open; index < masked.length; index += 1) {
     if ("([{".includes(masked[index])) depth += 1;
     if (")]}".includes(masked[index])) depth -= 1;
     if (depth === 0) {
-      if (masked.slice(index + 1).trim() !== "") return null;
-      return { name: match[2], args: text.slice(open + 1, index), assigned: match[1] ?? null };
+      const call = { name: match[3], args: text.slice(open + 1, index), assigned: match[1] ?? null, assignedEach };
+      const rest = masked.slice(index + 1).trim();
+      if (rest === "") return call;
+      // `x = STEP(…).reads`, `x = STEP(…)[1]`: one of its outputs, by name or place.
+      const picked = /^(?:\.\s*([A-Za-z_]\w*)|\[\s*(\d+)\s*\])$/.exec(rest);
+      if (!picked || !call.assigned) return null;
+      return { ...call, picked: picked[1] ?? Number(picked[2]) };
     }
   }
   return null;
@@ -708,7 +719,14 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
   };
 
   const sections = entry ? workflowSections(blockBody(entry.text)) : null;
-  const statements: Statement[] = sections ? splitWorkflowStatements(sections.main) : [];
+  // Pipes through the workflow's steps, as the calls they make (`a | A | B` → `A(a)`, `B(A.out)`).
+  const isStepName = (name: string) => processes.has(name) || includes.has(name) || namedWorkflows.has(name);
+  const statements: Statement[] = (sections ? splitWorkflowStatements(sections.main) : []).flatMap((statement) => {
+    const calls = expandPipe(statement.text, isStepName);
+    return calls
+      ? calls.map((text, index) => ({ ...statement, text, comments: index === 0 ? statement.comments : [], blankBefore: index === 0 ? statement.blankBefore : false }))
+      : [statement];
+  });
   for (const placement of ["publish", "onComplete", "onError"] as const) {
     const code = dedent(sections?.[placement] ?? "").trim();
     if (code) kept.push({ placement, start: entry?.start ?? 0, text: code });
@@ -832,6 +850,8 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     return parts.every((entry): entry is Source[] => entry !== null) ? parts.flat() : null;
   };
 
+  /** Channel names the import made up, for code given inline as a step's argument. */
+  const madeUpNames = new Set<string>();
   // Channel operator nodes, one per group of statements.
   const outputlessKeys = new Set<string>();
   let unlabeled = 0;
@@ -882,18 +902,23 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     // Named like the export names it in the layout line: its first output, else its label.
     if (outputs.length === 0 && label === null) unlabeled += 1;
     const key = outputs[0] ?? uniqueName(lowerSnake(label ?? `ch_channels_${unlabeled}`) || "channels", outputlessKeys);
+    // Without a name of its own (a comment, a channel the script named), the
+    // code names it: its operators; and what the first is given is its subtitle.
+    const summary = summarizeChannelCode(code);
+    const named = label !== null || outputs.some((name) => !madeUpNames.has(name));
+    const subtitle = !summary ? "Channel code" : named ? [summary.label, summary.subtitle].filter(Boolean).join(" · ") : summary.subtitle || "Channel code";
     const node = addNode(
       key,
       "channelOperator",
       {
-        subtitle: "Channel code",
+        subtitle,
         channelOperatorTemplate: "custom",
         channelOperatorCode: code,
         inputs: [...inputs.keys()].map((name) => ({ name, label: name, isConnectable: true })),
         outputs: outputs.map((name) => ({ name, label: name, isConnectable: true })),
         channelNames: Object.fromEntries(outputs.map((name) => [name, name])),
       },
-      label ?? key,
+      label ?? (named ? undefined : summary?.label) ?? key,
     );
     for (const [name, references] of inputs) for (const reference of references) connect(reference, node, name, 0);
     for (const name of outputs) {
@@ -910,6 +935,7 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
     const literal = settingValue(argument);
     if (typeof literal !== "string" || unquote(argument) !== null || /^\[[\s[\]:,]*\]$/.test(argument.trim())) return null;
     const variable = `ch_${stepName.toLowerCase()}_${port}`.replace(/\W+/g, "_");
+    madeUpNames.add(variable);
     const before = nodes.length;
     operatorFor([{ text: `${variable} = ${argument.trim()}`, comments: [], column: 0 }], null, [{ variables: [variable] }]);
     if (nodes.length === before) return null;
@@ -1328,7 +1354,21 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
         node.data = { ...node.data, selectedFilterFiles: names.map((name) => ({ name, size: 0, content: "" })) };
       }
     }
-    if (call.assigned) {
+    call.assignedEach.forEach((name, index) => {
+      const port = node.data.outputs?.[index]?.name;
+      if (!port) return;
+      sources.set(name, { nodeId: node.id, port });
+      branchSources.delete(name);
+    });
+    if (call.assigned && call.picked !== undefined) {
+      // The output taken: read as `STEP.out.reads` when written back.
+      const outputs = node.data.outputs ?? [];
+      const port = typeof call.picked === "number" ? outputs[call.picked]?.name : outputs.find((output) => output.name === call.picked)?.name;
+      if (port) {
+        sources.set(call.assigned, { nodeId: node.id, port });
+        branchSources.delete(call.assigned);
+      }
+    } else if (call.assigned) {
       sources.set(call.assigned, { nodeId: node.id, port: node.data.outputs?.[0]?.name ?? "out" });
       branchSources.delete(call.assigned);
       // `samples_ch = RNASEQ(…)`: written back so, for code that reads the name.
@@ -1376,6 +1416,19 @@ export const importNextflowScript = (original: string, options: ImportOptions = 
       }
       const emptied = text.match(/^([A-Za-z_]\w*)\s*=\s*[Cc]hannel\.empty\(\)$/);
       if (emptied && emptiedForBranch(list, index, emptied[1])) return;
+      // `(small, large) = SPLIT.out`: each name is one of the step's outputs, in order.
+      const outputsTaken = maskSource(text).match(/^\(\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)+)\s*\)\s*=\s*([A-Za-z_]\w*)\.out\s*$/);
+      const taken = outputsTaken ? steps.get(outputsTaken[2]) : undefined;
+      if (outputsTaken && taken) {
+        flushBlock();
+        outputsTaken[1].split(",").forEach((name, index) => {
+          const port = taken.data.outputs?.[index]?.name;
+          if (!port) return;
+          sources.set(name.trim(), { nodeId: taken.id, port });
+          branchSources.delete(name.trim());
+        });
+        return;
+      }
       const defined = definedNames(text);
       if (!membership && defined.length === 1 && (glue.has(defined[0]) || selectedFiles.has(defined[0]))) return;
       if (membership) {

@@ -30,6 +30,7 @@ import {
   branchesOf,
   edgeWhen,
 } from "../../branches/branches";
+import { summarizeChannelCode } from "../../registry/channelOperatorSummary";
 import { withGroupSelectors } from "../../groups/inlineGroups";
 import type { ItemShape } from "../../registry/nodeGeneration";
 
@@ -510,7 +511,9 @@ export const generateNextflowScriptWithNames = (
       const label = String(node.data.label || "").replace(/\n/g, " ").trim();
       const firstOutput = channels.get(`${node.id}.${node.data.outputs?.[0]?.name}`);
       // Not when it only repeats the node's name (`ch_channels_1`).
-      if (label && label !== firstOutput && label !== layoutNames.get(node.id)) statements.unshift(`    // ${label}\n`);
+      // Nor when the code gives it (`filter`): importing names it so again.
+      const fromCode = summarizeChannelCode(String(node.data.channelOperatorCode ?? ""))?.label;
+      if (label && label !== firstOutput && label !== layoutNames.get(node.id) && label !== fromCode) statements.unshift(`    // ${label}\n`);
       statements.unshift("\n");
     }
     // `samples_ch = RNASEQ(…)`: the variable the script gave the call's result.

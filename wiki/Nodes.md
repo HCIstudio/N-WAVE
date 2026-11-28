@@ -54,6 +54,25 @@ for samplesheet rows (`[ meta, files ]`):
 | Counting and maths | `count`, `countLines`, `countFasta`, `countFastq`, `countJson`, `min`, `max`, `sum` |
 | Other | `collectFile`, `ifEmpty`, `view`, `dump`, `subscribe` |
 
+The ones used most are in the node menu on their own: **Filter**, **Map**, **Flat map**,
+**Join** and **Collect** add a Channel Operator that starts from that template.
+
+The templates for `filter`, `map` and `flatMap` take each item apart. When the node's input is
+connected to an output whose items are known (a step's `tuple val(id), path(tif)`, a
+samplesheet's `[ meta, reads ]`, single files), choosing the template writes the closure for
+those parts (`{ id, tif -> … }`), and **Fit the code to them** does so for code already there.
+Parts the code doesn't use are written with a leading `_` (`_tif`), as Nextflow asks.
+
+A `filter` that compares one part with a value (`id == 'gv'`, `!meta.single_end`,
+`row.depth >= 10`) shows a form above the code: **Keep the items where** a part (or a property
+of it), a comparison and a value. Text is compared as text, numbers as numbers. Anything more
+(`||`, a method call) stays code.
+
+Channel code from an imported script is a Channel Operator too. When the script didn't name it
+(code given straight to a step, or code that names no channel, such as `.view()`), its label
+says which operators it applies (`filter`, `channel.fromPath → map`) and its subtitle what the
+first is given; a named channel keeps its name, with that below it.
+
 ## Text files
 
 Steps N-WAVE writes for you that work on the **contents of text files**, for small text

@@ -226,6 +226,7 @@ export const RESERVED_NODE_IDS = [
 ];
 const isReservedNodeId = (id: string): boolean =>
   id.toLowerCase().startsWith("nfcore_") ||
+  id.toLowerCase().startsWith("channeloperator:") ||
   RESERVED_NODE_IDS.some((reserved) => reserved.toLowerCase() === id.toLowerCase());
 
 const customNodeArgumentFieldSchema = z

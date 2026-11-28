@@ -8,15 +8,23 @@ import { generateNextflowScript } from "../../generators/core/generateNextflowSc
 import { buildProjectFiles } from "../../export/exportProject";
 import { getNodeCode } from "../../registry/nodeCode";
 import { importNextflowScript } from "./importScript";
-import { blockBody, maskSource, topLevelItems } from "./nextflowSource";
+import { blockBody, expandPipe, maskSource, readIncludeItem, splitWorkflowStatements, topLevelItems } from "./nextflowSource";
 
 const scripts = import.meta.glob("./fixtures/*.nf", { query: "?raw", import: "default", eager: true }) as Record<string, string>;
 
-/** What the entry workflow calls, by name. */
+/** What the entry workflow calls, by name (a pipe through steps as the calls it makes). */
 const callsIn = (source: string): string[] => {
   const entry = topLevelItems(source).find((item) => item.kind === "workflow" && !item.name);
   if (!entry) return [];
-  const names = [...maskSource(blockBody(entry.text), { keepInterpolations: true }).matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)];
+  const steps = new Set(
+    topLevelItems(source).flatMap((item) =>
+      item.kind === "include" ? readIncludeItem(item.text).map((included) => included.alias) : item.name ? [item.name] : [],
+    ),
+  );
+  const body = splitWorkflowStatements(blockBody(entry.text))
+    .flatMap((statement) => expandPipe(statement.text, (name) => steps.has(name)) ?? [statement.text])
+    .join("\n");
+  const names = [...maskSource(body, { keepInterpolations: true }).matchAll(/(?<![.\w])([A-Za-z_]\w*)\s*\(/g)];
   return [...new Set(names.map((match) => match[1]))].filter((name) => !["if", "for", "while"].includes(name)).sort();
 };
 
@@ -98,5 +106,40 @@ describe("tuple inputs that a call gives whole channels", () => {
   it("are written back with the filtered channel", () => {
     const { script } = roundTrip(scripts["./fixtures/tuples-from-channels.nf"]);
     expect(script).toMatch(/(\w+) = MEASURE\.out\.pairs\.filter \{ site, band -> band != "swir" \}\n\s*SCORE\(\1\)/);
+  });
+});
+
+describe("pipes through steps and outputs taken apart", () => {
+  it("are steps connected as the pipe and the assignment say", () => {
+    const { imported, script } = roundTrip(scripts["./fixtures/pipes-and-output-tuples.nf"]);
+    const label = (id: string) => imported.nodes.find((node) => node.id === id)?.data.label;
+    const into = (step: string) =>
+      imported.edges
+        .filter((edge) => label(edge.target) === step)
+        .map((edge) => `${label(edge.source)}.${edge.sourceHandle} -> ${edge.targetHandle}`)
+        .sort();
+    expect(into("REPORT")).toEqual(["SPLIT.large -> large", "SPLIT.small -> small"]);
+    expect(into("SPLIT")).toHaveLength(1);
+    expect(script).toContain("DOUBLE(");
+    expect(script).toMatch(/DOUBLE\.out\.doubled\.map \{ n -> n \+ 1 \}/);
+    expect(script).toContain("REPORT(SPLIT.out.small, SPLIT.out.large)");
+    // `ch_text = REPORT(…).text`: the step, and its output read by name.
+    expect(script).toMatch(/REPORT\.out\.text\.view\(\)/);
+    expect(imported.nodes.filter((node) => node.type === "channelOperator").map((node) => node.data.label)).not.toContain("ch_text");
+  });
+});
+
+describe("expandPipe", () => {
+  const steps = new Set(["A", "B"]);
+  const expand = (text: string) => expandPipe(text, (name) => steps.has(name));
+  it("writes a pipe through steps as their calls, with operators in between", () => {
+    expect(expand("channel.of(1) | A | B | view")).toEqual(["A(channel.of(1))", "B(A.out)", "B.out.view()"]);
+    expect(expand("ch | map { x -> x * 2 } | A")).toEqual(["A(ch.map { x -> x * 2 })"]);
+    expect(expand("result = ch | A | collect")).toEqual(["A(ch)", "result = A.out.collect()"]);
+  });
+  it("leaves alone what isn't a pipe through steps", () => {
+    expect(expand("ch | map { x -> x } | view")).toBeNull();
+    expect(expand("A(ch.filter { x -> x || y })")).toBeNull();
+    expect(expand("ch | (A & B)")).toBeNull();
   });
 });
